@@ -1,4 +1,24 @@
 services:
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    # environment:
+    #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
+    #   MINIO_ENDPOINT: minio
+    #   MINIO_ACCESS_KEY: root
+    #   MINIO_SECRET_KEY: rootroot
+    #   MINIO_SECURE: "false"
+    #   KEYCLOAK_URL: http://keycloak:7080
+    #   KEYCLOAK_REALM: praktikai
+    #   KEYCLOAK_CLIENT_ID: praktik-ai-app
+    # depends_on:
+    #   - db
+    #   - minio
+    #   - keycloak
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     environment:
