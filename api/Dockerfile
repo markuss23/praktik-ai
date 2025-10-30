@@ -39,7 +39,8 @@ COPY --from=deps /install /usr/local
 COPY ./app /code/app
 COPY ./entrypoint.* /code/
 
-ENTRYPOINT [ "bash", "/code/entrypoint.local.sh" ]
+# ENTRYPOINT [ "bash", "/code/entrypoint.local.sh" ]
+CMD [ "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
 
 # 4) Production stage
 

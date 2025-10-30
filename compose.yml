@@ -6,6 +6,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - api/.env
+    
+    volumes:
+      - ./api:/code
     # environment:
     #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
     #   MINIO_ENDPOINT: minio
@@ -55,6 +60,7 @@ services:
     #      size: 134217728 # 128*2^20 bytes = 128Mb
     environment:
       POSTGRES_PASSWORD: example
+      POSTGRES_DATABASE: praktik_db
 
     ports:
       - "5432:5432"
