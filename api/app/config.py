@@ -12,11 +12,11 @@ class DBSettings(BaseModel):
 
 class Settings(BaseSettings):
     db: DBSettings
-    
+
     model_config = SettingsConfigDict(
-        env_nested_delimiter='__',
+        env_nested_delimiter="__",
         case_sensitive=False,
     )
-    
+
 
 settings = Settings()
