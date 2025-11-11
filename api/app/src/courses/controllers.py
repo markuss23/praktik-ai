@@ -15,7 +15,9 @@ def get_courses(
     is_published: bool = False,
 ) -> list[Course]:
     try:
-        stm: Select[tuple[models.Course]] = select(models.Course)
+        stm: Select[tuple[models.Course]] = select(models.Course).order_by(
+            models.Course.course_id
+        )
 
         if not include_inactive:
             stm = stm.where(models.Course.is_active.is_(True))

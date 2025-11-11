@@ -1,0 +1,35 @@
+from fastapi import APIRouter
+
+from app.src.modules.controllers import create_module, get_modules
+from app.src.modules.schemas import Module, ModuleCreate
+from app.src.common.annotations import (
+    INCLUDE_INACTIVE_ANNOTATION,
+    TEXT_SEARCH_ANNOTATION,
+)
+
+from app.database import SessionSqlSessionDependency
+
+
+router = APIRouter(prefix="/modules", tags=["Modules"])
+
+
+@router.get("", operation_id="list_modules")
+async def list_modules(
+    db: SessionSqlSessionDependency,
+    include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
+    text_search: TEXT_SEARCH_ANNOTATION = None,
+    course_id: int | None = None,
+) -> list[Module]:
+    return get_modules(
+        db,
+        include_inactive=include_inactive,
+        text_search=text_search,
+        course_id=course_id,
+    )
+
+
+@router.post("", operation_id="create_module")
+async def endp_create_module(
+    module: ModuleCreate, db: SessionSqlSessionDependency
+) -> Module:
+    return create_module(db, module)

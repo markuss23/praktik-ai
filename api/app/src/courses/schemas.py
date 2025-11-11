@@ -1,5 +1,6 @@
 from pydantic import Field
 
+from app.src.modules.schemas import Module
 from app.src.common.schemas import ORMModel
 
 
@@ -20,3 +21,5 @@ class CourseUpdate(CourseBase):
 class Course(CourseBase):
     course_id: int
     is_active: bool
+
+    modules: list[Module]
