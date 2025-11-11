@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from fastapi import HTTPException
-from sqlalchemy import Select, Sequence, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
 from app import models
@@ -7,14 +8,30 @@ from app.src.courses.schemas import CourseCreate
 from app.src.courses.schemas import Course
 
 
-def get_courses(db: Session) -> list[Course]:
+def get_courses(
+    db: Session,
+    include_inactive: bool = False,
+    text_search: str | None = None,
+    is_published: bool = False,
+) -> list[Course]:
     stm: Select[tuple[models.Course]] = select(models.Course)
 
-    result: Sequence[tuple[models.Course]] = db.execute(stm).scalars().all()
+    if not include_inactive:
+        stm = stm.where(models.Course.is_active.is_(True))
 
-    result: list[Course] = [Course.model_validate(course) for course in result]
+    if is_published:
+        stm = stm.where(models.Course.is_published.is_(True))
 
-    return result
+    if text_search:
+        stm = stm.where(
+            or_(
+                models.Course.title.ilike(f"%{text_search}%"),
+                models.Course.description.ilike(f"%{text_search}%"),
+            )
+        )
+
+    rows: Sequence[Course] = db.execute(stm).scalars().all()
+    return [Course.model_validate(c) for c in rows]
 
 
 def create_course(db: Session, course_data: CourseCreate) -> Course:
