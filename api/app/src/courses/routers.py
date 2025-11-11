@@ -5,7 +5,7 @@ from app.src.common.annotations import (
     IS_PUBLISHED_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
 )
-from app.src.courses.schemas import CourseCreate, Course
+from app.src.courses.schemas import CourseCreate, Course, CourseUpdate
 from app.src.courses.controllers import (
     create_course,
     get_courses,
@@ -47,6 +47,6 @@ async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> Co
 
 @router.put("/{course_id}", operation_id="update_course")
 async def endp_update_course(
-    course_id: int, course: CourseCreate, db: SessionSqlSessionDependency
+    course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency
 ) -> Course:
     return update_course(db, course_id, course)
