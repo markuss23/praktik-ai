@@ -1,6 +1,11 @@
 from fastapi import APIRouter
 
-from app.src.modules.controllers import create_module, get_modules
+from app.src.modules.controllers import (
+    create_module,
+    get_modules,
+    get_module,
+    update_module,
+)
 from app.src.modules.schemas import Module, ModuleCreate
 from app.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
@@ -33,3 +38,15 @@ async def endp_create_module(
     module: ModuleCreate, db: SessionSqlSessionDependency
 ) -> Module:
     return create_module(db, module)
+
+
+@router.get("/{module_id}", operation_id="get_module")
+async def endp_get_module(module_id: int, db: SessionSqlSessionDependency) -> Module:
+    return get_module(db, module_id)
+
+
+@router.put("/{module_id}", operation_id="update_module")
+async def endp_update_module(
+    module_id: int, module: ModuleCreate, db: SessionSqlSessionDependency
+) -> Module:
+    return update_module(db, module_id, module)
