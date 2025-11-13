@@ -77,5 +77,18 @@ services:
     volumes:
       - minio-data:/data
 
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: litellm
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:example@db:5432/litellm"
+      STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
+      LITELLM_MASTER_KEY: "sk-1234"
+      LITELLM_SALT_KEY: "sk-XXXXXXXX"
+    depends_on:
+      - db
+
 volumes:
   minio-data:
