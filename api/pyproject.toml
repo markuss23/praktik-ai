@@ -14,6 +14,7 @@ dependencies = [
     "unstructured[md]>=0.18.20",
     "langchain-openai>=1.0.3",
     "langchain-core>=1.0.6",
+    "langchain>=1.0.8",
 ]
 
 
