@@ -90,13 +90,13 @@ rag_with_history = RunnableWithMessageHistory(
 config = {"configurable": {"session_id": "kurz_promptovani_01"}}
 
 if __name__ == "__main__":
-    print("🔹 Chat nad kurzem promptování (napiš 'exit' pro ukončení)\n")
+    print("Chat nad kurzem promptování (napiš 'exit' pro ukončení)\n")
     while True:
         user_input = input("Ty: ").strip()
         if not user_input:
             continue
         if user_input.lower() in {"exit", "quit", "q"}:
-            print("Konec 👋")
+            print("Konec")
             break
 
         answer = rag_with_history.invoke(
