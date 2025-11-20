@@ -14,7 +14,7 @@ from langchain_core.runnables import RunnableLambda
 
 
 loader = UnstructuredMarkdownLoader(
-    "/home/marek/projects/marek/github/praktik-ai/examples/kurz_promptovani_01/A1_Co_je_prompt.md"
+        "../examples/kurz_promptovani_01/A1_Co_je_prompt.md"
 )
 docs: list[Document] = loader.load()
 
