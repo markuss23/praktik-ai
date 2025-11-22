@@ -47,13 +47,13 @@ class SoftDeleteMixin:
 # ---------- Enums ----------
 
 
-class ActivityKind(str, enum.Enum):
+class ActivityKind(enum.StrEnum):
     learn: str = "learn"
     practice: str = "practice"
     assessment: str = "assessment"
 
 
-class SubmissionStatus(str, enum.Enum):
+class SubmissionStatus(enum.StrEnum):
     draft: str = "draft"
     submitted: str = "submitted"
     evaluated: str = "evaluated"
@@ -81,7 +81,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     description: Mapped[str | None] = mapped_column(Text)
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    modules: Mapped[list["Module"]] = relationship(
+    modules: Mapped[list[Module]] = relationship(
         back_populates="course", cascade="all, delete-orphan", order_by="Module.order"
     )
 
@@ -103,9 +103,26 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     course: Mapped[Course] = relationship(back_populates="modules")
-    activities: Mapped[list["Activity"]] = relationship(
+    activities: Mapped[list[Activity]] = relationship(
         back_populates="module", cascade="all, delete-orphan", order_by="Activity.order"
     )
+
+    module_metadatas: Mapped[list[ModuleMetadata]] = relationship(
+        back_populates="module", cascade="all, delete-orphan"
+    )
+
+
+class ModuleMetadata(TimestampMixin, Base):
+    __tablename__ = "module_metadata"
+
+    module_metadata_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id", ondelete="CASCADE"), nullable=False
+    )
+
+    module: Mapped[Module] = relationship(back_populates="module_metadatas")
 
 
 # ---------- Activity & Rubric ----------
