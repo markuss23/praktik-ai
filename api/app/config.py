@@ -8,14 +8,20 @@ class DBSettings(BaseModel):
     user: str
     password: str
     database: str
+    
+    def get_connection_string(self) -> str:
+        return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}"
 
 
 class Settings(BaseSettings):
     db: DBSettings
 
     model_config = SettingsConfigDict(
+        env_file=".env",  # Možná to bude dělat bordel, jakmile to bude v dockeru
         env_nested_delimiter="__",
         case_sensitive=False,
+         extra="ignore",
+        
     )
 
 
