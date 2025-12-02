@@ -5,6 +5,7 @@ from app.src.modules.controllers import (
     get_modules,
     get_module,
     update_module,
+    delete_module,
 )
 from app.src.modules.schemas import Module, ModuleCreate
 from app.src.common.annotations import (
@@ -50,3 +51,8 @@ async def endp_update_module(
     module_id: int, module: ModuleCreate, db: SessionSqlSessionDependency
 ) -> Module:
     return update_module(db, module_id, module)
+
+
+@router.delete("/{module_id}", operation_id="delete_module", status_code=204)
+async def endp_delete_module(module_id: int, db: SessionSqlSessionDependency) -> None:
+    delete_module(db, module_id)

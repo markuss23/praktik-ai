@@ -4,13 +4,13 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**rootSasdGet**](DefaultApi.md#rootsasdget) | **GET** /sasd/ | Root |
+| [**rootHealthGet**](DefaultApi.md#roothealthget) | **GET** /health | Root |
 
 
 
-## rootSasdGet
+## rootHealthGet
 
-> any rootSasdGet()
+> any rootHealthGet()
 
 Root
 
@@ -21,14 +21,14 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { RootSasdGetRequest } from '';
+import type { RootHealthGetRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
   try {
-    const data = await api.rootSasdGet();
+    const data = await api.rootHealthGet();
     console.log(data);
   } catch (error) {
     console.error(error);

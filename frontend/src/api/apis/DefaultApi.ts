@@ -23,13 +23,13 @@ export class DefaultApi extends runtime.BaseAPI {
     /**
      * Root
      */
-    async rootSasdGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async rootHealthGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/sasd/`;
+        let urlPath = `/health`;
 
         const response = await this.request({
             path: urlPath,
@@ -48,8 +48,8 @@ export class DefaultApi extends runtime.BaseAPI {
     /**
      * Root
      */
-    async rootSasdGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.rootSasdGetRaw(initOverrides);
+    async rootHealthGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.rootHealthGetRaw(initOverrides);
         return await response.value();
     }
 

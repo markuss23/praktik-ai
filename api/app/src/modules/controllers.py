@@ -137,11 +137,12 @@ def update_module(db: Session, module_id: int, module_data: ModuleCreate) -> Mod
                 detail="Kurz neexistuje.",
             )
 
-        # kontrola, zda neni prekryvajici modul
+        # kontrola, zda neni prekryvajici modul (vyjma aktuálně editovaného)
         exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
             and_(
                 models.Module.course_id == module_data.course_id,
                 models.Module.order == module_data.order,
+                models.Module.module_id != module_id, 
             )
         )
 
@@ -165,4 +166,28 @@ def update_module(db: Session, module_id: int, module_data: ModuleCreate) -> Mod
         raise
     except Exception as e:
         print(f"update_module error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def delete_module(db: Session, module_id: int) -> None:
+    """
+    Smaže modul podle module_id (soft delete - nastaví is_active=False)
+    """
+    try:
+        stm: Select[tuple[models.Module]] = select(models.Module).where(
+            models.Module.module_id == module_id
+        )
+
+        module: models.Module | None = db.execute(stm).scalars().first()
+
+        if module is None:
+            raise HTTPException(status_code=404, detail="Module not found")
+
+        # Soft delete - nastavíme is_active na False
+        module.is_active = False
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_module error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e

@@ -110,3 +110,27 @@ def update_course(db: Session, course_id: int, course_data: CourseCreate) -> Cou
     except Exception as e:
         print(f"update_course error: {e}")
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
+
+
+def delete_course(db: Session, course_id: int) -> None:
+    """
+    Smaže kurz podle course_id (soft delete - nastaví is_active=False)
+    """
+    try:
+        stm: Select[tuple[models.Course]] = select(models.Course).where(
+            models.Course.course_id == course_id
+        )
+
+        course: models.Course | None = db.execute(stm).scalars().first()
+
+        if course is None:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        # Soft delete - nastavíme is_active na False
+        course.is_active = False
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_course error: {e}")
+        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e

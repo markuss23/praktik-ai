@@ -11,6 +11,7 @@ from app.src.courses.controllers import (
     get_courses,
     get_course,
     update_course,
+    delete_course,
 )
 from app.database import SessionSqlSessionDependency
 
@@ -50,3 +51,8 @@ async def endp_update_course(
     course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency
 ) -> Course:
     return update_course(db, course_id, course)
+
+
+@router.delete("/{course_id}", operation_id="delete_course", status_code=204)
+async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency) -> None:
+    delete_course(db, course_id)
