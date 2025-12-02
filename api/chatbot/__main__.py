@@ -1,9 +1,13 @@
+import os
 from dotenv import load_dotenv
 from pathlib import Path
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents.base import Document
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages.ai import AIMessage
 from langchain_core.tools.base import BaseTool
+from langchain_core.tools.simple import Tool
+from langchain_core.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings
 from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -13,7 +17,10 @@ from langchain.chat_models import init_chat_model
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 from langgraph.graph.state import CompiledStateGraph
-from app.config import settings
+# from app.config import settings
+from langchain_classic.tools.retriever import create_retriever_tool
+from langgraph.graph import MessagesState
+
 # from api.app.config import settings
 
 # ---- Inicializace prostředí – volat JEDNOU na začátku skriptu ----
@@ -23,7 +30,7 @@ load_dotenv()
 # ---- Konfigurace (můžeš upravit nebo tahat z env) ----
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
 DEFAULT_COLLECTION_NAME = "my_docs"
-DEFAULT_CONNECTION_URL: str = settings.db.get_connection_string()
+DEFAULT_CONNECTION_URL: str = f"postgresql+psycopg://{os.getenv("DB__USER")}:{os.getenv("DB__PASSWORD")}@{os.getenv("DB__HOST")}:{os.getenv("DB__PORT")}/postgres"
 
 
 # Pomocné funkce pro práci s Documenty a chunky
@@ -296,7 +303,7 @@ if __name__ == "__main__":
         collection_name=COLLECTION_NAME,
         connection_url=CONNECTION_URL,
     )
-
+    
     model: BaseChatModel = init_chat_model("gpt-4.1")
 
     tools: list[BaseTool] = [retrieve_context]
@@ -307,10 +314,40 @@ if __name__ == "__main__":
     )
     agent: CompiledStateGraph = create_agent(model, tools, system_prompt=prompt)
 
-    query = "Co je to promptování a jaké jsou nejlepší praktiky pro tvorbu efektivních promptů?"
+    query = "Co je to promptování a jaké jsou nejlepší praktiky pro tvorbu efektivních promptů? a mohl bys mi připravit otazky na procvičení?"
 
     for event in agent.stream(
         {"messages": [{"role": "user", "content": query}]},
         stream_mode="values",
     ):
         event["messages"][-1].pretty_print()
+    
+    # retriever: VectorStoreRetriever = vector_store.as_retriever()
+
+    # retriever_tool: Tool = create_retriever_tool(
+    #     retriever,
+    #     "retrieve_course",
+    #     "Search and return information about Crouse about prompting",
+    # )
+    
+    # response_model: BaseChatModel = init_chat_model("gpt-4o", temperature=0)
+    
+    # def generate_query_or_respond(state: MessagesState):
+    #     """Call the model to generate a response based on the current state. Given
+    #     the question, it will decide to retrieve using the retriever tool, or simply respond to the user.
+    #     """
+    #     response: AIMessage = (
+    #         response_model
+    #         .bind_tools([retriever_tool]).invoke(state["messages"])  
+    #     )
+    #     return {"messages": [response]}
+
+    # input = {
+    #     "messages": [
+    #         {
+    #             "role": "user",
+    #             "content": "O čem je tento kurz",
+    #         }
+    #     ]
+    # }
+    # print(generate_query_or_respond(input)["messages"][-1].pretty_print())

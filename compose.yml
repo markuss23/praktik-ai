@@ -48,7 +48,7 @@ services:
       - "7443:7443"
 
   db:
-    image: postgres
+    image: pgvector/pgvector:0.8.1-pg18-trixie
     restart: always
     # set shared memory limit when using docker compose
     shm_size: 128mb
