@@ -71,11 +71,10 @@ def create_activity(db: Session, activity_data: ActivityCreate) -> Activity:
             raise HTTPException(
                 status_code=400, detail="Aktivita s tímto poradovým číslom již existuje"
             )
-
         if (
             db.execute(
-                select(models.Activity).where(
-                    models.Activity.module_id == activity_data.module_id
+                select(models.Module).where(
+                    models.Module.module_id == activity_data.module_id
                 )
             ).first()
             is None
