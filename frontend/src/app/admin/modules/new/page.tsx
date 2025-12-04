@@ -13,6 +13,7 @@ export default function NewModulePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
+  const [nextOrder, setNextOrder] = useState<number>(1);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -33,6 +34,31 @@ export default function NewModulePage() {
     }
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    async function loadModules() {
+      if (formData.courseId === 0) {
+        setNextOrder(1);
+        setFormData(prev => ({ ...prev, order: 1 }));
+        return;
+      }
+
+      try {
+        const config = new Configuration({ basePath: API_BASE_URL });
+        const modulesApi = new ModulesApi(config);
+        const modules = await modulesApi.listModules({ courseId: formData.courseId });
+        
+        // Calculate next order number
+        const maxOrder = modules.length > 0 ? Math.max(...modules.map((m: any) => m.order)) : 0;
+        const next = maxOrder + 1;
+        setNextOrder(next);
+        setFormData(prev => ({ ...prev, order: next }));
+      } catch (err) {
+        console.error('Failed to load modules:', err);
+      }
+    }
+    loadModules();
+  }, [formData.courseId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,21 +123,6 @@ export default function NewModulePage() {
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
             placeholder="např. Co je prompt a jak funguje AI"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="order" className="block text-sm font-medium text-gray-700 mb-2">
-            Pořadí *
-          </label>
-          <input
-            type="number"
-            id="order"
-            required
-            min={1}
-            value={formData.order}
-            onChange={(e) => setFormData({ ...formData, order: Number(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
           />
         </div>
 

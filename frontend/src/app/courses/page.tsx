@@ -75,7 +75,7 @@ export default function CoursesPage() {
             <Link href={`/courses/${course.courseId}`}>
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader>
-                  <CardTitle>{course.title}</CardTitle>
+                  <CardTitle className="text-black">{course.title}</CardTitle>
                   <CardDescription>{course.description || 'No description available'}</CardDescription>
                 </CardHeader>
               </Card>

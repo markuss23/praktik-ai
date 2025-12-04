@@ -27,8 +27,7 @@ export default async function ModulePage({
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">{module.name}</h1>
-        <p className="text-lg text-gray-600">{module.description || 'Žádný popis'}</p>
+        <h1 className="text-4xl font-bold mb-2">{module.title}</h1>
       </div>
 
       <div>
@@ -39,10 +38,10 @@ export default async function ModulePage({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl">
-                    {index + 1}. {activity.name}
+                    {index + 1}. {activity.title}
                   </CardTitle>
                   <span className="text-sm px-2 py-1 bg-gray-100 rounded">
-                    {activity.activity_type || 'aktivita'}
+                    {activity.kind || 'aktivita'}
                   </span>
                 </div>
                 <CardDescription>{activity.description || 'Bez popisu'}</CardDescription>
