@@ -8,5 +8,3 @@ Dev se nastaruje pomocí `make dev` :
 
 - vytvoří se db,
 - api
-
-Testuji rule set
