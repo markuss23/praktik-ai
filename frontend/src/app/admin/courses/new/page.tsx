@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createCourse } from '@/lib/api-client';
+import { slugify } from '@/lib/utils';
 
 export default function NewCoursePage() {
   const router = useRouter();
@@ -23,7 +24,8 @@ export default function NewCoursePage() {
     try {
       const course = await createCourse(formData);
       console.log('Course created:', course);
-      router.push(`/admin/modules/new?courseId=${course.courseId}`);
+      // Navigate to the course page with the course slug
+      router.push(`/courses/${slugify(course.title)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create course');
     } finally {

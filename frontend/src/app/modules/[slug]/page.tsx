@@ -1,20 +1,43 @@
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui";
-import { getModule, getActivities } from "@/lib/api-client";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui";
+import { getCourses, getModules, getActivities } from "@/lib/api-client";
+import { slugify } from "@/lib/utils";
 
 export default async function ModulePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   
   let module = null;
   let activities = [];
   
   try {
-    module = await getModule(Number(id));
-    activities = await getActivities({ moduleId: Number(id) });
+    // Get all courses to find all modules
+    const courses = await getCourses();
+    const allModulesPromises = courses.map(course => 
+      getModules({ courseId: course.courseId })
+    );
+    const allModulesArrays = await Promise.all(allModulesPromises);
+    const allModules = allModulesArrays.flat();
+    
+    // Check if slug is a numeric ID (for backward compatibility)
+    const isNumericId = /^\d+$/.test(slug);
+    
+    if (isNumericId) {
+      // Legacy ID-based URL - find by moduleId
+      module = allModules.find(m => m.moduleId === Number(slug));
+    } else {
+      // Slug-based URL - find by slugified title
+      module = allModules.find(m => slugify(m.title) === slug);
+    }
+    
+    if (!module) {
+      notFound();
+    }
+    
+    activities = await getActivities({ moduleId: module.moduleId });
   } catch (error) {
     console.error('Failed to fetch module data:', error);
     notFound();

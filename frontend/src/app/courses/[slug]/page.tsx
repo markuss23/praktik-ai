@@ -1,20 +1,38 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getCourse, getModules } from "@/lib/api-client";
+import { getCourses, getModules } from "@/lib/api-client";
+import { slugify } from "@/lib/utils";
 
 export default async function CoursePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   
   let course = null;
   let modules = [];
   
   try {
-    course = await getCourse(Number(id));
-    modules = await getModules({ courseId: Number(id) });
+    // Get all courses and find the one matching the slug
+    const courses = await getCourses();
+    
+    // Check if slug is a numeric ID (for backward compatibility)
+    const isNumericId = /^\d+$/.test(slug);
+    
+    if (isNumericId) {
+      // Legacy ID-based URL - find by courseId
+      course = courses.find(c => c.courseId === Number(slug));
+    } else {
+      // Slug-based URL - find by slugified title
+      course = courses.find(c => slugify(c.title) === slug);
+    }
+    
+    if (!course) {
+      notFound();
+    }
+    
+    modules = await getModules({ courseId: course.courseId });
   } catch (error) {
     console.error('Failed to fetch course data:', error);
     notFound();
@@ -27,8 +45,9 @@ export default async function CoursePage({
   // Map modules to match the expected format
   const mappedModules = modules.map((module: any, index: number) => ({
     id: String(module.moduleId),
-    courseId: id,
+    courseId: course.courseId,
     title: module.title,
+    slug: slugify(module.title),
     description: course.description,
     shortGoal: `Splnit modul ${index + 1}`,
     lessons: 3,
@@ -47,7 +66,7 @@ export default async function CoursePage({
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8 flex justify-between items-center" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <h1 className="text-black sm:text-4xl font-bold">{course.title}</h1>
         <Link 
-          href={`/admin/modules/new?courseId=${id}`}
+          href={`/admin/modules/new?courseId=${course.courseId}`}
           className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           <span className="text-xl font-bold">+</span>
@@ -136,7 +155,7 @@ export default async function CoursePage({
                     <span>{module.lessons} lekce</span>
                   </div>
                   <Link 
-                    href={`/admin/modules/${module.id}/edit`}
+                    href={`/admin/modules/${module.slug}/edit`}
                     className="text-white font-semibold py-2.5 px-5 rounded-md transition-colors flex items-center gap-2"
                     style={{ backgroundColor: '#8B5BA8' }}
                   >

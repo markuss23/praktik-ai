@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ModulesApi, CoursesApi, Configuration } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
+import { slugify } from '@/lib/utils';
 
 export default function NewModulePage() {
   const router = useRouter();
@@ -72,7 +73,14 @@ export default function NewModulePage() {
         moduleCreate: formData
       });
       console.log('Module created:', module);
-      router.push(`/courses/${formData.courseId}`);
+      
+      // Navigate to the course page with the course slug
+      const course = courses.find(c => c.courseId === formData.courseId);
+      if (course) {
+        router.push(`/courses/${slugify(course.title)}`);
+      } else {
+        router.push('/courses');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create module');
     } finally {

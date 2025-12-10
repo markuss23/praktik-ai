@@ -7,6 +7,7 @@ import { EllipsisVertical, EyeOff, Eye, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { CoursesApi, Configuration } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { slugify } from "@/lib/utils";
 
 interface CourseCardProps {
   id: string;
@@ -109,7 +110,7 @@ export function CourseCard({
   return (
     <>
       <div className="relative">
-        <Link href={`/courses/${id}`} className="block group">
+        <Link href={`/courses/${slugify(title)}`} className="block group">
           <div 
             className="bg-white hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col relative"
             style={{ 

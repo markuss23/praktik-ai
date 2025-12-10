@@ -2,84 +2,134 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { CoursesApi, Configuration } from '@/api';
+import { ModulesApi, CoursesApi, Configuration } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
+import { getCourses, getModules } from '@/lib/api-client';
+import { slugify } from '@/lib/utils';
 
-export default function EditCoursePage() {
+export default function EditModulePage() {
   const router = useRouter();
   const params = useParams();
-  const courseId = params.id as string;
+  const moduleSlug = params.slug as string;
   
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [courses, setCourses] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [moduleId, setModuleId] = useState<number | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
-    isPublished: false,
+    courseId: 0,
+    order: 1,
   });
 
   useEffect(() => {
-    async function loadCourse() {
+    async function loadData() {
       try {
         const config = new Configuration({ basePath: API_BASE_URL });
         const coursesApi = new CoursesApi(config);
         
-        const course = await coursesApi.getCourse({ courseId: Number(courseId) });
+        // Load courses
+        const coursesData = await coursesApi.listCourses({});
+        setCourses(coursesData);
+        
+        // Get all modules from all courses to find the one matching the slug
+        const allModulesPromises = coursesData.map(course => 
+          getModules({ courseId: course.courseId })
+        );
+        const allModulesArrays = await Promise.all(allModulesPromises);
+        const allModules = allModulesArrays.flat();
+        
+        // Check if slug is a numeric ID (for backward compatibility)
+        const isNumericId = /^\d+$/.test(moduleSlug);
+        
+        // Find the module matching the slug or ID
+        const module = isNumericId
+          ? allModules.find(m => m.moduleId === Number(moduleSlug))
+          : allModules.find(m => slugify(m.title) === moduleSlug);
+        
+        if (!module) {
+          setError('Module not found');
+          return;
+        }
+        
+        setModuleId(module.moduleId);
         setFormData({
-          title: course.title,
-          description: course.description || '',
-          isPublished: course.isPublished || false,
+          title: module.title,
+          courseId: module.courseId,
+          order: module.order || 1,
         });
       } catch (err) {
-        console.error('Failed to load course:', err);
-        setError('Failed to load course data');
+        console.error('Failed to load data:', err);
+        setError('Failed to load module data');
       }
     }
-    loadCourse();
-  }, [courseId]);
+    loadData();
+  }, [moduleSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!moduleId) return;
+    
     setLoading(true);
     setError('');
 
     try {
       const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.updateCourse({
-        courseId: Number(courseId),
-        courseUpdate: formData
+      const modulesApi = new ModulesApi(config);
+      await modulesApi.updateModule({
+        moduleId: moduleId,
+        moduleCreate: formData
       });
-      router.push('/courses');
+      
+      // Navigate to the course page with the course slug
+      const course = courses.find(c => c.courseId === formData.courseId);
+      if (course) {
+        router.push(`/courses/${slugify(course.title)}`);
+      } else {
+        router.push('/courses');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update course');
+      setError(err instanceof Error ? err.message : 'Failed to update module');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    if (!moduleId) return;
+    
     setDeleting(true);
     setError('');
 
     try {
       const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.deleteCourse({ courseId: Number(courseId) });
-      router.push('/courses');
+      const modulesApi = new ModulesApi(config);
+      await modulesApi.deleteModule({ moduleId: moduleId });
+      
+      // Navigate to the course page with the course slug
+      const course = courses.find(c => c.courseId === formData.courseId);
+      if (course) {
+        router.push(`/courses/${slugify(course.title)}`);
+      } else {
+        router.push('/courses');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete course');
+      setError(err instanceof Error ? err.message : 'Failed to delete module');
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
 
+  if (!moduleId && !error) {
+    return <div className="max-w-2xl mx-auto py-8 text-black">Načítání...</div>;
+  }
+
   return (
     <div className="max-w-2xl mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6 text-black">Editovat kurz</h1>
+      <h1 className="text-3xl font-bold mb-6 text-black">Editovat modul</h1>
       
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
@@ -89,8 +139,28 @@ export default function EditCoursePage() {
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
         <div>
+          <label htmlFor="courseId" className="block text-sm font-medium text-gray-700 mb-2">
+            Kurz *
+          </label>
+          <select
+            id="courseId"
+            required
+            value={formData.courseId}
+            onChange={(e) => setFormData({ ...formData, courseId: Number(e.target.value) })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+          >
+            <option value={0}>Vyberte kurz</option>
+            {courses.map((course) => (
+              <option key={course.courseId} value={course.courseId}>
+                {course.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-            Název kurzu *
+            Název modulu *
           </label>
           <input
             type="text"
@@ -99,41 +169,14 @@ export default function EditCoursePage() {
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-            placeholder="např. Kurz promptování - začátečníci"
+            placeholder="např. Co je prompt a jak funguje AI"
           />
-        </div>
-
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-            Popis kurzu
-          </label>
-          <textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-            placeholder="Stručný popis kurzu..."
-            rows={4}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isPublished"
-            checked={formData.isPublished}
-            onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="isPublished" className="text-sm font-medium text-gray-700">
-            Publikovat kurz
-          </label>
         </div>
 
         <div className="flex gap-4 pt-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || formData.courseId === 0}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
@@ -150,7 +193,7 @@ export default function EditCoursePage() {
             onClick={() => setShowDeleteConfirm(true)}
             className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 ml-auto"
           >
-            Smazat kurz
+            Smazat modul
           </button>
         </div>
       </form>
@@ -161,7 +204,7 @@ export default function EditCoursePage() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-bold mb-4 text-black">Potvrdit smazání</h2>
             <p className="text-gray-700 mb-6">
-              Opravdu chcete smazat tento kurz a všechny jeho moduly?
+              Opravdu chcete smazat tento modul? Tato akce je nevratná.
             </p>
             <div className="flex gap-4">
               <button

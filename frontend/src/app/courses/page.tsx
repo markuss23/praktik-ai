@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getCourses } from "@/lib/api-client";
 import { Course } from "@/api";
 import { useState, useEffect } from "react";
+import { slugify } from "@/lib/utils";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -29,7 +30,7 @@ export default function CoursesPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
-          <Link key={course.courseId} href={`/courses/${course.courseId}`}>
+          <Link key={course.courseId} href={`/courses/${slugify(course.title)}`}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <CardTitle className="text-black">{course.title}</CardTitle>

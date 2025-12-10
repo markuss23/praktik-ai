@@ -7,6 +7,7 @@ import { Course, CoursesApi, Configuration } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { slugify } from "@/lib/utils";
 
 export default function AdminPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -72,7 +73,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {courses.map((course) => (
           <div key={course.courseId} className="relative">
-            <Link href={`/courses/${course.courseId}`}>
+            <Link href={`/courses/${slugify(course.title)}`}>
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardHeader>
                   <CardTitle className="text-black">{course.title}</CardTitle>
@@ -82,7 +83,7 @@ export default function AdminPage() {
             </Link>
             <div className="absolute top-2 right-2 flex gap-2">
               <Link
-                href={`/admin/courses/${course.courseId}/edit`}
+                href={`/admin/courses/${slugify(course.title)}/edit`}
                 onClick={(e) => e.stopPropagation()}
                 className="w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors flex items-center justify-center text-sm font-bold"
                 title="Editovat kurz"
