@@ -101,13 +101,6 @@ export default function NewCoursePage() {
           </button>
         </div>
       </form>
-
-      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-        <h2 className="font-semibold text-black mb-2">💡 Tip</h2>
-        <p className="text-sm text-black">
-          Po vytvoření kurzu budete přesměrováni na formulář pro přidání prvního modulu.
-        </p>
-      </div>
     </div>
   );
 }
