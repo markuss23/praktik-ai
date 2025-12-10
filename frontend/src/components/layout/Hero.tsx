@@ -48,14 +48,12 @@ export function Hero() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 sm:mb-8 leading-tight">
               Připravujeme budoucí učitele pro digitální éru
             </h1>
-            <Link href="/courses">
               <button 
                 className="text-white font-semibold rounded-md shadow-lg transition-colors px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base"
                 style={{ backgroundColor: '#00C896' }}
               >
                 Začít kurz
               </button>
-            </Link>
           </div>
         </div>
       </div>

@@ -173,6 +173,7 @@ export function CourseCard({
 
               <div className="mt-auto">
                 <button 
+                  onClick={(e) => e.preventDefault()}
                   className="w-full text-white font-semibold py-3 px-6 rounded-md transition-colors flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#00C896' }}
                 >
