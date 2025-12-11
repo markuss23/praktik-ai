@@ -84,13 +84,8 @@ export default function EditModulePage() {
         moduleCreate: formData
       });
       
-      // Navigate to the course page with the course slug
-      const course = courses.find(c => c.courseId === formData.courseId);
-      if (course) {
-        router.push(`/courses/${slugify(course.title)}`);
-      } else {
-        router.push('/courses');
-      }
+      // Navigate back to admin page
+      router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update module');
     } finally {
@@ -109,13 +104,8 @@ export default function EditModulePage() {
       const modulesApi = new ModulesApi(config);
       await modulesApi.deleteModule({ moduleId: moduleId });
       
-      // Navigate to the course page with the course slug
-      const course = courses.find(c => c.courseId === formData.courseId);
-      if (course) {
-        router.push(`/courses/${slugify(course.title)}`);
-      } else {
-        router.push('/courses');
-      }
+      // Navigate back to admin page
+      router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete module');
       setDeleting(false);

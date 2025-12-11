@@ -19,6 +19,30 @@ export default function AdminPage() {
   const [courseModules, setCourseModules] = useState<{ [key: number]: any[] }>({});
   const router = useRouter();
 
+  // Load expanded course from localStorage on mount
+  useEffect(() => {
+    const savedExpandedCourse = localStorage.getItem('expandedCourse');
+    if (savedExpandedCourse) {
+      const courseId = parseInt(savedExpandedCourse, 10);
+      setExpandedCourse(courseId);
+    }
+  }, []);
+
+  // Load modules when expandedCourse changes
+  useEffect(() => {
+    async function loadModulesForExpandedCourse() {
+      if (expandedCourse && !courseModules[expandedCourse]) {
+        try {
+          const modules = await getModules({ courseId: expandedCourse });
+          setCourseModules({ ...courseModules, [expandedCourse]: modules });
+        } catch (error) {
+          console.error('Failed to load modules:', error);
+        }
+      }
+    }
+    loadModulesForExpandedCourse();
+  }, [expandedCourse]);
+
   useEffect(() => {
     async function loadCourses() {
       try {
@@ -86,8 +110,10 @@ export default function AdminPage() {
   const toggleCourseExpand = async (courseId: number) => {
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
+      localStorage.removeItem('expandedCourse');
     } else {
       setExpandedCourse(courseId);
+      localStorage.setItem('expandedCourse', courseId.toString());
       
       // Load modules if not already loaded
       if (!courseModules[courseId]) {
