@@ -49,6 +49,12 @@ export interface Module {
      * @memberof Module
      */
     isActive: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Module
+     */
+    isPublished: boolean;
 }
 
 /**
@@ -59,6 +65,7 @@ export function instanceOfModule(value: object): value is Module {
     if (!('moduleId' in value) || value['moduleId'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('isActive' in value) || value['isActive'] === undefined) return false;
+    if (!('isPublished' in value) || value['isPublished'] === undefined) return false;
     return true;
 }
 
@@ -77,6 +84,7 @@ export function ModuleFromJSONTyped(json: any, ignoreDiscriminator: boolean): Mo
         'moduleId': json['module_id'],
         'courseId': json['course_id'],
         'isActive': json['is_active'],
+        'isPublished': json['is_published'],
     };
 }
 
@@ -96,6 +104,7 @@ export function ModuleToJSONTyped(value?: Module | null, ignoreDiscriminator: bo
         'module_id': value['moduleId'],
         'course_id': value['courseId'],
         'is_active': value['isActive'],
+        'is_published': value['isPublished'],
     };
 }
 

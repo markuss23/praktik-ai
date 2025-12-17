@@ -1,5 +1,5 @@
 
-# Module
+# ModuleUpdate
 
 
 ## Properties
@@ -8,25 +8,21 @@ Name | Type
 ------------ | -------------
 `title` | string
 `order` | number
-`moduleId` | number
-`courseId` | number
 `isActive` | boolean
 `isPublished` | boolean
 
 ## Example
 
 ```typescript
-import type { Module } from ''
+import type { ModuleUpdate } from ''
 
 // TODO: Update the object below with actual values
 const example = {
   "title": null,
   "order": null,
-  "moduleId": null,
-  "courseId": null,
   "isActive": null,
   "isPublished": null,
-} satisfies Module
+} satisfies ModuleUpdate
 
 console.log(example)
 
@@ -35,7 +31,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as Module
+const exampleParsed = JSON.parse(exampleJSON) as ModuleUpdate
 console.log(exampleParsed)
 ```
 

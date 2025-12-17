@@ -7,7 +7,7 @@ from app.src.modules.controllers import (
     update_module,
     delete_module,
 )
-from app.src.modules.schemas import Module, ModuleCreate
+from app.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from app.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
@@ -48,7 +48,7 @@ async def endp_get_module(module_id: int, db: SessionSqlSessionDependency) -> Mo
 
 @router.put("/{module_id}", operation_id="update_module")
 async def endp_update_module(
-    module_id: int, module: ModuleCreate, db: SessionSqlSessionDependency
+    module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency
 ) -> Module:
     return update_module(db, module_id, module)
 

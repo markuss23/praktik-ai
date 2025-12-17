@@ -284,7 +284,7 @@ No authorization required
 
 ## updateModule
 
-> Module updateModule(moduleId, moduleCreate)
+> Module updateModule(moduleId, moduleUpdate)
 
 Endp Update Module
 
@@ -304,8 +304,8 @@ async function example() {
   const body = {
     // number
     moduleId: 56,
-    // ModuleCreate
-    moduleCreate: ...,
+    // ModuleUpdate
+    moduleUpdate: ...,
   } satisfies UpdateModuleRequest;
 
   try {
@@ -326,7 +326,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **moduleId** | `number` |  | [Defaults to `undefined`] |
-| **moduleCreate** | [ModuleCreate](ModuleCreate.md) |  | |
+| **moduleUpdate** | [ModuleUpdate](ModuleUpdate.md) |  | |
 
 ### Return type
 

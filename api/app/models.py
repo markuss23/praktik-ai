@@ -101,6 +101,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     course: Mapped[Course] = relationship(back_populates="modules")
     activities: Mapped[list[Activity]] = relationship(

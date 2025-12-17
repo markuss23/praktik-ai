@@ -33,6 +33,9 @@ export default async function CoursePage({
     }
     
     modules = await getModules({ courseId: course.courseId });
+    
+    // Filter to only show published modules
+    modules = modules.filter((module: any) => module.isPublished);
   } catch (error) {
     console.error('Failed to fetch course data:', error);
     notFound();

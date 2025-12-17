@@ -9,5 +9,6 @@ export * from './CourseUpdate';
 export * from './HTTPValidationError';
 export * from './Module';
 export * from './ModuleCreate';
+export * from './ModuleUpdate';
 export * from './ValidationError';
 export * from './ValidationErrorLocInner';

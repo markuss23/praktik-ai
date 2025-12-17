@@ -15,9 +15,11 @@ class ModuleCreate(ModuleBase):
 
 class ModuleUpdate(ModuleBase):
     is_active: bool = True
+    is_published: bool = Field(default=False, description="Je modul publikován?")
 
 
 class Module(ModuleBase):
     module_id: int
     course_id: int
     is_active: bool
+    is_published: bool

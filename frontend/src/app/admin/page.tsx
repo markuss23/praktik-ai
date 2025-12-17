@@ -1,7 +1,7 @@
 'use client';
 
 import { getCourses, getModules } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration } from "@/api";
+import { Course, CoursesApi, ModulesApi, Configuration, ModuleUpdate } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -167,6 +167,31 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Failed to update course:', error);
       alert('Failed to update course');
+    }
+  };
+
+  const toggleModulePublish = async (module: any) => {
+    try {
+      const config = new Configuration({ basePath: API_BASE_URL });
+      const modulesApi = new ModulesApi(config);
+      await modulesApi.updateModule({
+        moduleId: module.moduleId,
+        moduleUpdate: {
+          title: module.title,
+          order: module.order,
+          isActive: module.isActive,
+          isPublished: !module.isPublished
+        }
+      });
+      
+      // Refresh modules for expanded course
+      if (expandedCourse) {
+        const modules = await getModules({ courseId: expandedCourse });
+        setCourseModules({ ...courseModules, [expandedCourse]: modules });
+      }
+    } catch (error) {
+      console.error('Failed to update module:', error);
+      alert('Failed to update module');
     }
   };
 
@@ -454,8 +479,12 @@ export default function AdminPage() {
                                     </div>
                                     
                                     <div className="w-32 flex-shrink-0">
-                                      <span className="inline-flex px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                        Publikováno
+                                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
+                                        module.isPublished 
+                                          ? 'bg-green-100 text-green-800' 
+                                          : 'bg-orange-100 text-orange-800'
+                                      }`}>
+                                        {module.isPublished ? 'Publikováno' : 'Neaktivní'}
                                       </span>
                                     </div>
                                     
@@ -468,8 +497,9 @@ export default function AdminPage() {
                                         <Pencil size={16} />
                                       </button>
                                       <button
+                                        onClick={() => toggleModulePublish(module)}
                                         className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
-                                        title="Skrýt modul"
+                                        title={module.isPublished ? 'Skrýt modul' : 'Publikovat modul'}
                                       >
                                         <Eye size={16} />
                                       </button>

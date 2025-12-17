@@ -18,6 +18,7 @@ import type {
   HTTPValidationError,
   Module,
   ModuleCreate,
+  ModuleUpdate,
 } from '../models/index';
 import {
     HTTPValidationErrorFromJSON,
@@ -26,6 +27,8 @@ import {
     ModuleToJSON,
     ModuleCreateFromJSON,
     ModuleCreateToJSON,
+    ModuleUpdateFromJSON,
+    ModuleUpdateToJSON,
 } from '../models/index';
 
 export interface CreateModuleRequest {
@@ -48,7 +51,7 @@ export interface ListModulesRequest {
 
 export interface UpdateModuleRequest {
     moduleId: number;
-    moduleCreate: ModuleCreate;
+    moduleUpdate: ModuleUpdate;
 }
 
 /**
@@ -220,10 +223,10 @@ export class ModulesApi extends runtime.BaseAPI {
             );
         }
 
-        if (requestParameters['moduleCreate'] == null) {
+        if (requestParameters['moduleUpdate'] == null) {
             throw new runtime.RequiredError(
-                'moduleCreate',
-                'Required parameter "moduleCreate" was null or undefined when calling updateModule().'
+                'moduleUpdate',
+                'Required parameter "moduleUpdate" was null or undefined when calling updateModule().'
             );
         }
 
@@ -242,7 +245,7 @@ export class ModulesApi extends runtime.BaseAPI {
             method: 'PUT',
             headers: headerParameters,
             query: queryParameters,
-            body: ModuleCreateToJSON(requestParameters['moduleCreate']),
+            body: ModuleUpdateToJSON(requestParameters['moduleUpdate']),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ModuleFromJSON(jsonValue));

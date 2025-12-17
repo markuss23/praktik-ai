@@ -15,6 +15,7 @@ docs/DefaultApi.md
 docs/HTTPValidationError.md
 docs/Module.md
 docs/ModuleCreate.md
+docs/ModuleUpdate.md
 docs/ModulesApi.md
 docs/ValidationError.md
 docs/ValidationErrorLocInner.md
@@ -28,6 +29,7 @@ models/CourseUpdate.ts
 models/HTTPValidationError.ts
 models/Module.ts
 models/ModuleCreate.ts
+models/ModuleUpdate.ts
 models/ValidationError.ts
 models/ValidationErrorLocInner.ts
 models/index.ts
