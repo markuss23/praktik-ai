@@ -305,9 +305,8 @@ export default function AdminPage() {
         // Update
         await modulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
-          moduleCreate: {
+          moduleUpdate: {
             title: moduleFormData.title,
-            courseId: moduleFormData.courseId,
             order: moduleFormData.order,
           }
         });
