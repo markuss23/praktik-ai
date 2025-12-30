@@ -2,4 +2,15 @@ DB__HOST=db
 DB__PORT=5432
 DB__USER=postgres
 DB__PASSWORD=example
-DB__DATABASE=praktik_db
+DB__DATABASE=praktikai
+
+# PostgreSQL container settings
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=example
+POSTGRES_DB=praktikai
+
+# Authentik settings
+AUTHENTIK_SECRET_KEY=changeme-generate-a-long-random-string
+AUTHENTIK_PG_DB=authentik
+AUTHENTIK_PORT_HTTP=9000
+AUTHENTIK_PORT_HTTPS=9443
