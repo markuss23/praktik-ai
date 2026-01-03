@@ -2,18 +2,19 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
       target: dev-stage
     ports:
       - "8000:8000"
     env_file:
-      - backend/.env
-    
+      - .env
     volumes:
       - ./backend:/code
-
-    
+    networks:
+      - praktikai
+    depends_on:
+      - db
     # environment:
     #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
     #   MINIO_ENDPOINT: minio
@@ -37,9 +38,9 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD}
+      POSTGRES_USER: ${POSTGRES__USER}
+      POSTGRES_DB: ${POSTGRES__DB}
     volumes:
       - postgres-data:/var/lib/postgresql
     ports:
@@ -47,7 +48,7 @@ services:
     networks:
       - praktikai
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES__DB} -U ${POSTGRES__USER}"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -62,8 +63,8 @@ services:
     environment:
       AUTHENTIK_POSTGRESQL__HOST: db
       AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_PG_DB:-authentik}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
-      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES__PASSWORD}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES__USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
     volumes:
       - ./authentik/media:/media
@@ -87,8 +88,8 @@ services:
     environment:
       AUTHENTIK_POSTGRESQL__HOST: db
       AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_PG_DB:-authentik}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
-      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES__PASSWORD}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES__USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

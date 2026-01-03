@@ -2,7 +2,7 @@
 # 1) Export požadavků (uv -> requirements.txt)
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS export-reqs
 WORKDIR /tmp
-COPY ./pyproject.toml ./uv.lock /tmp/
+COPY ./backend/pyproject.toml ./backend/uv.lock /tmp/
 RUN uv sync
 RUN uv pip freeze > requirements.txt
 
@@ -24,9 +24,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY --from=deps /install /usr/local
 
 # Kopíruj zdrojový kód
-COPY ./api /code/api
-COPY ./agents /code/agents
-COPY ./entrypoint.* /code/
+COPY ./backend/api /code/api
+COPY ./backend/agents /code/agents
 
 CMD [ "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
 

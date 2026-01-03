@@ -1,3 +1,3 @@
-from agents.course_generator.__main__ import create_graph
+from agents.course_generator.graph import create_graph
 
 __all__ = ["create_graph"]
