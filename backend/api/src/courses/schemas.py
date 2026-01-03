@@ -1,4 +1,3 @@
-
 from pydantic import Field
 
 from api.src.modules.schemas import Module
@@ -9,6 +8,7 @@ class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     is_published: bool = False
+    modules_count: int = 3
 
 
 class CourseCreate(CourseBase):
@@ -17,6 +17,7 @@ class CourseCreate(CourseBase):
 
 class CourseUpdate(CourseBase):
     is_active: bool = True
+    is_approved: bool = False
 
 
 class CourseFile(ORMModel):
@@ -31,6 +32,9 @@ class CourseFile(ORMModel):
 class Course(CourseBase):
     course_id: int
     is_active: bool
+    is_generated: bool = False
+    is_approved: bool = False
+    summary: str | None = None
 
     modules: list[Module]
     files: list[CourseFile] = []

@@ -81,7 +81,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     description: Mapped[str | None] = mapped_column(Text)
     
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     modules_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    summary: Mapped[str | None] = mapped_column(Text)
 
     modules: Mapped[list[Module]] = relationship(
         back_populates="course", cascade="all, delete-orphan", order_by="Module.order"
