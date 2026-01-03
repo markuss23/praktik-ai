@@ -1,0 +1,40 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13,<4.0.0"
+dependencies = [
+    "fastapi>=0.112.1",
+    "uvicorn>=0.30.6",
+    "psycopg[binary]>=3.2.12",
+    "pydantic-settings>=2.11.0",
+    "ruff>=0.14.2",
+    "sqlalchemy>=2.0.44",
+    "unstructured[md]>=0.18.20",
+    "pgvector==0.3.0",
+    "langgraph>=1.0.5",
+    "langchain-openai>=1.1.6",
+    "python-multipart>=0.0.21",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "A",  # prevent using keywords that clobber python builtins
+    "B",  # bugbear: security warnings
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "ISC",  # implicit string concatenation
+    "UP",  # alert you when better syntax is available in your python version
+    "N",   # pep8-naming
+    "PTH",  # use pathlib
+]
+preview = true
+ignore = ["E501", "E712", "E711"]  # zbytecne to rve, co lze upravit formatter upravi
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
