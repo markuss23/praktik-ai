@@ -2,15 +2,18 @@ services:
 
   api:
     build:
-      context: ./api
+      context: ./backend
       dockerfile: Dockerfile
+      target: dev-stage
     ports:
       - "8000:8000"
     env_file:
-      - api/.env
+      - backend/.env
     
     volumes:
-      - ./api:/code
+      - ./backend:/code
+
+    
     # environment:
     #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
     #   MINIO_ENDPOINT: minio
