@@ -29,6 +29,15 @@ class CourseFile(ORMModel):
     file_path: str
 
 
+class CourseLink(ORMModel):
+    """Schema pro odkaz kurzu"""
+
+    link_id: int
+    course_id: int
+    title: str
+    url: str
+
+
 class Course(CourseBase):
     course_id: int
     is_active: bool

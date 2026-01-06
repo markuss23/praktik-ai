@@ -5,7 +5,13 @@ from api.src.common.annotations import (
     IS_PUBLISHED_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
 )
-from api.src.courses.schemas import CourseCreate, Course, CourseUpdate, CourseFile
+from api.src.courses.schemas import (
+    CourseCreate,
+    Course,
+    CourseUpdate,
+    CourseFile,
+    CourseLink,
+)
 from api.src.courses.controllers import (
     create_course,
     get_courses,
@@ -14,6 +20,9 @@ from api.src.courses.controllers import (
     delete_course,
     upload_course_file,
     delete_course_file,
+    create_course_link,
+    get_course_links,
+    delete_course_link,
 )
 from api.database import SessionSqlSessionDependency
 
@@ -81,3 +90,38 @@ async def endp_delete_course_file(
 ) -> None:
     """Smaže soubor kurzu"""
     delete_course_file(db, course_id, file_id)
+
+
+# ---------- Link endpoints ----------
+
+
+@router.post("/{course_id}/links", operation_id="create_course_link")
+async def endp_create_course_link(
+    course_id: int,
+    db: SessionSqlSessionDependency,
+    title: str,
+    url: str,
+) -> CourseLink:
+    """Vytvoří odkaz ke kurzu"""
+    return create_course_link(db, course_id, title, url)
+
+
+@router.get("/{course_id}/links", operation_id="list_course_links")
+async def endp_list_course_links(
+    course_id: int,
+    db: SessionSqlSessionDependency,
+) -> list[CourseLink]:
+    """Vrátí seznam odkazů ke kurzu"""
+    return get_course_links(db, course_id)
+
+
+@router.delete(
+    "/{course_id}/links/{link_id}",
+    operation_id="delete_course_link",
+    status_code=204,
+)
+async def endp_delete_course_link(
+    course_id: int, link_id: int, db: SessionSqlSessionDependency
+) -> None:
+    """Smaže odkaz kurzu"""
+    delete_course_link(db, course_id, link_id)

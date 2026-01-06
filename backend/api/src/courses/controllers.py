@@ -8,6 +8,7 @@ from sqlalchemy import Select, or_, select, update
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.courses.schemas import CourseLink
 from api.src.courses.schemas import CourseCreate, CourseFile
 from api.src.courses.schemas import Course
 
@@ -151,9 +152,13 @@ async def upload_course_file(
     """Nahraje soubor ke kurzu"""
     try:
         # Ověř, že kurz existuje
-        course = db.execute(
-            select(models.Course).where(models.Course.course_id == course_id)
-        ).scalars().first()
+        course = (
+            db.execute(
+                select(models.Course).where(models.Course.course_id == course_id)
+            )
+            .scalars()
+            .first()
+        )
 
         if course is None:
             raise HTTPException(status_code=404, detail="Course not found")
@@ -195,18 +200,26 @@ def get_course_files(db: Session, course_id: int) -> list[CourseFile]:
     """Vrátí seznam souborů kurzu"""
     try:
         # Ověř, že kurz existuje
-        course = db.execute(
-            select(models.Course).where(models.Course.course_id == course_id)
-        ).scalars().first()
+        course = (
+            db.execute(
+                select(models.Course).where(models.Course.course_id == course_id)
+            )
+            .scalars()
+            .first()
+        )
 
         if course is None:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        files = db.execute(
-            select(models.CourseFile).where(
-                models.CourseFile.course_id == course_id
+        files = (
+            db.execute(
+                select(models.CourseFile).where(
+                    models.CourseFile.course_id == course_id
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         return [CourseFile.model_validate(f) for f in files]
 
@@ -220,12 +233,16 @@ def get_course_files(db: Session, course_id: int) -> list[CourseFile]:
 def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
     """Smaže soubor kurzu"""
     try:
-        course_file = db.execute(
-            select(models.CourseFile).where(
-                models.CourseFile.file_id == file_id,
-                models.CourseFile.course_id == course_id,
+        course_file = (
+            db.execute(
+                select(models.CourseFile).where(
+                    models.CourseFile.file_id == file_id,
+                    models.CourseFile.course_id == course_id,
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
 
         if course_file is None:
             raise HTTPException(status_code=404, detail="File not found")
@@ -243,4 +260,107 @@ def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
         raise
     except Exception as e:
         print(f"delete_course_file error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def create_course_link(
+    db: Session, course_id: int, title: str, url: str
+) -> CourseLink:
+    """Vytvoří odkaz kurzu"""
+    try:
+        # Ověř, že kurz existuje
+        course = (
+            db.execute(
+                select(models.Course).where(models.Course.course_id == course_id)
+            )
+            .scalars()
+            .first()
+        )
+
+        if course is None:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        # Ověř že je odkaz validní
+        if not (url.startswith("http://") or url.startswith("https://")):
+            raise HTTPException(status_code=400, detail="Invalid URL")
+
+        # Vytvoř záznam odkazu
+        course_link = models.CourseLink(
+            course_id=course_id,
+            title=title,
+            url=url,
+        )
+
+        db.add(course_link)
+        db.commit()
+        db.refresh(course_link)
+
+        return CourseLink.model_validate(course_link)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"create_course_link error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def get_course_links(db: Session, course_id: int) -> list[CourseLink]:
+    """Vrátí seznam odkazů kurzu"""
+    try:
+        # Ověř, že kurz existuje
+        course = (
+            db.execute(
+                select(models.Course).where(models.Course.course_id == course_id)
+            )
+            .scalars()
+            .first()
+        )
+
+        if course is None:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        links = (
+            db.execute(
+                select(models.CourseLink).where(
+                    models.CourseLink.course_id == course_id
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        return [CourseLink.model_validate(r) for r in links]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"get_course_links error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def delete_course_link(db: Session, course_id: int, link_id: int) -> None:
+    """Smaže odkaz kurzu"""
+    try:
+        course_link = (
+            db.execute(
+                select(models.CourseLink).where(
+                    models.CourseLink.link_id == link_id,
+                    models.CourseLink.course_id == course_id,
+                )
+            )
+            .scalars()
+            .first()
+        )
+
+        if course_link is None:
+            raise HTTPException(status_code=404, detail="Link not found")
+
+        # Smaž záznam z DB
+        db.delete(course_link)
+        db.commit()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_course_link error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
