@@ -136,6 +136,7 @@ class CourseFile(TimestampMixin, Base):
     """Soubory/metadata přiřazené ke kurzu"""
 
     __tablename__ = "course_file"
+    __table_args__ = (Index("ix_course_file_course_id", "course_id"),)
 
     file_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
@@ -153,6 +154,7 @@ class CourseLink(TimestampMixin, Base):
     """Odkazy na externí zdroje spojené s kurzem"""
 
     __tablename__ = "course_link"
+    __table_args__ = (Index("ix_course_link_course_id", "course_id"),)
 
     link_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
