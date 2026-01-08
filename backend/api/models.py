@@ -79,7 +79,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    
+
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -90,6 +90,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="course", cascade="all, delete-orphan", order_by="Module.order"
     )
     files: Mapped[list[CourseFile]] = relationship(
+        back_populates="course", cascade="all, delete-orphan"
+    )
+    references: Mapped[list[CourseLink]] = relationship(
         back_populates="course", cascade="all, delete-orphan"
     )
 
@@ -132,6 +135,23 @@ class CourseFile(TimestampMixin, Base):
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="files")
+
+
+class CourseLink(TimestampMixin, Base):
+    """Odkazy na externí zdroje spojené s kurzem"""
+
+    __tablename__ = "course_link"
+
+    link_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+
+    course: Mapped[Course] = relationship(back_populates="references")
 
 
 # ---------- Activity & Rubric ----------
