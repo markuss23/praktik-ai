@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -17,12 +18,30 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class ActivityKind(enum.StrEnum):
+    learn = "learn"
+    practice = "practice"
+    assessment = "assessment"
+
+
+class QuestionType(enum.StrEnum):
+    closed = "closed"
+    open = "open"
+
+
+class Status(enum.StrEnum):
+    draft: str = "draft"
+    generated: str = "generated"
+    approved: str = "approved"
+    published: str = "published"
+    archived: str = "archived"
 
 
 # ---------- Mixiny ----------
@@ -42,22 +61,6 @@ class TimestampMixin:
 
 class SoftDeleteMixin:
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-
-# ---------- Enums ----------
-
-
-class ActivityKind(enum.StrEnum):
-    learn: str = "learn"
-    practice: str = "practice"
-    assessment: str = "assessment"
-
-
-class SubmissionStatus(enum.StrEnum):
-    draft: str = "draft"
-    submitted: str = "submitted"
-    evaluated: str = "evaluated"
-    returned: str = "returned"
 
 
 # ---------- Course / Module ----------
@@ -80,10 +83,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    modules_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    status: Mapped[Status] = mapped_column(
+        Enum(Status, name="course_status"), nullable=False, default=Status.draft
+    )
+
     summary: Mapped[str | None] = mapped_column(Text)
 
     modules: Mapped[list[Module]] = relationship(
@@ -115,8 +118,17 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     course: Mapped[Course] = relationship(back_populates="modules")
-    activities: Mapped[list[Activity]] = relationship(
-        back_populates="module", cascade="all, delete-orphan", order_by="Activity.order"
+
+    learn_blocks: Mapped[list[LearnBlock]] = relationship(
+        back_populates="module",
+        cascade="all, delete-orphan",
+        order_by="LearnBlock.order",
+    )
+
+    practices: Mapped[list[Practice]] = relationship(
+        back_populates="module",
+        cascade="all, delete-orphan",
+        order_by="Practice.order",
     )
 
 
@@ -154,124 +166,136 @@ class CourseLink(TimestampMixin, Base):
     course: Mapped[Course] = relationship(back_populates="references")
 
 
-# ---------- Activity & Rubric ----------
+# ---------- Activity ----------
 
 
-class Activity(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "activity"
+class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "learn_block"
     __table_args__ = (
-        UniqueConstraint("module_id", "order", name="uq_activity_module_order"),
-        Index("ix_activity_kind", "kind"),
+        UniqueConstraint("module_id", "order", name="uq_learnblock_module_order"),
+        Index("ix_learnblock_module_id", "module_id"),
     )
 
-    activity_id: Mapped[int] = mapped_column(
+    learn_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
     )
     module_id: Mapped[int] = mapped_column(
         ForeignKey("module.module_id", ondelete="CASCADE"), nullable=False
     )
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    kind: Mapped[ActivityKind] = mapped_column(
-        Enum(ActivityKind, name="activity_kind"), nullable=False
+    module: Mapped[Module] = relationship(back_populates="learn_blocks")
+
+
+class Practice(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "practice"
+    __table_args__ = (
+        UniqueConstraint("module_id", "order", name="uq_practice_module_order"),
+        Index("ix_practice_module_id", "module_id"),
+    )
+
+    practice_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id", ondelete="CASCADE"), nullable=False
     )
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-    # volný JSON obsah – zadání, materiály, ukázky, instrukce apod.
-    content: Mapped[dict | None] = mapped_column(JSONB)
-
-    module: Mapped[Module] = relationship(back_populates="activities")
-    # rubric_items: Mapped[list["RubricItem"]] = relationship(
-    #     back_populates="activity",
-    #     cascade="all, delete-orphan",
-    #     order_by="RubricItem.order",
-    # )
-    # submissions: Mapped[list["Submission"]] = relationship(
-    #     back_populates="activity", cascade="all, delete-orphan"
-    # )
+    module: Mapped[Module] = relationship(back_populates="practices")
+    questions: Mapped[list[PracticeQuestion]] = relationship(
+        back_populates="practice",
+        cascade="all, delete-orphan",
+        order_by="PracticeQuestion.order",
+    )
 
 
-# class RubricItem(TimestampMixin, Base):
-#     __tablename__ = "rubric_item"
-#     __table_args__ = (
-#         CheckConstraint(
-#             "weight >= 0 AND weight <= 1", name="ck_rubric_item_weight_0_1"
-#         ),
-#         UniqueConstraint("activity_id", "order", name="uq_rubric_item_activity_order"),
-#     )
+class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "practice_question"
+    __table_args__ = (
+        UniqueConstraint("practice_id", "order", name="uq_question_practice_order"),
+        Index("ix_question_practice_id", "practice_id"),
+        CheckConstraint(
+            """
+            (
+              question_type = 'closed'
+              AND correct_answer IS NOT NULL
+              AND example_answer IS NULL
+            )
+            OR
+            (
+              question_type = 'open'
+              AND correct_answer IS NULL
+            )
+            """,
+            name="ck_practice_question_open_closed",
+        ),
+    )
 
-#     rubric_item_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     activity_id: Mapped[int] = mapped_column(
-#         ForeignKey("activity.activity_id", ondelete="CASCADE"), nullable=False
-#     )
+    question_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    practice_id: Mapped[int] = mapped_column(
+        ForeignKey("practice.practice_id", ondelete="CASCADE"), nullable=False
+    )
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-#     order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-#     criterion: Mapped[str] = mapped_column(String(300), nullable=False)
-#     description: Mapped[str | None] = mapped_column(Text)
-#     weight: Mapped[float] = mapped_column(
-#         Numeric(4, 3), nullable=False, default=1.0
-#     )  # 0.000–1.000
-#     scale_min: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-#     scale_max: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    question_type: Mapped[QuestionType] = mapped_column(
+        Enum(QuestionType, name="question_type"), nullable=False
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
 
-#     activity: Mapped[Activity] = relationship(back_populates="rubric_items")
+    # --- “detail” sloupce podle typu ---
+    correct_answer: Mapped[str | None] = mapped_column(String(255))  # jen pro closed
+    example_answer: Mapped[str | None] = mapped_column(Text)  # jen pro open (volitelně)
 
+    practice: Mapped[Practice] = relationship(back_populates="questions")
 
-# # ---------- Submission & Evaluation ----------
-
-
-# class Submission(TimestampMixin, SoftDeleteMixin, Base):
-#     __tablename__ = "submission"
-#     __table_args__ = (
-#         Index("ix_submission_status", "status"),
-#         UniqueConstraint(
-#             "activity_id", "attempt_no", name="uq_submission_unique_attempt"
-#         ),
-#     )
-
-#     submission_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     activity_id: Mapped[int] = mapped_column(
-#         ForeignKey("activity.activity_id", ondelete="CASCADE"), nullable=False
-#     )
-
-#     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-#     status: Mapped[SubmissionStatus] = mapped_column(
-#         Enum(SubmissionStatus, name="submission_status"),
-#         nullable=False,
-#         default=SubmissionStatus.submitted,
-#     )
-#     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-#     payload: Mapped[dict | None] = mapped_column(
-#         JSONB
-#     )  # odpovědi, odkazy na soubory, metadata
-#     score_total: Mapped[float | None] = mapped_column(Numeric(6, 2))
-
-#     activity: Mapped[Activity] = relationship(back_populates="submissions")
-#     evaluations: Mapped[list["Evaluation"]] = relationship(
-#         back_populates="submission",
-#         cascade="all, delete-orphan",
-#         order_by="Evaluation.created_at",
-#     )
+    closed_options: Mapped[list[PracticeOption]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        order_by="PracticeOption.order",
+    )
+    open_keywords: Mapped[list[QuestionKeyword]] = relationship(
+        back_populates="question", cascade="all, delete-orphan"
+    )
 
 
-# class Evaluation(TimestampMixin, Base):
-#     __tablename__ = "evaluation"
-#     __table_args__ = (Index("ix_evaluation_created_at", "created_at"),)
+class PracticeOption(Base):
+    __tablename__ = "practice_option"
+    __table_args__ = (
+        UniqueConstraint("question_id", "order", name="uq_option_question_order"),
+        Index("ix_option_question_id", "question_id"),
+    )
 
-#     evaluation_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     submission_id: Mapped[int] = mapped_column(
-#         ForeignKey("submission.submission_id", ondelete="CASCADE"), nullable=False
-#     )
+    option_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("practice_question.question_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
-#     # granularita bodů dle rubriky, např. {rubric_item_id: {"points": 4, "weight": 0.2}}
-#     rubric_scores: Mapped[dict | None] = mapped_column(JSONB)
-#     total_score: Mapped[float | None] = mapped_column(Numeric(6, 2))
-#     feedback: Mapped[str | None] = mapped_column(Text)
+    question: Mapped[PracticeQuestion] = relationship(back_populates="closed_options")
 
-#     submission: Mapped[Submission] = relationship(back_populates="evaluations")
+
+class QuestionKeyword(Base):
+    __tablename__ = "question_keyword"
+    __table_args__ = (
+        UniqueConstraint("question_id", "keyword", name="uq_keyword_question_keyword"),
+        Index("ix_keyword_question_id", "question_id"),
+    )
+
+    keyword_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("practice_question.question_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    keyword: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    question: Mapped[PracticeQuestion] = relationship(back_populates="open_keywords")
