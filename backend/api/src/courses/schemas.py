@@ -2,12 +2,12 @@ from pydantic import Field
 
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
+from api.enums import Status
 
 
 class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
-    is_published: bool = False
     modules_count: int = 3
 
 
@@ -16,8 +16,7 @@ class CourseCreate(CourseBase):
 
 
 class CourseUpdate(CourseBase):
-    is_active: bool = True
-    is_approved: bool = False
+    pass
 
 
 class CourseFile(ORMModel):
@@ -41,9 +40,9 @@ class CourseLink(ORMModel):
 class Course(CourseBase):
     course_id: int
     is_active: bool
-    is_generated: bool = False
-    is_approved: bool = False
+    status: Status
     summary: str | None = None
 
-    modules: list[Module]
+    modules: list[Module] = []
     files: list[CourseFile] = []
+    links: list[CourseLink] = []

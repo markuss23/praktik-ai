@@ -1,7 +1,6 @@
 # app/models.py
 from __future__ import annotations
 
-import enum
 from datetime import datetime
 
 from sqlalchemy import (
@@ -22,38 +21,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
+from api.enums import AuditAction, QuestionType, Status
+
 
 class Base(DeclarativeBase):
     pass
-
-
-# ---------- Enums ----------
-
-
-class ActivityKind(enum.StrEnum):
-    learn = "learn"
-    practice = "practice"
-    assessment = "assessment"
-
-
-class QuestionType(enum.StrEnum):
-    closed = "closed"
-    open = "open"
-
-
-class Status(enum.StrEnum):
-    draft: str = "draft"
-    generated: str = "generated"
-    approved: str = "approved"
-    published: str = "published"
-    archived: str = "archived"
-
-
-class AuditAction(enum.StrEnum):
-    insert = "insert"
-    update = "update"
-    soft_delete = "soft_delete"
-    restore = "restore"
 
 
 # ---------- Mixiny ----------
@@ -158,6 +130,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
+    modules_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+
     status: Mapped[Status] = mapped_column(
         Enum(Status, name="course_status"), nullable=False, default=Status.draft
     )
@@ -208,10 +182,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
 
-    # order -> position (nepoužívat SQL keyword)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 

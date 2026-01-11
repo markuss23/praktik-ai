@@ -1,5 +1,6 @@
 from pydantic import Field
 from api.src.common.schemas import ORMModel
+from api.src.activities.schemas import LearnBlock, Practice
 
 
 class ModuleBase(ORMModel):
@@ -22,4 +23,6 @@ class Module(ModuleBase):
     module_id: int
     course_id: int
     is_active: bool
-    is_published: bool
+    
+    learn_blocks: list[LearnBlock] = []  
+    practices: list[Practice] = []

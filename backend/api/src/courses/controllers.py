@@ -1,4 +1,3 @@
-import os
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
@@ -263,9 +262,7 @@ def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def create_course_link(
-    db: Session, course_id: int, title: str, url: str
-) -> CourseLink:
+def create_course_link(db: Session, course_id: int, title: str, url: str) -> CourseLink:
     """Vytvoří odkaz kurzu"""
     try:
         # Ověř, že kurz existuje

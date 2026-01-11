@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from api.models import ActivityKind
 from api.src.activities.controllers import (
     create_activity,
     get_activities,
@@ -13,6 +12,7 @@ from api.src.common.annotations import (
 )
 
 from api.database import SessionSqlSessionDependency
+from api.enums import ActivityKind
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 

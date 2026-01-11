@@ -4,8 +4,8 @@ from sqlalchemy import Select, select, update, and_
 from sqlalchemy.orm import Session
 
 from api import models
-from api.models import ActivityKind
 from api.src.activities.schemas import ActivityCreate, Activity
+from api.enums import ActivityKind
 
 
 def get_activities(
