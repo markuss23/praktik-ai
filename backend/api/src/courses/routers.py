@@ -99,11 +99,10 @@ async def endp_delete_course_file(
 async def endp_create_course_link(
     course_id: int,
     db: SessionSqlSessionDependency,
-    title: str,
     url: str,
 ) -> CourseLink:
     """Vytvoří odkaz ke kurzu"""
-    return create_course_link(db, course_id, title, url)
+    return create_course_link(db, course_id, url)
 
 
 @router.get("/{course_id}/links", operation_id="list_course_links")

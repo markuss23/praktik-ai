@@ -145,13 +145,13 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     files: Mapped[list[CourseFile]] = relationship(
         back_populates="course",
     )
-    references: Mapped[list[CourseLink]] = relationship(
+    links: Mapped[list[CourseLink]] = relationship(
         back_populates="course",
     )
 
-    _soft_delete_cascade: list[str] = ["modules", "files", "references"]
-
-
+    _soft_delete_cascade: list[str] = ["modules", "files", "links"]
+    
+    
 class Module(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "module"
     __table_args__ = (
@@ -243,10 +243,9 @@ class CourseLink(TimestampMixin, SoftDeleteMixin, Base):
     course_id: Mapped[int] = mapped_column(
         ForeignKey("course.course_id"), nullable=False
     )
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
 
-    course: Mapped[Course] = relationship(back_populates="references")
+    course: Mapped[Course] = relationship(back_populates="links")
 
 
 # ---------- Activity ----------

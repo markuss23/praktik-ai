@@ -33,7 +33,6 @@ class CourseLink(ORMModel):
 
     link_id: int
     course_id: int
-    title: str
     url: str
 
 
