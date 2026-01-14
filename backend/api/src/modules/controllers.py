@@ -32,8 +32,8 @@ def get_modules(
         if text_search:
             stm = stm.where(models.Module.title.ilike(f"%{text_search}%"))
 
-        # doporučené řazení: nejdřív podle course_id, pak order
-        stm = stm.order_by(models.Module.course_id, models.Module.order)
+        # doporučené řazení: nejdřív podle course_id, pak position
+        stm = stm.order_by(models.Module.course_id, models.Module.position)
 
         rows: Sequence[models.Module] = db.execute(stm).scalars().all()
         return [Module.model_validate(m) for m in rows]
@@ -44,7 +44,7 @@ def get_modules(
 
 def create_module(db: Session, data: ModuleCreate) -> Module:
     """
-    Vytvoří modul. Ošetřuje unikátní kombinaci (course_id, order).
+    Vytvoří modul. Ošetřuje unikátní kombinaci (course_id, position).
     """
     try:
         if (
@@ -61,7 +61,7 @@ def create_module(db: Session, data: ModuleCreate) -> Module:
         exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
             and_(
                 models.Module.course_id == data.course_id,
-                models.Module.order == data.order,
+                models.Module.position == data.position,
             )
         )
         if db.execute(exists_stm).first():
@@ -72,7 +72,6 @@ def create_module(db: Session, data: ModuleCreate) -> Module:
 
         obj = models.Module(**data.model_dump())
         obj.is_active = True
-        obj.is_published = False
 
         db.add(obj)
         db.commit()
@@ -152,11 +151,11 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
 
         # kontrola, zda neni prekryvajici modul (vyjma aktuálně editovaného)
         # používáme existující course_id modulu, protože ModuleUpdate ho neobsahuje
-        if module_data.order != module.order:
+        if module_data.position != module.position:
             exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
                 and_(
                     models.Module.course_id == module.course_id,
-                    models.Module.order == module_data.order,
+                    models.Module.position == module_data.position,
                     models.Module.is_active.is_(True),
                     models.Module.module_id != module_id,
                 )
@@ -168,7 +167,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
                     detail="Modul s tímto pořadím pro daný kurz již existuje.",
                 )
 
-            # kontrola, že order tvoří souvislou posloupnost
+            # kontrola, že position tvoří souvislou posloupnost
             # získáme všechny aktivní moduly kurzu (kromě aktuálního)
             all_modules_stm: Select[tuple[models.Module]] = select(models.Module).where(
                 and_(
@@ -176,12 +175,12 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
                     models.Module.is_active.is_(True),
                     models.Module.module_id != module_id,
                 )
-            ).order_by(models.Module.order)
+            ).order_by(models.Module.position)
 
             other_modules = db.execute(all_modules_stm).scalars().all()
 
-            # vytvoříme seznam všech order hodnot včetně nové
-            all_orders = [m.order for m in other_modules] + [module_data.order]
+            # vytvoříme seznam všech position hodnot včetně nové
+            all_orders = [m.position for m in other_modules] + [module_data.position]
             all_orders.sort()
 
             # kontrola, že tvoří souvislou posloupnost 1, 2, 3, ...
