@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
-from api import models
+from api import enums, models
 
 
 def get_modules(
@@ -127,21 +127,70 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
         if module is None:
             raise HTTPException(status_code=404, detail="Module not found")
 
-        # kontrola, zda neni prekryvajici modul (vyjma aktuálně editovaného)
-        # používáme existující course_id modulu, protože ModuleUpdate ho neobsahuje
-        exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
-            and_(
-                models.Module.course_id == module.course_id,
-                models.Module.order == module_data.order,
-                models.Module.module_id != module_id, 
-            )
-        )
-
-        if db.execute(exists_stm).first() is not None:
+        # kontrola, zda je kurz ve stavu generated
+        if module.course.status != enums.Status.generated:
             raise HTTPException(
                 status_code=400,
-                detail="Modul s tímto pořadím pro daný kurz již existuje.",
+                detail="Modul lze editovat pouze pokud je kurz ve stavu 'generated'.",
             )
+
+        # kontrola unikátnosti názvu (pokud se mění)
+        if module_data.title != module.title:
+            title_exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
+                and_(
+                    models.Module.course_id == module.course_id,
+                    models.Module.title == module_data.title,
+                    models.Module.is_active.is_(True),
+                    models.Module.module_id != module_id,
+                )
+            )
+            if db.execute(title_exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Modul s tímto názvem pro daný kurz již existuje.",
+                )
+
+        # kontrola, zda neni prekryvajici modul (vyjma aktuálně editovaného)
+        # používáme existující course_id modulu, protože ModuleUpdate ho neobsahuje
+        if module_data.order != module.order:
+            exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
+                and_(
+                    models.Module.course_id == module.course_id,
+                    models.Module.order == module_data.order,
+                    models.Module.is_active.is_(True),
+                    models.Module.module_id != module_id,
+                )
+            )
+
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Modul s tímto pořadím pro daný kurz již existuje.",
+                )
+
+            # kontrola, že order tvoří souvislou posloupnost
+            # získáme všechny aktivní moduly kurzu (kromě aktuálního)
+            all_modules_stm: Select[tuple[models.Module]] = select(models.Module).where(
+                and_(
+                    models.Module.course_id == module.course_id,
+                    models.Module.is_active.is_(True),
+                    models.Module.module_id != module_id,
+                )
+            ).order_by(models.Module.order)
+
+            other_modules = db.execute(all_modules_stm).scalars().all()
+
+            # vytvoříme seznam všech order hodnot včetně nové
+            all_orders = [m.order for m in other_modules] + [module_data.order]
+            all_orders.sort()
+
+            # kontrola, že tvoří souvislou posloupnost 1, 2, 3, ...
+            expected_orders = list(range(1, len(all_orders) + 1))
+            if all_orders != expected_orders:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Pořadí modulů musí tvořit souvislou posloupnost od 1. Očekávané hodnoty: {expected_orders}, nalezené: {all_orders}",
+                )
 
         stm = (
             update(models.Module)
