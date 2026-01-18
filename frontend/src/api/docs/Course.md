@@ -8,10 +8,14 @@ Name | Type
 ------------ | -------------
 `title` | string
 `description` | string
-`isPublished` | boolean
+`modulesCount` | number
 `courseId` | number
 `isActive` | boolean
+`status` | [Status](Status.md)
+`summary` | string
 `modules` | [Array&lt;Module&gt;](Module.md)
+`files` | [Array&lt;CourseFile&gt;](CourseFile.md)
+`links` | [Array&lt;CourseLink&gt;](CourseLink.md)
 
 ## Example
 
@@ -22,10 +26,14 @@ import type { Course } from ''
 const example = {
   "title": null,
   "description": null,
-  "isPublished": null,
+  "modulesCount": null,
   "courseId": null,
   "isActive": null,
+  "status": null,
+  "summary": null,
   "modules": null,
+  "files": null,
+  "links": null,
 } satisfies Course
 
 console.log(example)

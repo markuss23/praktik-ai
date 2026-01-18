@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { CoursesApi, Configuration } from '@/api';
+import { CoursesApi, Configuration, Module } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
-import { getCourses } from '@/lib/api-client';
+import { getCourse, getCourses, updateModule } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
+import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 
 export default function EditCoursePage() {
   const router = useRouter();
@@ -17,6 +18,10 @@ export default function EditCoursePage() {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseId, setCourseId] = useState<number | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
+  const [editingModule, setEditingModule] = useState<number | null>(null);
+  const [editModuleData, setEditModuleData] = useState({ title: '' });
   
   const [formData, setFormData] = useState({
     title: '',
@@ -33,20 +38,27 @@ export default function EditCoursePage() {
         // Check if slug is a numeric ID (for backward compatibility)
         const isNumericId = /^\d+$/.test(courseSlug);
         
-        const course = isNumericId 
+        const courseMatch = isNumericId 
           ? courses.find(c => c.courseId === Number(courseSlug))
           : courses.find(c => slugify(c.title) === courseSlug);
         
-        if (!course) {
+        if (!courseMatch) {
           setError('Course not found');
           return;
         }
         
+        // Get full course details with modules
+        const course = await getCourse(courseMatch.courseId);
+        
+        console.log('Loaded course:', course);
+        console.log('Modules:', course.modules);
+        
         setCourseId(course.courseId);
+        setModules(course.modules || []);
         setFormData({
           title: course.title,
           description: course.description || '',
-          isPublished: course.isPublished || false,
+          isPublished: false,
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -55,6 +67,46 @@ export default function EditCoursePage() {
     }
     loadCourse();
   }, [courseSlug]);
+
+  const toggleModule = (moduleId: number) => {
+    setExpandedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  };
+
+  const startEditingModule = (module: Module) => {
+    setEditingModule(module.moduleId);
+    setEditModuleData({ title: module.title });
+  };
+
+  const cancelEditingModule = () => {
+    setEditingModule(null);
+    setEditModuleData({ title: '' });
+  };
+
+  const saveModuleEdit = async (module: Module) => {
+    if (!courseId) return;
+    try {
+      await updateModule(module.moduleId, {
+        title: editModuleData.title,
+        position: module.position,
+      });
+      setModules(prev => prev.map(m => 
+        m.moduleId === module.moduleId 
+          ? { ...m, title: editModuleData.title }
+          : m
+      ));
+      setEditingModule(null);
+    } catch (err) {
+      setError('Failed to save module');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,6 +208,134 @@ export default function EditCoursePage() {
           </label>
         </div>
 
+        {/* Modules Section */}
+        {modules.length > 0 && (
+          <div className="pt-4 border-t">
+            <h2 className="text-lg font-semibold text-black mb-4">Moduly kurzu ({modules.length})</h2>
+            <div className="space-y-3">
+              {modules.map((module, index) => (
+                <div key={module.moduleId} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div 
+                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    onClick={() => toggleModule(module.moduleId)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                      {editingModule === module.moduleId ? (
+                        <input
+                          type="text"
+                          value={editModuleData.title}
+                          onChange={(e) => setEditModuleData({ title: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2 py-1 border border-gray-300 rounded text-black text-sm"
+                        />
+                      ) : (
+                        <span className="font-medium text-black">{module.title}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {editingModule === module.moduleId ? (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }}
+                            className="p-1 text-green-600 hover:bg-green-100 rounded"
+                          >
+                            <Save size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }}
+                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                          >
+                            <X size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startEditingModule(module); }}
+                          className="p-1 text-gray-600 hover:bg-gray-200 rounded"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+                      {expandedModules.has(module.moduleId) ? (
+                        <ChevronUp size={20} className="text-gray-500" />
+                      ) : (
+                        <ChevronDown size={20} className="text-gray-500" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedModules.has(module.moduleId) && (
+                    <div className="p-4 bg-white border-t space-y-4">
+                      {/* Learn Blocks */}
+                      {module.learnBlocks && module.learnBlocks.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Učební bloky ({module.learnBlocks.length})</h4>
+                          <div className="space-y-2">
+                            {module.learnBlocks.map((block, bIndex) => (
+                              <div key={bIndex} className="p-3 bg-blue-50 rounded border border-blue-100">
+                                <div className="text-xs text-blue-600 mb-1">Blok #{block.position || bIndex + 1}</div>
+                                <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                  {block.content}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Practices */}
+                      {module.practices && module.practices.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Cvičení ({module.practices.length})</h4>
+                          <div className="space-y-2">
+                            {module.practices.map((practice, pIndex) => (
+                              <div key={pIndex} className="p-3 bg-green-50 rounded border border-green-100">
+                                <div className="text-xs text-green-600 mb-1">Cvičení #{practice.position || pIndex + 1}</div>
+                                {practice.questions && practice.questions.length > 0 && (
+                                  <div className="space-y-2 mt-2">
+                                    {practice.questions.map((q, qIndex) => (
+                                      <div key={qIndex} className="text-sm text-gray-700 pl-3 border-l-2 border-green-200">
+                                        <div className="font-medium">{qIndex + 1}. {q.question}</div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
+                                        </div>
+                                        {q.questionType === 'closed' && q.options && (
+                                          <div className="mt-1 text-xs text-gray-600">
+                                            {q.options.map((opt, oIndex) => (
+                                              <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
+                                                {String.fromCharCode(65 + oIndex)}. {opt.text}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {q.questionType === 'open' && q.exampleAnswer && (
+                                          <div className="mt-1 text-xs text-gray-600">
+                                            Příklad odpovědi: {q.exampleAnswer}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Empty state */}
+                      {(!module.learnBlocks || module.learnBlocks.length === 0) && 
+                       (!module.practices || module.practices.length === 0) && (
+                        <p className="text-sm text-gray-500 italic">Tento modul nemá žádný obsah.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
           <button
             type="submit"
@@ -169,7 +349,7 @@ export default function EditCoursePage() {
             onClick={() => router.back()}
             className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
           >
-            Zrušit
+            Zpět
           </button>
           <button
             type="button"

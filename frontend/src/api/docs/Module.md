@@ -7,11 +7,14 @@
 Name | Type
 ------------ | -------------
 `title` | string
-`order` | number
+`position` | number
 `moduleId` | number
 `courseId` | number
 `isActive` | boolean
-`isPublished` | boolean
+`createdAt` | Date
+`updatedAt` | Date
+`learnBlocks` | [Array&lt;LearnBlock&gt;](LearnBlock.md)
+`practices` | [Array&lt;Practice&gt;](Practice.md)
 
 ## Example
 
@@ -21,11 +24,14 @@ import type { Module } from ''
 // TODO: Update the object below with actual values
 const example = {
   "title": null,
-  "order": null,
+  "position": null,
   "moduleId": null,
   "courseId": null,
   "isActive": null,
-  "isPublished": null,
+  "createdAt": null,
+  "updatedAt": null,
+  "learnBlocks": null,
+  "practices": null,
 } satisfies Module
 
 console.log(example)

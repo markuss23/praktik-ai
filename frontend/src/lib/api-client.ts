@@ -1,4 +1,4 @@
-import { Configuration, CoursesApi, ModulesApi, ActivitiesApi, CourseUpdate } from "@/api";
+import { Configuration, CoursesApi, ModulesApi, ActivitiesApi, AgentsApi, CourseUpdate } from "@/api";
 import { API_BASE_URL } from "./constants";
 
 // Create a configured API client instance
@@ -9,6 +9,7 @@ const configuration = new Configuration({
 export const coursesApi = new CoursesApi(configuration);
 export const modulesApi = new ModulesApi(configuration);
 export const activitiesApi = new ActivitiesApi(configuration);
+export const agentsApi = new AgentsApi(configuration);
 
 // Course API functions
 export async function getCourses(params?: {
@@ -73,12 +74,12 @@ export async function createModule(data: {
 
 export async function updateModule(moduleId: number, data: {
   title: string;
-  courseId: number;
-  order?: number;
+  position?: number;
+  isActive?: boolean;
 }) {
   return modulesApi.updateModule({
     moduleId,
-    moduleCreate: data,
+    moduleUpdate: data,
   });
 }
 
@@ -97,4 +98,21 @@ export async function getActivities(params?: {
 
 export async function getActivity(activityId: number) {
   return activitiesApi.getActivity({ activityId });
+}
+
+// File upload API functions
+export async function uploadCourseFile(courseId: number, file: File) {
+  return coursesApi.uploadCourseFile({
+    courseId,
+    file: file as Blob,
+  });
+}
+
+export async function deleteCourseFile(courseId: number, fileId: number) {
+  return coursesApi.deleteCourseFile({ courseId, fileId });
+}
+
+// AI Agent API functions
+export async function generateCourseWithAI(courseId: number) {
+  return agentsApi.generateCourseApiV1AgentsGenerateCoursePost({ courseId });
 }

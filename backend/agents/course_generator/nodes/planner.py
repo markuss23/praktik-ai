@@ -38,7 +38,7 @@ INSTRUKCE - STRUKTURA KURZU:
 INSTRUKCE - STRUKTURA MODULU:
 Pro každý modul ({modules_count}):
 - title: Výstižný název modulu (1-200 znaků)
-- order: Pořadí modulu (1, 2, 3, atd.)
+- position: Pořadí modulu (1, 2, 3, atd.)
 - learn_blocks: Seznam učebních bloků, kde každý blok má:
   * position: Pořadí bloku (začíná od 1)
   * content: Kompletní text látky k naučení (detailní vysvětlení tématu v markdown formátu)

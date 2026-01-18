@@ -33,10 +33,10 @@ export interface CourseCreate {
     description?: string | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof CourseCreate
      */
-    isPublished?: boolean;
+    modulesCount?: number;
 }
 
 /**
@@ -59,7 +59,7 @@ export function CourseCreateFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'title': json['title'],
         'description': json['description'] == null ? undefined : json['description'],
-        'isPublished': json['is_published'] == null ? undefined : json['is_published'],
+        'modulesCount': json['modules_count'] == null ? undefined : json['modules_count'],
     };
 }
 
@@ -76,7 +76,7 @@ export function CourseCreateToJSONTyped(value?: CourseCreate | null, ignoreDiscr
         
         'title': value['title'],
         'description': value['description'],
-        'is_published': value['isPublished'],
+        'modules_count': value['modulesCount'],
     };
 }
 

@@ -8,8 +8,7 @@ Name | Type
 ------------ | -------------
 `title` | string
 `description` | string
-`isPublished` | boolean
-`isActive` | boolean
+`modulesCount` | number
 
 ## Example
 
@@ -20,8 +19,7 @@ import type { CourseUpdate } from ''
 const example = {
   "title": null,
   "description": null,
-  "isPublished": null,
-  "isActive": null,
+  "modulesCount": null,
 } satisfies CourseUpdate
 
 console.log(example)

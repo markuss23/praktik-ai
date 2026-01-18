@@ -17,6 +17,8 @@ import * as runtime from '../runtime';
 import type {
   Course,
   CourseCreate,
+  CourseFile,
+  CourseLink,
   CourseUpdate,
   HTTPValidationError,
 } from '../models/index';
@@ -25,6 +27,10 @@ import {
     CourseToJSON,
     CourseCreateFromJSON,
     CourseCreateToJSON,
+    CourseFileFromJSON,
+    CourseFileToJSON,
+    CourseLinkFromJSON,
+    CourseLinkToJSON,
     CourseUpdateFromJSON,
     CourseUpdateToJSON,
     HTTPValidationErrorFromJSON,
@@ -35,11 +41,30 @@ export interface CreateCourseRequest {
     courseCreate: CourseCreate;
 }
 
+export interface CreateCourseLinkRequest {
+    courseId: number;
+    url: string;
+}
+
 export interface DeleteCourseRequest {
     courseId: number;
 }
 
+export interface DeleteCourseFileRequest {
+    courseId: number;
+    fileId: number;
+}
+
+export interface DeleteCourseLinkRequest {
+    courseId: number;
+    linkId: number;
+}
+
 export interface GetCourseRequest {
+    courseId: number;
+}
+
+export interface ListCourseLinksRequest {
     courseId: number;
 }
 
@@ -52,6 +77,11 @@ export interface ListCoursesRequest {
 export interface UpdateCourseRequest {
     courseId: number;
     courseUpdate: CourseUpdate;
+}
+
+export interface UploadCourseFileRequest {
+    courseId: number;
+    file: Blob;
 }
 
 /**
@@ -99,6 +129,56 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Vytvoří odkaz ke kurzu
+     * Endp Create Course Link
+     */
+    async createCourseLinkRaw(requestParameters: CreateCourseLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseLink>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling createCourseLink().'
+            );
+        }
+
+        if (requestParameters['url'] == null) {
+            throw new runtime.RequiredError(
+                'url',
+                'Required parameter "url" was null or undefined when calling createCourseLink().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['url'] != null) {
+            queryParameters['url'] = requestParameters['url'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/courses/{course_id}/links`;
+        urlPath = urlPath.replace(`{${"course_id"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseLinkFromJSON(jsonValue));
+    }
+
+    /**
+     * Vytvoří odkaz ke kurzu
+     * Endp Create Course Link
+     */
+    async createCourseLink(requestParameters: CreateCourseLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseLink> {
+        const response = await this.createCourseLinkRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Endp Delete Course
      */
     async deleteCourseRaw(requestParameters: DeleteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -135,6 +215,98 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Smaže soubor kurzu
+     * Endp Delete Course File
+     */
+    async deleteCourseFileRaw(requestParameters: DeleteCourseFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling deleteCourseFile().'
+            );
+        }
+
+        if (requestParameters['fileId'] == null) {
+            throw new runtime.RequiredError(
+                'fileId',
+                'Required parameter "fileId" was null or undefined when calling deleteCourseFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/courses/{course_id}/files/{file_id}`;
+        urlPath = urlPath.replace(`{${"course_id"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+        urlPath = urlPath.replace(`{${"file_id"}}`, encodeURIComponent(String(requestParameters['fileId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Smaže soubor kurzu
+     * Endp Delete Course File
+     */
+    async deleteCourseFile(requestParameters: DeleteCourseFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseFileRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Smaže odkaz kurzu
+     * Endp Delete Course Link
+     */
+    async deleteCourseLinkRaw(requestParameters: DeleteCourseLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling deleteCourseLink().'
+            );
+        }
+
+        if (requestParameters['linkId'] == null) {
+            throw new runtime.RequiredError(
+                'linkId',
+                'Required parameter "linkId" was null or undefined when calling deleteCourseLink().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/courses/{course_id}/links/{link_id}`;
+        urlPath = urlPath.replace(`{${"course_id"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+        urlPath = urlPath.replace(`{${"link_id"}}`, encodeURIComponent(String(requestParameters['linkId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Smaže odkaz kurzu
+     * Endp Delete Course Link
+     */
+    async deleteCourseLink(requestParameters: DeleteCourseLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseLinkRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Endp Get Course
      */
     async getCourseRaw(requestParameters: GetCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Course>> {
@@ -168,6 +340,45 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async getCourse(requestParameters: GetCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Course> {
         const response = await this.getCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Vrátí seznam odkazů ke kurzu
+     * Endp List Course Links
+     */
+    async listCourseLinksRaw(requestParameters: ListCourseLinksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseLink>>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling listCourseLinks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/courses/{course_id}/links`;
+        urlPath = urlPath.replace(`{${"course_id"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseLinkFromJSON));
+    }
+
+    /**
+     * Vrátí seznam odkazů ke kurzu
+     * Endp List Course Links
+     */
+    async listCourseLinks(requestParameters: ListCourseLinksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseLink>> {
+        const response = await this.listCourseLinksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -256,6 +467,73 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async updateCourse(requestParameters: UpdateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Course> {
         const response = await this.updateCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Nahraje soubor ke kurzu
+     * Endp Upload Course File
+     */
+    async uploadCourseFileRaw(requestParameters: UploadCourseFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseFile>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling uploadCourseFile().'
+            );
+        }
+
+        if (requestParameters['file'] == null) {
+            throw new runtime.RequiredError(
+                'file',
+                'Required parameter "file" was null or undefined when calling uploadCourseFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/api/v1/courses/{course_id}/files`;
+        urlPath = urlPath.replace(`{${"course_id"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseFileFromJSON(jsonValue));
+    }
+
+    /**
+     * Nahraje soubor ke kurzu
+     * Endp Upload Course File
+     */
+    async uploadCourseFile(requestParameters: UploadCourseFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseFile> {
+        const response = await this.uploadCourseFileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -30,19 +30,13 @@ export interface ModuleUpdate {
      * @type {number}
      * @memberof ModuleUpdate
      */
-    order?: number;
+    position?: number;
     /**
      * 
      * @type {boolean}
      * @memberof ModuleUpdate
      */
     isActive?: boolean;
-    /**
-     * Je modul publikován?
-     * @type {boolean}
-     * @memberof ModuleUpdate
-     */
-    isPublished?: boolean;
 }
 
 /**
@@ -64,9 +58,8 @@ export function ModuleUpdateFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
         
         'title': json['title'],
-        'order': json['order'] == null ? undefined : json['order'],
+        'position': json['position'] == null ? undefined : json['position'],
         'isActive': json['is_active'] == null ? undefined : json['is_active'],
-        'isPublished': json['is_published'] == null ? undefined : json['is_published'],
     };
 }
 
@@ -82,9 +75,8 @@ export function ModuleUpdateToJSONTyped(value?: ModuleUpdate | null, ignoreDiscr
     return {
         
         'title': value['title'],
-        'order': value['order'],
+        'position': value['position'],
         'is_active': value['isActive'],
-        'is_published': value['isPublished'],
     };
 }
 

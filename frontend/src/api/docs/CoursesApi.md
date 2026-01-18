@@ -5,10 +5,15 @@ All URIs are relative to *http://localhost*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**createCourse**](CoursesApi.md#createcourse) | **POST** /api/v1/courses | Endp Create Course |
+| [**createCourseLink**](CoursesApi.md#createcourselink) | **POST** /api/v1/courses/{course_id}/links | Endp Create Course Link |
 | [**deleteCourse**](CoursesApi.md#deletecourse) | **DELETE** /api/v1/courses/{course_id} | Endp Delete Course |
+| [**deleteCourseFile**](CoursesApi.md#deletecoursefile) | **DELETE** /api/v1/courses/{course_id}/files/{file_id} | Endp Delete Course File |
+| [**deleteCourseLink**](CoursesApi.md#deletecourselink) | **DELETE** /api/v1/courses/{course_id}/links/{link_id} | Endp Delete Course Link |
 | [**getCourse**](CoursesApi.md#getcourse) | **GET** /api/v1/courses/{course_id} | Endp Get Course |
+| [**listCourseLinks**](CoursesApi.md#listcourselinks) | **GET** /api/v1/courses/{course_id}/links | Endp List Course Links |
 | [**listCourses**](CoursesApi.md#listcourses) | **GET** /api/v1/courses | List Courses |
 | [**updateCourse**](CoursesApi.md#updatecourse) | **PUT** /api/v1/courses/{course_id} | Endp Update Course |
+| [**uploadCourseFile**](CoursesApi.md#uploadcoursefile) | **POST** /api/v1/courses/{course_id}/files | Endp Upload Course File |
 
 
 
@@ -66,6 +71,77 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## createCourseLink
+
+> CourseLink createCourseLink(courseId, url)
+
+Endp Create Course Link
+
+Vytvoří odkaz ke kurzu
+
+### Example
+
+```ts
+import {
+  Configuration,
+  CoursesApi,
+} from '';
+import type { CreateCourseLinkRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new CoursesApi();
+
+  const body = {
+    // number
+    courseId: 56,
+    // string
+    url: url_example,
+  } satisfies CreateCourseLinkRequest;
+
+  try {
+    const data = await api.createCourseLink(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **courseId** | `number` |  | [Defaults to `undefined`] |
+| **url** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CourseLink**](CourseLink.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -144,6 +220,148 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## deleteCourseFile
+
+> deleteCourseFile(courseId, fileId)
+
+Endp Delete Course File
+
+Smaže soubor kurzu
+
+### Example
+
+```ts
+import {
+  Configuration,
+  CoursesApi,
+} from '';
+import type { DeleteCourseFileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new CoursesApi();
+
+  const body = {
+    // number
+    courseId: 56,
+    // number
+    fileId: 56,
+  } satisfies DeleteCourseFileRequest;
+
+  try {
+    const data = await api.deleteCourseFile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **courseId** | `number` |  | [Defaults to `undefined`] |
+| **fileId** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteCourseLink
+
+> deleteCourseLink(courseId, linkId)
+
+Endp Delete Course Link
+
+Smaže odkaz kurzu
+
+### Example
+
+```ts
+import {
+  Configuration,
+  CoursesApi,
+} from '';
+import type { DeleteCourseLinkRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new CoursesApi();
+
+  const body = {
+    // number
+    courseId: 56,
+    // number
+    linkId: 56,
+  } satisfies DeleteCourseLinkRequest;
+
+  try {
+    const data = await api.deleteCourseLink(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **courseId** | `number` |  | [Defaults to `undefined`] |
+| **linkId** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **204** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getCourse
 
 > Course getCourse(courseId)
@@ -190,6 +408,74 @@ example().catch(console.error);
 ### Return type
 
 [**Course**](Course.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listCourseLinks
+
+> Array&lt;CourseLink&gt; listCourseLinks(courseId)
+
+Endp List Course Links
+
+Vrátí seznam odkazů ke kurzu
+
+### Example
+
+```ts
+import {
+  Configuration,
+  CoursesApi,
+} from '';
+import type { ListCourseLinksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new CoursesApi();
+
+  const body = {
+    // number
+    courseId: 56,
+  } satisfies ListCourseLinksRequest;
+
+  try {
+    const data = await api.listCourseLinks(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **courseId** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**Array&lt;CourseLink&gt;**](CourseLink.md)
 
 ### Authorization
 
@@ -339,6 +625,77 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## uploadCourseFile
+
+> CourseFile uploadCourseFile(courseId, file)
+
+Endp Upload Course File
+
+Nahraje soubor ke kurzu
+
+### Example
+
+```ts
+import {
+  Configuration,
+  CoursesApi,
+} from '';
+import type { UploadCourseFileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new CoursesApi();
+
+  const body = {
+    // number
+    courseId: 56,
+    // Blob
+    file: BINARY_DATA_HERE,
+  } satisfies UploadCourseFileRequest;
+
+  try {
+    const data = await api.uploadCourseFile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **courseId** | `number` |  | [Defaults to `undefined`] |
+| **file** | `Blob` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CourseFile**](CourseFile.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
 - **Accept**: `application/json`
 
 

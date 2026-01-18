@@ -7,7 +7,7 @@
 Name | Type
 ------------ | -------------
 `title` | string
-`order` | number
+`position` | number
 `courseId` | number
 
 ## Example
@@ -18,7 +18,7 @@ import type { ModuleCreate } from ''
 // TODO: Update the object below with actual values
 const example = {
   "title": null,
-  "order": null,
+  "position": null,
   "courseId": null,
 } satisfies ModuleCreate
 

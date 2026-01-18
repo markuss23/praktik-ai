@@ -13,6 +13,27 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CourseLink } from './CourseLink';
+import {
+    CourseLinkFromJSON,
+    CourseLinkFromJSONTyped,
+    CourseLinkToJSON,
+    CourseLinkToJSONTyped,
+} from './CourseLink';
+import type { Status } from './Status';
+import {
+    StatusFromJSON,
+    StatusFromJSONTyped,
+    StatusToJSON,
+    StatusToJSONTyped,
+} from './Status';
+import type { CourseFile } from './CourseFile';
+import {
+    CourseFileFromJSON,
+    CourseFileFromJSONTyped,
+    CourseFileToJSON,
+    CourseFileToJSONTyped,
+} from './CourseFile';
 import type { Module } from './Module';
 import {
     ModuleFromJSON,
@@ -41,10 +62,10 @@ export interface Course {
     description?: string | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof Course
      */
-    isPublished?: boolean;
+    modulesCount?: number;
     /**
      * 
      * @type {number}
@@ -59,11 +80,37 @@ export interface Course {
     isActive: boolean;
     /**
      * 
+     * @type {Status}
+     * @memberof Course
+     */
+    status: Status;
+    /**
+     * 
+     * @type {string}
+     * @memberof Course
+     */
+    summary?: string | null;
+    /**
+     * 
      * @type {Array<Module>}
      * @memberof Course
      */
-    modules: Array<Module>;
+    modules?: Array<Module>;
+    /**
+     * 
+     * @type {Array<CourseFile>}
+     * @memberof Course
+     */
+    files?: Array<CourseFile>;
+    /**
+     * 
+     * @type {Array<CourseLink>}
+     * @memberof Course
+     */
+    links?: Array<CourseLink>;
 }
+
+
 
 /**
  * Check if a given object implements the Course interface.
@@ -72,7 +119,7 @@ export function instanceOfCourse(value: object): value is Course {
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('isActive' in value) || value['isActive'] === undefined) return false;
-    if (!('modules' in value) || value['modules'] === undefined) return false;
+    if (!('status' in value) || value['status'] === undefined) return false;
     return true;
 }
 
@@ -88,10 +135,14 @@ export function CourseFromJSONTyped(json: any, ignoreDiscriminator: boolean): Co
         
         'title': json['title'],
         'description': json['description'] == null ? undefined : json['description'],
-        'isPublished': json['is_published'] == null ? undefined : json['is_published'],
+        'modulesCount': json['modules_count'] == null ? undefined : json['modules_count'],
         'courseId': json['course_id'],
         'isActive': json['is_active'],
-        'modules': ((json['modules'] as Array<any>).map(ModuleFromJSON)),
+        'status': StatusFromJSON(json['status']),
+        'summary': json['summary'] == null ? undefined : json['summary'],
+        'modules': json['modules'] == null ? undefined : ((json['modules'] as Array<any>).map(ModuleFromJSON)),
+        'files': json['files'] == null ? undefined : ((json['files'] as Array<any>).map(CourseFileFromJSON)),
+        'links': json['links'] == null ? undefined : ((json['links'] as Array<any>).map(CourseLinkFromJSON)),
     };
 }
 
@@ -108,10 +159,14 @@ export function CourseToJSONTyped(value?: Course | null, ignoreDiscriminator: bo
         
         'title': value['title'],
         'description': value['description'],
-        'is_published': value['isPublished'],
+        'modules_count': value['modulesCount'],
         'course_id': value['courseId'],
         'is_active': value['isActive'],
-        'modules': ((value['modules'] as Array<any>).map(ModuleToJSON)),
+        'status': StatusToJSON(value['status']),
+        'summary': value['summary'],
+        'modules': value['modules'] == null ? undefined : ((value['modules'] as Array<any>).map(ModuleToJSON)),
+        'files': value['files'] == null ? undefined : ((value['files'] as Array<any>).map(CourseFileToJSON)),
+        'links': value['links'] == null ? undefined : ((value['links'] as Array<any>).map(CourseLinkToJSON)),
     };
 }
 

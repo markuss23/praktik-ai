@@ -30,7 +30,7 @@ export interface ModuleCreate {
      * @type {number}
      * @memberof ModuleCreate
      */
-    order?: number;
+    position?: number;
     /**
      * FK na course.course_id
      * @type {number}
@@ -59,7 +59,7 @@ export function ModuleCreateFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
         
         'title': json['title'],
-        'order': json['order'] == null ? undefined : json['order'],
+        'position': json['position'] == null ? undefined : json['position'],
         'courseId': json['course_id'],
     };
 }
@@ -76,7 +76,7 @@ export function ModuleCreateToJSONTyped(value?: ModuleCreate | null, ignoreDiscr
     return {
         
         'title': value['title'],
-        'order': value['order'],
+        'position': value['position'],
         'course_id': value['courseId'],
     };
 }

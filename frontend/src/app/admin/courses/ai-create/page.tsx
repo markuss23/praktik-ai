@@ -2,14 +2,15 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { createCourse, uploadCourseFile, generateCourseWithAI } from '@/lib/api-client';
 
 export default function AICreateCoursePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -19,41 +20,90 @@ export default function AICreateCoursePage() {
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      setFiles(Array.from(selectedFiles));
       setError('');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (files.length === 0) {
+      setError('Prosím nahrajte alespoň jeden soubor s podklady');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      // TODO: Implementovat AI generování kurzu
-      console.log('AI Course generation:', formData, file);
-      // Po úspěšném vytvoření přesměrovat na admin
-      // router.push('/admin');
-      alert('AI generování kurzu bude implementováno');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nepodařilo se vytvořit kurz');
+      // Step 1: Create course
+      setStep('uploading');
+      let course;
+      try {
+        course = await createCourse({
+          title: formData.title,
+          description: formData.description || undefined,
+        });
+      } catch (createErr: unknown) {
+        // Check if it's a 400 error (course already exists)
+        if (createErr && typeof createErr === 'object' && 'response' in createErr) {
+          const response = (createErr as { response: Response }).response;
+          if (response.status === 400) {
+            const data = await response.json();
+            throw new Error(data.detail || 'Kurz s tímto názvem již existuje');
+          }
+        }
+        throw createErr;
+      }
+
+      // Step 2: Upload all files to course
+      for (const file of files) {
+        await uploadCourseFile(course.courseId, file);
+      }
+
+      // Step 3: Generate course with AI
+      setStep('generating');
+      await generateCourseWithAI(course.courseId);
+
+      // Redirect to course edit page
+      router.push(`/admin/courses/${course.courseId}/edit`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (err && typeof err === 'object' && 'response' in err) {
+        const response = (err as { response: Response }).response;
+        try {
+          const data = await response.json();
+          setError(data.detail || 'Nepodařilo se vytvořit kurz');
+        } catch {
+          setError(`Chyba serveru: ${response.status}`);
+        }
+      } else {
+        setError('Nepodařilo se vytvořit kurz');
+      }
+      setStep('form');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    setLoading(true);
-    try {
-      // TODO: Implementovat ukládání kurzu
-      console.log('Saving course:', formData, file);
-      alert('Ukládání kurzu bude implementováno');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nepodařilo se uložit kurz');
-    } finally {
-      setLoading(false);
+    // handleSave now uses handleSubmit logic
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+    await handleSubmit(fakeEvent);
+  };
+
+  const getStepMessage = () => {
+    switch (step) {
+      case 'uploading':
+        return 'Nahrávám podklady...';
+      case 'generating':
+        return 'AI generuje kurz... Toto může trvat několik minut.';
+      default:
+        return 'Pokračovat';
     }
   };
 
@@ -174,12 +224,13 @@ export default function AICreateCoursePage() {
                   Nahrát podklady
                 </button>
                 <span className="text-sm text-gray-500">
-                  {file ? file.name : 'No file selected'}
+                  {files.length > 0 ? `${files.length} soubor(ů) vybráno: ${files.map(f => f.name).join(', ')}` : 'Žádné soubory vybrány'}
                 </span>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  accept=".md"
+                  multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -191,18 +242,19 @@ export default function AICreateCoursePage() {
               <button
                 type="button"
                 onClick={() => router.push('/admin')}
-                className="text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                disabled={loading}
+                className="text-gray-600 hover:text-gray-800 transition-colors text-sm disabled:opacity-50"
               >
                 Zpět
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !formData.title}
                 className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                <ArrowRight size={16} />
-                <span>{loading ? 'Pokračuji...' : 'Pokračovat'}</span>
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                <span>{loading ? getStepMessage() : 'Pokračovat'}</span>
               </button>
             </div>
           </form>

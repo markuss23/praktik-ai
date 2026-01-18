@@ -13,6 +13,21 @@
  */
 
 import { mapValues } from '../runtime';
+import type { LearnBlock } from './LearnBlock';
+import {
+    LearnBlockFromJSON,
+    LearnBlockFromJSONTyped,
+    LearnBlockToJSON,
+    LearnBlockToJSONTyped,
+} from './LearnBlock';
+import type { Practice } from './Practice';
+import {
+    PracticeFromJSON,
+    PracticeFromJSONTyped,
+    PracticeToJSON,
+    PracticeToJSONTyped,
+} from './Practice';
+
 /**
  * 
  * @export
@@ -30,7 +45,7 @@ export interface Module {
      * @type {number}
      * @memberof Module
      */
-    order?: number;
+    position?: number;
     /**
      * 
      * @type {number}
@@ -51,10 +66,28 @@ export interface Module {
     isActive: boolean;
     /**
      * 
-     * @type {boolean}
+     * @type {Date}
      * @memberof Module
      */
-    isPublished: boolean;
+    createdAt: Date;
+    /**
+     * 
+     * @type {Date}
+     * @memberof Module
+     */
+    updatedAt: Date;
+    /**
+     * 
+     * @type {Array<LearnBlock>}
+     * @memberof Module
+     */
+    learnBlocks?: Array<LearnBlock>;
+    /**
+     * 
+     * @type {Array<Practice>}
+     * @memberof Module
+     */
+    practices?: Array<Practice>;
 }
 
 /**
@@ -65,7 +98,8 @@ export function instanceOfModule(value: object): value is Module {
     if (!('moduleId' in value) || value['moduleId'] === undefined) return false;
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('isActive' in value) || value['isActive'] === undefined) return false;
-    if (!('isPublished' in value) || value['isPublished'] === undefined) return false;
+    if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
+    if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     return true;
 }
 
@@ -80,11 +114,14 @@ export function ModuleFromJSONTyped(json: any, ignoreDiscriminator: boolean): Mo
     return {
         
         'title': json['title'],
-        'order': json['order'] == null ? undefined : json['order'],
+        'position': json['position'] == null ? undefined : json['position'],
         'moduleId': json['module_id'],
         'courseId': json['course_id'],
         'isActive': json['is_active'],
-        'isPublished': json['is_published'],
+        'createdAt': (new Date(json['created_at'])),
+        'updatedAt': (new Date(json['updated_at'])),
+        'learnBlocks': json['learn_blocks'] == null ? undefined : ((json['learn_blocks'] as Array<any>).map(LearnBlockFromJSON)),
+        'practices': json['practices'] == null ? undefined : ((json['practices'] as Array<any>).map(PracticeFromJSON)),
     };
 }
 
@@ -100,11 +137,14 @@ export function ModuleToJSONTyped(value?: Module | null, ignoreDiscriminator: bo
     return {
         
         'title': value['title'],
-        'order': value['order'],
+        'position': value['position'],
         'module_id': value['moduleId'],
         'course_id': value['courseId'],
         'is_active': value['isActive'],
-        'is_published': value['isPublished'],
+        'created_at': value['createdAt'].toISOString(),
+        'updated_at': value['updatedAt'].toISOString(),
+        'learn_blocks': value['learnBlocks'] == null ? undefined : ((value['learnBlocks'] as Array<any>).map(LearnBlockToJSON)),
+        'practices': value['practices'] == null ? undefined : ((value['practices'] as Array<any>).map(PracticeToJSON)),
     };
 }
 

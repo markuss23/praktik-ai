@@ -8,7 +8,7 @@ Name | Type
 ------------ | -------------
 `title` | string
 `description` | string
-`isPublished` | boolean
+`modulesCount` | number
 
 ## Example
 
@@ -19,7 +19,7 @@ import type { CourseCreate } from ''
 const example = {
   "title": null,
   "description": null,
-  "isPublished": null,
+  "modulesCount": null,
 } satisfies CourseCreate
 
 console.log(example)

@@ -7,9 +7,8 @@
 Name | Type
 ------------ | -------------
 `title` | string
-`order` | number
+`position` | number
 `isActive` | boolean
-`isPublished` | boolean
 
 ## Example
 
@@ -19,9 +18,8 @@ import type { ModuleUpdate } from ''
 // TODO: Update the object below with actual values
 const example = {
   "title": null,
-  "order": null,
+  "position": null,
   "isActive": null,
-  "isPublished": null,
 } satisfies ModuleUpdate
 
 console.log(example)
