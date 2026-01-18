@@ -100,20 +100,20 @@ export default function EditCoursePage() {
   };
 
   if (!courseId && !error) {
-    return <div className="max-w-2xl mx-auto py-8 text-black">Načítání...</div>;
+    return <div className="flex-1 p-4 sm:p-8 text-black">Načítání...</div>;
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6 text-black">Editovat kurz</h1>
+    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat kurz</h1>
       
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+        <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-white p-4 sm:p-6 rounded-lg shadow">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
             Název kurzu *
@@ -124,7 +124,7 @@ export default function EditCoursePage() {
             required
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
             placeholder="např. Kurz promptování - začátečníci"
           />
         </div>
@@ -137,7 +137,7 @@ export default function EditCoursePage() {
             id="description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
             placeholder="Stručný popis kurzu..."
             rows={4}
           />
@@ -156,25 +156,25 @@ export default function EditCoursePage() {
           </label>
         </div>
 
-        <div className="flex gap-4 pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
           >
             Zrušit
           </button>
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 ml-auto"
+            className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 sm:ml-auto text-sm sm:text-base"
           >
             Smazat kurz
           </button>
@@ -183,26 +183,26 @@ export default function EditCoursePage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 text-black">Potvrdit smazání</h2>
-            <p className="text-gray-700 mb-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-black">Potvrdit smazání</h2>
+            <p className="text-gray-700 mb-4 sm:mb-6 text-sm sm:text-base">
               Opravdu chcete smazat tento kurz a všechny jeho moduly?
             </p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400"
-              >
-                {deleting ? 'Mazání...' : 'Ano, smazat'}
-              </button>
+            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleting}
-                className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                className="flex-1 px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
               >
                 Zrušit
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 text-sm sm:text-base"
+              >
+                {deleting ? 'Mazání...' : 'Ano, smazat'}
               </button>
             </div>
           </div>

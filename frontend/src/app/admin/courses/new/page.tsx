@@ -34,7 +34,7 @@ export default function NewCoursePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
+    <div className="flex-1 p-8">
       <h1 className="text-3xl font-bold mb-6 text-black">Vytvořit nový kurz</h1>
       
       {error && (

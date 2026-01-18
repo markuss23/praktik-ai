@@ -1,14 +1,13 @@
 'use client';
 
 import { getCourses, getModules } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration, ModuleUpdate } from "@/api";
+import { Course, CoursesApi, ModulesApi, Configuration } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { slugify } from "@/lib/utils";
-import { Home, BookOpen, Users, BarChart3, Settings, Pencil, Eye, Trash2, GripVertical, X } from "lucide-react";
-import Link from "next/link";
+import { Pencil, Eye, Trash2, GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal } from "@/components";
+import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
@@ -336,56 +335,37 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-64 bg-black text-white flex flex-col">
-        <div className="p-6">
-          <h1 className="text-xl font-bold">PRAKTIK-AI</h1>
-        </div>
-        
-        <nav className="flex-1 px-4">
-          <Link href="/" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-md transition-colors">
-            <Home size={20} />
-            <span>Home</span>
-          </Link>
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 bg-purple-600 rounded-md transition-colors">
-            <BookOpen size={20} />
-            <span>Kurzy</span>
-          </Link>
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-md transition-colors">
-            <Users size={20} />
-            <span>Uživatelé</span>
-          </Link>
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-md transition-colors">
-            <BarChart3 size={20} />
-            <span>Statistiky</span>
-          </Link>
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 rounded-md transition-colors">
-            <Settings size={20} />
-            <span>Natavení</span>
-          </Link>
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-8">
+    <>
+      <div className="flex-1 p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-2xl font-bold text-black">Překled kurzů</h2>
-            <button
-              onClick={openCreateCourseModal}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              <span>Přidat kurz</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="rotate-90">
-                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">
+            <h2 className="text-xl sm:text-2xl font-bold text-black">Překled kurzů</h2>
+            <Dropdown
+              trigger={<span>Přidat kurz</span>}
+              items={[
+                {
+                  label: 'Manuální zadání',
+                  icon: <BicepsFlexed size={18} />,
+                  onClick: openCreateCourseModal,
+                },
+                {
+                  label: 'Náhrát soubor',
+                  icon: <Upload size={18} />,
+                  onClick: () => router.push('/admin/courses/upload'),
+                },
+                {
+                  label: 'Pomocí AI',
+                  icon: <SimpleBotIcon size={18} />,
+                  gradient: true,
+                  onClick: () => router.push('/admin/courses/ai-create'),
+                },
+              ]}
+            />
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Table - Desktop */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -538,6 +518,125 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-200">
+            {courses.map((course) => (
+              <div key={course.courseId} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
+                    <p className="text-sm text-gray-500 mt-1">{getModuleCount(course)} moduly</p>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-2 ${
+                      course.isPublished 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => toggleCourseExpand(course.courseId)}
+                      className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      title="Zobrazit moduly"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => togglePublish(course)}
+                      className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                      title={course.isPublished ? 'Skrýt' : 'Publikovat'}
+                    >
+                      <Eye size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(course.courseId)}
+                      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                      title="Smazat"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Expanded Module List - Mobile */}
+                {expandedCourse === course.courseId && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-gray-900 text-sm">Moduly</h4>
+                      <button
+                        onClick={() => {
+                          setExpandedCourse(null);
+                          localStorage.removeItem('expandedCourse');
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {courseModules[course.courseId]?.map((module: any, index: number) => (
+                        <div key={module.moduleId} className="bg-white rounded-md p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900 truncate">{module.title}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">Modul {index + 1}</p>
+                              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${
+                                module.isPublished 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-orange-100 text-orange-800'
+                              }`}>
+                                {module.isPublished ? 'Publikováno' : 'Neaktivní'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => openEditModuleModal(module)}
+                                className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700"
+                                title="Editovat"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button
+                                onClick={() => toggleModulePublish(module)}
+                                className="p-1.5 bg-orange-500 text-white rounded hover:bg-orange-600"
+                                title={module.isPublished ? 'Skrýt' : 'Publikovat'}
+                              >
+                                <Eye size={12} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setModuleToDelete(module.moduleId);
+                                  setShowDeleteConfirm(true);
+                                }}
+                                className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
+                                title="Smazat"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => openCreateModuleModal(course.courseId)}
+                      className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm w-full"
+                    >
+                      <span>Přidat modul</span>
+                    </button>
+                    <button
+                      onClick={() => openEditCourseModal(course)}
+                      className="mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm w-full"
+                    >
+                      Editovat kurz
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -578,6 +677,6 @@ export default function AdminPage() {
           setModuleToDelete(null);
         }}
       />
-    </div>
+    </>
   );
 }

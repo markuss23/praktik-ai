@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { AdminSidebar } from '@/components/admin';
 
 export default function AdminLayout({
   children,
@@ -8,8 +8,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white">
-      {children}
+    <div className="flex min-h-screen bg-gray-100">
+      <AdminSidebar />
+      {/* Main content - add top padding on mobile for fixed header */}
+      <div className="flex-1 pt-14 lg:pt-0">
+        {children}
+      </div>
     </div>
   );
 }
