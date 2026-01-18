@@ -82,7 +82,7 @@ services:
     image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.10.3}
     restart: unless-stopped
     command: worker
-    user: root
+    user: "1000:1000"
     env_file:
       - .env
     environment:
@@ -92,7 +92,8 @@ services:
       AUTHENTIK_POSTGRESQL__USER: ${POSTGRES__USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # WARNING: docker.sock provides ROOT access to host - remove if not needed!
+      # - /var/run/docker.sock:/var/run/docker.sock
       - ./authentik/media:/media
       - ./authentik/certs:/certs
       - ./authentik/custom-templates:/templates
