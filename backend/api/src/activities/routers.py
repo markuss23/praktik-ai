@@ -1,55 +1,59 @@
 from fastapi import APIRouter
 from api.src.activities.controllers import (
-    create_activity,
-    get_activities,
-    get_activity,
-    update_activity,
+    update_learn_block,
+    update_practice,
+    update_practice_question,
+    update_practice_option,
+    update_question_keyword,
 )
-from api.src.activities.schemas import ActivityCreate, Activity
-from api.src.common.annotations import (
-    INCLUDE_INACTIVE_ANNOTATION,
-    TEXT_SEARCH_ANNOTATION,
+from api.src.activities.schemas import (
+    LearnBlock,
+    LearnBlockUpdate,
+    Practice,
+    PracticeUpdate,
+    PracticeQuestion,
+    PracticeQuestionUpdate,
+    PracticeOption,
+    PracticeOptionUpdate,
+    QuestionKeyword,
+    QuestionKeywordUpdate,
 )
 
 from api.database import SessionSqlSessionDependency
-from api.enums import ActivityKind
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 
 
-@router.get("", operation_id="list_activities")
-async def list_activities(
-    db: SessionSqlSessionDependency,
-    include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
-    text_search: TEXT_SEARCH_ANNOTATION = None,
-    module_id: int | None = None,
-    kind: ActivityKind | None = None,
-) -> list[Activity]:
-    return get_activities(
-        db,
-        include_inactive=include_inactive,
-        text_search=text_search,
-        module_id=module_id,
-        kind=kind,
-    )
+@router.put("/learn-blocks/{learn_id}", operation_id="update_learn_block")
+async def endp_update_learn_block(
+    learn_id: int, learn_block: LearnBlockUpdate, db: SessionSqlSessionDependency
+) -> LearnBlock:
+    return update_learn_block(db, learn_id, learn_block)
 
 
-@router.post("", operation_id="create_activity")
-async def endp_create_activity(
-    activity: ActivityCreate, db: SessionSqlSessionDependency
-) -> Activity:
-    return create_activity(db, activity)
+@router.put("/practices/{practice_id}", operation_id="update_practice")
+async def endp_update_practice(
+    practice_id: int, practice: PracticeUpdate, db: SessionSqlSessionDependency
+) -> Practice:
+    return update_practice(db, practice_id, practice)
 
 
-@router.get("/{activity_id}", operation_id="get_activity")
-async def endp_get_activity(
-    activity_id: int, db: SessionSqlSessionDependency
-) -> Activity:
-    return get_activity(db, activity_id)
+@router.put("/practice-questions/{question_id}", operation_id="update_practice_question")
+async def endp_update_practice_question(
+    question_id: int, question: PracticeQuestionUpdate, db: SessionSqlSessionDependency
+) -> PracticeQuestion:
+    return update_practice_question(db, question_id, question)
 
 
-@router.put("/{activity_id}", operation_id="update_activity")
-async def endp_update_activity(
-    activity_id: int, activity: ActivityCreate, db: SessionSqlSessionDependency
-) -> Activity:
-    return update_activity(db, activity_id, activity)
+@router.put("/practice-options/{option_id}", operation_id="update_practice_option")
+async def endp_update_practice_option(
+    option_id: int, option: PracticeOptionUpdate, db: SessionSqlSessionDependency
+) -> PracticeOption:
+    return update_practice_option(db, option_id, option)
+
+
+@router.put("/question-keywords/{keyword_id}", operation_id="update_question_keyword")
+async def endp_update_question_keyword(
+    keyword_id: int, keyword: QuestionKeywordUpdate, db: SessionSqlSessionDependency
+) -> QuestionKeyword:
+    return update_question_keyword(db, keyword_id, keyword)

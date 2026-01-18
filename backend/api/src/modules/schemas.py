@@ -16,7 +16,8 @@ class ModuleCreate(ModuleBase):
 
 
 class ModuleUpdate(ModuleBase):
-    is_active: bool = True
+    # is_active: bool = True
+    pass
 
 
 class Module(ModuleBase):
