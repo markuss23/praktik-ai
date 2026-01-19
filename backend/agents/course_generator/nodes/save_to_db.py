@@ -52,43 +52,34 @@ def save_to_db_node(state: AgentState) -> AgentState:
             )
             db.add(db_learn_block)
 
-        # Uložení practices
-        for pr in module.practices:
-            db_practice = models.Practice(
+        # Uložení practice questions přímo do modulu
+        for q in module.practice_questions:
+            db_question = models.PracticeQuestion(
                 module_id=db_module.module_id,
-                position=pr.position,
+                question_type=q.question_type.value,
+                question=q.question,
+                position=q.position,
+                correct_answer=q.correct_answer if q.question_type.value == "closed" else None,
+                example_answer=q.example_answer if q.question_type.value == "open" else None,
             )
-            db.add(db_practice)
-            db.flush()  # Získání practice_id před přidáním questions
+            db.add(db_question)
+            db.flush()  # Získání question_id před přidáním options/keywords
 
-            # Uložení otázek
-            for q in pr.questions:
-                db_question = models.PracticeQuestion(
-                    practice_id=db_practice.practice_id,
-                    question_type=q.question_type.value,
-                    question=q.question,
-                    position=q.position,
-                    correct_answer=q.correct_answer if q.question_type.value == "closed" else None,
-                    example_answer=q.example_answer if q.question_type.value == "open" else None,
-                )
-                db.add(db_question)
-                db.flush()  # Získání question_id před přidáním options/keywords
-
-                if q.question_type.value == "closed":
-                    for opt in q.closed_options:
-                        db_option = models.PracticeOption(
-                            question_id=db_question.question_id,
-                            text=opt.text,
-                            position=opt.position,
-                        )
-                        db.add(db_option)
-                elif q.question_type.value == "open":
-                    for kw in q.open_keywords:
-                        db_keyword = models.QuestionKeyword(
-                            question_id=db_question.question_id,
-                            keyword=kw.keyword,
-                        )
-                        db.add(db_keyword)
+            if q.question_type.value == "closed":
+                for opt in q.closed_options:
+                    db_option = models.PracticeOption(
+                        question_id=db_question.question_id,
+                        text=opt.text,
+                        position=opt.position,
+                    )
+                    db.add(db_option)
+            elif q.question_type.value == "open":
+                for kw in q.open_keywords:
+                    db_keyword = models.QuestionKeyword(
+                        question_id=db_question.question_id,
+                        keyword=kw.keyword,
+                    )
+                    db.add(db_keyword)
 
     db.commit()
 

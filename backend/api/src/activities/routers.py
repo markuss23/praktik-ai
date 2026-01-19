@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 from api.src.activities.controllers import (
     update_learn_block,
-    update_practice,
     update_practice_question,
     update_practice_option,
     update_question_keyword,
@@ -9,8 +8,6 @@ from api.src.activities.controllers import (
 from api.src.activities.schemas import (
     LearnBlock,
     LearnBlockUpdate,
-    Practice,
-    PracticeUpdate,
     PracticeQuestion,
     PracticeQuestionUpdate,
     PracticeOption,
@@ -29,13 +26,6 @@ async def endp_update_learn_block(
     learn_id: int, learn_block: LearnBlockUpdate, db: SessionSqlSessionDependency
 ) -> LearnBlock:
     return update_learn_block(db, learn_id, learn_block)
-
-
-@router.put("/practices/{practice_id}", operation_id="update_practice")
-async def endp_update_practice(
-    practice_id: int, practice: PracticeUpdate, db: SessionSqlSessionDependency
-) -> Practice:
-    return update_practice(db, practice_id, practice)
 
 
 @router.put("/practice-questions/{question_id}", operation_id="update_practice_question")

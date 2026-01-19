@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import Field
 from api.src.common.schemas import ORMModel
-from api.src.activities.schemas import LearnBlock, Practice
+from api.src.activities.schemas import LearnBlock, PracticeQuestion
 
 
 class ModuleBase(ORMModel):
@@ -28,4 +28,4 @@ class Module(ModuleBase):
     updated_at: datetime
 
     learn_blocks: list[LearnBlock] = []
-    practices: list[Practice] = []
+    practice_questions: list[PracticeQuestion] = []

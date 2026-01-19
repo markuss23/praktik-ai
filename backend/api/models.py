@@ -193,12 +193,12 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         order_by="LearnBlock.position",
     )
 
-    practices: Mapped[list[Practice]] = relationship(
+    practice_questions: Mapped[list[PracticeQuestion]] = relationship(
         back_populates="module",
-        order_by="Practice.position",
+        order_by="PracticeQuestion.position",
     )
 
-    _soft_delete_cascade = ["learn_blocks", "practices"]
+    _soft_delete_cascade = ["learn_blocks", "practice_questions"]
 
 
 class CourseFile(TimestampMixin, SoftDeleteMixin, Base):
@@ -278,47 +278,17 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
     module: Mapped[Module] = relationship(back_populates="learn_blocks")
 
 
-class Practice(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice"
+class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "practice_question"
     __table_args__ = (
         Index(
-            "uq_practice_module_position_active",
+            "uq_question_module_position_active",
             "module_id",
             "position",
             unique=True,
             postgresql_where=text("is_active"),
         ),
-        Index("ix_practice_module_id", "module_id"),
-    )
-
-    practice_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    position: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    module: Mapped[Module] = relationship(back_populates="practices")
-    questions: Mapped[list[PracticeQuestion]] = relationship(
-        back_populates="practice",
-        order_by="PracticeQuestion.position",
-    )
-
-    _soft_delete_cascade = ["questions"]
-
-
-class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice_question"
-    __table_args__ = (
-        Index(
-            "uq_question_practice_position_active",
-            "practice_id",
-            "position",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_question_practice_id", "practice_id"),
+        Index("ix_question_module_id", "module_id"),
         CheckConstraint(
             """
             (
@@ -339,8 +309,8 @@ class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
     question_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
     )
-    practice_id: Mapped[int] = mapped_column(
-        ForeignKey("practice.practice_id"), nullable=False
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -353,7 +323,7 @@ class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
     correct_answer: Mapped[str | None] = mapped_column(String(255))  # jen pro closed
     example_answer: Mapped[str | None] = mapped_column(Text)  # jen pro open (volitelně)
 
-    practice: Mapped[Practice] = relationship(back_populates="questions")
+    module: Mapped[Module] = relationship(back_populates="practice_questions")
 
     closed_options: Mapped[list[PracticeOption]] = relationship(
         back_populates="question",

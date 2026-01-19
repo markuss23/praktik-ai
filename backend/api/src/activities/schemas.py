@@ -70,19 +70,5 @@ class PracticeQuestionUpdate(ORMModel):
 
 class PracticeQuestion(PracticeQuestionBase):
     question_id: int
-    practice_id: int
-
-
-class PracticeBase(ORMModel):
-    position: int
-
-
-class PracticeUpdate(ORMModel):
-    position: int
-
-
-class Practice(PracticeBase):
-    practice_id: int
     module_id: int
 
-    questions: list[PracticeQuestion] = []

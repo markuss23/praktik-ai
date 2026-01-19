@@ -42,9 +42,9 @@ Pro každý modul ({modules_count}):
 - learn_blocks: Seznam učebních bloků, kde každý blok má:
   * position: Pořadí bloku (začíná od 1)
   * content: Kompletní text látky k naučení (detailní vysvětlení tématu v markdown formátu)
-- practices: Seznam cvičení, kde každé cvičení má:
+- practice_questions: Seznam cvičení (pro zpětnou kompatibilitu s generátorem), kde každé cvičení obsahuje:
   * position: Pořadí cvičení (začíná od 1)
-  * questions: Seznam otázek (2 uzavřené + 1 otevřená)
+  * questions: Seznam otázek (2 uzavřené + 1 otevřená) - tyto otázky budou uloženy přímo do modulu
 
 INSTRUKCE - STRUKTURA OTÁZEK:
 Pro každou otázku specifikuj:

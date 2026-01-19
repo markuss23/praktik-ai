@@ -6,8 +6,6 @@ from api import models, enums
 from api.src.activities.schemas import (
     LearnBlock,
     LearnBlockUpdate,
-    Practice,
-    PracticeUpdate,
     PracticeQuestion,
     PracticeQuestionUpdate,
     PracticeOption,
@@ -82,71 +80,6 @@ def update_learn_block(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def update_practice(
-    db: Session, practice_id: int, practice_data: PracticeUpdate
-) -> Practice:
-    """
-    Upraví Practice s validací:
-    - lze editovat pouze pokud je aktivní
-    - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - position musí být unikátní v rámci modulu
-    """
-    try:
-        # načti practice
-        stm: Select[tuple[models.Practice]] = select(models.Practice).where(
-            models.Practice.practice_id == practice_id,
-            models.Practice.is_active.is_(True),
-        )
-        practice: models.Practice | None = db.execute(stm).scalars().first()
-
-        if practice is None:
-            raise HTTPException(status_code=404, detail="Practice nenalezena nebo není aktivní")
-
-        # kontrola stavu kurzu
-        module = practice.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="Practice lze editovat pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti position (pokud se mění)
-        if practice_data.position != practice.position:
-            exists_stm: Select[tuple[models.Practice]] = select(models.Practice).where(
-                and_(
-                    models.Practice.module_id == practice.module_id,
-                    models.Practice.position == practice_data.position,
-                    models.Practice.is_active.is_(True),
-                    models.Practice.practice_id != practice_id,
-                )
-            )
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Practice s touto pozicí pro daný modul již existuje.",
-                )
-
-        # update
-        stm = (
-            update(models.Practice)
-            .where(models.Practice.practice_id == practice_id)
-            .values(**practice_data.model_dump())
-        )
-        db.execute(stm)
-        db.commit()
-        db.refresh(practice)
-
-        return Practice.model_validate(practice)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"update_practice error: {e}")
-        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
-
-
 def update_practice_question(
     db: Session, question_id: int, question_data: PracticeQuestionUpdate
 ) -> PracticeQuestion:
@@ -154,7 +87,7 @@ def update_practice_question(
     Upraví PracticeQuestion s validací:
     - lze editovat pouze pokud je aktivní
     - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - position musí být unikátní v rámci practice
+    - position musí být unikátní v rámci modulu
     """
     try:
         # načti question
@@ -168,8 +101,7 @@ def update_practice_question(
             raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
 
         # kontrola stavu kurzu
-        practice = question.practice
-        module = practice.module
+        module = question.module
         course = module.course
 
         if course.status != enums.Status.generated:
@@ -182,7 +114,7 @@ def update_practice_question(
         if question_data.position != question.position:
             exists_stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
                 and_(
-                    models.PracticeQuestion.practice_id == question.practice_id,
+                    models.PracticeQuestion.module_id == question.module_id,
                     models.PracticeQuestion.position == question_data.position,
                     models.PracticeQuestion.is_active.is_(True),
                     models.PracticeQuestion.question_id != question_id,
@@ -191,7 +123,7 @@ def update_practice_question(
             if db.execute(exists_stm).first() is not None:
                 raise HTTPException(
                     status_code=400,
-                    detail="PracticeQuestion s touto pozicí pro danou practice již existuje.",
+                    detail="PracticeQuestion s touto pozicí pro daný modul již existuje.",
                 )
 
         # update
@@ -235,8 +167,7 @@ def update_practice_option(
 
         # kontrola stavu kurzu
         question = option.question
-        practice = question.practice
-        module = practice.module
+        module = question.module
         course = module.course
 
         if course.status != enums.Status.generated:
@@ -302,8 +233,7 @@ def update_question_keyword(
 
         # kontrola stavu kurzu
         question = keyword.question
-        practice = question.practice
-        module = practice.module
+        module = question.module
         course = module.course
 
         if course.status != enums.Status.generated:
