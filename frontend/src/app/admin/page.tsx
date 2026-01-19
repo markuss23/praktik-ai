@@ -1,6 +1,6 @@
 'use client';
 
-import { getCourses, getModules, toggleCoursePublish } from "@/lib/api-client";
+import { getCourses, getModules } from "@/lib/api-client";
 import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect } from "react";
@@ -133,13 +133,9 @@ export default function AdminPage() {
   };
 
   const togglePublish = async (course: Course) => {
-    try {
-      await toggleCoursePublish(course.courseId);
-      await loadCoursesList();
-    } catch (error) {
-      console.error('Failed to toggle publish:', error);
-      alert('Nepodařilo se změnit stav publikování');
-    }
+    // TODO: Implement publish toggle via updateCourse API
+    console.warn('Publish toggle not implemented');
+    alert('Změna stavu publikování není momentálně implementována');
   };
 
   const toggleModuleActive = async (module: Module) => {

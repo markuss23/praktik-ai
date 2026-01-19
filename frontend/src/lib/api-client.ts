@@ -89,17 +89,6 @@ export async function deleteCourse(courseId: number) {
   return coursesApi.deleteCourse({ courseId });
 }
 
-// Publish API functions
-export async function toggleCoursePublish(courseId: number) {
-  const response = await fetch(`${API_BASE_URL}/courses/${courseId}/publish`, {
-    method: 'POST',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to toggle publish');
-  }
-  return response.json();
-}
-
 // AI Agent API functions
 export async function generateCourseWithAI(courseId: number) {
   return agentsApi.generateCourse({ courseId });
