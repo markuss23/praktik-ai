@@ -16,7 +16,6 @@ class Status(enum.StrEnum):
     draft: str = "draft"
     generated: str = "generated"
     approved: str = "approved"
-    published: str = "published"
     archived: str = "archived"
 
 

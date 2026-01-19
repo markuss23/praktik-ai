@@ -152,8 +152,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]
-    
-    
+
+
 class Module(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "module"
     __table_args__ = (

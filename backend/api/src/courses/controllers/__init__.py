@@ -16,6 +16,8 @@ from api.src.courses.controllers.read import (
 )
 from api.src.courses.controllers.update import (
     update_course,
+    update_course_status,
+    update_course_published,
 )
 from api.src.courses.controllers.delete import (
     delete_course,
@@ -35,6 +37,8 @@ __all__ = [
     "get_course_links",
     # Update operations
     "update_course",
+    "update_course_status",
+    "update_course_published",
     # Delete operations
     "delete_course",
     "delete_course_file",

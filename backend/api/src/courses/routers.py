@@ -1,3 +1,4 @@
+from typing import Literal
 from fastapi import APIRouter, UploadFile, File
 
 from api.src.common.annotations import (
@@ -23,8 +24,11 @@ from api.src.courses.controllers import (
     create_course_link,
     get_course_links,
     delete_course_link,
+    update_course_status,
+    update_course_published,
 )
 from api.database import SessionSqlSessionDependency
+from api.enums import Status
 
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -62,6 +66,24 @@ async def endp_update_course(
     course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency
 ) -> Course:
     return update_course(db, course_id, course)
+
+
+@router.put("/{course_id}/status", operation_id="update_course_status")
+async def endp_update_course_status(
+    course_id: int,
+    status: Literal[Status.archived, Status.approved],
+    db: SessionSqlSessionDependency,
+) -> Course:
+    return update_course_status(db, course_id, status)
+
+
+@router.put("/{course_id}/published", operation_id="update_course_published")
+async def endp_update_course_published(
+    course_id: int,
+    is_published: bool,
+    db: SessionSqlSessionDependency,
+) -> Course:
+    return update_course_published(db, course_id, is_published)
 
 
 @router.delete("/{course_id}", operation_id="delete_course", status_code=204)

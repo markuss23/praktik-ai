@@ -15,8 +15,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
     """Aktualizuje existující kurz"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(
-            models.Course.course_id == course_id,
-            models.Course.is_active.is_(True)
+            models.Course.course_id == course_id, models.Course.is_active.is_(True)
         )
 
         course: models.Course | None = db.execute(stm).scalars().first()
@@ -40,4 +39,74 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
         raise
     except Exception as e:
         print(f"update_course error: {e}")
+        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
+    
+    
+def update_course_status(db: Session, course_id: int, status: Status) -> Course:
+    """Aktualizuje status kurzu"""
+    try:
+        stm: Select[tuple[models.Course]] = select(models.Course).where(
+            models.Course.course_id == course_id, models.Course.is_active.is_(True)
+        )
+
+        course: models.Course | None = db.execute(stm).scalars().first()
+
+        if course is None:
+            raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        if course.status == "generated" and status == "approved":
+            pass
+        elif course.status == "approved" and status == "archived":
+            pass
+        else:
+            raise HTTPException(status_code=400, detail="Neplatná změna statusu kurzu")
+    
+        stm = (
+            update(models.Course)
+            .where(models.Course.course_id == course_id)
+            .values(status=status)
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(course)
+
+        return Course.model_validate(course)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_course_status error: {e}")
+        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
+    
+    
+def update_course_published(db: Session, course_id: int, is_published: bool) -> Course:
+    """Aktualizuje publikování kurzu"""
+    try:
+        stm: Select[tuple[models.Course]] = select(models.Course).where(
+            models.Course.course_id == course_id, models.Course.is_active.is_(True)
+        )
+
+        course: models.Course | None = db.execute(stm).scalars().first()
+
+        if course is None:
+            raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        if course.status != Status.approved or course.status != Status.archived:
+            raise HTTPException(
+                status_code=400, detail="Nelze publikovat kurz, který není schválený"
+            )
+
+        stm = (
+            update(models.Course)
+            .where(models.Course.course_id == course_id)
+            .values(is_published=is_published)
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(course)
+
+        return Course.model_validate(course)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_course_published error: {e}")
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e

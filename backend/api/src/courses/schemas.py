@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
@@ -16,7 +16,7 @@ class CourseCreate(CourseBase):
 
 
 class CourseUpdate(CourseBase):
-    is_published: bool | None = None
+    pass
 
 
 class CourseFile(ORMModel):
