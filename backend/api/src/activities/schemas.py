@@ -1,33 +1,15 @@
 from pydantic import Field
 
 from api.src.common.schemas import ORMModel
-from api.enums import ActivityKind, QuestionType
-
-
-class ActivityBase(ORMModel):
-    title: str = Field(min_length=1, max_length=200)
-    content: dict | None = None
-    order: int = Field(
-        default=1, ge=1, description="Pořadí aktivit v rámci modulu (>= 1)"
-    )
-    kind: ActivityKind = Field(default=ActivityKind.practice)
-
-
-class ActivityCreate(ActivityBase):
-    module_id: int = Field(description="FK na module.module_id")
-
-
-class ActivityUpdate(ActivityBase):
-    is_active: bool = True
-
-
-class Activity(ActivityBase):
-    activity_id: int
-    module_id: int
-    is_active: bool
+from api.enums import QuestionType
 
 
 class LearnBlockBase(ORMModel):
+    position: int
+    content: str
+
+
+class LearnBlockUpdate(ORMModel):
     position: int
     content: str
 
@@ -42,12 +24,21 @@ class PracticeOptionBase(ORMModel):
     text: str
 
 
+class PracticeOptionUpdate(ORMModel):
+    position: int
+    text: str
+
+
 class PracticeOption(PracticeOptionBase):
     option_id: int
     question_id: int
 
 
 class QuestionKeywordBase(ORMModel):
+    keyword: str
+
+
+class QuestionKeywordUpdate(ORMModel):
     keyword: str
 
 
@@ -68,12 +59,25 @@ class PracticeQuestionBase(ORMModel):
     open_keywords: list[QuestionKeyword] = []
 
 
+class PracticeQuestionUpdate(ORMModel):
+    position: int
+    question_type: QuestionType
+    question: str
+
+    correct_answer: str | None = None
+    example_answer: str | None = None
+
+
 class PracticeQuestion(PracticeQuestionBase):
     question_id: int
     practice_id: int
 
 
 class PracticeBase(ORMModel):
+    position: int
+
+
+class PracticeUpdate(ORMModel):
     position: int
 
 

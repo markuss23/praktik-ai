@@ -1,150 +1,347 @@
-from collections.abc import Sequence
 from fastapi import HTTPException
 from sqlalchemy import Select, select, update, and_
 from sqlalchemy.orm import Session
 
-from api import models
-from api.src.activities.schemas import ActivityCreate, Activity
-from api.enums import ActivityKind
+from api import models, enums
+from api.src.activities.schemas import (
+    LearnBlock,
+    LearnBlockUpdate,
+    Practice,
+    PracticeUpdate,
+    PracticeQuestion,
+    PracticeQuestionUpdate,
+    PracticeOption,
+    PracticeOptionUpdate,
+    QuestionKeyword,
+    QuestionKeywordUpdate,
+)
 
 
-def get_activities(
-    db: Session,
-    include_inactive: bool = False,
-    text_search: str | None = None,
-    module_id: int | None = None,
-    kind: ActivityKind | None = None,
-) -> list[Activity]:
+def update_learn_block(
+    db: Session, learn_id: int, learn_data: LearnBlockUpdate
+) -> LearnBlock:
     """
-    Vrátí seznam aktivit s volitelnými filtry:
-    - include_inactive: zahrnout i neaktivní (jinak jen aktivní)
-    - text_search: fulltext přes title
-    - module_id: aktivity jen pro daný modul
-    - kind: aktivity jen pro daný typ
-    """
-
-    try:
-        stm: Select[tuple[models.Activity]] = select(models.Activity)
-
-        if not include_inactive:
-            stm = stm.where(models.Activity.is_active.is_(True))
-
-        if module_id is not None:
-            stm = stm.where(models.Activity.module_id == module_id)
-
-        if kind is not None:
-            stm = stm.where(models.Activity.kind == kind)
-
-        if text_search:
-            stm = stm.where(models.Activity.title.ilike(f"%{text_search}%"))
-
-        stm = stm.order_by(models.Activity.module_id, models.Activity.order)
-
-        rows: Sequence[models.Activity] = db.execute(stm).scalars().all()
-        return [Activity.model_validate(a) for a in rows]
-
-    except Exception as e:
-        print(f"get_activity error: {e}")
-        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
-
-
-def create_activity(db: Session, activity_data: ActivityCreate) -> Activity:
-    """
-    Vytvoří aktivitu
+    Upraví LearnBlock s validací:
+    - lze editovat pouze pokud je aktivní
+    - lze editovat pouze pokud je kurz ve stavu 'generated'
+    - position musí být unikátní v rámci modulu
     """
     try:
-        if db.execute(
-            select(models.Activity).where(models.Activity.title == activity_data.title)
-        ).first():
+        # načti learn block
+        stm: Select[tuple[models.LearnBlock]] = select(models.LearnBlock).where(
+            models.LearnBlock.learn_id == learn_id,
+            models.LearnBlock.is_active.is_(True),
+        )
+        learn_block: models.LearnBlock | None = db.execute(stm).scalars().first()
+
+        if learn_block is None:
+            raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
+
+        # kontrola stavu kurzu
+        module = learn_block.module
+        course = module.course
+
+        if course.status != enums.Status.generated:
             raise HTTPException(
-                status_code=400, detail="Aktivita s tímto názvem již existuje"
+                status_code=400,
+                detail="LearnBlock lze editovat pouze pokud je kurz ve stavu 'generated'.",
             )
 
-        if db.execute(
-            select(models.Activity).where(
+        # kontrola unikátnosti position (pokud se mění)
+        if learn_data.position != learn_block.position:
+            exists_stm: Select[tuple[models.LearnBlock]] = select(models.LearnBlock).where(
                 and_(
-                    models.Activity.module_id == activity_data.module_id,
-                    models.Activity.order == activity_data.order,
+                    models.LearnBlock.module_id == learn_block.module_id,
+                    models.LearnBlock.position == learn_data.position,
+                    models.LearnBlock.is_active.is_(True),
+                    models.LearnBlock.learn_id != learn_id,
                 )
             )
-        ).first():
-            raise HTTPException(
-                status_code=400, detail="Aktivita s tímto poradovým číslom již existuje"
-            )
-        if (
-            db.execute(
-                select(models.Module).where(
-                    models.Module.module_id == activity_data.module_id
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="LearnBlock s touto pozicí pro daný modul již existuje.",
                 )
-            ).first()
-            is None
-        ):
-            raise HTTPException(status_code=404, detail="Modul neexistuje")
 
-        activity = models.Activity(**activity_data.model_dump())
-
-        activity.is_active = True
-
-        db.add(activity)
-        db.commit()
-        db.refresh(activity)
-
-        return activity
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"create_activity error: {e}")
-        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
-
-
-def get_activity(db: Session, activity_id: int) -> Activity:
-    """
-    Vrátí aktivitu podle activity_id
-    """
-    try:
-        stm: Select[tuple[models.Activity]] = select(models.Activity).where(
-            models.Activity.activity_id == activity_id
-        )
-
-        result: models.Activity | None = db.execute(stm).scalars().first()
-
-        if result is None:
-            raise HTTPException(status_code=404, detail="Activity not found")
-
-        return Activity.model_validate(result)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"get_activity error: {e}")
-        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
-
-
-def update_activity(
-    db: Session, activity_id: int, activity_data: ActivityCreate
-) -> Activity:
-    try:
-        stm: Select[tuple[models.Activity]] = select(models.Activity).where(
-            models.Activity.activity_id == activity_id
-        )
-
-        activity: models.Activity | None = db.execute(stm).scalars().first()
-
-        if activity is None:
-            raise HTTPException(status_code=404, detail="Activity not found")
-
+        # update
         stm = (
-            update(models.Activity)
-            .where(models.Activity.activity_id == activity_id)
-            .values(**activity_data.model_dump())
+            update(models.LearnBlock)
+            .where(models.LearnBlock.learn_id == learn_id)
+            .values(**learn_data.model_dump())
         )
         db.execute(stm)
         db.commit()
-        db.refresh(activity)
+        db.refresh(learn_block)
 
-        return Activity.model_validate(activity)
+        return LearnBlock.model_validate(learn_block)
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"update_activity error: {e}")
-        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
+        print(f"update_learn_block error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def update_practice(
+    db: Session, practice_id: int, practice_data: PracticeUpdate
+) -> Practice:
+    """
+    Upraví Practice s validací:
+    - lze editovat pouze pokud je aktivní
+    - lze editovat pouze pokud je kurz ve stavu 'generated'
+    - position musí být unikátní v rámci modulu
+    """
+    try:
+        # načti practice
+        stm: Select[tuple[models.Practice]] = select(models.Practice).where(
+            models.Practice.practice_id == practice_id,
+            models.Practice.is_active.is_(True),
+        )
+        practice: models.Practice | None = db.execute(stm).scalars().first()
+
+        if practice is None:
+            raise HTTPException(status_code=404, detail="Practice nenalezena nebo není aktivní")
+
+        # kontrola stavu kurzu
+        module = practice.module
+        course = module.course
+
+        if course.status != enums.Status.generated:
+            raise HTTPException(
+                status_code=400,
+                detail="Practice lze editovat pouze pokud je kurz ve stavu 'generated'.",
+            )
+
+        # kontrola unikátnosti position (pokud se mění)
+        if practice_data.position != practice.position:
+            exists_stm: Select[tuple[models.Practice]] = select(models.Practice).where(
+                and_(
+                    models.Practice.module_id == practice.module_id,
+                    models.Practice.position == practice_data.position,
+                    models.Practice.is_active.is_(True),
+                    models.Practice.practice_id != practice_id,
+                )
+            )
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Practice s touto pozicí pro daný modul již existuje.",
+                )
+
+        # update
+        stm = (
+            update(models.Practice)
+            .where(models.Practice.practice_id == practice_id)
+            .values(**practice_data.model_dump())
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(practice)
+
+        return Practice.model_validate(practice)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_practice error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def update_practice_question(
+    db: Session, question_id: int, question_data: PracticeQuestionUpdate
+) -> PracticeQuestion:
+    """
+    Upraví PracticeQuestion s validací:
+    - lze editovat pouze pokud je aktivní
+    - lze editovat pouze pokud je kurz ve stavu 'generated'
+    - position musí být unikátní v rámci practice
+    """
+    try:
+        # načti question
+        stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
+            models.PracticeQuestion.question_id == question_id,
+            models.PracticeQuestion.is_active.is_(True),
+        )
+        question: models.PracticeQuestion | None = db.execute(stm).scalars().first()
+
+        if question is None:
+            raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+
+        # kontrola stavu kurzu
+        practice = question.practice
+        module = practice.module
+        course = module.course
+
+        if course.status != enums.Status.generated:
+            raise HTTPException(
+                status_code=400,
+                detail="PracticeQuestion lze editovat pouze pokud je kurz ve stavu 'generated'.",
+            )
+
+        # kontrola unikátnosti position (pokud se mění)
+        if question_data.position != question.position:
+            exists_stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
+                and_(
+                    models.PracticeQuestion.practice_id == question.practice_id,
+                    models.PracticeQuestion.position == question_data.position,
+                    models.PracticeQuestion.is_active.is_(True),
+                    models.PracticeQuestion.question_id != question_id,
+                )
+            )
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="PracticeQuestion s touto pozicí pro danou practice již existuje.",
+                )
+
+        # update
+        stm = (
+            update(models.PracticeQuestion)
+            .where(models.PracticeQuestion.question_id == question_id)
+            .values(**question_data.model_dump())
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(question)
+
+        return PracticeQuestion.model_validate(question)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_practice_question error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def update_practice_option(
+    db: Session, option_id: int, option_data: PracticeOptionUpdate
+) -> PracticeOption:
+    """
+    Upraví PracticeOption s validací:
+    - lze editovat pouze pokud je aktivní
+    - lze editovat pouze pokud je kurz ve stavu 'generated'
+    - position musí být unikátní v rámci question
+    """
+    try:
+        # načti option
+        stm: Select[tuple[models.PracticeOption]] = select(models.PracticeOption).where(
+            models.PracticeOption.option_id == option_id,
+            models.PracticeOption.is_active.is_(True),
+        )
+        option: models.PracticeOption | None = db.execute(stm).scalars().first()
+
+        if option is None:
+            raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
+
+        # kontrola stavu kurzu
+        question = option.question
+        practice = question.practice
+        module = practice.module
+        course = module.course
+
+        if course.status != enums.Status.generated:
+            raise HTTPException(
+                status_code=400,
+                detail="PracticeOption lze editovat pouze pokud je kurz ve stavu 'generated'.",
+            )
+
+        # kontrola unikátnosti position (pokud se mění)
+        if option_data.position != option.position:
+            exists_stm: Select[tuple[models.PracticeOption]] = select(models.PracticeOption).where(
+                and_(
+                    models.PracticeOption.question_id == option.question_id,
+                    models.PracticeOption.position == option_data.position,
+                    models.PracticeOption.is_active.is_(True),
+                    models.PracticeOption.option_id != option_id,
+                )
+            )
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="PracticeOption s touto pozicí pro danou question již existuje.",
+                )
+
+        # update
+        stm = (
+            update(models.PracticeOption)
+            .where(models.PracticeOption.option_id == option_id)
+            .values(**option_data.model_dump())
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(option)
+
+        return PracticeOption.model_validate(option)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_practice_option error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def update_question_keyword(
+    db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate
+) -> QuestionKeyword:
+    """
+    Upraví QuestionKeyword s validací:
+    - lze editovat pouze pokud je aktivní
+    - lze editovat pouze pokud je kurz ve stavu 'generated'
+    - keyword musí být unikátní v rámci question
+    """
+    try:
+        # načti keyword
+        stm: Select[tuple[models.QuestionKeyword]] = select(models.QuestionKeyword).where(
+            models.QuestionKeyword.keyword_id == keyword_id,
+            models.QuestionKeyword.is_active.is_(True),
+        )
+        keyword: models.QuestionKeyword | None = db.execute(stm).scalars().first()
+
+        if keyword is None:
+            raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
+
+        # kontrola stavu kurzu
+        question = keyword.question
+        practice = question.practice
+        module = practice.module
+        course = module.course
+
+        if course.status != enums.Status.generated:
+            raise HTTPException(
+                status_code=400,
+                detail="QuestionKeyword lze editovat pouze pokud je kurz ve stavu 'generated'.",
+            )
+
+        # kontrola unikátnosti keyword (pokud se mění)
+        if keyword_data.keyword != keyword.keyword:
+            exists_stm: Select[tuple[models.QuestionKeyword]] = select(models.QuestionKeyword).where(
+                and_(
+                    models.QuestionKeyword.question_id == keyword.question_id,
+                    models.QuestionKeyword.keyword == keyword_data.keyword,
+                    models.QuestionKeyword.is_active.is_(True),
+                    models.QuestionKeyword.keyword_id != keyword_id,
+                )
+            )
+            if db.execute(exists_stm).first() is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="QuestionKeyword s tímto názvem pro danou question již existuje.",
+                )
+
+        # update
+        stm = (
+            update(models.QuestionKeyword)
+            .where(models.QuestionKeyword.keyword_id == keyword_id)
+            .values(**keyword_data.model_dump())
+        )
+        db.execute(stm)
+        db.commit()
+        db.refresh(keyword)
+
+        return QuestionKeyword.model_validate(keyword)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_question_keyword error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e

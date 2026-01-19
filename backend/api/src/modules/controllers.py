@@ -101,7 +101,7 @@ def get_module(db: Session, module_id: int) -> Module:
         result: models.Module | None = db.execute(stm).scalars().first()
 
         if result is None:
-            raise HTTPException(status_code=404, detail="Module not found")
+            raise HTTPException(status_code=404, detail="Modul nenalezen")
 
         return Module.model_validate(result)
     except HTTPException:
@@ -118,13 +118,14 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
     """
     try:
         stm: Select[tuple[models.Module]] = select(models.Module).where(
-            models.Module.module_id == module_id
+            models.Module.module_id == module_id,
+            models.Module.is_active.is_(True),
         )
 
         module: models.Module | None = db.execute(stm).scalars().first()
 
         if module is None:
-            raise HTTPException(status_code=404, detail="Module not found")
+            raise HTTPException(status_code=404, detail="Modul nenalezen")
 
         # kontrola, zda je kurz ve stavu generated
         if module.course.status != enums.Status.generated:
