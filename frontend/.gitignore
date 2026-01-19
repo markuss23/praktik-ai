@@ -40,5 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# OpenAPI generated client (regenerate with: npm run generate:openapi)
+/src/api/
+
 # OpenAPI generated client (no versioing)
  /src/api/

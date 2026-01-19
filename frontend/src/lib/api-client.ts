@@ -62,16 +62,6 @@ export async function getModule(moduleId: number) {
   return modulesApi.getModule({ moduleId });
 }
 
-export async function createModule(data: {
-  title: string;
-  courseId: number;
-  order?: number;
-}) {
-  return modulesApi.createModule({
-    moduleCreate: data,
-  });
-}
-
 export async function updateModule(moduleId: number, data: {
   title: string;
   position?: number;
@@ -81,23 +71,6 @@ export async function updateModule(moduleId: number, data: {
     moduleId,
     moduleUpdate: data,
   });
-}
-
-// Activities API functions
-export async function getActivities(params?: {
-  includeInactive?: boolean;
-  textSearch?: string;
-  moduleId?: number;
-}) {
-  return activitiesApi.listActivities({
-    includeInactive: params?.includeInactive,
-    textSearch: params?.textSearch,
-    moduleId: params?.moduleId,
-  });
-}
-
-export async function getActivity(activityId: number) {
-  return activitiesApi.getActivity({ activityId });
 }
 
 // File upload API functions
@@ -114,5 +87,5 @@ export async function deleteCourseFile(courseId: number, fileId: number) {
 
 // AI Agent API functions
 export async function generateCourseWithAI(courseId: number) {
-  return agentsApi.generateCourseApiV1AgentsGenerateCoursePost({ courseId });
+  return agentsApi.generateCourse({ courseId });
 }
