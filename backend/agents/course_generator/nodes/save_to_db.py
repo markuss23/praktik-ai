@@ -23,11 +23,11 @@ def save_to_db_node(state: AgentState) -> AgentState:
     if generated_course is None:
         raise ValueError("generated course is not available in state")
 
-    # Označení kurzu jako vygenerovaný (ale ponecháme draft pro možnost editace)
+    # Označení kurzu jako vygenerovaný
     stmt: Update = (
         update(models.Course)
         .where(models.Course.course_id == course_id)
-        .values(status="draft", summary=summary)
+        .values(status="generated", summary=summary)
     )
 
     db.execute(stmt)

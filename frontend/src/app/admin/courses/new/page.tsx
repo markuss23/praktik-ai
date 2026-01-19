@@ -24,8 +24,8 @@ export default function NewCoursePage() {
     try {
       const course = await createCourse(formData);
       console.log('Course created:', course);
-      // Navigate to the course page with the course slug
-      router.push(`/courses/${slugify(course.title)}`);
+      // Navigate back to admin
+      router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create course');
     } finally {

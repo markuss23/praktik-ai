@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { createCourse, uploadCourseFile, generateCourseWithAI } from '@/lib/api-client';
+import { CoursePageHeader } from '@/components/admin';
 
 export default function AICreateCoursePage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function AICreateCoursePage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    moduleCount: 1,
+    moduleCount: 3,
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +47,7 @@ export default function AICreateCoursePage() {
         course = await createCourse({
           title: formData.title,
           description: formData.description || undefined,
+          modulesCount: formData.moduleCount,
         });
       } catch (createErr: unknown) {
         // Check if it's a 400 error (course already exists)
@@ -68,8 +70,8 @@ export default function AICreateCoursePage() {
       setStep('generating');
       await generateCourseWithAI(course.courseId);
 
-      // Redirect to course edit page
-      router.push(`/admin/courses/${course.courseId}/edit`);
+      // Redirect to course content creation page
+      router.push(`/admin/courses/${course.courseId}/content`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -109,35 +111,13 @@ export default function AICreateCoursePage() {
 
   return (
     <div className="flex-1">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                Kurzy / Překlad kurzů / Popis kurzu
-              </p>
-              <h1 className="text-xl sm:text-2xl font-bold text-black">Popis kurzu</h1>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Živý náhled kurzu
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
-              >
-                <ArrowRight size={16} />
-                <span>Uložit</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Header - buttons disabled via showButtons=false */}
+      <CoursePageHeader
+        breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
+        title="Popis kurzu"
+        onSave={handleSave}
+        showButtons={false}
+      />
 
       {/* Main Content */}
       <div className="p-4 sm:p-6 lg:p-8">

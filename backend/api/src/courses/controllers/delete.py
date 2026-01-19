@@ -18,7 +18,8 @@ def delete_course(db: Session, course_id: int) -> None:
     """
     try:
         stm = select(models.Course).where(
-            models.Course.course_id == course_id, models.Course
+            models.Course.course_id == course_id,
+            models.Course.is_active.is_(True)
         )
 
         course: models.Course | None = db.execute(stm).scalars().first()
@@ -27,11 +28,7 @@ def delete_course(db: Session, course_id: int) -> None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
         # Soft delete - nastavíme is_active na False
-        if course.status == Status.draft:
-            # Pokud je kurz ve stavu draft, můžeme ho smazat fyzicky
-            db.delete(course)
-        else:
-            course.soft_delete()
+        course.soft_delete()
         db.commit()
     except HTTPException:
         raise

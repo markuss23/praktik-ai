@@ -10,7 +10,6 @@ interface CourseModalProps {
     courseId: number | null;
     title: string;
     description: string;
-    isPublished: boolean;
   };
   loading: boolean;
   error: string;
@@ -77,19 +76,6 @@ export function CourseModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
               placeholder="Stručný popis kurzu..."
             />
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="course-published"
-              checked={formData.isPublished}
-              onChange={(e) => onChange({ ...formData, isPublished: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="course-published" className="ml-2 text-sm text-gray-700">
-              Publikovaný
-            </label>
           </div>
 
           <div className="flex gap-4 pt-4">

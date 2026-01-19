@@ -136,6 +136,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         Enum(Status, name="course_status"), nullable=False, default=Status.draft
     )
 
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     summary: Mapped[str | None] = mapped_column(Text)
 
     modules: Mapped[list[Module]] = relationship(

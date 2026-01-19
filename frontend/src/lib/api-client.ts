@@ -31,7 +31,7 @@ export async function getCourse(courseId: number) {
 export async function createCourse(data: {
   title: string;
   description?: string;
-  isPublished?: boolean;
+  modulesCount?: number;
 }) {
   return coursesApi.createCourse({
     courseCreate: data,
@@ -83,6 +83,21 @@ export async function uploadCourseFile(courseId: number, file: File) {
 
 export async function deleteCourseFile(courseId: number, fileId: number) {
   return coursesApi.deleteCourseFile({ courseId, fileId });
+}
+
+export async function deleteCourse(courseId: number) {
+  return coursesApi.deleteCourse({ courseId });
+}
+
+// Publish API functions
+export async function toggleCoursePublish(courseId: number) {
+  const response = await fetch(`${API_BASE_URL}/courses/${courseId}/publish`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to toggle publish');
+  }
+  return response.json();
 }
 
 // AI Agent API functions

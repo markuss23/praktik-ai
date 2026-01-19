@@ -17,6 +17,7 @@ from api.src.courses.controllers import (
     get_courses,
     get_course,
     update_course,
+    toggle_course_publish,
     delete_course,
     upload_course_file,
     delete_course_file,
@@ -67,6 +68,14 @@ async def endp_update_course(
 @router.delete("/{course_id}", operation_id="delete_course", status_code=204)
 async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency) -> None:
     delete_course(db, course_id)
+
+
+@router.post("/{course_id}/publish", operation_id="toggle_course_publish")
+async def endp_toggle_course_publish(
+    course_id: int, db: SessionSqlSessionDependency
+) -> Course:
+    """Přepne stav publikování kurzu"""
+    return toggle_course_publish(db, course_id)
 
 
 # ---------- File endpoints ----------

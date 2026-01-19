@@ -1,11 +1,11 @@
 'use client';
 
-import { getCourses, getModules } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration } from "@/api";
+import { getCourses, getModules, toggleCoursePublish } from "@/lib/api-client";
+import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Eye, Trash2, GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal } from "@/components";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 
@@ -39,7 +39,7 @@ export default function AdminPage() {
     moduleId: null as number | null,
     title: '',
     courseId: 0,
-    order: 1,
+    position: 1,
   });
 
   // Load expanded course from localStorage on mount
@@ -107,26 +107,9 @@ export default function AdminPage() {
   const handleDeleteModule = async () => {
     if (!moduleToDelete) return;
     
-    setDeleting(true);
-    try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const modulesApi = new ModulesApi(config);
-      await modulesApi.deleteModule({ moduleId: moduleToDelete });
-      
-      // Refresh modules for expanded course
-      if (expandedCourse) {
-        const modules = await getModules({ courseId: expandedCourse });
-        setCourseModules({ ...courseModules, [expandedCourse]: modules });
-      }
-      
-      setShowDeleteConfirm(false);
-      setModuleToDelete(null);
-    } catch (error) {
-      console.error('Failed to delete module:', error);
-      alert('Failed to delete module');
-    } finally {
-      setDeleting(false);
-    }
+    alert('Mazání modulů není momentálně podporováno');
+    setShowDeleteConfirm(false);
+    setModuleToDelete(null);
   };
 
   const toggleCourseExpand = async (courseId: number) => {
@@ -151,43 +134,21 @@ export default function AdminPage() {
 
   const togglePublish = async (course: Course) => {
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.updateCourse({
-        courseId: course.courseId,
-        courseUpdate: {
-          title: course.title,
-          description: course.description,
-          isPublished: !course.isPublished
-        }
-      });
-      
+      await toggleCoursePublish(course.courseId);
       await loadCoursesList();
     } catch (error) {
-      console.error('Failed to update course:', error);
-      alert('Failed to update course');
+      console.error('Failed to toggle publish:', error);
+      alert('Nepodařilo se změnit stav publikování');
     }
   };
 
-  const toggleModulePublish = async (module: any) => {
+  const toggleModuleActive = async (module: Module) => {
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const modulesApi = new ModulesApi(config);
-      await modulesApi.updateModule({
-        moduleId: module.moduleId,
-        moduleUpdate: {
-          title: module.title,
-          order: module.order,
-          isActive: module.isActive,
-          isPublished: !module.isPublished
-        }
-      });
-      
-      // Refresh modules for expanded course
-      if (expandedCourse) {
-        const modules = await getModules({ courseId: expandedCourse });
-        setCourseModules({ ...courseModules, [expandedCourse]: modules });
-      }
+      // Note: Module doesn't have isPublished - using isActive to toggle visibility
+      // ModuleUpdate only supports title and position - cannot toggle isActive via API
+      // This would require backend support for updating isActive
+      console.warn('Module activation toggle not supported by current API');
+      alert('Změna stavu modulu není momentálně podporována');
     } catch (error) {
       console.error('Failed to update module:', error);
       alert('Failed to update module');
@@ -222,26 +183,26 @@ export default function AdminPage() {
   };
 
   const openCreateModuleModal = (courseId: number) => {
-    // Calculate next order
+    // Calculate next position
     const modules = courseModules[courseId] || [];
-    const maxOrder = modules.length > 0 ? Math.max(...modules.map((m: any) => m.order)) : 0;
+    const maxPosition = modules.length > 0 ? Math.max(...modules.map((m: Module) => m.position || 1)) : 0;
     
     setModuleFormData({
       moduleId: null,
       title: '',
       courseId: courseId,
-      order: maxOrder + 1,
+      position: maxPosition + 1,
     });
     setModalError('');
     setActiveModal('module-create');
   };
 
-  const openEditModuleModal = (module: any) => {
+  const openEditModuleModal = (module: Module) => {
     setModuleFormData({
       moduleId: module.moduleId,
       title: module.title,
       courseId: module.courseId,
-      order: module.order || 1,
+      position: module.position || 1,
     });
     setModalError('');
     setActiveModal('module-edit');
@@ -301,32 +262,26 @@ export default function AdminPage() {
       const modulesApi = new ModulesApi(config);
       
       if (moduleFormData.moduleId) {
-        // Update
+        // Update - only title and position are supported
         await modulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
           moduleUpdate: {
             title: moduleFormData.title,
-            order: moduleFormData.order,
+            position: moduleFormData.position,
           }
         });
+        
+        // Refresh modules for the course
+        if (moduleFormData.courseId) {
+          const modules = await getModules({ courseId: moduleFormData.courseId });
+          setCourseModules({ ...courseModules, [moduleFormData.courseId]: modules });
+        }
+        
+        closeModal();
       } else {
-        // Create
-        await modulesApi.createModule({
-          moduleCreate: {
-            title: moduleFormData.title,
-            courseId: moduleFormData.courseId,
-            order: moduleFormData.order,
-          }
-        });
+        // Create module is not supported by current API
+        setModalError('Vytváření modulů není momentálně podporováno');
       }
-      
-      // Refresh modules for the course
-      if (moduleFormData.courseId) {
-        const modules = await getModules({ courseId: moduleFormData.courseId });
-        setCourseModules({ ...courseModules, [moduleFormData.courseId]: modules });
-      }
-      
-      closeModal();
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to save module');
     } finally {
@@ -340,7 +295,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">
-            <h2 className="text-xl sm:text-2xl font-bold text-black">Překled kurzů</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-black">Přehled kurzů</h2>
             <Dropdown
               trigger={<span>Přidat kurz</span>}
               items={[
@@ -372,6 +327,7 @@ export default function AdminPage() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Název kurzu</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Počet modulů</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Publikováno</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Akce</th>
                 </tr>
               </thead>
@@ -383,12 +339,31 @@ export default function AdminPage() {
                       <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                          course.isPublished 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-orange-100 text-orange-800'
+                          course.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                          course.status === 'generated' ? 'bg-blue-100 text-blue-800' :
+                          course.status === 'approved' ? 'bg-purple-100 text-purple-800' :
+                          course.status === 'published' ? 'bg-green-100 text-green-800' :
+                          'bg-orange-100 text-orange-800'
                         }`}>
-                          {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+                          {course.status === 'draft' ? 'Draft' :
+                           course.status === 'generated' ? 'Vygenerováno' :
+                           course.status === 'approved' ? 'Schváleno' :
+                           course.status === 'published' ? 'Publikováno' :
+                           course.status === 'archived' ? 'Archivováno' : course.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') ? (
+                          <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
+                            course.isPublished 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {course.isPublished ? 'ANO' : 'NE'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -399,13 +374,19 @@ export default function AdminPage() {
                           >
                             <Pencil size={16} />
                           </button>
-                          <button
-                            onClick={() => togglePublish(course)}
-                            className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
-                            title={course.isPublished ? 'Skrýt' : 'Publikovat'}
-                          >
-                            <Eye size={16} />
-                          </button>
+                          {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                            <button
+                              onClick={() => togglePublish(course)}
+                              className={`p-2 text-white rounded-md transition-colors ${
+                                course.isPublished 
+                                  ? 'bg-orange-500 hover:bg-orange-600' 
+                                  : 'bg-green-500 hover:bg-green-600'
+                              }`}
+                              title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+                            >
+                              {course.isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteClick(course.courseId)}
                             className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
@@ -420,14 +401,14 @@ export default function AdminPage() {
                     {/* Expanded Module List */}
                     {expandedCourse === course.courseId && (
                       <tr>
-                        <td colSpan={4} className="bg-gray-50 p-0">
+                        <td colSpan={5} className="bg-gray-50 p-0">
                           <div className="p-6">
                             <div className="bg-white rounded-lg shadow-sm">
                               <div className="flex items-center justify-between p-4 border-b">
                                 <h3 className="text-lg font-semibold text-black">Přehled modulů</h3>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => openEditCourseModal(course)}
+                                    onClick={() => router.push(`/admin/courses/${course.courseId}/content`)}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                                   >
                                     Editovat kurz
@@ -445,7 +426,7 @@ export default function AdminPage() {
                               </div>
                               
                               <div className="divide-y">
-                                {courseModules[course.courseId]?.map((module: any, index: number) => (
+                                {courseModules[course.courseId]?.map((module: Module, index: number) => (
                                   <div key={module.moduleId} className="p-4 flex items-center gap-4 hover:bg-gray-50">
                                     <GripVertical size={20} className="text-gray-400 flex-shrink-0" />
                                     
@@ -454,16 +435,16 @@ export default function AdminPage() {
                                     </div>
                                     
                                     <div className="text-sm text-gray-600 w-24 text-center flex-shrink-0">
-                                      Modul {index + 1}
+                                      Modul {module.position || index + 1}
                                     </div>
                                     
                                     <div className="w-32 flex-shrink-0">
                                       <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                                        module.isPublished 
+                                        module.isActive 
                                           ? 'bg-green-100 text-green-800' 
                                           : 'bg-orange-100 text-orange-800'
                                       }`}>
-                                        {module.isPublished ? 'Publikováno' : 'Neaktivní'}
+                                        {module.isActive ? 'Aktivní' : 'Neaktivní'}
                                       </span>
                                     </div>
                                     
@@ -476,11 +457,11 @@ export default function AdminPage() {
                                         <Pencil size={16} />
                                       </button>
                                       <button
-                                        onClick={() => toggleModulePublish(module)}
+                                        onClick={() => toggleModuleActive(module)}
                                         className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
-                                        title={module.isPublished ? 'Skrýt modul' : 'Publikovat modul'}
+                                        title={module.isActive ? 'Deaktivovat modul' : 'Aktivovat modul'}
                                       >
-                                        <Eye size={16} />
+                                        {module.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                                       </button>
                                       <button
                                         onClick={() => {
@@ -527,13 +508,15 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">{getModuleCount(course)} moduly</p>
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-2 ${
-                      course.isPublished 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {course.isPublished ? 'Publikováno' : 'Neaktivní'}
-                    </span>
+                    {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-2 ${
+                        course.isPublished 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
@@ -543,13 +526,19 @@ export default function AdminPage() {
                     >
                       <Pencil size={14} />
                     </button>
-                    <button
-                      onClick={() => togglePublish(course)}
-                      className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
-                      title={course.isPublished ? 'Skrýt' : 'Publikovat'}
-                    >
-                      <Eye size={14} />
-                    </button>
+                    {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                      <button
+                        onClick={() => togglePublish(course)}
+                        className={`p-2 text-white rounded-md transition-colors ${
+                          course.isPublished 
+                            ? 'bg-orange-500 hover:bg-orange-600' 
+                            : 'bg-green-500 hover:bg-green-600'
+                        }`}
+                        title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+                      >
+                        {course.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteClick(course.courseId)}
                       className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
@@ -576,18 +565,18 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <div className="space-y-2">
-                      {courseModules[course.courseId]?.map((module: any, index: number) => (
+                      {courseModules[course.courseId]?.map((module: Module, index: number) => (
                         <div key={module.moduleId} className="bg-white rounded-md p-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900 truncate">{module.title}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">Modul {index + 1}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">Modul {module.position || index + 1}</p>
                               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${
-                                module.isPublished 
+                                module.isActive 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-orange-100 text-orange-800'
                               }`}>
-                                {module.isPublished ? 'Publikováno' : 'Neaktivní'}
+                                {module.isActive ? 'Aktivní' : 'Neaktivní'}
                               </span>
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
@@ -599,11 +588,11 @@ export default function AdminPage() {
                                 <Pencil size={12} />
                               </button>
                               <button
-                                onClick={() => toggleModulePublish(module)}
+                                onClick={() => toggleModuleActive(module)}
                                 className="p-1.5 bg-orange-500 text-white rounded hover:bg-orange-600"
-                                title={module.isPublished ? 'Skrýt' : 'Publikovat'}
+                                title={module.isActive ? 'Deaktivovat' : 'Aktivovat'}
                               >
-                                <Eye size={12} />
+                                {module.isActive ? <EyeOff size={12} /> : <Eye size={12} />}
                               </button>
                               <button
                                 onClick={() => {
@@ -627,7 +616,7 @@ export default function AdminPage() {
                       <span>Přidat modul</span>
                     </button>
                     <button
-                      onClick={() => openEditCourseModal(course)}
+                      onClick={() => router.push(`/admin/courses/${course.courseId}/content`)}
                       className="mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm w-full"
                     >
                       Editovat kurz

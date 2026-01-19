@@ -16,7 +16,7 @@ class CourseCreate(CourseBase):
 
 
 class CourseUpdate(CourseBase):
-    pass
+    is_published: bool | None = None
 
 
 class CourseFile(ORMModel):
@@ -39,6 +39,7 @@ class CourseLink(ORMModel):
 class Course(CourseBase):
     course_id: int
     is_active: bool
+    is_published: bool = False
     status: Status
     summary: str | None = None
 

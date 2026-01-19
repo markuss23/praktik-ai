@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { CoursesApi, Configuration, Module } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
-import { getCourse, getCourses, updateModule } from '@/lib/api-client';
+import { getCourse, getCourses, updateModule, deleteCourse } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
-import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit2, Save, X, Trash2 } from 'lucide-react';
 
 export default function EditCoursePage() {
   const router = useRouter();
@@ -118,16 +118,31 @@ export default function EditCoursePage() {
     try {
       const config = new Configuration({ basePath: API_BASE_URL });
       const coursesApi = new CoursesApi(config);
+      
+      // Build update data with required fields
+      const updateData = {
+        title: formData.title,
+        description: formData.description || undefined,
+        modulesCount: modules.length || 3, // Required field - use current modules count
+        isPublished: formData.isPublished,
+      };
+      
+      console.log('Sending update data:', updateData);
+      
       await coursesApi.updateCourse({
         courseId: courseId,
-        courseUpdate: formData
+        courseUpdate: updateData
       });
       
-      // Navigate to the new slug if title changed
-      const newSlug = slugify(formData.title);
-      router.push(`/courses/${newSlug}`);
+      // Navigate back to admin
+      router.push('/admin');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update course');
+      console.error('Update error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update course');
+      }
     } finally {
       setLoading(false);
     }
@@ -140,12 +155,10 @@ export default function EditCoursePage() {
     setError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.deleteCourse({ courseId: courseId });
-      router.push('/courses');
+      await deleteCourse(courseId);
+      router.push('/admin');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete course');
+      setError(err instanceof Error ? err.message : 'Nepodařilo se smazat kurz');
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -299,9 +312,9 @@ export default function EditCoursePage() {
                                         <div className="text-xs text-gray-500 mt-1">
                                           Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
                                         </div>
-                                        {q.questionType === 'closed' && q.options && (
+                                        {q.questionType === 'closed' && q.closedOptions && (
                                           <div className="mt-1 text-xs text-gray-600">
-                                            {q.options.map((opt, oIndex) => (
+                                            {q.closedOptions.map((opt: { text: string }, oIndex: number) => (
                                               <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
                                                 {String.fromCharCode(65 + oIndex)}. {opt.text}
                                               </div>
