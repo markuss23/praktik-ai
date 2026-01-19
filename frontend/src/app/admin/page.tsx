@@ -234,7 +234,7 @@ export default function AdminPage() {
           courseCreate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            isPublished: courseFormData.isPublished,
+            //isPublished: courseFormData.isPublished,
           }
         });
       }
