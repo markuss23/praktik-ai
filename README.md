@@ -77,3 +77,6 @@ load_data_db → load_data → summarize_content → plan_content → save_to_db
 - **Databáze**: PostgreSQL + pgvector
 - **AI**: OpenAI GPT-4o-mini
 - **Auth**: Authentik
+
+## High-Level Overview
+Uživatel prochází kurzem sekvenčním způsobem. Kurz se skládá z $N$ modulů. Aby uživatel kurz úspěšně dokončil, musí splnit všechny moduly v předepsaném pořadí.Každý modul funguje jako samostatná, uzavřená jednotka (Black Box), která uvnitř obsahuje cyklus Learn – Practice – Assessment. Přechod do dalšího modulu je podmíněn úspěšným dokončením Assessmentu (vyhodnocení) aktuálního modulu.
