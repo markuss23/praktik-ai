@@ -15,19 +15,6 @@ services:
       - praktikai
     depends_on:
       - db
-    # environment:
-    #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
-    #   MINIO_ENDPOINT: minio
-    #   MINIO_ACCESS_KEY: root
-    #   MINIO_SECRET_KEY: rootroot
-    #   MINIO_SECURE: "false"
-    #   KEYCLOAK_URL: http://keycloak:7080
-    #   KEYCLOAK_REALM: praktikai
-    #   KEYCLOAK_CLIENT_ID: praktik-ai-app
-    # depends_on:
-    #   - db
-    #   - minio
-    #   - keycloak
 
 
   db:
@@ -54,54 +41,9 @@ services:
       retries: 5
       start_period: 20s
 
-  authentik-server:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.10.3}
-    restart: unless-stopped
-    command: server
-    env_file:
-      - .env
-    environment:
-      AUTHENTIK_POSTGRESQL__HOST: db
-      AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_PG_DB:-authentik}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES__PASSWORD}
-      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES__USER}
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
-    volumes:
-      - ./authentik/media:/media
-      - ./authentik/custom-templates:/templates
-    ports:
-      - "${AUTHENTIK_PORT_HTTP:-9000}:9000"
-      - "${AUTHENTIK_PORT_HTTPS:-9443}:9443"
-    networks:
-      - praktikai
-    depends_on:
-      db:
-        condition: service_healthy
+  keycloak:
+    image: keycloak/keycloak
 
-  authentik-worker:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.10.3}
-    restart: unless-stopped
-    command: worker
-    user: "1000:1000"
-    env_file:
-      - .env
-    environment:
-      AUTHENTIK_POSTGRESQL__HOST: db
-      AUTHENTIK_POSTGRESQL__NAME: ${AUTHENTIK_PG_DB:-authentik}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES__PASSWORD}
-      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES__USER}
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
-    volumes:
-      # WARNING: docker.sock provides ROOT access to host - remove if not needed!
-      # - /var/run/docker.sock:/var/run/docker.sock
-      - ./authentik/media:/media
-      - ./authentik/certs:/certs
-      - ./authentik/custom-templates:/templates
-    networks:
-      - praktikai
-    depends_on:
-      db:
-        condition: service_healthy
 
   # minio:
   #   image: minio/minio
