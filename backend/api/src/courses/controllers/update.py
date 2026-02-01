@@ -14,6 +14,17 @@ from api.enums import Status
 def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Course:
     """Aktualizuje existující kurz"""
     try:
+        
+        if db.execute(
+            select(models.Category).where(
+                models.Category.category_id == course_data.category_id,
+                models.Category.is_active.is_(True),
+            )
+        ).first() is None:
+            raise HTTPException(
+                status_code=400, detail="Kategorie s tímto ID neexistuje"
+            )
+        
         stm: Select[tuple[models.Course]] = select(models.Course).where(
             models.Course.course_id == course_id, models.Course.is_active.is_(True)
         )
@@ -22,6 +33,11 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        if course.status != Status.draft:
+            raise HTTPException(
+                status_code=400, detail="Lze upravovat pouze koncepty kurzů"
+            )
 
         update_data = course_data.model_dump(exclude_unset=True)
 

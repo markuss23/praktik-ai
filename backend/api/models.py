@@ -110,6 +110,31 @@ class AuditLog(Base):
     diff: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
+# ---------- Category ----------
+
+class Category(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "category"
+    __table_args__ = (
+        Index(
+            "uq_category_name_active",
+            "name",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    category_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    
+    courses: Mapped[list[Course]] = relationship(
+        back_populates="category",
+    )
+    
+    _soft_delete_cascade: list[str] = ["courses"]
+
 # ---------- Course / Module ----------
 
 
@@ -149,6 +174,13 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
     links: Mapped[list[CourseLink]] = relationship(
         back_populates="course",
+    )
+    
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("category.category_id"), nullable=True
+    )
+    category: Mapped[Category | None] = relationship(
+        back_populates="courses",
     )
 
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]

@@ -22,6 +22,19 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 def create_course(db: Session, course_data: CourseCreate) -> Course:
     """Vytvoří nový kurz"""
     try:
+        if (
+            db.execute(
+                select(models.Category).where(
+                    models.Category.category_id == course_data.category_id,
+                    models.Category.is_active.is_(True),
+                )
+            ).first()
+            is None
+        ):
+            raise HTTPException(
+                status_code=400, detail="Kategorie s tímto ID neexistuje"
+            )
+        
         if db.execute(
             select(models.Course).where(
                 models.Course.title == course_data.title,

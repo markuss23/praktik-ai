@@ -1,4 +1,4 @@
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
@@ -9,6 +9,7 @@ class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     modules_count: int = 3
+    category_id: int
 
 
 class CourseCreate(CourseBase):
