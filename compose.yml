@@ -42,7 +42,29 @@ services:
       start_period: 20s
 
   keycloak:
-    image: keycloak/keycloak
+    image: quay.io/keycloak/keycloak:26.4.0
+
+    depends_on:
+      - db
+    environment:
+      KC_HOSTNAME: 0.0.0.0
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "true"
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${POSTGRES__DB}
+      KC_DB_USERNAME: ${POSTGRES__USER}
+      KC_DB_PASSWORD: ${POSTGRES__PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_LOG_LEVEL: info
+    command: start-dev
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    networks:
+      - praktikai
+
 
 
   # minio:
