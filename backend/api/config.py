@@ -13,8 +13,16 @@ class PostgresSettings(BaseModel):
         return f"postgresql+psycopg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db}"
 
 
+class KeycloakSettings(BaseModel):
+    server_url: str
+    realm_name: str
+    client_id: str
+    client_secret: str
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
+    keycloak: KeycloakSettings
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",
