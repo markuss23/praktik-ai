@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import Link from 'next/link';
+import { createCourse, uploadCourseFile } from '@/lib/api-client';
 
 export default function UploadCoursePage() {
   const router = useRouter();
@@ -26,13 +27,19 @@ export default function UploadCoursePage() {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/markdown',
+        'text/plain',
       ];
       
-      if (allowedTypes.includes(selectedFile.type)) {
+      // Also allow by extension for markdown files
+      const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.md', '.txt'];
+      const fileExt = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
+      
+      if (allowedTypes.includes(selectedFile.type) || allowedExtensions.includes(fileExt)) {
         setFile(selectedFile);
         setError('');
       } else {
-        setError('Nepodporovaný formát souboru. Povolené formáty: PDF, Word, Excel');
+        setError('Nepodporovaný formát souboru. Povolené formáty: PDF, Word, Excel, Markdown');
         setFile(null);
       }
     }
@@ -57,13 +64,31 @@ export default function UploadCoursePage() {
     setError('');
 
     try {
-      // TODO: Implementovat upload souboru a vytvoření kurzu
-      console.log('Upload course:', { formData, file });
-      // Po úspěšném vytvoření přesměrovat na admin
-      // router.push('/admin');
-      alert('Nahrání souboru a vytvoření kurzu bude implementováno');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Nepodařilo se vytvořit kurz');
+      // Step 1: Create course
+      const course = await createCourse({
+        title: formData.title,
+        description: formData.description || undefined,
+      });
+      
+      // Step 2: Upload file to course
+      await uploadCourseFile(course.courseId, file);
+      
+      // Redirect to course edit page
+      router.push(`/admin/courses/${course.courseId}/edit`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (err && typeof err === 'object' && 'response' in err) {
+        const response = (err as { response: Response }).response;
+        try {
+          const data = await response.json();
+          setError(data.detail || 'Nepodařilo se vytvořit kurz');
+        } catch {
+          setError(`Chyba serveru: ${response.status}`);
+        }
+      } else {
+        setError('Nepodařilo se vytvořit kurz');
+      }
     } finally {
       setLoading(false);
     }
@@ -148,12 +173,12 @@ export default function UploadCoursePage() {
                   Klikněte pro výběr souboru
                 </p>
                 <p className="text-xs sm:text-sm text-gray-500">
-                  PDF, Word, Excel
+                  PDF, Word, Excel, Markdown
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.md,.txt"
                   onChange={handleFileChange}
                   className="hidden"
                 />

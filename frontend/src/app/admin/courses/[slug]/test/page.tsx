@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Module, Practice, PracticeQuestion, QuestionType } from '@/api';
-import { getCourse, getCourses } from '@/lib/api-client';
+import { Module, PracticeQuestion, QuestionType } from '@/api';
+import { getCourse, getCourses, updatePracticeQuestion, updatePracticeOption } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { 
@@ -16,9 +16,13 @@ import {
 
 interface QuestionItem {
   id: number;
+  questionId?: number; // Backend question ID
+  position?: number; // Position from backend
   question: string;
   type: 'closed' | 'open';
-  options: { id: number; text: string; isCorrect: boolean }[];
+  correctAnswer?: string;
+  exampleAnswer?: string;
+  options: { id: number; optionId?: number; text: string; isCorrect: boolean; position?: number }[];
 }
 
 export default function TestContentPage() {
@@ -34,29 +38,21 @@ export default function TestContentPage() {
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
   
-  // Questions state
-  const [questions, setQuestions] = useState<QuestionItem[]>([
-    {
-      id: 1,
-      question: 'Jaký obsah kofeinu mají zrna Robusta?',
-      type: 'closed',
-      options: [
-        { id: 1, text: 'Velmi jemné', isCorrect: true },
-        { id: 2, text: 'Hrubé', isCorrect: false },
-        { id: 3, text: 'Střední', isCorrect: false },
-      ],
-    },
-    {
-      id: 2,
-      question: 'Pro kterou metodu přípravy kávy je ideální hrubé mletí?',
-      type: 'closed',
-      options: [
-        { id: 1, text: 'French press', isCorrect: true },
-        { id: 2, text: 'Espresso', isCorrect: false },
-        { id: 3, text: 'Moka konvička', isCorrect: false },
-      ],
-    },
-  ]);
+  // Questions state - stored per module index
+  const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
+  
+  // Get current module's questions
+  const questions = moduleQuestions[selectedModuleIndex] || [];
+  
+  // Set questions for current module
+  const setQuestions = (newQuestions: QuestionItem[] | ((prev: QuestionItem[]) => QuestionItem[])) => {
+    setModuleQuestions(prev => ({
+      ...prev,
+      [selectedModuleIndex]: typeof newQuestions === 'function' 
+        ? newQuestions(prev[selectedModuleIndex] || [])
+        : newQuestions
+    }));
+  };
 
   useEffect(() => {
     async function loadCourse() {
@@ -83,29 +79,35 @@ export default function TestContentPage() {
         setCourseTitle(course.title);
         setModules(course.modules || []);
         
-        // Load questions from first module's practices
+        // Load questions for ALL modules
         if (course.modules && course.modules.length > 0) {
-          const firstModule = course.modules[0];
-          if (firstModule.practices && firstModule.practices.length > 0) {
-            const loadedQuestions: QuestionItem[] = [];
-            firstModule.practices.forEach((practice) => {
-              practice.questions?.forEach((q, qIndex) => {
-                loadedQuestions.push({
-                  id: q.questionId || qIndex + 1,
-                  question: q.question,
-                  type: q.questionType === 'closed' ? 'closed' : 'open',
-                  options: q.closedOptions?.map((opt, oIndex) => ({
-                    id: opt.optionId || oIndex + 1,
-                    text: opt.text,
-                    isCorrect: opt.text === q.correctAnswer,
-                  })) || [],
-                });
-              });
-            });
-            if (loadedQuestions.length > 0) {
-              setQuestions(loadedQuestions);
+          const allModuleQuestions: {[key: number]: QuestionItem[]} = {};
+          
+          course.modules.forEach((module, moduleIndex) => {
+            if (module.practiceQuestions && module.practiceQuestions.length > 0) {
+              const loadedQuestions: QuestionItem[] = module.practiceQuestions.map((q, qIndex) => ({
+                id: qIndex + 1,
+                questionId: q.questionId,
+                position: q.position,
+                question: q.question,
+                type: q.questionType === QuestionType.Closed ? 'closed' : 'open',
+                correctAnswer: q.correctAnswer ?? undefined,
+                exampleAnswer: q.exampleAnswer ?? undefined,
+                options: q.closedOptions?.map((opt, oIndex) => ({
+                  id: oIndex + 1,
+                  optionId: opt.optionId,
+                  position: opt.position,
+                  text: opt.text,
+                  isCorrect: opt.text === q.correctAnswer,
+                })) || [],
+              }));
+              allModuleQuestions[moduleIndex] = loadedQuestions;
+            } else {
+              allModuleQuestions[moduleIndex] = [];
             }
-          }
+          });
+          
+          setModuleQuestions(allModuleQuestions);
         }
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -130,30 +132,8 @@ export default function TestContentPage() {
   };
 
   const selectModule = (index: number) => {
+    // Just change the selected index - questions are already stored in moduleQuestions
     setSelectedModuleIndex(index);
-    const module = modules[index];
-    
-    // Load questions for selected module
-    if (module?.practices && module.practices.length > 0) {
-      const loadedQuestions: QuestionItem[] = [];
-      module.practices.forEach((practice) => {
-        practice.questions?.forEach((q, qIndex) => {
-          loadedQuestions.push({
-            id: q.questionId || qIndex + 1,
-            question: q.question,
-            type: q.questionType === 'closed' ? 'closed' : 'open',
-            options: q.closedOptions?.map((opt, oIndex) => ({
-              id: opt.optionId || oIndex + 1,
-              text: opt.text,
-              isCorrect: opt.text === q.correctAnswer,
-            })) || [],
-          });
-        });
-      });
-      if (loadedQuestions.length > 0) {
-        setQuestions(loadedQuestions);
-      }
-    }
   };
 
   const addQuestion = () => {
@@ -212,13 +192,67 @@ export default function TestContentPage() {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
+  const saveTestContent = async () => {
+    try {
+      const savePromises: Promise<unknown>[] = [];
+      
+      // Save questions from ALL modules
+      for (const moduleIndex of Object.keys(moduleQuestions)) {
+        const questionsForModule = moduleQuestions[Number(moduleIndex)] || [];
+        
+        for (const question of questionsForModule) {
+          // Only update existing questions (ones with questionId from backend)
+          if (question.questionId) {
+            // Find the correct answer text from options
+            const correctOption = question.options.find(opt => opt.isCorrect);
+            
+            savePromises.push(
+              updatePracticeQuestion(question.questionId, {
+                position: question.position ?? question.id,
+                question: question.question,
+                questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
+                correctAnswer: correctOption?.text ?? question.correctAnswer,
+                exampleAnswer: question.exampleAnswer,
+              })
+            );
+            
+            // Update options for closed questions
+            if (question.type === 'closed') {
+              for (const option of question.options) {
+                if (option.optionId) {
+                  savePromises.push(
+                    updatePracticeOption(option.optionId, {
+                      text: option.text,
+                      position: option.position ?? option.id,
+                    })
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      await Promise.all(savePromises);
+      console.log('Test content saved successfully');
+    } catch (err) {
+      console.error('Failed to save test content:', err);
+      alert('Nepodařilo se uložit obsah testu');
+      throw err; // Re-throw to prevent navigation on error
+    }
+  };
+
   const handleSave = async () => {
-    // TODO: Implement save functionality with backend
-    console.log('Saving test content...', questions);
+    await saveTestContent();
     // Navigate to course edit or overview page
     if (courseId) {
       router.push(`/admin/courses/${courseSlug}/edit`);
     }
+  };
+
+  const handleBack = async () => {
+    await saveTestContent();
+    router.push(`/admin/courses/${courseSlug}/content`);
   };
 
   if (loading) {
@@ -234,8 +268,8 @@ export default function TestContentPage() {
     id: index,
     title: module.title,
     isExpanded: expandedOutlineItems.has(index),
-    subItems: module.practices?.flatMap(p => 
-      p.questions?.map(q => q.question.substring(0, 30) + '...') || []
+    subItems: module.practiceQuestions?.map((q: PracticeQuestion) => 
+      q.question.substring(0, 30) + '...'
     ) || [],
   }));
 
@@ -394,7 +428,7 @@ export default function TestContentPage() {
 
           {/* Footer Actions */}
           <PageFooterActions
-            onBack={() => router.push(`/admin/courses/${courseSlug}/content`)}
+            onBack={handleBack}
             onContinue={handleSave}
             continueLabel="Uložit"
           />

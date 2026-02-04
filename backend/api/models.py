@@ -168,12 +168,15 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     modules: Mapped[list[Module]] = relationship(
         back_populates="course",
         order_by="Module.position",
+        primaryjoin="and_(Course.course_id==Module.course_id, Module.is_active==True)",
     )
     files: Mapped[list[CourseFile]] = relationship(
         back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseFile.course_id, CourseFile.is_active==True)",
     )
     links: Mapped[list[CourseLink]] = relationship(
         back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     
     category_id: Mapped[int | None] = mapped_column(
@@ -223,11 +226,13 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     learn_blocks: Mapped[list[LearnBlock]] = relationship(
         back_populates="module",
         order_by="LearnBlock.position",
+        primaryjoin="and_(Module.module_id==LearnBlock.module_id, LearnBlock.is_active==True)",
     )
 
     practice_questions: Mapped[list[PracticeQuestion]] = relationship(
         back_populates="module",
         order_by="PracticeQuestion.position",
+        primaryjoin="and_(Module.module_id==PracticeQuestion.module_id, PracticeQuestion.is_active==True)",
     )
 
     _soft_delete_cascade = ["learn_blocks", "practice_questions"]
@@ -360,9 +365,11 @@ class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
     closed_options: Mapped[list[PracticeOption]] = relationship(
         back_populates="question",
         order_by="PracticeOption.position",
+        primaryjoin="and_(PracticeQuestion.question_id==PracticeOption.question_id, PracticeOption.is_active==True)",
     )
     open_keywords: Mapped[list[QuestionKeyword]] = relationship(
         back_populates="question",
+        primaryjoin="and_(PracticeQuestion.question_id==QuestionKeyword.question_id, QuestionKeyword.is_active==True)",
     )
     _soft_delete_cascade = ["closed_options", "open_keywords"]
 

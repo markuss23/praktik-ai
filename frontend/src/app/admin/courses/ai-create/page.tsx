@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import { createCourse, uploadCourseFile, generateCourseWithAI } from '@/lib/api-client';
+import { createCourse, uploadCourseFile, generateCourseWithAI, getCategories } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
+import { Category } from '@/api';
 
 export default function AICreateCoursePage() {
   const router = useRouter();
@@ -13,12 +14,35 @@ export default function AICreateCoursePage() {
   const [error, setError] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     moduleCount: 3,
+    categoryId: 0,
   });
+
+  // Load categories on mount
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const cats = await getCategories();
+        setCategories(cats);
+        // Set default category if available
+        if (cats.length > 0) {
+          setFormData(prev => ({ ...prev, categoryId: cats[0].categoryId }));
+        }
+      } catch (err) {
+        console.error('Failed to load categories:', err);
+        setError('Nepodařilo se načíst kategorie');
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    loadCategories();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -42,12 +66,18 @@ export default function AICreateCoursePage() {
     try {
       // Step 1: Create course
       setStep('uploading');
+      
+      if (formData.categoryId === 0) {
+        throw new Error('Prosím vyberte kategorii kurzu');
+      }
+      
       let course;
       try {
         course = await createCourse({
           title: formData.title,
           description: formData.description || undefined,
           modulesCount: formData.moduleCount,
+          categoryId: formData.categoryId,
         });
       } catch (createErr: unknown) {
         // Check if it's a 400 error (course already exists)
@@ -142,6 +172,35 @@ export default function AICreateCoursePage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
                 placeholder="Výběr zrn kávy"
               />
+            </div>
+
+            {/* Kategorie kurzu */}
+            <div>
+              <label className="block text-sm font-semibold text-black mb-2">
+                Kategorie kurzu
+              </label>
+              {categoriesLoading ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Načítám kategorie...</span>
+                </div>
+              ) : categories.length === 0 ? (
+                <p className="text-red-500">Žádné kategorie nejsou k dispozici. Nejprve vytvořte kategorii.</p>
+              ) : (
+                <select
+                  required
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                >
+                  <option value={0} disabled>Vyberte kategorii...</option>
+                  {categories.map((cat) => (
+                    <option key={cat.categoryId} value={cat.categoryId}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Popis kurzu */}

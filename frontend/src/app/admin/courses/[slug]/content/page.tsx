@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Module } from '@/api';
-import { getCourse, getCourses } from '@/lib/api-client';
+import { Module, LearnBlock } from '@/api';
+import { getCourse, getCourses, updateModule, updateLearnBlock } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -52,6 +52,8 @@ import {
 
 interface ModuleContent {
   content: string;
+  learnId?: number; // ID of the learn block for API updates
+  position?: number;
 }
 
 // Extended module interface for local state (includes temporary modules)
@@ -60,6 +62,7 @@ interface LocalModule extends Partial<Module> {
   title: string;
   position: number;
   isTemporary?: boolean;
+  learnBlocks?: LearnBlock[];
 }
 
 // Sortable module item component
@@ -203,6 +206,7 @@ export default function CourseContentPage() {
       setModuleContents(prev => ({
         ...prev,
         [selectedModuleIndex]: {
+          ...prev[selectedModuleIndex], // Preserve learnId and position
           content: html
         }
       }));
@@ -248,7 +252,7 @@ export default function CourseContentPage() {
           isActive: m.isActive,
           courseId: m.courseId,
           learnBlocks: m.learnBlocks,
-          practices: m.practices,
+          practiceQuestions: m.practiceQuestions,
           isTemporary: false,
         }));
         setModules(localModules);
@@ -256,11 +260,14 @@ export default function CourseContentPage() {
         // Initialize content for each module
         const initialContents: {[key: number]: ModuleContent} = {};
         (course.modules || []).forEach((module, index) => {
-          const content = module.learnBlocks && module.learnBlocks.length > 0
-            ? module.learnBlocks[0].content
-            : course.description || '';
+          const learnBlock = module.learnBlocks && module.learnBlocks.length > 0
+            ? module.learnBlocks[0]
+            : null;
+          const content = learnBlock ? learnBlock.content : (course.description || '');
           initialContents[index] = {
             content: content,
+            learnId: learnBlock?.learnId,
+            position: learnBlock?.position ?? 1,
           };
         });
         setModuleContents(initialContents);
@@ -419,18 +426,60 @@ export default function CourseContentPage() {
     }
   }, [editor]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    await saveContent();
     if (courseId) {
-      // Store modules data in sessionStorage to pass to next page
-      sessionStorage.setItem(`course_${courseId}_modules`, JSON.stringify(modules));
-      sessionStorage.setItem(`course_${courseId}_moduleContents`, JSON.stringify(moduleContents));
       router.push(`/admin/courses/${courseSlug}/test`);
     }
   };
 
+  const handleBack = async () => {
+    await saveContent();
+    router.back();
+  };
+
+  const saveContent = async () => {
+    try {
+      // Save all module positions and learn block contents
+      const savePromises: Promise<unknown>[] = [];
+      
+      for (let i = 0; i < modules.length; i++) {
+        const module = modules[i];
+        const content = moduleContents[i];
+        
+        // Skip temporary modules (they don't exist in backend yet)
+        if (module.isTemporary) continue;
+        
+        // Update module position if changed
+        savePromises.push(
+          updateModule(module.moduleId, {
+            title: module.title,
+            position: module.position,
+          })
+        );
+        
+        // Update learn block content if exists
+        if (content?.learnId) {
+          savePromises.push(
+            updateLearnBlock(content.learnId, {
+              position: content.position ?? 1,
+              content: content.content,
+            })
+          );
+        }
+      }
+      
+      await Promise.all(savePromises);
+      console.log('Content saved successfully');
+    } catch (err) {
+      console.error('Failed to save content:', err);
+      alert('Nepodařilo se uložit obsah');
+      throw err; // Re-throw to prevent navigation on error
+    }
+  };
+
   const handleSave = async () => {
-    // TODO: Implement save functionality with backend
-    console.log('Saving content...', moduleContents);
+    await saveContent();
     handleContinue();
   };
 
@@ -713,7 +762,7 @@ export default function CourseContentPage() {
 
           {/* Footer Actions */}
           <PageFooterActions
-            onBack={() => router.back()}
+            onBack={handleBack}
             onContinue={handleContinue}
           />
         </div>

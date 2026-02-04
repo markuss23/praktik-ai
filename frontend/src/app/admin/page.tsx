@@ -1,6 +1,6 @@
 'use client';
 
-import { getCourses, getModules } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished } from "@/lib/api-client";
 import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect } from "react";
@@ -133,9 +133,14 @@ export default function AdminPage() {
   };
 
   const togglePublish = async (course: Course) => {
-    // TODO: Implement publish toggle via updateCourse API
-    console.warn('Publish toggle not implemented');
-    alert('Změna stavu publikování není momentálně implementována');
+    try {
+      const newPublishState = !course.isPublished;
+      await updateCoursePublished(course.courseId, newPublishState);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to update publish status:', error);
+      alert('Nepodařilo se změnit stav publikování');
+    }
   };
 
   const toggleModuleActive = async (module: Module) => {
@@ -219,13 +224,14 @@ export default function AdminPage() {
       const coursesApi = new CoursesApi(config);
       
       if (courseFormData.courseId) {
-        // Update
+        // Update - get existing course to preserve categoryId
+        const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
         await coursesApi.updateCourse({
           courseId: courseFormData.courseId,
           courseUpdate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            isPublished: courseFormData.isPublished,
+            categoryId: existingCourse?.categoryId ?? 1,
           }
         });
       } else {
@@ -234,7 +240,7 @@ export default function AdminPage() {
           courseCreate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            //isPublished: courseFormData.isPublished,
+            categoryId: 1, // Default category
           }
         });
       }
@@ -335,21 +341,20 @@ export default function AdminPage() {
                       <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                          course.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                          course.status === 'generated' ? 'bg-blue-100 text-blue-800' :
-                          course.status === 'approved' ? 'bg-purple-100 text-purple-800' :
-                          course.status === 'published' ? 'bg-green-100 text-green-800' :
-                          'bg-orange-100 text-orange-800'
+                          course.status === Status.Draft ? 'bg-gray-100 text-gray-800' :
+                          course.status === Status.Generated ? 'bg-blue-100 text-blue-800' :
+                          course.status === Status.Approved ? 'bg-purple-100 text-purple-800' :
+                          course.status === Status.Archived ? 'bg-orange-100 text-orange-800' :
+                          'bg-gray-100 text-gray-800'
                         }`}>
-                          {course.status === 'draft' ? 'Draft' :
-                           course.status === 'generated' ? 'Vygenerováno' :
-                           course.status === 'approved' ? 'Schváleno' :
-                           course.status === 'published' ? 'Publikováno' :
-                           course.status === 'archived' ? 'Archivováno' : course.status}
+                          {course.status === Status.Draft ? 'Draft' :
+                           course.status === Status.Generated ? 'Vygenerováno' :
+                           course.status === Status.Approved ? 'Schváleno' :
+                           course.status === Status.Archived ? 'Archivováno' : course.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') ? (
+                        {(course.status === Status.Approved || course.status === Status.Archived) ? (
                           <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
                             course.isPublished 
                               ? 'bg-green-100 text-green-800' 
@@ -370,7 +375,7 @@ export default function AdminPage() {
                           >
                             <Pencil size={16} />
                           </button>
-                          {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                          {(course.status === Status.Approved || course.status === Status.Archived) && (
                             <button
                               onClick={() => togglePublish(course)}
                               className={`p-2 text-white rounded-md transition-colors ${
@@ -504,7 +509,7 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">{getModuleCount(course)} moduly</p>
-                    {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                    {(course.status === Status.Approved || course.status === Status.Archived) && (
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-2 ${
                         course.isPublished 
                           ? 'bg-green-100 text-green-800' 
@@ -522,7 +527,7 @@ export default function AdminPage() {
                     >
                       <Pencil size={14} />
                     </button>
-                    {(course.status === 'approved' || course.status === 'published' || course.status === 'archived') && (
+                    {(course.status === Status.Approved || course.status === Status.Archived) && (
                       <button
                         onClick={() => togglePublish(course)}
                         className={`p-2 text-white rounded-md transition-colors ${

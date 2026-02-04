@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { CoursesApi, Configuration, Module } from '@/api';
+import { CoursesApi, Configuration, Module, Course } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
 import { getCourse, getCourses, updateModule, deleteCourse } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
@@ -18,6 +18,7 @@ export default function EditCoursePage() {
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseId, setCourseId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<number>(1);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
@@ -26,7 +27,6 @@ export default function EditCoursePage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    isPublished: false,
   });
 
   useEffect(() => {
@@ -54,11 +54,11 @@ export default function EditCoursePage() {
         console.log('Modules:', course.modules);
         
         setCourseId(course.courseId);
+        setCategoryId(course.categoryId);
         setModules(course.modules || []);
         setFormData({
           title: course.title,
           description: course.description || '',
-          isPublished: false,
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -123,8 +123,8 @@ export default function EditCoursePage() {
       const updateData = {
         title: formData.title,
         description: formData.description || undefined,
-        modulesCount: modules.length || 3, // Required field - use current modules count
-        isPublished: formData.isPublished,
+        modulesCount: modules.length || 3,
+        categoryId: categoryId,
       };
       
       console.log('Sending update data:', updateData);
@@ -208,19 +208,6 @@ export default function EditCoursePage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isPublished"
-            checked={formData.isPublished}
-            onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="isPublished" className="text-sm font-medium text-gray-700">
-            Publikovat kurz
-          </label>
-        </div>
-
         {/* Modules Section */}
         {modules.length > 0 && (
           <div className="pt-4 border-t">
@@ -296,40 +283,33 @@ export default function EditCoursePage() {
                         </div>
                       )}
 
-                      {/* Practices */}
-                      {module.practices && module.practices.length > 0 && (
+                      {/* Practice Questions */}
+                      {module.practiceQuestions && module.practiceQuestions.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Cvičení ({module.practices.length})</h4>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Otázky ({module.practiceQuestions.length})</h4>
                           <div className="space-y-2">
-                            {module.practices.map((practice, pIndex) => (
-                              <div key={pIndex} className="p-3 bg-green-50 rounded border border-green-100">
-                                <div className="text-xs text-green-600 mb-1">Cvičení #{practice.position || pIndex + 1}</div>
-                                {practice.questions && practice.questions.length > 0 && (
-                                  <div className="space-y-2 mt-2">
-                                    {practice.questions.map((q, qIndex) => (
-                                      <div key={qIndex} className="text-sm text-gray-700 pl-3 border-l-2 border-green-200">
-                                        <div className="font-medium">{qIndex + 1}. {q.question}</div>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
-                                        </div>
-                                        {q.questionType === 'closed' && q.closedOptions && (
-                                          <div className="mt-1 text-xs text-gray-600">
-                                            {q.closedOptions.map((opt: { text: string }, oIndex: number) => (
-                                              <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
-                                                {String.fromCharCode(65 + oIndex)}. {opt.text}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {q.questionType === 'open' && q.exampleAnswer && (
-                                          <div className="mt-1 text-xs text-gray-600">
-                                            Příklad odpovědi: {q.exampleAnswer}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
+                            {module.practiceQuestions.map((q, qIndex) => (
+                              <div key={qIndex} className="p-3 bg-green-50 rounded border border-green-100">
+                                <div className="text-sm text-gray-700">
+                                  <div className="font-medium">{qIndex + 1}. {q.question}</div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
                                   </div>
-                                )}
+                                  {q.questionType === 'closed' && q.closedOptions && (
+                                    <div className="mt-1 text-xs text-gray-600">
+                                      {q.closedOptions.map((opt, oIndex) => (
+                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
+                                          {String.fromCharCode(65 + oIndex)}. {opt.text}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {q.questionType === 'open' && q.exampleAnswer && (
+                                    <div className="mt-1 text-xs text-gray-600">
+                                      Příklad odpovědi: {q.exampleAnswer}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -338,7 +318,7 @@ export default function EditCoursePage() {
 
                       {/* Empty state */}
                       {(!module.learnBlocks || module.learnBlocks.length === 0) && 
-                       (!module.practices || module.practices.length === 0) && (
+                       (!module.practiceQuestions || module.practiceQuestions.length === 0) && (
                         <p className="text-sm text-gray-500 italic">Tento modul nemá žádný obsah.</p>
                       )}
                     </div>

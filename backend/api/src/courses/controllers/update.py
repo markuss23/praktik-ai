@@ -34,9 +34,10 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
         
-        if course.status != Status.draft:
+        # tohle jsem si upravil, klidne jen pro ted v ramci testovani
+        if course.status not in (Status.draft, Status.generated):
             raise HTTPException(
-                status_code=400, detail="Lze upravovat pouze koncepty kurzů"
+                status_code=400, detail="Lze upravovat pouze koncepty A vygenerované kurzy"
             )
 
         update_data = course_data.model_dump(exclude_unset=True)
