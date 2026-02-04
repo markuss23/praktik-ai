@@ -105,8 +105,9 @@ def update_course_published(db: Session, course_id: int, is_published: bool) -> 
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
-        
-        if course.status != Status.approved or course.status != Status.archived:
+        print(course.status)
+        if course.status != Status.approved.value and course.status != Status.archived.value:
+    
             raise HTTPException(
                 status_code=400, detail="Nelze publikovat kurz, který není schválený"
             )
