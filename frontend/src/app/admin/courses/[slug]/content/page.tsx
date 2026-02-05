@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Module, LearnBlock } from '@/api';
-import { getCourse, getCourses, updateModule, updateLearnBlock } from '@/lib/api-client';
+import { getCourse, getCourses, updateModule, createModule, createLearnBlock, updateLearnBlock } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -28,7 +28,6 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { 
   Plus, 
@@ -91,7 +90,7 @@ function SortableModuleItem({
   } = useSortable({ id: module.moduleId });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: transform ? `translateY(${transform.y}px)` : undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
@@ -110,12 +109,12 @@ function SortableModuleItem({
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing"
+        className="cursor-grab active:cursor-grabbing flex-shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical size={16} className="text-gray-400 flex-shrink-0" />
+        <GripVertical size={16} className="text-gray-400" />
       </div>
-      <span className={`text-sm flex-1 ${
+      <span className={`text-sm flex-1 min-w-0 truncate ${
         isSelected ? 'text-purple-900 font-medium' : 'text-black'
       } ${isTemporary ? 'italic' : ''}`}>
         {module.title}
@@ -127,7 +126,7 @@ function SortableModuleItem({
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 hover:bg-red-100 rounded text-red-500"
+          className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
           title="Odstranit modul"
         >
           <Trash2 size={14} />
@@ -439,28 +438,77 @@ export default function CourseContentPage() {
   };
 
   const saveContent = async () => {
+    if (!courseId) return;
+    
     try {
-      // Save all module positions and learn block contents
-      const savePromises: Promise<unknown>[] = [];
+      // First, create any temporary modules
+      const updatedModules = [...modules];
+      const updatedContents = { ...moduleContents };
       
-      for (let i = 0; i < modules.length; i++) {
-        const module = modules[i];
-        const content = moduleContents[i];
+      for (let i = 0; i < updatedModules.length; i++) {
+        const module = updatedModules[i];
+        const content = updatedContents[i];
         
-        // Skip temporary modules (they don't exist in backend yet)
-        if (module.isTemporary) continue;
-        
-        // Update module position if changed
-        savePromises.push(
-          updateModule(module.moduleId, {
+        if (module.isTemporary) {
+          // Create the module in backend
+          const createdModule = await createModule({
+            courseId,
             title: module.title,
             position: module.position,
-          })
-        );
+          });
+          
+          // Update local state with real module data
+          updatedModules[i] = {
+            ...module,
+            moduleId: createdModule.moduleId,
+            isTemporary: false,
+          };
+          
+          // Create learn block for the new module
+          const createdLearnBlock = await createLearnBlock({
+            moduleId: createdModule.moduleId,
+            position: 1,
+            content: content?.content || '',
+          });
+          
+          // Update content with learn block ID
+          updatedContents[i] = {
+            ...content,
+            content: content?.content || '',
+            learnId: createdLearnBlock.learnId,
+            position: 1,
+          };
+        }
+      }
+      
+      // Update state with new module IDs
+      setModules(updatedModules);
+      setModuleContents(updatedContents);
+      
+      // Update modules sequentially (to avoid race conditions with position swapping)
+      for (let i = 0; i < updatedModules.length; i++) {
+        const module = updatedModules[i];
         
-        // Update learn block content if exists
+        // Skip if still temporary (shouldn't happen, but safety check)
+        if (module.isTemporary) continue;
+        
+        // Update module position
+        await updateModule(module.moduleId, {
+          title: module.title,
+          position: module.position,
+        });
+      }
+      
+      // Update learn blocks in parallel (no position conflicts between different modules)
+      const learnBlockPromises: Promise<unknown>[] = [];
+      for (let i = 0; i < updatedModules.length; i++) {
+        const module = updatedModules[i];
+        const content = updatedContents[i];
+        
+        if (module.isTemporary) continue;
+        
         if (content?.learnId) {
-          savePromises.push(
+          learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
               position: content.position ?? 1,
               content: content.content,
@@ -469,7 +517,7 @@ export default function CourseContentPage() {
         }
       }
       
-      await Promise.all(savePromises);
+      await Promise.all(learnBlockPromises);
       console.log('Content saved successfully');
     } catch (err) {
       console.error('Failed to save content:', err);
@@ -550,8 +598,8 @@ export default function CourseContentPage() {
 
           {/* Add Module Modal */}
           {showAddModuleModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <div className="fixed inset-0 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl border border-gray-300">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-black">Přidat nový modul</h3>
                   <button

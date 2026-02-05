@@ -113,8 +113,8 @@ def get_module(db: Session, module_id: int) -> Module:
 
 def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Module:
     """
-    Upraví data modulu s module_id podle dat v module_data
-
+    Upraví data modulu s module_id podle dat v module_data.
+    Pokud se mění pozice, automaticky přehodí pozice ostatních modulů.
     """
     try:
         stm: Select[tuple[models.Module]] = select(models.Module).where(
@@ -150,54 +150,57 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
                     detail="Modul s tímto názvem pro daný kurz již existuje.",
                 )
 
-        # kontrola, zda neni prekryvajici modul (vyjma aktuálně editovaného)
-        # používáme existující course_id modulu, protože ModuleUpdate ho neobsahuje
-        if module_data.position != module.position:
-            exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
+    #Změna - pro posouvání modulů (potřeba revize)
+    
+        # Při změně pozice automaticky posuneme ostatní moduly
+        old_position = module.position
+        new_position = module_data.position
+        
+        if new_position != old_position:
+            # Najdi modul na cílové pozici
+            conflicting_module_stm: Select[tuple[models.Module]] = select(models.Module).where(
                 and_(
                     models.Module.course_id == module.course_id,
-                    models.Module.position == module_data.position,
+                    models.Module.position == new_position,
                     models.Module.is_active.is_(True),
                     models.Module.module_id != module_id,
                 )
             )
-
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Modul s tímto pořadím pro daný kurz již existuje.",
+            conflicting_module = db.execute(conflicting_module_stm).scalars().first()
+            
+            # Pokud existuje konfliktní modul, nejdřív nastavíme dočasnou pozici
+            if conflicting_module is not None:
+                # Použij dočasnou zápornou pozici, pak přehoď na starou pozici
+                temp_position = -module_id  # Unikátní záporná hodnota
+                db.execute(
+                    update(models.Module)
+                    .where(models.Module.module_id == conflicting_module.module_id)
+                    .values(position=temp_position)
                 )
-
-            # kontrola, že position tvoří souvislou posloupnost
-            # získáme všechny aktivní moduly kurzu (kromě aktuálního)
-            all_modules_stm: Select[tuple[models.Module]] = select(models.Module).where(
-                and_(
-                    models.Module.course_id == module.course_id,
-                    models.Module.is_active.is_(True),
-                    models.Module.module_id != module_id,
+                db.flush()
+                
+                # Nastav aktuální modul na novou pozici
+                db.execute(
+                    update(models.Module)
+                    .where(models.Module.module_id == module_id)
+                    .values(title=module_data.title, position=new_position)
                 )
-            ).order_by(models.Module.position)
-
-            other_modules = db.execute(all_modules_stm).scalars().all()
-
-            # vytvoříme seznam všech position hodnot včetně nové
-            all_orders = [m.position for m in other_modules] + [module_data.position]
-            all_orders.sort()
-
-            # kontrola, že tvoří souvislou posloupnost 1, 2, 3, ...
-            expected_orders = list(range(1, len(all_orders) + 1))
-            if all_orders != expected_orders:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Pořadí modulů musí tvořit souvislou posloupnost od 1. Očekávané hodnoty: {expected_orders}, nalezené: {all_orders}",
+                db.flush()
+                
+                # Nastav konfliktní modul na starou pozici
+                db.execute(
+                    update(models.Module)
+                    .where(models.Module.module_id == conflicting_module.module_id)
+                    .values(position=old_position)
                 )
+                db.commit()
+                db.refresh(module)
+                return Module.model_validate(module)
 
-        stm = (
-            update(models.Module)
-            .where(models.Module.module_id == module_id)
-            .values(**module_data.model_dump())
-        )
-        db.execute(stm)
+        # Aktualizuj aktuální modul (když není konflikt)
+        module.title = module_data.title
+        module.position = module_data.position
+        db.add(module)
         db.commit()
         db.refresh(module)
 

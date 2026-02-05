@@ -52,26 +52,28 @@ export function ModuleModal({
         )}
 
         <form onSubmit={onSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="module-course" className="block text-sm font-medium text-gray-700 mb-2">
-              Kurz *
-            </label>
-            <select
-              id="module-course"
-              required
-              value={formData.courseId}
-              onChange={(e) => onChange({ ...formData, courseId: Number(e.target.value) })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              disabled={mode === 'create'}
-            >
-              <option value={0}>Vyberte kurz</option>
-              {courses.map((course) => (
-                <option key={course.courseId} value={course.courseId}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-          </div>
+          {mode === 'create' && (
+            <div>
+              <label htmlFor="module-course" className="block text-sm font-medium text-gray-700 mb-2">
+                Kurz *
+              </label>
+              <select
+                id="module-course"
+                required
+                value={formData.courseId}
+                onChange={(e) => onChange({ ...formData, courseId: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                disabled
+              >
+                <option value={0}>Vyberte kurz</option>
+                {courses.map((course) => (
+                  <option key={course.courseId} value={course.courseId}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label htmlFor="module-title" className="block text-sm font-medium text-gray-700 mb-2">

@@ -7,8 +7,12 @@ import {
   CategoriesApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
+  LearnBlockCreate,
   LearnBlockUpdate,
+  ModuleCreate,
+  PracticeQuestionCreate,
   PracticeQuestionUpdate,
+  PracticeOptionCreate,
   PracticeOptionUpdate,
   QuestionKeywordUpdate,
 } from "@/api";
@@ -78,6 +82,10 @@ export async function getModules(params?: {
 
 export async function getModule(moduleId: number) {
   return modulesApi.getModule({ moduleId });
+}
+
+export async function createModule(data: ModuleCreate) {
+  return modulesApi.createModule({ moduleCreate: data });
 }
 
 export async function updateModule(moduleId: number, data: {
@@ -152,12 +160,24 @@ export async function deleteCategory(categoryId: number) {
 
 // ============ Activities API functions ============
 
+export async function createLearnBlock(data: LearnBlockCreate) {
+  return activitiesApi.createLearnBlock({ learnBlockCreate: data });
+}
+
 export async function updateLearnBlock(learnId: number, data: LearnBlockUpdate) {
   return activitiesApi.updateLearnBlock({ learnId, learnBlockUpdate: data });
 }
 
+export async function createPracticeQuestion(data: PracticeQuestionCreate) {
+  return activitiesApi.createPracticeQuestion({ practiceQuestionCreate: data });
+}
+
 export async function updatePracticeQuestion(questionId: number, data: PracticeQuestionUpdate) {
   return activitiesApi.updatePracticeQuestion({ questionId, practiceQuestionUpdate: data });
+}
+
+export async function createPracticeOption(data: PracticeOptionCreate) {
+  return activitiesApi.createPracticeOption({ practiceOptionCreate: data });
 }
 
 export async function updatePracticeOption(optionId: number, data: PracticeOptionUpdate) {

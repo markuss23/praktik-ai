@@ -1,13 +1,13 @@
 from fastapi import APIRouter
 
 from api.src.modules.controllers import (
-    # create_module,
+    create_module,
     get_modules,
     get_module,
     update_module,
     # delete_module,
 )
-from api.src.modules.schemas import Module, ModuleUpdate
+from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
@@ -33,12 +33,12 @@ async def list_modules(
         course_id=course_id,
     )
 
-
-# @router.post("", operation_id="create_module")
-# async def endp_create_module(
-#     module: ModuleCreate, db: SessionSqlSessionDependency
-# ) -> Module:
-#     return create_module(db, module)
+#Odkomentováno
+@router.post("", operation_id="create_module")
+async def endp_create_module(
+    module: ModuleCreate, db: SessionSqlSessionDependency
+) -> Module:
+    return create_module(db, module)
 
 
 @router.get("/{module_id}", operation_id="get_module")

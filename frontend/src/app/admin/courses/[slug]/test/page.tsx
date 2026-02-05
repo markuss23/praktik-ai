@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Module, PracticeQuestion, QuestionType } from '@/api';
-import { getCourse, getCourses, updatePracticeQuestion, updatePracticeOption } from '@/lib/api-client';
+import { getCourse, getCourses, updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { 
@@ -154,9 +154,33 @@ export default function TestContentPage() {
   };
 
   const updateQuestion = (id: number, field: keyof QuestionItem, value: string | 'closed' | 'open') => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, [field]: value } : q
-    ));
+    setQuestions(questions.map(q => {
+      if (q.id !== id) return q;
+      
+      // When changing type, ensure proper structure
+      if (field === 'type') {
+        if (value === 'closed' && q.type === 'open') {
+          // Switching from open to closed - add options if missing
+          return {
+            ...q,
+            type: 'closed' as const,
+            options: q.options.length > 0 ? q.options : [
+              { id: 1, text: '', isCorrect: false },
+              { id: 2, text: '', isCorrect: false },
+              { id: 3, text: '', isCorrect: false },
+            ],
+          };
+        } else if (value === 'open' && q.type === 'closed') {
+          // Switching from closed to open - keep options but clear them
+          return {
+            ...q,
+            type: 'open' as const,
+          };
+        }
+      }
+      
+      return { ...q, [field]: value };
+    }));
   };
 
   const updateOption = (questionId: number, optionId: number, text: string) => {
@@ -194,19 +218,23 @@ export default function TestContentPage() {
 
   const saveTestContent = async () => {
     try {
-      const savePromises: Promise<unknown>[] = [];
+      const updatePromises: Promise<unknown>[] = [];
+      const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
+      const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
       
       // Save questions from ALL modules
       for (const moduleIndex of Object.keys(moduleQuestions)) {
         const questionsForModule = moduleQuestions[Number(moduleIndex)] || [];
+        const module = modules[Number(moduleIndex)];
         
-        for (const question of questionsForModule) {
-          // Only update existing questions (ones with questionId from backend)
+        for (let qIndex = 0; qIndex < questionsForModule.length; qIndex++) {
+          const question = questionsForModule[qIndex];
+          
           if (question.questionId) {
-            // Find the correct answer text from options
+            // Update existing question
             const correctOption = question.options.find(opt => opt.isCorrect);
             
-            savePromises.push(
+            updatePromises.push(
               updatePracticeQuestion(question.questionId, {
                 position: question.position ?? question.id,
                 question: question.question,
@@ -216,24 +244,128 @@ export default function TestContentPage() {
               })
             );
             
-            // Update options for closed questions
+            // Handle options for closed questions
             if (question.type === 'closed') {
-              for (const option of question.options) {
+              for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
+                const option = question.options[optIndex];
                 if (option.optionId) {
-                  savePromises.push(
+                  // Update existing option
+                  updatePromises.push(
                     updatePracticeOption(option.optionId, {
                       text: option.text,
                       position: option.position ?? option.id,
                     })
                   );
+                } else {
+                  // New option for existing question (e.g., switched from open to closed)
+                  newOptionsForExistingQuestions.push({
+                    moduleIndex: Number(moduleIndex),
+                    questionIndex: qIndex,
+                    optionIndex: optIndex,
+                    option,
+                    questionId: question.questionId,
+                  });
                 }
               }
             }
+          } else if (module?.moduleId) {
+            // Create new question - store for sequential creation
+            createdQuestions.push({
+              moduleIndex: Number(moduleIndex),
+              questionIndex: qIndex,
+              question,
+            });
           }
         }
       }
       
-      await Promise.all(savePromises);
+      // Wait for all updates first
+      await Promise.all(updatePromises);
+      
+      // Create new options for existing questions
+      for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
+        const createdOption = await createPracticeOption({
+          questionId,
+          position: option.position ?? option.id,
+          text: option.text,
+        });
+        
+        // Update local state with the new optionId
+        setModuleQuestions(prev => {
+          const updated = { ...prev };
+          if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
+            const questionCopy = { ...updated[moduleIndex][questionIndex] };
+            questionCopy.options = [...questionCopy.options];
+            questionCopy.options[optionIndex] = {
+              ...questionCopy.options[optionIndex],
+              optionId: createdOption.optionId,
+            };
+            updated[moduleIndex] = [...updated[moduleIndex]];
+            updated[moduleIndex][questionIndex] = questionCopy;
+          }
+          return updated;
+        });
+      }
+      
+      // Create new questions sequentially (need IDs for options)
+      for (const { moduleIndex, questionIndex, question } of createdQuestions) {
+        const module = modules[moduleIndex];
+        if (!module?.moduleId) continue;
+        
+        const correctOption = question.options.find(opt => opt.isCorrect);
+        
+        // Create the question
+        const createdQuestion = await createPracticeQuestion({
+          moduleId: module.moduleId,
+          position: question.position ?? question.id,
+          questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
+          question: question.question,
+          correctAnswer: correctOption?.text ?? question.correctAnswer,
+          exampleAnswer: question.exampleAnswer,
+        });
+        
+        // Update local state with the new questionId
+        setModuleQuestions(prev => {
+          const updated = { ...prev };
+          if (updated[moduleIndex]) {
+            updated[moduleIndex] = [...updated[moduleIndex]];
+            updated[moduleIndex][questionIndex] = {
+              ...updated[moduleIndex][questionIndex],
+              questionId: createdQuestion.questionId,
+            };
+          }
+          return updated;
+        });
+        
+        // Create options for closed questions
+        if (question.type === 'closed' && createdQuestion.questionId) {
+          for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
+            const option = question.options[optIndex];
+            const createdOption = await createPracticeOption({
+              questionId: createdQuestion.questionId,
+              position: option.position ?? option.id,
+              text: option.text,
+            });
+            
+            // Update local state with the new optionId
+            setModuleQuestions(prev => {
+              const updated = { ...prev };
+              if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
+                const questionCopy = { ...updated[moduleIndex][questionIndex] };
+                questionCopy.options = [...questionCopy.options];
+                questionCopy.options[optIndex] = {
+                  ...questionCopy.options[optIndex],
+                  optionId: createdOption.optionId,
+                };
+                updated[moduleIndex] = [...updated[moduleIndex]];
+                updated[moduleIndex][questionIndex] = questionCopy;
+              }
+              return updated;
+            });
+          }
+        }
+      }
+      
       console.log('Test content saved successfully');
     } catch (err) {
       console.error('Failed to save test content:', err);
@@ -407,6 +539,8 @@ export default function TestContentPage() {
                   <div className="ml-4">
                     <label className="block text-xs text-gray-500 mb-1">Příklad odpovědi</label>
                     <textarea
+                      value={question.exampleAnswer || ''}
+                      onChange={(e) => updateQuestion(question.id, 'exampleAnswer', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 text-black text-sm resize-none"
                       rows={2}
                       placeholder="Zadejte příklad správné odpovědi..."

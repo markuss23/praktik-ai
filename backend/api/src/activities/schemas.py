@@ -14,12 +14,24 @@ class LearnBlockUpdate(ORMModel):
     content: str
 
 
+class LearnBlockCreate(ORMModel):
+    module_id: int
+    position: int = 1
+    content: str = ""
+
+
 class LearnBlock(LearnBlockBase):
     learn_id: int
     module_id: int
 
 
 class PracticeOptionBase(ORMModel):
+    position: int
+    text: str
+
+
+class PracticeOptionCreate(ORMModel):
+    question_id: int
     position: int
     text: str
 
@@ -57,6 +69,16 @@ class PracticeQuestionBase(ORMModel):
 
     closed_options: list[PracticeOption] = []
     open_keywords: list[QuestionKeyword] = []
+
+
+class PracticeQuestionCreate(ORMModel):
+    module_id: int
+    position: int
+    question_type: QuestionType
+    question: str
+
+    correct_answer: str | None = None
+    example_answer: str | None = None
 
 
 class PracticeQuestionUpdate(ORMModel):
