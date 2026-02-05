@@ -8,6 +8,7 @@ interface PageFooterActionsProps {
   backLabel?: string;
   continueLabel?: string;
   continueIcon?: React.ReactNode;
+  continueDisabled?: boolean;
 }
 
 /**
@@ -19,6 +20,7 @@ export function PageFooterActions({
   backLabel = 'Zpět',
   continueLabel = 'Pokračovat',
   continueIcon,
+  continueDisabled = false,
 }: PageFooterActionsProps) {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
@@ -31,7 +33,12 @@ export function PageFooterActions({
       </button>
       <button
         onClick={onContinue}
-        className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+        disabled={continueDisabled}
+        className={`flex items-center gap-2 px-5 py-2 rounded-md transition-colors text-sm ${
+          continueDisabled
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-green-600 text-white hover:bg-green-700'
+        }`}
       >
         {continueIcon || <ArrowRight size={16} />}
         <span>{continueLabel}</span>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
 import { Module, LearnBlock } from '@/api';
 import { getCourse, getCourses, updateModule, createModule, createLearnBlock, updateLearnBlock } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
@@ -29,6 +28,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { 
   Plus, 
   Bold, 
@@ -51,11 +51,10 @@ import {
 
 interface ModuleContent {
   content: string;
-  learnId?: number; // ID of the learn block for API updates
+  learnId?: number;
   position?: number;
 }
 
-// Extended module interface for local state (includes temporary modules)
 interface LocalModule extends Partial<Module> {
   moduleId: number;
   title: string;
@@ -64,7 +63,11 @@ interface LocalModule extends Partial<Module> {
   learnBlocks?: LearnBlock[];
 }
 
-// Sortable module item component
+interface CourseContentViewProps {
+  courseId: number;
+}
+
+// Položka modulu s podporou přetahování
 function SortableModuleItem({ 
   module, 
   index, 
@@ -136,22 +139,51 @@ function SortableModuleItem({
   );
 }
 
-export default function CourseContentPage() {
-  const router = useRouter();
-  const params = useParams();
-  const courseSlug = params.slug as string;
+// Tlačítko v panelu nástrojů
+function ToolbarButton({ 
+  onClick, 
+  isActive = false, 
+  disabled = false,
+  title,
+  children 
+}: { 
+  onClick: () => void; 
+  isActive?: boolean; 
+  disabled?: boolean;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`p-2 rounded transition-colors ${
+        isActive 
+          ? 'bg-purple-100 text-purple-700' 
+          : 'hover:bg-gray-100 text-black'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Editor obsahu kurzu s rich text editorem
+export function CourseContentView({ courseId }: CourseContentViewProps) {
+  const { goToCourseTests, goBack } = useAdminNavigation();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [courseId, setCourseId] = useState<number | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
   const [modules, setModules] = useState<LocalModule[]>([]);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [showAddModuleModal, setShowAddModuleModal] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState('');
-  const [nextTempId, setNextTempId] = useState(-1); // Negative IDs for temporary modules
+  const [nextTempId, setNextTempId] = useState(-1);
 
-  // DnD sensors
+  // Senzory pro drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -163,7 +195,6 @@ export default function CourseContentPage() {
     })
   );
   
-  // Editor content state for each module
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
 
   // TipTap Editor
@@ -205,14 +236,14 @@ export default function CourseContentPage() {
       setModuleContents(prev => ({
         ...prev,
         [selectedModuleIndex]: {
-          ...prev[selectedModuleIndex], // Preserve learnId and position
+          ...prev[selectedModuleIndex],
           content: html
         }
       }));
     },
   });
 
-  // Update editor content when module changes
+  // Aktualizace obsahu editoru při změně modulu
   useEffect(() => {
     if (editor && moduleContents[selectedModuleIndex]) {
       const currentEditorContent = editor.getHTML();
@@ -226,24 +257,10 @@ export default function CourseContentPage() {
   useEffect(() => {
     async function loadCourse() {
       try {
-        const courses = await getCourses();
-        const isNumericId = /^\d+$/.test(courseSlug);
+        const course = await getCourse(courseId);
         
-        const courseMatch = isNumericId 
-          ? courses.find(c => c.courseId === Number(courseSlug))
-          : courses.find(c => slugify(c.title) === courseSlug);
-        
-        if (!courseMatch) {
-          setError('Kurz nebyl nalezen');
-          return;
-        }
-        
-        const course = await getCourse(courseMatch.courseId);
-        
-        setCourseId(course.courseId);
         setCourseTitle(course.title);
         
-        // Map API modules to LocalModule format
         const localModules: LocalModule[] = (course.modules || []).map((m, idx) => ({
           moduleId: m.moduleId,
           title: m.title,
@@ -256,7 +273,6 @@ export default function CourseContentPage() {
         }));
         setModules(localModules);
         
-        // Initialize content for each module
         const initialContents: {[key: number]: ModuleContent} = {};
         (course.modules || []).forEach((module, index) => {
           const learnBlock = module.learnBlocks && module.learnBlocks.length > 0
@@ -271,7 +287,6 @@ export default function CourseContentPage() {
         });
         setModuleContents(initialContents);
         
-        // Set initial editor content
         if (editor && initialContents[0]) {
           editor.commands.setContent(initialContents[0].content);
         }
@@ -283,13 +298,12 @@ export default function CourseContentPage() {
       }
     }
     loadCourse();
-  }, [courseSlug, editor]);
+  }, [courseId, editor]);
 
   const selectModule = (index: number) => {
     setSelectedModuleIndex(index);
   };
 
-  // Handle drag end for reordering modules
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -299,14 +313,12 @@ export default function CourseContentPage() {
         const newIndex = items.findIndex((item) => item.moduleId === over.id);
         
         const newItems = arrayMove(items, oldIndex, newIndex);
-        // Update positions
         return newItems.map((item, idx) => ({
           ...item,
           position: idx + 1,
         }));
       });
 
-      // Update selected index if needed
       const oldIndex = modules.findIndex((item) => item.moduleId === active.id);
       const newIndex = modules.findIndex((item) => item.moduleId === over.id);
       if (selectedModuleIndex === oldIndex) {
@@ -319,7 +331,6 @@ export default function CourseContentPage() {
     }
   };
 
-  // Add a new module
   const handleAddModule = () => {
     if (!newModuleTitle.trim()) return;
 
@@ -338,13 +349,12 @@ export default function CourseContentPage() {
     setNextTempId(nextTempId - 1);
     setNewModuleTitle('');
     setShowAddModuleModal(false);
-    setSelectedModuleIndex(modules.length); // Select the new module
+    setSelectedModuleIndex(modules.length);
   };
 
-  // Delete a temporary module
   const handleDeleteModule = (index: number) => {
     const moduleToDelete = modules[index];
-    if (!moduleToDelete.isTemporary) return; // Only allow deleting temporary modules
+    if (!moduleToDelete.isTemporary) return;
 
     const newModules = modules.filter((_, i) => i !== index).map((m, idx) => ({
       ...m,
@@ -352,7 +362,6 @@ export default function CourseContentPage() {
     }));
     setModules(newModules);
 
-    // Update module contents
     const newContents: {[key: number]: ModuleContent} = {};
     newModules.forEach((_, idx) => {
       const oldIdx = idx >= index ? idx + 1 : idx;
@@ -362,42 +371,12 @@ export default function CourseContentPage() {
     });
     setModuleContents(newContents);
 
-    // Adjust selected index
     if (selectedModuleIndex >= newModules.length) {
       setSelectedModuleIndex(Math.max(0, newModules.length - 1));
     } else if (selectedModuleIndex > index) {
       setSelectedModuleIndex(selectedModuleIndex - 1);
     }
   };
-
-  // Toolbar button helper
-  const ToolbarButton = ({ 
-    onClick, 
-    isActive = false, 
-    disabled = false,
-    title,
-    children 
-  }: { 
-    onClick: () => void; 
-    isActive?: boolean; 
-    disabled?: boolean;
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`p-2 rounded transition-colors ${
-        isActive 
-          ? 'bg-purple-100 text-purple-700' 
-          : 'hover:bg-gray-100 text-black'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      {children}
-    </button>
-  );
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -425,23 +404,10 @@ export default function CourseContentPage() {
     }
   }, [editor]);
 
-  const handleContinue = async () => {
-    await saveContent();
-    if (courseId) {
-      router.push(`/admin/courses/${courseSlug}/test`);
-    }
-  };
-
-  const handleBack = async () => {
-    await saveContent();
-    router.back();
-  };
-
   const saveContent = async () => {
     if (!courseId) return;
     
     try {
-      // First, create any temporary modules
       const updatedModules = [...modules];
       const updatedContents = { ...moduleContents };
       
@@ -450,28 +416,24 @@ export default function CourseContentPage() {
         const content = updatedContents[i];
         
         if (module.isTemporary) {
-          // Create the module in backend
           const createdModule = await createModule({
             courseId,
             title: module.title,
             position: module.position,
           });
           
-          // Update local state with real module data
           updatedModules[i] = {
             ...module,
             moduleId: createdModule.moduleId,
             isTemporary: false,
           };
           
-          // Create learn block for the new module
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
             position: 1,
             content: content?.content || '',
           });
           
-          // Update content with learn block ID
           updatedContents[i] = {
             ...content,
             content: content?.content || '',
@@ -481,25 +443,20 @@ export default function CourseContentPage() {
         }
       }
       
-      // Update state with new module IDs
       setModules(updatedModules);
       setModuleContents(updatedContents);
       
-      // Update modules sequentially (to avoid race conditions with position swapping)
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
         
-        // Skip if still temporary (shouldn't happen, but safety check)
         if (module.isTemporary) continue;
         
-        // Update module position
         await updateModule(module.moduleId, {
           title: module.title,
           position: module.position,
         });
       }
       
-      // Update learn blocks in parallel (no position conflicts between different modules)
       const learnBlockPromises: Promise<unknown>[] = [];
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
@@ -522,8 +479,19 @@ export default function CourseContentPage() {
     } catch (err) {
       console.error('Failed to save content:', err);
       alert('Nepodařilo se uložit obsah');
-      throw err; // Re-throw to prevent navigation on error
+      throw err;
     }
+  };
+
+  const handleContinue = async () => {
+    await saveContent();
+    // Přechod na editor testů
+    goToCourseTests(courseId);
+  };
+
+  const handleBack = async () => {
+    await saveContent();
+    goBack();
   };
 
   const handleSave = async () => {
@@ -541,15 +509,13 @@ export default function CourseContentPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
-      {/* Header - buttons commented out via showButtons=false */}
       <CoursePageHeader
-        breadcrumb="Kurzy / Přehled kurzů / Popis kurzu / Tvorba obsahu kurzu"
+        breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
         onSave={handleSave}
         showButtons={false}
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
         {/* Left Sidebar - Course Outline */}
         <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
@@ -656,7 +622,6 @@ export default function CourseContentPage() {
           
           {/* Editor Toolbar */}
           <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-gray-200 bg-white">
-            {/* Undo/Redo */}
             <ToolbarButton
               onClick={() => editor?.chain().focus().undo().run()}
               disabled={!editor?.can().undo()}
@@ -674,7 +639,6 @@ export default function CourseContentPage() {
             
             <div className="w-px h-6 bg-gray-300 mx-1" />
             
-            {/* Heading levels */}
             <select 
               className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-black min-w-[100px]"
               value={
@@ -703,7 +667,6 @@ export default function CourseContentPage() {
             
             <div className="w-px h-6 bg-gray-300 mx-1" />
             
-            {/* Text formatting */}
             <ToolbarButton
               onClick={() => editor?.chain().focus().toggleBold().run()}
               isActive={editor?.isActive('bold') ?? false}
@@ -735,7 +698,6 @@ export default function CourseContentPage() {
             
             <div className="w-px h-6 bg-gray-300 mx-1" />
             
-            {/* Text alignment */}
             <ToolbarButton
               onClick={() => editor?.chain().focus().setTextAlign('left').run()}
               isActive={editor?.isActive({ textAlign: 'left' }) ?? false}
@@ -760,7 +722,6 @@ export default function CourseContentPage() {
             
             <div className="w-px h-6 bg-gray-300 mx-1" />
             
-            {/* Lists */}
             <ToolbarButton
               onClick={() => editor?.chain().focus().toggleBulletList().run()}
               isActive={editor?.isActive('bulletList') ?? false}
@@ -778,11 +739,7 @@ export default function CourseContentPage() {
             
             <div className="w-px h-6 bg-gray-300 mx-1" />
             
-            {/* Media */}
-            <ToolbarButton
-              onClick={addImage}
-              title="Vložit obrázek"
-            >
+            <ToolbarButton onClick={addImage} title="Vložit obrázek">
               <ImageIcon size={16} />
             </ToolbarButton>
             <ToolbarButton
@@ -801,14 +758,13 @@ export default function CourseContentPage() {
                 editor={editor} 
                 className="min-h-[300px] [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:p-6 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-4 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none text-black"
               />
-                        ) : (
+            ) : (
               <div className="text-center text-gray-500 py-12">
                 Nejsou k dispozici žádné moduly k úpravě
               </div>
             )}
           </div>
 
-          {/* Footer Actions */}
           <PageFooterActions
             onBack={handleBack}
             onContinue={handleContinue}
@@ -818,3 +774,5 @@ export default function CourseContentPage() {
     </div>
   );
 }
+
+export default CourseContentView;

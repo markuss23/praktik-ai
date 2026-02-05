@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Upload, X } from 'lucide-react';
-import Link from 'next/link';
 import { createCourse, uploadCourseFile } from '@/lib/api-client';
+import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
-export default function UploadCoursePage() {
-  const router = useRouter();
+// Nahrání souboru pro vytvoření kurzu
+export function CourseUploadView() {
+  const { goToCourses, goToCourseEdit } = useAdminNavigation();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -31,7 +32,6 @@ export default function UploadCoursePage() {
         'text/plain',
       ];
       
-      // Also allow by extension for markdown files
       const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.md', '.txt'];
       const fileExt = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
       
@@ -64,17 +64,15 @@ export default function UploadCoursePage() {
     setError('');
 
     try {
-      // Step 1: Create course
       const course = await createCourse({
         title: formData.title,
         description: formData.description || undefined,
       });
       
-      // Step 2: Upload file to course
       await uploadCourseFile(course.courseId, file);
       
-      // Redirect to course edit page
-      router.push(`/admin/courses/${course.courseId}/edit`);
+      // Přechod na editaci kurzu
+      goToCourseEdit(course.courseId);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -106,12 +104,12 @@ export default function UploadCoursePage() {
       {/* Header */}
       <div className="bg-white border-b">
         <div className="px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4">
-          <Link 
-            href="/admin"
+          <button 
+            onClick={goToCourses}
             className="p-2 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
           >
             <ArrowLeft size={20} />
-          </Link>
+          </button>
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-bold text-black flex items-center gap-2">
               <Upload className="text-blue-600 flex-shrink-0" size={20} />
@@ -209,7 +207,7 @@ export default function UploadCoursePage() {
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
             <button
               type="button"
-              onClick={() => router.push('/admin')}
+              onClick={goToCourses}
               className="px-4 sm:px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors text-sm sm:text-base"
             >
               Zpět
@@ -227,3 +225,5 @@ export default function UploadCoursePage() {
     </div>
   );
 }
+
+export default CourseUploadView;

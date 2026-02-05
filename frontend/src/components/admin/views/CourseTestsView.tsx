@@ -1,23 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
 import { Module, PracticeQuestion, QuestionType } from '@/api';
-import { getCourse, getCourses, updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
-import { slugify } from '@/lib/utils';
+import { getCourse, updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { 
   ChevronDown, 
   ChevronUp, 
   Plus, 
-  ArrowRight,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 
 interface QuestionItem {
   id: number;
-  questionId?: number; // Backend question ID
-  position?: number; // Position from backend
+  questionId?: number;
+  position?: number;
   question: string;
   type: 'closed' | 'open';
   correctAnswer?: string;
@@ -25,26 +24,36 @@ interface QuestionItem {
   options: { id: number; optionId?: number; text: string; isCorrect: boolean; position?: number }[];
 }
 
-export default function TestContentPage() {
-  const router = useRouter();
-  const params = useParams();
-  const courseSlug = params.slug as string;
+interface ValidationError {
+  moduleIndex: number;
+  moduleName: string;
+  questionIndex: number;
+  message: string;
+}
+
+interface CourseTestsViewProps {
+  courseId: number;
+}
+
+// Editor testů/otázek pro moduly kurzu
+export function CourseTestsView({ courseId }: CourseTestsViewProps) {
+  const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [courseId, setCourseId] = useState<number | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
   
-  // Questions state - stored per module index
+  // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
   
-  // Get current module's questions
+  // Otázky aktuálního modulu
   const questions = moduleQuestions[selectedModuleIndex] || [];
   
-  // Set questions for current module
+  // Nastavení otázek pro aktuální modul
   const setQuestions = (newQuestions: QuestionItem[] | ((prev: QuestionItem[]) => QuestionItem[])) => {
     setModuleQuestions(prev => ({
       ...prev,
@@ -57,29 +66,12 @@ export default function TestContentPage() {
   useEffect(() => {
     async function loadCourse() {
       try {
-        // Get all courses and find the one matching the slug
-        const courses = await getCourses();
+        const course = await getCourse(courseId);
         
-        // Check if slug is a numeric ID (for backward compatibility)
-        const isNumericId = /^\d+$/.test(courseSlug);
-        
-        const courseMatch = isNumericId 
-          ? courses.find(c => c.courseId === Number(courseSlug))
-          : courses.find(c => slugify(c.title) === courseSlug);
-        
-        if (!courseMatch) {
-          setError('Kurz nebyl nalezen');
-          return;
-        }
-        
-        // Get full course details with modules
-        const course = await getCourse(courseMatch.courseId);
-        
-        setCourseId(course.courseId);
         setCourseTitle(course.title);
         setModules(course.modules || []);
         
-        // Load questions for ALL modules
+        // Načtení otázek pro všechny moduly
         if (course.modules && course.modules.length > 0) {
           const allModuleQuestions: {[key: number]: QuestionItem[]} = {};
           
@@ -117,7 +109,7 @@ export default function TestContentPage() {
       }
     }
     loadCourse();
-  }, [courseSlug]);
+  }, [courseId]);
 
   const toggleOutlineItem = (index: number) => {
     setExpandedOutlineItems(prev => {
@@ -132,7 +124,6 @@ export default function TestContentPage() {
   };
 
   const selectModule = (index: number) => {
-    // Just change the selected index - questions are already stored in moduleQuestions
     setSelectedModuleIndex(index);
   };
 
@@ -157,10 +148,8 @@ export default function TestContentPage() {
     setQuestions(questions.map(q => {
       if (q.id !== id) return q;
       
-      // When changing type, ensure proper structure
       if (field === 'type') {
         if (value === 'closed' && q.type === 'open') {
-          // Switching from open to closed - add options if missing
           return {
             ...q,
             type: 'closed' as const,
@@ -171,7 +160,6 @@ export default function TestContentPage() {
             ],
           };
         } else if (value === 'open' && q.type === 'closed') {
-          // Switching from closed to open - keep options but clear them
           return {
             ...q,
             type: 'open' as const,
@@ -222,7 +210,6 @@ export default function TestContentPage() {
       const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
       const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
       
-      // Save questions from ALL modules
       for (const moduleIndex of Object.keys(moduleQuestions)) {
         const questionsForModule = moduleQuestions[Number(moduleIndex)] || [];
         const module = modules[Number(moduleIndex)];
@@ -231,7 +218,6 @@ export default function TestContentPage() {
           const question = questionsForModule[qIndex];
           
           if (question.questionId) {
-            // Update existing question
             const correctOption = question.options.find(opt => opt.isCorrect);
             
             updatePromises.push(
@@ -244,12 +230,10 @@ export default function TestContentPage() {
               })
             );
             
-            // Handle options for closed questions
             if (question.type === 'closed') {
               for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
                 const option = question.options[optIndex];
                 if (option.optionId) {
-                  // Update existing option
                   updatePromises.push(
                     updatePracticeOption(option.optionId, {
                       text: option.text,
@@ -257,7 +241,6 @@ export default function TestContentPage() {
                     })
                   );
                 } else {
-                  // New option for existing question (e.g., switched from open to closed)
                   newOptionsForExistingQuestions.push({
                     moduleIndex: Number(moduleIndex),
                     questionIndex: qIndex,
@@ -269,7 +252,6 @@ export default function TestContentPage() {
               }
             }
           } else if (module?.moduleId) {
-            // Create new question - store for sequential creation
             createdQuestions.push({
               moduleIndex: Number(moduleIndex),
               questionIndex: qIndex,
@@ -279,10 +261,8 @@ export default function TestContentPage() {
         }
       }
       
-      // Wait for all updates first
       await Promise.all(updatePromises);
       
-      // Create new options for existing questions
       for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
         const createdOption = await createPracticeOption({
           questionId,
@@ -290,7 +270,6 @@ export default function TestContentPage() {
           text: option.text,
         });
         
-        // Update local state with the new optionId
         setModuleQuestions(prev => {
           const updated = { ...prev };
           if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -307,14 +286,12 @@ export default function TestContentPage() {
         });
       }
       
-      // Create new questions sequentially (need IDs for options)
       for (const { moduleIndex, questionIndex, question } of createdQuestions) {
         const module = modules[moduleIndex];
         if (!module?.moduleId) continue;
         
         const correctOption = question.options.find(opt => opt.isCorrect);
         
-        // Create the question
         const createdQuestion = await createPracticeQuestion({
           moduleId: module.moduleId,
           position: question.position ?? question.id,
@@ -324,7 +301,6 @@ export default function TestContentPage() {
           exampleAnswer: question.exampleAnswer,
         });
         
-        // Update local state with the new questionId
         setModuleQuestions(prev => {
           const updated = { ...prev };
           if (updated[moduleIndex]) {
@@ -337,7 +313,6 @@ export default function TestContentPage() {
           return updated;
         });
         
-        // Create options for closed questions
         if (question.type === 'closed' && createdQuestion.questionId) {
           for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
             const option = question.options[optIndex];
@@ -347,7 +322,6 @@ export default function TestContentPage() {
               text: option.text,
             });
             
-            // Update local state with the new optionId
             setModuleQuestions(prev => {
               const updated = { ...prev };
               if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -370,21 +344,88 @@ export default function TestContentPage() {
     } catch (err) {
       console.error('Failed to save test content:', err);
       alert('Nepodařilo se uložit obsah testu');
-      throw err; // Re-throw to prevent navigation on error
+      throw err;
     }
   };
 
-  const handleSave = async () => {
-    await saveTestContent();
-    // Navigate to course edit or overview page
-    if (courseId) {
-      router.push(`/admin/courses/${courseSlug}/edit`);
+  // Validace všech otázek ve všech modulech
+  const validateQuestions = (): ValidationError[] => {
+    const errors: ValidationError[] = [];
+    
+    for (const moduleIndexStr of Object.keys(moduleQuestions)) {
+      const moduleIndex = Number(moduleIndexStr);
+      const questionsForModule = moduleQuestions[moduleIndex] || [];
+      const module = modules[moduleIndex];
+      const moduleName = module?.title || `Modul ${moduleIndex + 1}`;
+      
+      questionsForModule.forEach((question, qIndex) => {
+        // Kontrola textu otázky
+        if (!question.question.trim()) {
+          errors.push({
+            moduleIndex,
+            moduleName,
+            questionIndex: qIndex,
+            message: `Otázka ${qIndex + 1} nemá zadaný text otázky`,
+          });
+        }
+        
+        if (question.type === 'closed') {
+          // Kontrola možností odpovědí
+          const hasAnyOption = question.options.some(opt => opt.text.trim());
+          if (!hasAnyOption) {
+            errors.push({
+              moduleIndex,
+              moduleName,
+              questionIndex: qIndex,
+              message: `Otázka ${qIndex + 1} nemá žádné možnosti odpovědí`,
+            });
+          }
+          
+          // Kontrola správné odpovědi
+          const hasCorrectAnswer = question.options.some(opt => opt.isCorrect && opt.text.trim());
+          if (!hasCorrectAnswer) {
+            errors.push({
+              moduleIndex,
+              moduleName,
+              questionIndex: qIndex,
+              message: `Otázka ${qIndex + 1} nemá označenou správnou odpověď`,
+            });
+          }
+        } else if (question.type === 'open') {
+          // Kontrola příkladu odpovědi
+          if (!question.exampleAnswer?.trim()) {
+            errors.push({
+              moduleIndex,
+              moduleName,
+              questionIndex: qIndex,
+              message: `Otázka ${qIndex + 1} nemá příklad odpovědi`,
+            });
+          }
+        }
+      });
     }
+    
+    return errors;
+  };
+
+  const handleContinue = async () => {
+    // Nejdřív validace otázek
+    const errors = validateQuestions();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      // Scroll nahoru pro zobrazení chyb
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
+    setValidationErrors([]);
+    await saveTestContent();
+    goToCourseSummary(courseId);
   };
 
   const handleBack = async () => {
     await saveTestContent();
-    router.push(`/admin/courses/${courseSlug}/content`);
+    goToCourseContent(courseId);
   };
 
   if (loading) {
@@ -395,7 +436,6 @@ export default function TestContentPage() {
     return <ErrorState message={error} />;
   }
 
-  // Create outline items from modules
   const outlineItems = modules.map((module, index) => ({
     id: index,
     title: module.title,
@@ -407,19 +447,37 @@ export default function TestContentPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
-      {/* Header - buttons commented out via showButtons=false */}
       <CoursePageHeader
-        breadcrumb="Kurzy / Přehled kurzů / Popis kurzu / Tvorba obsahu kurzu / Tvorba obsahu testu"
+        breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
         title="Tvorba obsahu testu"
-        onSave={handleSave}
+        onSave={handleContinue}
         showButtons={false}
       />
 
-      {/* Main Content */}
+      {/* Validation Errors Banner */}
+      {validationErrors.length > 0 && (
+        <div className="mx-4 sm:mx-6 mt-2 bg-red-50 rounded-lg p-2">
+          <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+            <span>Opravte následující chyby:</span>
+          </div>
+          <ul className="list-disc list-inside text-black text-sm space-y-1">
+            {validationErrors.map((err, idx) => (
+              <li 
+                key={idx}
+                className="cursor-pointer hover:underline"
+                onClick={() => selectModule(err.moduleIndex)}
+              >
+                <span className="font-medium">{err.moduleName}</span>, otázka {err.questionIndex + 1}: {err.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
         {/* Left Sidebar - Course Outline */}
-        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-4 border-b">
+        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-black">Osnova kurzu</h2>
               <button className="p-1 hover:bg-gray-100 rounded">
@@ -432,7 +490,7 @@ export default function TestContentPage() {
               <div key={item.id} className="border-b border-gray-100 last:border-b-0">
                 <div
                   className={`flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                    selectedModuleIndex === index ? 'bg-purple-50 border-l-2 border-purple-600' : ''
+                    selectedModuleIndex === index ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'border-l-4 border-l-transparent'
                   }`}
                   onClick={() => {
                     selectModule(index);
@@ -464,8 +522,8 @@ export default function TestContentPage() {
         </div>
 
         {/* Right Content - Test Editor */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 border-b">
+        <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Úprava testu</h2>
           </div>
 
@@ -492,7 +550,6 @@ export default function TestContentPage() {
                       onChange={(e) => updateQuestion(question.id, 'type', e.target.value as 'closed' | 'open')}
                       className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm bg-white"
                     >
-                      <option value="closed">Typ otázky</option>
                       <option value="closed">Uzavřená</option>
                       <option value="open">Otevřená</option>
                     </select>
@@ -560,14 +617,14 @@ export default function TestContentPage() {
             </button>
           </div>
 
-          {/* Footer Actions */}
           <PageFooterActions
             onBack={handleBack}
-            onContinue={handleSave}
-            continueLabel="Uložit"
+            onContinue={handleContinue}
           />
         </div>
       </div>
     </div>
   );
 }
+
+export default CourseTestsView;

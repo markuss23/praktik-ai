@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCategories } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
 import { Category } from '@/api';
+import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
-export default function AICreateCoursePage() {
-  const router = useRouter();
+// Tvorba kurzu pomocí AI generování
+export function CourseAICreateView() {
+  const { goToCourses, goToCourseContent } = useAdminNavigation();
+  
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
@@ -24,13 +26,12 @@ export default function AICreateCoursePage() {
     categoryId: 0,
   });
 
-  // Load categories on mount
+  // Načtení kategorií při mountu
   useEffect(() => {
     async function loadCategories() {
       try {
         const cats = await getCategories();
         setCategories(cats);
-        // Set default category if available
         if (cats.length > 0) {
           setFormData(prev => ({ ...prev, categoryId: cats[0].categoryId }));
         }
@@ -64,7 +65,6 @@ export default function AICreateCoursePage() {
     setError('');
 
     try {
-      // Step 1: Create course
       setStep('uploading');
       
       if (formData.categoryId === 0) {
@@ -80,7 +80,6 @@ export default function AICreateCoursePage() {
           categoryId: formData.categoryId,
         });
       } catch (createErr: unknown) {
-        // Check if it's a 400 error (course already exists)
         if (createErr && typeof createErr === 'object' && 'response' in createErr) {
           const response = (createErr as { response: Response }).response;
           if (response.status === 400) {
@@ -91,17 +90,17 @@ export default function AICreateCoursePage() {
         throw createErr;
       }
 
-      // Step 2: Upload all files to course
+      // Nahrání všech souborů
       for (const file of files) {
         await uploadCourseFile(course.courseId, file);
       }
 
-      // Step 3: Generate course with AI
+      // Generování kurzu pomocí AI
       setStep('generating');
       await generateCourseWithAI(course.courseId);
 
-      // Redirect to course content creation page
-      router.push(`/admin/courses/${course.courseId}/content`);
+      // Přechod na editor obsahu kurzu
+      goToCourseContent(course.courseId);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -123,7 +122,6 @@ export default function AICreateCoursePage() {
   };
 
   const handleSave = async () => {
-    // handleSave now uses handleSubmit logic
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
     await handleSubmit(fakeEvent);
   };
@@ -141,7 +139,6 @@ export default function AICreateCoursePage() {
 
   return (
     <div className="flex-1">
-      {/* Header - buttons disabled via showButtons=false */}
       <CoursePageHeader
         breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
         title="Popis kurzu"
@@ -149,7 +146,6 @@ export default function AICreateCoursePage() {
         showButtons={false}
       />
 
-      {/* Main Content */}
       <div className="p-4 sm:p-6 lg:p-8">
         {error && (
           <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
@@ -214,7 +210,7 @@ export default function AICreateCoursePage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black resize-none"
-                placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn, konkrétně s Arabica a Robustou. Arabica je považována za kvalitnější a jemnější variantu, s komplexními chutovými profily, ovocnými a květinovými tóny, a s vysoce výraznou kyselostí. Naopak Robusta se vyznačuje silnější a hořkou chutí, nízká kyselostí, a vyšším obsahem kofeinu, což ji činí ideální pro espresso směsi. Důležitým aspektem je posouzení osobních preferencí spotřebitelů při výběru druhu kávových zrn."
+                placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn..."
               />
             </div>
 
@@ -231,7 +227,7 @@ export default function AICreateCoursePage() {
                 >
                   -
                 </button>
-                  <input
+                <input
                   type="number"
                   min="1"
                   max="20"
@@ -280,7 +276,7 @@ export default function AICreateCoursePage() {
             <div className="flex justify-between items-center pt-4">
               <button
                 type="button"
-                onClick={() => router.push('/admin')}
+                onClick={goToCourses}
                 disabled={loading}
                 className="text-gray-600 hover:text-gray-800 transition-colors text-sm disabled:opacity-50"
               >
@@ -302,3 +298,5 @@ export default function AICreateCoursePage() {
     </div>
   );
 }
+
+export default CourseAICreateView;

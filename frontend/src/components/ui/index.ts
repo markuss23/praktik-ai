@@ -8,5 +8,5 @@ export {
   CardFooter,
 } from "./Card";
 export { Input } from "./Input";
-export { Dropdown, GradientBotIcon } from "./Dropdown";
+export { Dropdown, SimpleBotIcon } from "./Dropdown";
 export { CourseCard } from "./CourseCard";

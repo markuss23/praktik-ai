@@ -1,23 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { CoursesApi, Configuration, Module, Course } from '@/api';
+import { CoursesApi, Configuration, Module } from '@/api';
 import { API_BASE_URL } from '@/lib/constants';
-import { getCourse, getCourses, updateModule, deleteCourse } from '@/lib/api-client';
-import { slugify } from '@/lib/utils';
-import { ChevronDown, ChevronUp, Edit2, Save, X, Trash2 } from 'lucide-react';
+import { getCourse, updateModule, deleteCourse } from '@/lib/api-client';
+import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
+import { useAdminNavigation } from '@/hooks/useAdminNavigation';
+import { LoadingState, ErrorState } from '@/components/admin';
 
-export default function EditCoursePage() {
-  const router = useRouter();
-  const params = useParams();
-  const courseSlug = params.slug as string;
+interface CourseEditViewProps {
+  courseId: number;
+}
+
+// Formulář pro editaci kurzu a jeho modulů
+export function CourseEditView({ courseId }: CourseEditViewProps) {
+  const { goToCourses, goBack } = useAdminNavigation();
   
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [courseId, setCourseId] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState<number>(1);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
@@ -32,28 +35,8 @@ export default function EditCoursePage() {
   useEffect(() => {
     async function loadCourse() {
       try {
-        // Get all courses and find the one matching the slug
-        const courses = await getCourses();
+        const course = await getCourse(courseId);
         
-        // Check if slug is a numeric ID (for backward compatibility)
-        const isNumericId = /^\d+$/.test(courseSlug);
-        
-        const courseMatch = isNumericId 
-          ? courses.find(c => c.courseId === Number(courseSlug))
-          : courses.find(c => slugify(c.title) === courseSlug);
-        
-        if (!courseMatch) {
-          setError('Course not found');
-          return;
-        }
-        
-        // Get full course details with modules
-        const course = await getCourse(courseMatch.courseId);
-        
-        console.log('Loaded course:', course);
-        console.log('Modules:', course.modules);
-        
-        setCourseId(course.courseId);
         setCategoryId(course.categoryId);
         setModules(course.modules || []);
         setFormData({
@@ -62,11 +45,13 @@ export default function EditCoursePage() {
         });
       } catch (err) {
         console.error('Failed to load course:', err);
-        setError('Failed to load course data');
+        setError('Nepodařilo se načíst data kurzu');
+      } finally {
+        setInitialLoading(false);
       }
     }
     loadCourse();
-  }, [courseSlug]);
+  }, [courseId]);
 
   const toggleModule = (moduleId: number) => {
     setExpandedModules(prev => {
@@ -91,7 +76,6 @@ export default function EditCoursePage() {
   };
 
   const saveModuleEdit = async (module: Module) => {
-    if (!courseId) return;
     try {
       await updateModule(module.moduleId, {
         title: editModuleData.title,
@@ -104,13 +88,12 @@ export default function EditCoursePage() {
       ));
       setEditingModule(null);
     } catch (err) {
-      setError('Failed to save module');
+      setError('Nepodařilo se uložit modul');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!courseId) return;
     
     setLoading(true);
     setError('');
@@ -119,7 +102,6 @@ export default function EditCoursePage() {
       const config = new Configuration({ basePath: API_BASE_URL });
       const coursesApi = new CoursesApi(config);
       
-      // Build update data with required fields
       const updateData = {
         title: formData.title,
         description: formData.description || undefined,
@@ -127,21 +109,18 @@ export default function EditCoursePage() {
         categoryId: categoryId,
       };
       
-      console.log('Sending update data:', updateData);
-      
       await coursesApi.updateCourse({
         courseId: courseId,
         courseUpdate: updateData
       });
       
-      // Navigate back to admin
-      router.push('/admin');
+      goToCourses();
     } catch (err) {
       console.error('Update error:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to update course');
+        setError('Nepodařilo se aktualizovat kurz');
       }
     } finally {
       setLoading(false);
@@ -149,14 +128,12 @@ export default function EditCoursePage() {
   };
 
   const handleDelete = async () => {
-    if (!courseId) return;
-    
     setDeleting(true);
     setError('');
 
     try {
       await deleteCourse(courseId);
-      router.push('/admin');
+      goToCourses();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nepodařilo se smazat kurz');
       setDeleting(false);
@@ -164,8 +141,12 @@ export default function EditCoursePage() {
     }
   };
 
-  if (!courseId && !error) {
-    return <div className="flex-1 p-4 sm:p-8 text-black">Načítání...</div>;
+  if (initialLoading) {
+    return <LoadingState />;
+  }
+
+  if (error && !formData.title) {
+    return <ErrorState message={error} />;
   }
 
   return (
@@ -339,7 +320,7 @@ export default function EditCoursePage() {
           </button>
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={goBack}
             className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
           >
             Zpět
@@ -384,3 +365,5 @@ export default function EditCoursePage() {
     </div>
   );
 }
+
+export default CourseEditView;
