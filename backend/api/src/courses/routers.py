@@ -1,6 +1,7 @@
 from typing import Literal
 from fastapi import APIRouter, UploadFile, File
 
+from api.dependencies import CurrentUser
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     IS_PUBLISHED_ANNOTATION,
@@ -51,9 +52,9 @@ async def list_courses(
 
 @router.post("", operation_id="create_course")
 async def endp_create_course(
-    course: CourseCreate, db: SessionSqlSessionDependency
+    course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Course:
-    return create_course(db, course)
+    return create_course(db, course, user)
 
 
 @router.get("/{course_id}", operation_id="get_course")
@@ -63,9 +64,9 @@ async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> Co
 
 @router.put("/{course_id}", operation_id="update_course")
 async def endp_update_course(
-    course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency
+    course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Course:
-    return update_course(db, course_id, course)
+    return update_course(db, course_id, course, user)
 
 
 @router.put("/{course_id}/status", operation_id="update_course_status")
@@ -73,8 +74,9 @@ async def endp_update_course_status(
     course_id: int,
     status: Literal[Status.archived, Status.approved],
     db: SessionSqlSessionDependency,
+    user: CurrentUser,
 ) -> Course:
-    return update_course_status(db, course_id, status)
+    return update_course_status(db, course_id, status, user)
 
 
 @router.put("/{course_id}/published", operation_id="update_course_published")
@@ -82,13 +84,14 @@ async def endp_update_course_published(
     course_id: int,
     is_published: bool,
     db: SessionSqlSessionDependency,
+    user: CurrentUser,
 ) -> Course:
-    return update_course_published(db, course_id, is_published)
+    return update_course_published(db, course_id, is_published, user)
 
 
 @router.delete("/{course_id}", operation_id="delete_course", status_code=204)
-async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency) -> None:
-    delete_course(db, course_id)
+async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
+    delete_course(db, course_id, user)
 
 
 # ---------- File endpoints ----------
@@ -98,20 +101,21 @@ async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency) ->
 async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
+    user: CurrentUser,
     file: UploadFile = File(...),
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
-    return await upload_course_file(db, course_id, file)
+    return await upload_course_file(db, course_id, file, user)
 
 
 @router.delete(
     "/{course_id}/files/{file_id}", operation_id="delete_course_file", status_code=204
 )
 async def endp_delete_course_file(
-    course_id: int, file_id: int, db: SessionSqlSessionDependency
+    course_id: int, file_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
     """Smaže soubor kurzu"""
-    delete_course_file(db, course_id, file_id)
+    delete_course_file(db, course_id, file_id, user)
 
 
 # ---------- Link endpoints ----------
@@ -122,9 +126,10 @@ async def endp_create_course_link(
     course_id: int,
     db: SessionSqlSessionDependency,
     url: str,
+    user: CurrentUser,
 ) -> CourseLink:
     """Vytvoří odkaz ke kurzu"""
-    return create_course_link(db, course_id, url)
+    return create_course_link(db, course_id, url, user)
 
 
 @router.get("/{course_id}/links", operation_id="list_course_links")
@@ -142,7 +147,7 @@ async def endp_list_course_links(
     status_code=204,
 )
 async def endp_delete_course_link(
-    course_id: int, link_id: int, db: SessionSqlSessionDependency
+    course_id: int, link_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
     """Smaže odkaz kurzu"""
-    delete_course_link(db, course_id, link_id)
+    delete_course_link(db, course_id, link_id, user)

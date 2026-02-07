@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, UploadFile
 from sqlalchemy import select
 
+from api.dependencies import CurrentUser
+from api.authorization import validate_ownership
 from api.src.agents.schemas import GenerateCourseRequest, GenerateCourseResponse
 from agents.course_generator import create_graph
 from api.database import SessionSqlSessionDependency
@@ -11,7 +13,7 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 @router.post("/generate-course", operation_id="generate_course")
 async def generate_course(
-    course_id: int, db: SessionSqlSessionDependency
+    course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> GenerateCourseResponse:
     """Endpoint pro generování kurzu z obsahu."""
 
@@ -27,6 +29,9 @@ async def generate_course(
 
     if course is None:
         raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    
+    # Validace vlastnictví
+    validate_ownership(course, user, "kurz")
 
     if course.status != models.Status.draft:
         raise HTTPException(

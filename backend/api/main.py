@@ -1,10 +1,11 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 
 from api.database import SessionSqlSessionDependency, init_db
 from api.src.routers import router as api_router
+from api.dependencies import auth
 
 app = FastAPI(docs_url="/")
 

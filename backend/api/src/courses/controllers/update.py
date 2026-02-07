@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
+from api.authorization import validate_ownership
 
 
-def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Course:
+def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: dict) -> Course:
     """Aktualizuje existující kurz"""
     try:
         
@@ -33,6 +34,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
         
         # tohle jsem si upravil, klidne jen pro ted v ramci testovani
         if course.status not in (Status.draft, Status.generated):
@@ -59,7 +63,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate) -> Cou
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
     
     
-def update_course_status(db: Session, course_id: int, status: Status) -> Course:
+def update_course_status(db: Session, course_id: int, status: Status, user: dict) -> Course:
     """Aktualizuje status kurzu"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(
@@ -70,6 +74,9 @@ def update_course_status(db: Session, course_id: int, status: Status) -> Course:
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
         
         if course.status == "generated" and status == "approved":
             pass
@@ -95,7 +102,7 @@ def update_course_status(db: Session, course_id: int, status: Status) -> Course:
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
     
     
-def update_course_published(db: Session, course_id: int, is_published: bool) -> Course:
+def update_course_published(db: Session, course_id: int, is_published: bool, user: dict) -> Course:
     """Aktualizuje publikování kurzu"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(
@@ -106,6 +113,9 @@ def update_course_published(db: Session, course_id: int, is_published: bool) -> 
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
         print(course.status)
         if course.status != Status.approved.value and course.status != Status.archived.value:
     

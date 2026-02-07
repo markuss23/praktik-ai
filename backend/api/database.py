@@ -9,7 +9,7 @@ from api.models import Base
 from api.config import settings
 
 
-engine: Engine = create_engine(settings.postgres.get_connection_string(), echo=True)
+engine: Engine = create_engine(settings.postgres.get_connection_string(), echo=False)
 
 SessionLocal: sessionmaker[Session] = sessionmaker(
     autocommit=False, autoflush=False, bind=engine

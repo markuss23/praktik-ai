@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.enums import Status
+from api.authorization import validate_ownership
 
 
-def delete_course(db: Session, course_id: int) -> None:
+def delete_course(db: Session, course_id: int, user: dict) -> None:
     """
     Smaže kurz podle course_id (soft delete - nastaví is_active=False)
     """
@@ -26,6 +27,9 @@ def delete_course(db: Session, course_id: int) -> None:
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
 
         # Soft delete - nastavíme is_active na False
         course.soft_delete()
@@ -37,7 +41,7 @@ def delete_course(db: Session, course_id: int) -> None:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
+def delete_course_file(db: Session, course_id: int, file_id: int, user: dict) -> None:
     """Smaže soubor kurzu"""
     try:
         course_file: models.CourseFile | None = (
@@ -54,6 +58,9 @@ def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
 
         if course_file is None:
             raise HTTPException(status_code=404, detail="Soubor nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course_file, user, "soubor kurzu")
 
         if (
             course_file.course.status != Status.draft
@@ -79,7 +86,7 @@ def delete_course_file(db: Session, course_id: int, file_id: int) -> None:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def delete_course_link(db: Session, course_id: int, link_id: int) -> None:
+def delete_course_link(db: Session, course_id: int, link_id: int, user: dict) -> None:
     """Smaže odkaz kurzu"""
     try:
         course_link: models.CourseLink | None = (
@@ -96,6 +103,9 @@ def delete_course_link(db: Session, course_id: int, link_id: int) -> None:
 
         if course_link is None:
             raise HTTPException(status_code=404, detail="Odkaz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course_link, user, "odkaz kurzu")
 
         if (
             course_link.course.status != Status.draft

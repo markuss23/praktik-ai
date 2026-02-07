@@ -15,6 +15,7 @@ from api.src.common.annotations import (
 
 from api.database import SessionSqlSessionDependency
 
+from api.dependencies import CurrentUser
 
 router = APIRouter(prefix="/modules", tags=["Modules"])
 
@@ -33,24 +34,28 @@ async def list_modules(
         course_id=course_id,
     )
 
-#Odkomentováno
+
 @router.post("", operation_id="create_module")
 async def endp_create_module(
-    module: ModuleCreate, db: SessionSqlSessionDependency
+    module: ModuleCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Module:
-    return create_module(db, module)
+    return create_module(db, module, user)
 
 
 @router.get("/{module_id}", operation_id="get_module")
-async def endp_get_module(module_id: int, db: SessionSqlSessionDependency) -> Module:
-    return get_module(db, module_id)
+async def endp_get_module(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> Module:
+    return get_module(db, module_id, user)
 
 
 @router.put("/{module_id}", operation_id="update_module")
 async def endp_update_module(
-    module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency
+    module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Module:
-    return update_module(db, module_id, module)
+    return update_module(db, module_id, module, user)
 
 
 # @router.delete("/{module_id}", operation_id="delete_module", status_code=204)

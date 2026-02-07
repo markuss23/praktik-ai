@@ -1,5 +1,16 @@
-from keycloak import KeycloakOpenID
+from typing import Annotated
+from keycloak import (
+    KeycloakAuthenticationError,
+    KeycloakConnectionError,
+    KeycloakOpenID,
+)
+from fastapi import Depends, HTTPException
+from fastapi.security import (
+    OAuth2PasswordBearer,
+)
 from .config import settings
+
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 
 class Auth:
@@ -15,20 +26,52 @@ class Auth:
             print(f"Warning: Failed to initialize Keycloak: {e}")
             self.keycloak_openid = None
 
-    def test_connection(self):
-        if not self.keycloak_openid:
-            return False
+    def get_token(self, username: str, password: str) -> dict:
         try:
-            # Attempt to get the OpenID configuration as a test
-            config = self.keycloak_openid.well_known()
-            return "issuer" in config
-        except Exception:
-            return False
+            token: dict = self.keycloak_openid.token(
+                username=username, password=password, grant_type="password"
+            )
+            return token
+        except KeycloakAuthenticationError as e:
+            raise HTTPException(
+                status_code=401,
+                detail="Neplatné přihlašovací údaje",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from e
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=500,
+                detail="Chyba při získávání tokenu z Keycloak",
+            ) from e
 
-    def authenticate_user(self, username: str, password: str) -> dict:
-        if not self.keycloak_openid:
-            raise Exception("Keycloak is not initialized")
-        return self.keycloak_openid.token(username, password)
+    def get_current_user(self, token: Annotated[str, Depends(oauth2_bearer)]) -> dict:
+        if not token:
+            raise HTTPException(
+                status_code=401,
+                detail="Neplatné přihlašovací údaje",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        try:
+            token_info: dict = self.keycloak_openid.introspect(token)
+            if not token_info.get("active", False):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Token je neplatný nebo expiroval",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            user_info: dict = self.keycloak_openid.userinfo(token)
+            return user_info
+
+        except (KeycloakAuthenticationError, KeycloakConnectionError) as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Autentizace selhala nebo Keycloak není dostupný",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from e
 
 
 auth = Auth()
+CurrentUser = Annotated[dict, Depends(auth.get_current_user)]

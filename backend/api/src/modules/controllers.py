@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api import enums, models
+from api.authorization import validate_ownership
 
 
 def get_modules(
@@ -42,21 +43,23 @@ def get_modules(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def create_module(db: Session, data: ModuleCreate) -> Module:
+def create_module(db: Session, data: ModuleCreate, user: dict) -> Module:
     """
     Vytvoří modul. Ošetřuje unikátní kombinaci (course_id, position).
     """
     try:
-        if (
-            db.execute(
-                select(models.Course).where(models.Course.course_id == data.course_id)
-            ).first()
-            is None
-        ):
+        course = db.execute(
+            select(models.Course).where(models.Course.course_id == data.course_id)
+        ).scalars().first()
+        
+        if course is None:
             raise HTTPException(
                 status_code=404,
                 detail="Kurz neexistuje.",
             )
+        
+        # Validace vlastnictví kurzu
+        validate_ownership(course, user, "modul")
         # Volitelný pre-check unikátu (rychlá validace před DB constraintem)
         exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
             and_(
@@ -89,7 +92,7 @@ def create_module(db: Session, data: ModuleCreate) -> Module:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def get_module(db: Session, module_id: int) -> Module:
+def get_module(db: Session, module_id: int, user: dict) -> Module:
     """
     Vrátí konkrétní modul podle module_id
     """
@@ -99,7 +102,7 @@ def get_module(db: Session, module_id: int) -> Module:
         )
 
         result: models.Module | None = db.execute(stm).scalars().first()
-
+        
         if result is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen")
 
@@ -111,10 +114,10 @@ def get_module(db: Session, module_id: int) -> Module:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Module:
+def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: dict) -> Module:
     """
     Upraví data modulu s module_id podle dat v module_data.
-    Pokud se mění pozice, automaticky přehodí pozice ostatních modulů.
+    Pokud se mění pozice, automaticky přehodní pozice ostatních modulů.
     """
     try:
         stm: Select[tuple[models.Module]] = select(models.Module).where(
@@ -126,6 +129,9 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
 
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(module, user, "modul")
 
         # kontrola, zda je kurz ve stavu generated
         if module.course.status != enums.Status.generated:
@@ -150,7 +156,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate) -> Mod
                     detail="Modul s tímto názvem pro daný kurz již existuje.",
                 )
 
-    #Změna - pro posouvání modulů (potřeba revize)
+    # Změna - pro posouvání modulů (potřeba revize)
     
         # Při změně pozice automaticky posuneme ostatní moduly
         old_position = module.position

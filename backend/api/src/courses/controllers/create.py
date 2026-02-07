@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.courses.schemas import Course, CourseCreate, CourseFile, CourseLink
 from api import enums
+from api.authorization import validate_ownership
 
 
 # Složka pro ukládání souborů
@@ -19,7 +20,7 @@ UPLOAD_DIR = Path("/code/uploads/courses")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def create_course(db: Session, course_data: CourseCreate) -> Course:
+def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
     """Vytvoří nový kurz"""
     try:
         if (
@@ -45,7 +46,11 @@ def create_course(db: Session, course_data: CourseCreate) -> Course:
                 status_code=400, detail="Kurz s tímto názvem již existuje"
             )
 
-        course = models.Course(**course_data.model_dump())
+        # Přiřadí vlastníka kurzu
+        course_dict = course_data.model_dump()
+        course_dict['owner_id'] = user.get('sub')
+        
+        course = models.Course(**course_dict)
 
         db.add(course)
         db.commit()
@@ -60,7 +65,7 @@ def create_course(db: Session, course_data: CourseCreate) -> Course:
 
 
 async def upload_course_file(
-    db: Session, course_id: int, file: UploadFile
+    db: Session, course_id: int, file: UploadFile, user: dict
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
     try:
@@ -78,6 +83,9 @@ async def upload_course_file(
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
 
         if course.status != enums.Status.draft:
             raise HTTPException(
@@ -117,7 +125,7 @@ async def upload_course_file(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def create_course_link(db: Session, course_id: int, url: str) -> CourseLink:
+def create_course_link(db: Session, course_id: int, url: str, user: dict) -> CourseLink:
     """Vytvoří odkaz kurzu"""
     try:
         # Ověř, že kurz existuje
@@ -134,6 +142,9 @@ def create_course_link(db: Session, course_id: int, url: str) -> CourseLink:
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
+        
+        # Validace vlastnictví
+        validate_ownership(course, user, "kurz")
 
         if course.status != enums.Status.draft:
             raise HTTPException(

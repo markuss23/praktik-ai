@@ -16,10 +16,11 @@ from api.src.activities.schemas import (
     QuestionKeyword,
     QuestionKeywordUpdate,
 )
+from api.authorization import validate_ownership
 
 
 def update_learn_block(
-    db: Session, learn_id: int, learn_data: LearnBlockUpdate
+    db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: dict
 ) -> LearnBlock:
     """
     Upraví LearnBlock s validací:
@@ -37,6 +38,9 @@ def update_learn_block(
 
         if learn_block is None:
             raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
+
+        # Validace vlastnictví
+        validate_ownership(learn_block, user, "learn block")
 
         # kontrola stavu kurzu
         module = learn_block.module
@@ -85,7 +89,7 @@ def update_learn_block(
 # Vytvořeno, potřebuje revizi
 
 def create_learn_block(
-    db: Session, learn_data: LearnBlockCreate
+    db: Session, learn_data: LearnBlockCreate, user: dict
 ) -> LearnBlock:
     """
     Vytvoří nový LearnBlock s validací:
@@ -103,6 +107,9 @@ def create_learn_block(
 
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
+
+        # Validace vlastnictví
+        validate_ownership(module, user, "modul")
 
         # kontrola stavu kurzu
         course = module.course
@@ -152,7 +159,7 @@ def create_learn_block(
 
 
 def create_practice_question(
-    db: Session, question_data: PracticeQuestionCreate
+    db: Session, question_data: PracticeQuestionCreate, user: dict
 ) -> PracticeQuestion:
     """
     Vytvoří novou PracticeQuestion s validací:
@@ -170,6 +177,9 @@ def create_practice_question(
 
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
+        
+        # Validace vlastnictví
+        validate_ownership(module, user, "modul")
 
         # kontrola stavu kurzu
         course = module.course
@@ -222,7 +232,7 @@ def create_practice_question(
 
 
 def create_practice_option(
-    db: Session, option_data: PracticeOptionCreate
+    db: Session, option_data: PracticeOptionCreate, user: dict
 ) -> PracticeOption:
     """
     Vytvoří novou PracticeOption s validací:
@@ -240,6 +250,9 @@ def create_practice_option(
 
         if question is None:
             raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
+        
+        # Validace vlastnictví
+        validate_ownership(question, user, "otázka")
 
         # kontrola stavu kurzu
         module = question.module
@@ -291,7 +304,7 @@ def create_practice_option(
 #Konec revize
 
 def update_practice_question(
-    db: Session, question_id: int, question_data: PracticeQuestionUpdate
+    db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: dict
 ) -> PracticeQuestion:
     """
     Upraví PracticeQuestion s validací:
@@ -309,6 +322,9 @@ def update_practice_question(
 
         if question is None:
             raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+        
+        # Validace vlastnictví
+        validate_ownership(question, user, "practice question")
 
         # kontrola stavu kurzu
         module = question.module
@@ -356,7 +372,7 @@ def update_practice_question(
 
 
 def update_practice_option(
-    db: Session, option_id: int, option_data: PracticeOptionUpdate
+    db: Session, option_id: int, option_data: PracticeOptionUpdate, user: dict
 ) -> PracticeOption:
     """
     Upraví PracticeOption s validací:
@@ -374,6 +390,9 @@ def update_practice_option(
 
         if option is None:
             raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
+        
+        # Validace vlastnictví
+        validate_ownership(option, user, "practice option")
 
         # kontrola stavu kurzu
         question = option.question
@@ -422,7 +441,7 @@ def update_practice_option(
 
 
 def update_question_keyword(
-    db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate
+    db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate, user: dict
 ) -> QuestionKeyword:
     """
     Upraví QuestionKeyword s validací:
@@ -440,6 +459,9 @@ def update_question_keyword(
 
         if keyword is None:
             raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
+        
+        # Validace vlastnictví
+        validate_ownership(keyword, user, "question keyword")
 
         # kontrola stavu kurzu
         question = keyword.question
