@@ -15,7 +15,7 @@ def plan_content_node(state: AgentState) -> AgentState:
     if course_input is None:
         raise ValueError("course_input is not available in state")
 
-    model = ChatOpenAI(model="gpt-4o-mini")
+    model = ChatOpenAI(model="gpt-5-mini")
     llm_structured = model.with_structured_output(Course)
 
     modules_count = course_input.modules_count
@@ -64,7 +64,7 @@ Pro OTEVŘENÉ otázky (question_type="open"):
   * keyword: Klíčové slovo nebo bod
 
 Všechny otázky musí ověřovat pochopení látky z learn_blocks.
-Všechno bude bez formátování, pouze čistý text.
+Všechno bude bez formátování, pouze čistý text. žádný markdown, žádné odrážky, pouze strohý text.
 Vytvoř kurz v českém jazyce."""
 
     output: Course = llm_structured.invoke(prompt)
