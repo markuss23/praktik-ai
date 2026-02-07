@@ -20,9 +20,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from pgvector.sqlalchemy import Vector
 
 from api.enums import AuditAction, QuestionType, Status
 
+EMBED_DIM = 1536 
 
 class Base(DeclarativeBase):
     pass
@@ -320,6 +322,16 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
             postgresql_where=text("is_active"),
         ),
         Index("ix_learnblock_module_id", "module_id"),
+
+        # Vector index (doporučení: HNSW + cosine)
+        Index(
+            "ix_learnblock_embedding_hnsw_active",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_where=text("is_active AND embedding IS NOT NULL"),
+        ),
     )
 
     learn_id: Mapped[int] = mapped_column(
@@ -330,6 +342,8 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM), nullable=True)
 
     module: Mapped[Module] = relationship(back_populates="learn_blocks")
     
