@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
 from api.dependencies import CurrentUser
 from api.authorization import validate_ownership
 from api.src.agents.schemas import (
-    GenerateCourseRequest,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
 )
@@ -82,7 +81,7 @@ async def generate_course_embeddings(
         raise HTTPException(
             status_code=400,
             detail=f"Embeddingy lze generovat pouze pro kurzy se statusem 'approved'. "
-                   f"Aktuální status: {course.status.value}"
+            f"Aktuální status: {course.status.value}",
         )
 
     # Vytvoř a spusť embedding generator graph
@@ -94,3 +93,48 @@ async def generate_course_embeddings(
         blocks_processed=result.get("blocks_processed", 0),
         chunks_created=result.get("chunks_created", 0),
     )
+
+
+@router.get("/learn-blocks-chat", operation_id="learn_blocks_chat")
+async def learn_blocks_chat(
+    learn_block_id: int,
+    message: str,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+):
+    """Endpoint pro chat s learn blockem."""
+
+    learn_block: models.LearnBlock | None = (
+        db.execute(
+            select(models.LearnBlock).where(
+                models.LearnBlock.learn_id == learn_block_id,
+                models.LearnBlock.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if learn_block is None:
+        raise HTTPException(status_code=404, detail="Learn block nenalezen")
+
+    if learn_block.embedding is None:
+        raise HTTPException(
+            status_code=400, detail="Learn block nemá vygenerovaný embedding"
+        )
+
+    if (
+        learn_block.module.course.status == "approved"
+        and learn_block.module.course.is_active == True
+    ) or (
+        learn_block.module.course.status == "archived"
+        and learn_block.module.course.is_active == True
+    ):
+        pass
+    else:
+        raise HTTPException(
+            status_code=400, detail="Learn block není v aktivním a schváleném kurzu"
+        )
+
+    # app = create_learn_block_mentor_graph()
+    # result = app.invoke({"learn_block_id": learn_block_id, "message": message, "db": db})
