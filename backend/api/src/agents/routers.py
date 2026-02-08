@@ -9,6 +9,7 @@ from api.src.agents.schemas import (
 )
 from agents.course_generator import create_graph
 from agents.embedding_generator import create_graph as create_embedding_graph
+from agents.mentor.graph import create_graph as create_learn_block_mentor_graph
 from api.database import SessionSqlSessionDependency
 from api import models
 
@@ -118,11 +119,6 @@ async def learn_blocks_chat(
     if learn_block is None:
         raise HTTPException(status_code=404, detail="Learn block nenalezen")
 
-    if learn_block.embedding is None:
-        raise HTTPException(
-            status_code=400, detail="Learn block nemá vygenerovaný embedding"
-        )
-
     if (
         learn_block.module.course.status == "approved"
         and learn_block.module.course.is_active == True
@@ -136,5 +132,9 @@ async def learn_blocks_chat(
             status_code=400, detail="Learn block není v aktivním a schváleném kurzu"
         )
 
-    # app = create_learn_block_mentor_graph()
-    # result = app.invoke({"learn_block_id": learn_block_id, "message": message, "db": db})
+    app = create_learn_block_mentor_graph()
+    result = app.invoke(
+        {"learn_block_id": learn_block_id, "message": message, "db": db}
+    )
+
+    return {"answer": result.get("answer", "")}
