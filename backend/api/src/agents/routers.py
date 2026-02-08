@@ -6,6 +6,8 @@ from api.authorization import validate_ownership
 from api.src.agents.schemas import (
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
+    LearnBlocksChatRequest,
+    LearnBlocksChatResponse,
 )
 from agents.course_generator import create_graph
 from agents.embedding_generator import create_graph as create_embedding_graph
@@ -96,15 +98,16 @@ async def generate_course_embeddings(
     )
 
 
-@router.get("/learn-blocks-chat", operation_id="learn_blocks_chat")
+@router.post("/learn-blocks-chat", operation_id="learn_blocks_chat")
 async def learn_blocks_chat(
-    learn_block_id: int,
-    message: str,
+    user_input: LearnBlocksChatRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-):
+) -> LearnBlocksChatResponse:
     """Endpoint pro chat s learn blockem."""
 
+    learn_block_id: int = user_input.learn_block_id
+    message: str = user_input.message
     learn_block: models.LearnBlock | None = (
         db.execute(
             select(models.LearnBlock).where(
@@ -137,4 +140,6 @@ async def learn_blocks_chat(
         {"learn_block_id": learn_block_id, "message": message, "db": db}
     )
 
-    return {"answer": result.get("answer", "")}
+    return LearnBlocksChatResponse(
+        answer=result.get("answer", "Odpověď nebyla vygenerována")
+    )
