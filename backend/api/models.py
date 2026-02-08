@@ -20,11 +20,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
-from pgvector.sqlalchemy import Vector
 
 from api.enums import AuditAction, QuestionType, Status
 
-EMBED_DIM = 1536 
 
 class Base(DeclarativeBase):
     pass
@@ -114,6 +112,7 @@ class AuditLog(Base):
 
 # ---------- Category ----------
 
+
 class Category(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "category"
     __table_args__ = (
@@ -130,12 +129,13 @@ class Category(TimestampMixin, SoftDeleteMixin, Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    
+
     courses: Mapped[list[Course]] = relationship(
         back_populates="category",
     )
-    
+
     _soft_delete_cascade: list[str] = ["courses"]
+
 
 # ---------- Course / Module ----------
 
@@ -157,7 +157,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    
+
     owner_id: Mapped[str] = mapped_column(String(255), nullable=False)
 
     modules_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
@@ -183,7 +183,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
-    
+
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("category.category_id"), nullable=True
     )
@@ -192,7 +192,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id z parent Course."""
         return self.owner_id
@@ -245,7 +245,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     _soft_delete_cascade = ["learn_blocks", "practice_questions"]
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
@@ -274,7 +274,7 @@ class CourseFile(TimestampMixin, SoftDeleteMixin, Base):
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="files")
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
@@ -302,7 +302,7 @@ class CourseLink(TimestampMixin, SoftDeleteMixin, Base):
     url: Mapped[str] = mapped_column(String(500), nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="links")
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
@@ -322,16 +322,6 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
             postgresql_where=text("is_active"),
         ),
         Index("ix_learnblock_module_id", "module_id"),
-
-        # Vector index (doporučení: HNSW + cosine)
-        Index(
-            "ix_learnblock_embedding_hnsw_active",
-            "embedding",
-            postgresql_using="hnsw",
-            postgresql_ops={"embedding": "vector_cosine_ops"},
-            postgresql_with={"m": 16, "ef_construction": 64},
-            postgresql_where=text("is_active AND embedding IS NOT NULL"),
-        ),
     )
 
     learn_id: Mapped[int] = mapped_column(
@@ -342,11 +332,9 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBED_DIM), nullable=True)
 
     module: Mapped[Module] = relationship(back_populates="learn_blocks")
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id přes Module -> Course."""
         return self.module.course.owner_id
@@ -409,7 +397,7 @@ class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(PracticeQuestion.question_id==QuestionKeyword.question_id, QuestionKeyword.is_active==True)",
     )
     _soft_delete_cascade = ["closed_options", "open_keywords"]
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id přes Module -> Course."""
         return self.module.course.owner_id
@@ -439,7 +427,7 @@ class PracticeOption(TimestampMixin, SoftDeleteMixin, Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
 
     question: Mapped[PracticeQuestion] = relationship(back_populates="closed_options")
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id přes Question -> Module -> Course."""
         return self.question.module.course.owner_id
@@ -468,7 +456,7 @@ class QuestionKeyword(TimestampMixin, SoftDeleteMixin, Base):
     keyword: Mapped[str] = mapped_column(String(200), nullable=False)
 
     question: Mapped[PracticeQuestion] = relationship(back_populates="open_keywords")
-    
+
     def get_owner_id(self) -> str:
         """Vrátí owner_id přes Question -> Module -> Course."""
         return self.question.module.course.owner_id
