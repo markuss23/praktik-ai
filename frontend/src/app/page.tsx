@@ -70,12 +70,10 @@ export default function Home() {
                   id={String(course.courseId || course.id)}
                   title={course.title || course.name}
                   description={course.description || ''}
-                  duration={86}
+                  duration={course.modulesCount ? course.modulesCount * 20 : 60}
                   difficulty="Začátečník"
                   completedModules={0}
-                  totalModules={4}
-                  isPublished={course.isPublished}
-                  onUpdate={loadCourses}
+                  totalModules={course.modulesCount || 0}
                 />
               ))
             )}

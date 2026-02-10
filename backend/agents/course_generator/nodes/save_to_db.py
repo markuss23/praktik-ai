@@ -54,6 +54,19 @@ def save_to_db_node(state: AgentState) -> AgentState:
 
         # Uložení practice questions přímo do modulu
         for q in module.practice_questions:
+            # Validace: closed otázky musí mít correct_answer, open musí mít example_answer
+            if q.question_type.value == "closed" and not q.correct_answer:
+                # Pokus odvodit correct_answer z první options pokud existují
+                if q.closed_options:
+                    q.correct_answer = q.closed_options[0].text
+                    print(f"   -> WARN: Chybí correct_answer pro uzavřenou otázku, odvozeno z první option: {q.correct_answer[:50]}")
+                else:
+                    print(f"   -> WARN: Přeskakuji neplatnou uzavřenou otázku bez correct_answer a options: {q.question[:60]}")
+                    continue
+            if q.question_type.value == "open" and not q.example_answer:
+                q.example_answer = "Bez příkladu odpovědi."
+                print(f"   -> WARN: Chybí example_answer pro otevřenou otázku, nastaven fallback")
+
             db_question = models.PracticeQuestion(
                 module_id=db_module.module_id,
                 question_type=q.question_type.value,

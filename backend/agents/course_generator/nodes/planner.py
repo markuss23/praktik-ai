@@ -53,13 +53,13 @@ Pro každou otázku specifikuj:
 - question: Text otázky
 
 Pro UZAVŘENÉ otázky (question_type="closed"):
-- correct_answer: Správná odpověď (A, B nebo C)
+- correct_answer: text správné odpovědi (musí přesně odpovídat textu jedné z closed_options). A nesmí být prázdné.
 - closed_options: Seznam 3 možností, kde každá má:
   * position: 1, 2, 3 (pro A, B, C)
   * text: Text odpovědi
 
 Pro OTEVŘENÉ otázky (question_type="open"):
-- example_answer: Příklad správné odpovědi
+- example_answer: Příklad správné odpovědi. NESMÍ být prázdné.
 - open_keywords: Seznam klíčových slov/bodů, které by měla odpověď obsahovat:
   * keyword: Klíčové slovo nebo bod
 

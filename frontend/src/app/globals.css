@@ -24,3 +24,135 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Module content styles for rendered learn blocks */
+.module-content {
+  color: #000000;
+}
+.module-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+.module-content h1:first-child {
+  margin-top: 0;
+}
+.module-content h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.35;
+}
+.module-content h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.module-content p {
+  color: #374151;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+}
+.module-content ul,
+.module-content ol {
+  margin-left: 1.25rem;
+  margin-bottom: 1rem;
+  color: #374151;
+}
+.module-content ul {
+  list-style-type: disc;
+}
+.module-content ol {
+  list-style-type: decimal;
+}
+.module-content li {
+  margin-bottom: 0.25rem;
+  line-height: 1.6;
+}
+.module-content strong {
+  font-weight: 700;
+  color: #111827;
+}
+.module-content a {
+  color: #8B5BA8;
+  text-decoration: none;
+}
+.module-content a:hover {
+  text-decoration: underline;
+}
+.module-content blockquote {
+  border-left: 4px solid #facc15;
+  background-color: #fefce8;
+  padding: 0.75rem 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin-bottom: 1rem;
+  font-style: normal;
+}
+.module-content blockquote p {
+  margin-bottom: 0;
+}
+.module-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.module-content th {
+  background-color: #f9fafb;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  font-weight: 600;
+}
+.module-content td {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e5e7eb;
+}
+.module-content hr {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+}
+.module-content .alert-warning {
+  background-color: #fefce8;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+.module-content .alert-info {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+.module-content .example-bad {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.module-content .example-good {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Hide key concepts sections - they have very light colors and are poorly positioned */
+.module-content .key-concepts,
+.module-content .klicove-koncepty,
+.module-content [data-type="key-concepts"] {
+  display: none !important;
+}

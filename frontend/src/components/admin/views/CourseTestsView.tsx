@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Module, PracticeQuestion, QuestionType } from '@/api';
+import { Module, QuestionType } from '@/api';
 import { getCourse, updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -9,8 +9,7 @@ import {
   ChevronDown, 
   ChevronUp, 
   Plus, 
-  Trash2,
-  AlertCircle
+  Trash2
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -436,14 +435,30 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
     return <ErrorState message={error} />;
   }
 
-  const outlineItems = modules.map((module, index) => ({
-    id: index,
-    title: module.title,
-    isExpanded: expandedOutlineItems.has(index),
-    subItems: module.practiceQuestions?.map((q: PracticeQuestion) => 
-      q.question.substring(0, 30) + '...'
-    ) || [],
-  }));
+  const scrollToQuestion = (moduleIndex: number, questionIndex: number) => {
+    setSelectedModuleIndex(moduleIndex);
+    if (!expandedOutlineItems.has(moduleIndex)) {
+      setExpandedOutlineItems(prev => new Set(prev).add(moduleIndex));
+    }
+    // Wait for render then scroll
+    setTimeout(() => {
+      const el = document.getElementById(`question-${moduleIndex}-${questionIndex}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
+
+  const outlineItems = modules.map((module, index) => {
+    const questionsForModule = moduleQuestions[index] || [];
+    return {
+      id: index,
+      title: module.title,
+      isExpanded: expandedOutlineItems.has(index),
+      subItems: questionsForModule.map((q, qIdx) => ({
+        label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
+        questionIndex: qIdx,
+      })),
+    };
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
@@ -493,8 +508,11 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
                     selectedModuleIndex === index ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'border-l-4 border-l-transparent'
                   }`}
                   onClick={() => {
-                    selectModule(index);
+                    const isOpening = !expandedOutlineItems.has(index);
                     toggleOutlineItem(index);
+                    if (isOpening) {
+                      selectModule(index);
+                    }
                   }}
                 >
                   {item.isExpanded ? (
@@ -510,8 +528,12 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
                       <div
                         key={subIndex}
                         className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scrollToQuestion(index, subItem.questionIndex);
+                        }}
                       >
-                        {subItem}
+                        {subItem.label}
                       </div>
                     ))}
                   </div>
@@ -530,7 +552,7 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
           {/* Questions List */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {questions.map((question, qIndex) => (
-              <div key={question.id} className="border border-gray-200 rounded-lg p-4">
+              <div key={question.id} id={`question-${selectedModuleIndex}-${qIndex}`} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
                     <label className="block text-sm font-semibold text-black mb-2">
@@ -588,6 +610,13 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
                         />
                       </div>
                     ))}
+
+                    {/* Correct answer hint from API */}
+                    {question.correctAnswer && (
+                      <p className="mt-3 ml-1 text-xs text-green-600">
+                        <span className="font-semibold">Správná odpověď:</span> {question.correctAnswer}
+                      </p>
+                    )}
                   </div>
                 )}
 
