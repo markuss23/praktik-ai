@@ -1,10 +1,10 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings } from "@/lib/api-client";
 import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect, useCallback } from "react";
-import { Pencil, Eye, EyeOff, Trash2, GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
+import { Pencil, Eye, EyeOff, Trash2, GripVertical, X, BicepsFlexed, Upload, Sparkles } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal } from "@/components";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
@@ -22,6 +22,10 @@ export function CoursesListView() {
   const [deleting, setDeleting] = useState(false);
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
   const [courseModules, setCourseModules] = useState<{ [key: number]: Module[] }>({});
+
+  // Embedding generation state
+  const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
+  const [embeddingDone, setEmbeddingDone] = useState<Set<number>>(new Set());
 
   // Stavy modálních oken
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -273,6 +277,19 @@ export function CoursesListView() {
     localStorage.removeItem('expandedCourse');
   };
 
+  const handleGenerateEmbeddings = async (courseId: number) => {
+    setEmbeddingLoading(courseId);
+    try {
+      await generateCourseEmbeddings(courseId);
+      setEmbeddingDone(prev => new Set(prev).add(courseId));
+    } catch (error) {
+      console.error('Failed to generate embeddings:', error);
+      alert('Nepodařilo se vygenerovat embeddingy. Zkontrolujte, zda je kurz ve stavu "Schváleno".');
+    } finally {
+      setEmbeddingLoading(null);
+    }
+  };
+
   return (
     <>
       <div className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -337,17 +354,37 @@ export function CoursesListView() {
                             <Pencil size={16} />
                           </button>
                           {(course.status === Status.Approved || course.status === Status.Archived) && (
-                            <button
-                              onClick={() => togglePublish(course)}
-                              className={`p-2 text-white rounded-md transition-colors ${
-                                course.isPublished 
-                                  ? 'bg-orange-500 hover:bg-orange-600' 
-                                  : 'bg-green-500 hover:bg-green-600'
-                              }`}
-                              title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-                            >
-                              {course.isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => togglePublish(course)}
+                                className={`p-2 text-white rounded-md transition-colors ${
+                                  course.isPublished 
+                                    ? 'bg-orange-500 hover:bg-orange-600' 
+                                    : 'bg-green-500 hover:bg-green-600'
+                                }`}
+                                title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+                              >
+                                {course.isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                              <button
+                                onClick={() => handleGenerateEmbeddings(course.courseId)}
+                                disabled={embeddingDone.has(course.courseId) || embeddingLoading === course.courseId}
+                                className={`p-2 text-white rounded-md transition-colors ${
+                                  embeddingDone.has(course.courseId)
+                                    ? 'bg-blue-300 cursor-not-allowed'
+                                    : embeddingLoading === course.courseId
+                                      ? 'bg-blue-400 cursor-wait'
+                                      : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                                title={embeddingDone.has(course.courseId) ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
+                              >
+                                {embeddingLoading === course.courseId ? (
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Sparkles size={16} />
+                                )}
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => handleDeleteClick(course.courseId)}
@@ -406,6 +443,9 @@ export function CoursesListView() {
                   setShowDeleteConfirm(true);
                 }}
                 onAddModule={() => openCreateModuleModal(course.courseId)}
+                onGenerateEmbeddings={() => handleGenerateEmbeddings(course.courseId)}
+                embeddingGenerating={embeddingLoading === course.courseId}
+                embeddingGenerated={embeddingDone.has(course.courseId)}
               />
             ))}
           </div>
@@ -612,6 +652,9 @@ interface MobileCourseCardProps {
   onToggleModuleActive: (module: Module) => void;
   onDeleteModule: (moduleId: number) => void;
   onAddModule: () => void;
+  onGenerateEmbeddings: () => void;
+  embeddingGenerating: boolean;
+  embeddingGenerated: boolean;
 }
 
 function MobileCourseCard({
@@ -627,6 +670,9 @@ function MobileCourseCard({
   onToggleModuleActive,
   onDeleteModule,
   onAddModule,
+  onGenerateEmbeddings,
+  embeddingGenerating,
+  embeddingGenerated,
 }: MobileCourseCardProps) {
   const moduleCount = course.modules?.length || 0;
 
@@ -653,15 +699,35 @@ function MobileCourseCard({
             <Pencil size={14} />
           </button>
           {(course.status === Status.Approved || course.status === Status.Archived) && (
-            <button
-              onClick={onTogglePublish}
-              className={`p-2 text-white rounded-md transition-colors ${
-                course.isPublished ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'
-              }`}
-              title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-            >
-              {course.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
+            <>
+              <button
+                onClick={onTogglePublish}
+                className={`p-2 text-white rounded-md transition-colors ${
+                  course.isPublished ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'
+                }`}
+                title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+              >
+                {course.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+              <button
+                onClick={onGenerateEmbeddings}
+                disabled={embeddingGenerated || embeddingGenerating}
+                className={`p-2 text-white rounded-md transition-colors ${
+                  embeddingGenerated
+                    ? 'bg-blue-300 cursor-not-allowed'
+                    : embeddingGenerating
+                      ? 'bg-blue-400 cursor-wait'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+                title={embeddingGenerated ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
+              >
+                {embeddingGenerating ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+              </button>
+            </>
           )}
           <button
             onClick={onDelete}

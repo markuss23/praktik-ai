@@ -120,6 +120,16 @@ export async function generateCourseWithAI(courseId: number) {
   return agentsApi.generateCourse({ courseId });
 }
 
+export async function learnBlocksChat(learnBlockId: number, message: string) {
+  return agentsApi.learnBlocksChat({
+    learnBlocksChatRequest: { learnBlockId, message },
+  });
+}
+
+export async function generateCourseEmbeddings(courseId: number) {
+  return agentsApi.generateCourseEmbeddings({ courseId });
+}
+
 // ============ Course Status & Published API functions ============
 
 export async function updateCoursePublished(courseId: number, isPublished: boolean) {

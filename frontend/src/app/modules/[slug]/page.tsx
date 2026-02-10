@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules } from "@/lib/api-client";
+import { getModule, getCourse, getModules, learnBlocksChat } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, SendHorizontal, BookOpenText, Dumbbell, Bot, X, UserRound } from "lucide-react";
 
@@ -34,6 +34,7 @@ export default function ModulePage() {
   // AI Tutor state
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
+  const [isAiTyping, setIsAiTyping] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
     { role: 'ai', text: 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?' }
   ]);
@@ -101,7 +102,7 @@ export default function ModulePage() {
     if (el?.parentElement) {
       el.parentElement.scrollTop = el.parentElement.scrollHeight;
     }
-  }, [chatMessages]);
+  }, [chatMessages, isAiTyping]);
 
   // Loading state
   if (loading) {
@@ -176,17 +177,22 @@ export default function ModulePage() {
     }
   };
 
-  const handleSendChat = () => {
-    if (!chatMessage.trim()) return;
+  const handleSendChat = async () => {
+    if (!chatMessage.trim() || isAiTyping) return;
     const msg = chatMessage.trim();
     setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
     setChatMessage('');
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, {
-        role: 'ai',
-        text: 'Tato funkce bude brzy k dispozici. Pracujeme na propojení s AI tutorem.'
-      }]);
-    }, 800);
+    setIsAiTyping(true);
+    try {
+      const blockId = currentBlock?.learnId;
+      if (!blockId) throw new Error('No learn block');
+      const response = await learnBlocksChat(blockId, msg);
+      setChatMessages(prev => [...prev, { role: 'ai', text: response.answer }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'ai', text: 'Omlouvám se, nepodařilo se spojit s AI tutorem. Zkuste to prosím znovu.' }]);
+    } finally {
+      setIsAiTyping(false);
+    }
   };
 
   // Score calculation for evaluation
@@ -359,6 +365,22 @@ export default function ModulePage() {
                           )}
                         </div>
                       ))}
+                      {/* Loading bubble */}
+                      {isAiTyping && (
+                        <div className="flex items-end gap-2 justify-start">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: '#EFEFEF' }}>
+                            <Bot className="w-4 h-4 text-black" />
+                          </div>
+                          <div className="rounded-2xl px-4 py-3 rounded-bl-sm" style={{ backgroundColor: '#EFEFEF' }}>
+                            <div className="flex items-center gap-1">
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div ref={chatEndRef} />
                     </div>
 
@@ -369,9 +391,16 @@ export default function ModulePage() {
                           onClick={() => {
                             const suggestion = 'Jak můžu využít AI pro diferenciaci výuky?';
                             setChatMessages(prev => [...prev, { role: 'user', text: suggestion }]);
-                            setTimeout(() => {
-                              setChatMessages(prev => [...prev, { role: 'ai', text: 'Tato funkce bude brzy k dispozici. Pracujeme na propojení s AI tutorem.' }]);
-                            }, 800);
+                            setIsAiTyping(true);
+                            const blockId = currentBlock?.learnId;
+                            if (blockId) {
+                              learnBlocksChat(blockId, suggestion)
+                                .then(res => setChatMessages(prev => [...prev, { role: 'ai', text: res.answer }]))
+                                .catch(() => setChatMessages(prev => [...prev, { role: 'ai', text: 'Omlouvám se, nepodařilo se spojit s AI tutorem.' }]))
+                                .finally(() => setIsAiTyping(false));
+                            } else {
+                              setIsAiTyping(false);
+                            }
                           }}
                           className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
                         >
@@ -396,9 +425,9 @@ export default function ModulePage() {
                         />
                         <button
                           onClick={handleSendChat}
-                          disabled={!chatMessage.trim()}
+                          disabled={!chatMessage.trim() || isAiTyping}
                           className={`flex-shrink-0 transition-all ${
-                            chatMessage.trim() ? 'text-black hover:opacity-70' : 'text-gray-300 cursor-not-allowed'
+                            chatMessage.trim() && !isAiTyping ? 'text-black hover:opacity-70' : 'text-gray-300 cursor-not-allowed'
                           }`}
                         >
                           <SendHorizontal className="w-5 h-5" />
