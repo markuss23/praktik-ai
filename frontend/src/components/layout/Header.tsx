@@ -109,6 +109,26 @@ export function Header() {
                 )}
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin"
+                className={`relative pb-1 transition-colors ${
+                  isActive('/admin') 
+                    ? 'text-black font-bold' 
+                    : 'text-gray-700 hover:text-black font-medium'
+                }`}
+              >
+                Admin
+                {isActive('/admin') && (
+                  <span 
+                    className="absolute bottom-0 left-0 right-0 h-0.5"
+                    style={{ 
+                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
+                    }}
+                  />
+                )}
+              </Link>
+            </li>
           </ul>
 
           {/* User Actions */}

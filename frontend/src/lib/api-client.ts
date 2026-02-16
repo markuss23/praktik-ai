@@ -1,4 +1,21 @@
-import { Configuration, CoursesApi, ModulesApi, ActivitiesApi, CourseUpdate } from "@/api";
+import { 
+  Configuration, 
+  CoursesApi, 
+  ModulesApi, 
+  ActivitiesApi, 
+  AgentsApi, 
+  CategoriesApi,
+  CourseUpdate,
+  UpdateCourseStatusStatusEnum,
+  LearnBlockCreate,
+  LearnBlockUpdate,
+  ModuleCreate,
+  PracticeQuestionCreate,
+  PracticeQuestionUpdate,
+  PracticeOptionCreate,
+  PracticeOptionUpdate,
+  QuestionKeywordUpdate,
+} from "@/api";
 import { API_BASE_URL } from "./constants";
 
 // Create a configured API client instance
@@ -9,6 +26,8 @@ const configuration = new Configuration({
 export const coursesApi = new CoursesApi(configuration);
 export const modulesApi = new ModulesApi(configuration);
 export const activitiesApi = new ActivitiesApi(configuration);
+export const agentsApi = new AgentsApi(configuration);
+export const categoriesApi = new CategoriesApi(configuration);
 
 // Course API functions
 export async function getCourses(params?: {
@@ -30,10 +49,14 @@ export async function getCourse(courseId: number) {
 export async function createCourse(data: {
   title: string;
   description?: string;
-  isPublished?: boolean;
+  modulesCount?: number;
+  categoryId?: number;
 }) {
   return coursesApi.createCourse({
-    courseCreate: data,
+    courseCreate: {
+      ...data,
+      categoryId: data.categoryId ?? 1, // Default category
+    },
   });
 }
 
@@ -61,40 +84,116 @@ export async function getModule(moduleId: number) {
   return modulesApi.getModule({ moduleId });
 }
 
-export async function createModule(data: {
-  title: string;
-  courseId: number;
-  order?: number;
-}) {
-  return modulesApi.createModule({
-    moduleCreate: data,
-  });
+export async function createModule(data: ModuleCreate) {
+  return modulesApi.createModule({ moduleCreate: data });
 }
 
 export async function updateModule(moduleId: number, data: {
   title: string;
-  courseId: number;
-  order?: number;
+  position?: number;
+  isActive?: boolean;
 }) {
   return modulesApi.updateModule({
     moduleId,
-    moduleCreate: data,
+    moduleUpdate: data,
   });
 }
 
-// Activities API functions
-export async function getActivities(params?: {
-  includeInactive?: boolean;
-  textSearch?: string;
-  moduleId?: number;
-}) {
-  return activitiesApi.listActivities({
-    includeInactive: params?.includeInactive,
-    textSearch: params?.textSearch,
-    moduleId: params?.moduleId,
+// File upload API functions
+export async function uploadCourseFile(courseId: number, file: File) {
+  return coursesApi.uploadCourseFile({
+    courseId,
+    file: file as Blob,
   });
 }
 
-export async function getActivity(activityId: number) {
-  return activitiesApi.getActivity({ activityId });
+export async function deleteCourseFile(courseId: number, fileId: number) {
+  return coursesApi.deleteCourseFile({ courseId, fileId });
+}
+
+export async function deleteCourse(courseId: number) {
+  return coursesApi.deleteCourse({ courseId });
+}
+
+// AI Agent API functions
+export async function generateCourseWithAI(courseId: number) {
+  return agentsApi.generateCourse({ courseId });
+}
+
+export async function learnBlocksChat(learnBlockId: number, message: string) {
+  return agentsApi.learnBlocksChat({
+    learnBlocksChatRequest: { learnBlockId, message },
+  });
+}
+
+export async function generateCourseEmbeddings(courseId: number) {
+  return agentsApi.generateCourseEmbeddings({ courseId });
+}
+
+// ============ Course Status & Published API functions ============
+
+export async function updateCoursePublished(courseId: number, isPublished: boolean) {
+  return coursesApi.updateCoursePublished({ courseId, isPublished });
+}
+
+export async function updateCourseStatus(courseId: number, status: UpdateCourseStatusStatusEnum) {
+  return coursesApi.updateCourseStatus({ courseId, status });
+}
+
+// ============ Course Links API functions ============
+
+export async function createCourseLink(courseId: number, url: string) {
+  return coursesApi.createCourseLink({ courseId, url });
+}
+
+export async function listCourseLinks(courseId: number) {
+  return coursesApi.listCourseLinks({ courseId });
+}
+
+export async function deleteCourseLink(courseId: number, linkId: number) {
+  return coursesApi.deleteCourseLink({ courseId, linkId });
+}
+
+// ============ Categories API functions ============
+
+export async function getCategories(includeInactive = false) {
+  return categoriesApi.listCategories({ includeInactive });
+}
+
+export async function createCategory(name: string) {
+  return categoriesApi.createCategory({ categoryCreate: { name } });
+}
+
+export async function deleteCategory(categoryId: number) {
+  return categoriesApi.deleteCategory({ categoryId });
+}
+
+// ============ Activities API functions ============
+
+export async function createLearnBlock(data: LearnBlockCreate) {
+  return activitiesApi.createLearnBlock({ learnBlockCreate: data });
+}
+
+export async function updateLearnBlock(learnId: number, data: LearnBlockUpdate) {
+  return activitiesApi.updateLearnBlock({ learnId, learnBlockUpdate: data });
+}
+
+export async function createPracticeQuestion(data: PracticeQuestionCreate) {
+  return activitiesApi.createPracticeQuestion({ practiceQuestionCreate: data });
+}
+
+export async function updatePracticeQuestion(questionId: number, data: PracticeQuestionUpdate) {
+  return activitiesApi.updatePracticeQuestion({ questionId, practiceQuestionUpdate: data });
+}
+
+export async function createPracticeOption(data: PracticeOptionCreate) {
+  return activitiesApi.createPracticeOption({ practiceOptionCreate: data });
+}
+
+export async function updatePracticeOption(optionId: number, data: PracticeOptionUpdate) {
+  return activitiesApi.updatePracticeOption({ optionId, practiceOptionUpdate: data });
+}
+
+export async function updateQuestionKeyword(keywordId: number, data: QuestionKeywordUpdate) {
+  return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
 }

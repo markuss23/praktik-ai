@@ -1,5 +1,0 @@
-DB__HOST=db
-DB__PORT=5432
-DB__USER=postgres
-DB__PASSWORD=example
-DB__DATABASE=praktik_db

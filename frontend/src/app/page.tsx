@@ -8,31 +8,17 @@ import { useState, useEffect } from "react";
 export default function Home() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const loadCourses = async () => {
     try {
+      setError(null);
       const data = await getCourses({ isPublished: true });
       setCourses(data);
     } catch (error) {
       console.error('Failed to fetch courses:', error);
-      // Fallback to sample data when API is unavailable
-      setCourses([
-        {
-          id: 1,
-          name: "Jak komunikovat s AI?",
-          description: "V kurzu Jak komunikovat s AI? se dozvíte, jak správně a účinně zadávat, aby vám AI dávala přesné a praktické odpovědi k vaší práci.",
-        },
-        {
-          id: 2,
-          name: "Pokročilé techniky práce s AI",
-          description: "V tomto kurzu se naučíte, jak pomocí AI strukturovaných promptů, rolí a vícekrokového zadávání dosáhnout přesnějších a profesionálních výstupů od AI.",
-        },
-        {
-          id: 3,
-          name: "AI jako váš osobní asistent",
-          description: "Zjistěte, jak využít AI jako efektivního asistenta pro správu úkolů, komplexní analýzu textů, automatizaci každodenních činností a podporu při rozhodování.",
-        },
-      ]);
+      setError('Backend server is currently unavailable. Please make sure the API is running.');
+      setCourses([]);
     } finally {
       setLoading(false);
     }
@@ -57,6 +43,26 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6">
             {loading ? (
               <p className="text-gray-500">Načítání kurzů...</p>
+            ) : error ? (
+              <div className="col-span-full">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                  <svg className="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Backend Není Dostupný</h3>
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={loadCourses}
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Zkusit Znovu
+                  </button>
+                </div>
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500 py-8">
+                Zatím nejsou k dispozici žádné publikované kurzy.
+              </div>
             ) : (
               courses.map((course: any) => (
                 <CourseCard
@@ -64,12 +70,10 @@ export default function Home() {
                   id={String(course.courseId || course.id)}
                   title={course.title || course.name}
                   description={course.description || ''}
-                  duration={86}
+                  duration={course.modulesCount ? course.modulesCount * 20 : 60}
                   difficulty="Začátečník"
                   completedModules={0}
-                  totalModules={4}
-                  isPublished={course.isPublished}
-                  onUpdate={loadCourses}
+                  totalModules={course.modulesCount || 0}
                 />
               ))
             )}

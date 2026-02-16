@@ -2,93 +2,103 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+      target: dev-stage
     ports:
       - "8000:8000"
     env_file:
-      - api/.env
-    
+      - .env
     volumes:
-      - ./api:/code
-    # environment:
-    #   DATABASE_URL: postgresql://postgres:example@db:5432/postgres
-    #   MINIO_ENDPOINT: minio
-    #   MINIO_ACCESS_KEY: root
-    #   MINIO_SECRET_KEY: rootroot
-    #   MINIO_SECURE: "false"
-    #   KEYCLOAK_URL: http://keycloak:7080
-    #   KEYCLOAK_REALM: praktikai
-    #   KEYCLOAK_CLIENT_ID: praktik-ai-app
-    # depends_on:
-    #   - db
-    #   - minio
-    #   - keycloak
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    environment:
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 7080
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "true"
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_HEALTH_ENABLED: "true"
-      KC_LOG_LEVEL: info
+      - ./backend:/code
+    networks:
+      - praktikai
+    depends_on:
+      - db
+      - keycloak
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7080/health/ready"]
-      interval: 15s
-      timeout: 2s
-      retries: 15
-
-    command: ["start-dev", "--http-port", "7080", "--https-port", "7443"]
-
-    ports:
-      - "7080:7080"
-      - "7443:7443"
 
   db:
     image: pgvector/pgvector:0.8.1-pg18-trixie
     restart: always
     # set shared memory limit when using docker compose
     shm_size: 128mb
-    # or set shared memory limit when deploy via swarm stack
-    #volumes:
-    #  - type: tmpfs
-    #    target: /dev/shm
-    #    tmpfs:
-    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    env_file:
+      - .env
     environment:
-      POSTGRES_PASSWORD: example
-      POSTGRES_DATABASE: praktik_db
-
-    ports:
-      - "5432:5432"
-
-  minio:
-    image: minio/minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: root
-      MINIO_ROOT_PASSWORD: rootroot
-    command: server /data --console-address ":9001"
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD}
+      POSTGRES_USER: ${POSTGRES__USER}
+      POSTGRES_DB: ${POSTGRES__DB}
     volumes:
-      - minio-data:/data
-
-  litellm:
-    image: ghcr.io/berriai/litellm:main-stable
-    container_name: litellm
+      - postgres-data:/var/lib/postgresql
     ports:
-      - "4000:4000"
-    environment:
-      DATABASE_URL: "postgresql://postgres:example@db:5432/litellm"
-      STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
-      LITELLM_MASTER_KEY: "sk-1234"
-      LITELLM_SALT_KEY: "sk-XXXXXXXX"
+      - "5433:5432"
+    networks:
+      - praktikai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES__DB} -U ${POSTGRES__USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.0
+
     depends_on:
       - db
+    environment:
+      KC_HOSTNAME: 0.0.0.0
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/${POSTGRES__DB}
+      KC_DB_USERNAME: ${POSTGRES__USER}
+      KC_DB_PASSWORD: ${POSTGRES__PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_LOG_LEVEL: info
+    command: start-dev
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    networks:
+      - praktikai
+
+
+
+  # minio:
+  #   image: minio/minio
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   environment:
+  #     MINIO_ROOT_USER: root
+  #     MINIO_ROOT_PASSWORD: rootroot
+  #   command: server /data --console-address ":9001"
+  #   volumes:
+  #     - minio-data:/data
+
+  # litellm:
+  #   image: ghcr.io/berriai/litellm:main-stable
+  #   container_name: litellm
+  #   ports:
+  #     - "4000:4000"
+  #   environment:
+  #     DATABASE_URL: "postgresql://postgres:example@db:5432/litellm"
+  #     STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
+  #     LITELLM_MASTER_KEY: "sk-1234"
+  #     LITELLM_SALT_KEY: "sk-XXXXXXXX"
+  #   depends_on:
+  #     - db
 
 volumes:
   minio-data:
+  postgres-data:
+
+networks:
+  praktikai:
+    driver: bridge
