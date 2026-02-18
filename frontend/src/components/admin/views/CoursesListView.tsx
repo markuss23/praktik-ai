@@ -4,8 +4,9 @@ import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings
 import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect, useCallback } from "react";
-import { Pencil, Eye, EyeOff, Trash2, GripVertical, X, BicepsFlexed, Upload, Sparkles } from "lucide-react";
-import { CourseModal, ModuleModal, DeleteConfirmModal } from "@/components";
+import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
+import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons } from "@/components";
+import { GenerateEmbeddingsButton } from "@/components/admin/GenerateEmbeddingsButton";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 
@@ -345,55 +346,28 @@ export function CoursesListView() {
                         <PublishBadge status={course.status} isPublished={course.isPublished} />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
+                        <CourseActionButtons>
+                          <EditActionButton
                             onClick={() => toggleCourseExpand(course.courseId)}
-                            className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                             title="Zobrazit moduly"
-                          >
-                            <Pencil size={16} />
-                          </button>
+                          />
                           {(course.status === Status.Approved || course.status === Status.Archived) && (
                             <>
-                              <button
+                              <PublishActionButton
                                 onClick={() => togglePublish(course)}
-                                className={`p-2 text-white rounded-md transition-colors ${
-                                  course.isPublished 
-                                    ? 'bg-orange-500 hover:bg-orange-600' 
-                                    : 'bg-green-500 hover:bg-green-600'
-                                }`}
-                                title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-                              >
-                                {course.isPublished ? <EyeOff size={16} /> : <Eye size={16} />}
-                              </button>
-                              <button
+                                isPublished={!!course.isPublished}
+                              />
+                              {/* <GenerateEmbeddingsButton
                                 onClick={() => handleGenerateEmbeddings(course.courseId)}
-                                disabled={embeddingDone.has(course.courseId) || embeddingLoading === course.courseId}
-                                className={`p-2 text-white rounded-md transition-colors ${
-                                  embeddingDone.has(course.courseId)
-                                    ? 'bg-blue-300 cursor-not-allowed'
-                                    : embeddingLoading === course.courseId
-                                      ? 'bg-blue-400 cursor-wait'
-                                      : 'bg-blue-600 hover:bg-blue-700'
-                                }`}
-                                title={embeddingDone.has(course.courseId) ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
-                              >
-                                {embeddingLoading === course.courseId ? (
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Sparkles size={16} />
-                                )}
-                              </button>
+                                isLoading={embeddingLoading === course.courseId}
+                                isDone={embeddingDone.has(course.courseId)}
+                              /> */}
                             </>
                           )}
-                          <button
+                          <DeleteActionButton
                             onClick={() => handleDeleteClick(course.courseId)}
-                            className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                            title="Smazat"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                          />
+                        </CourseActionButtons>
                       </td>
                     </tr>
                     
@@ -596,29 +570,21 @@ function ExpandedModuleList({
                 </span>
               </div>
               
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
+              <CourseActionButtons className="flex-shrink-0">
+                <EditActionButton
                   onClick={() => onEditModule(module)}
-                  className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                   title="Editovat modul"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
+                />
+                <PublishActionButton
                   onClick={() => onToggleModuleActive(module)}
-                  className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                  isPublished={!!module.isActive}
                   title={module.isActive ? 'Deaktivovat modul' : 'Aktivovat modul'}
-                >
-                  {module.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-                <button
+                />
+                <DeleteActionButton
                   onClick={() => onDeleteModule(module.moduleId)}
-                  className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                   title="Smazat modul"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+                />
+              </CourseActionButtons>
             </div>
           ))}
         </div>
@@ -690,53 +656,32 @@ function MobileCourseCard({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
+        <CourseActionButtons className="flex-shrink-0">
+          <EditActionButton
             onClick={onToggleExpand}
-            className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
             title="Zobrazit moduly"
-          >
-            <Pencil size={14} />
-          </button>
+            iconSize={14}
+          />
           {(course.status === Status.Approved || course.status === Status.Archived) && (
             <>
-              <button
+              <PublishActionButton
                 onClick={onTogglePublish}
-                className={`p-2 text-white rounded-md transition-colors ${
-                  course.isPublished ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-500 hover:bg-green-600'
-                }`}
-                title={course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-              >
-                {course.isPublished ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-              <button
+                isPublished={!!course.isPublished}
+                iconSize={14}
+              />
+              {/* <GenerateEmbeddingsButton
                 onClick={onGenerateEmbeddings}
-                disabled={embeddingGenerated || embeddingGenerating}
-                className={`p-2 text-white rounded-md transition-colors ${
-                  embeddingGenerated
-                    ? 'bg-blue-300 cursor-not-allowed'
-                    : embeddingGenerating
-                      ? 'bg-blue-400 cursor-wait'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-                title={embeddingGenerated ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
-              >
-                {embeddingGenerating ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Sparkles size={14} />
-                )}
-              </button>
+                isLoading={embeddingGenerating}
+                isDone={embeddingGenerated}
+                iconSize={14}
+              /> */}
             </>
           )}
-          <button
+          <DeleteActionButton
             onClick={onDelete}
-            className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            title="Smazat"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+            iconSize={14}
+          />
+        </CourseActionButtons>
       </div>
       
       {/* Expanded Module List - Mobile */}
@@ -761,29 +706,24 @@ function MobileCourseCard({
                       {module.isActive ? 'Aktivní' : 'Neaktivní'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
+                  <CourseActionButtons className="flex-shrink-0">
+                    <EditActionButton
                       onClick={() => onEditModule(module)}
-                      className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700"
                       title="Editovat"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
+                      iconSize={12}
+                    />
+                    <PublishActionButton
                       onClick={() => onToggleModuleActive(module)}
-                      className="p-1.5 bg-orange-500 text-white rounded hover:bg-orange-600"
+                      isPublished={!!module.isActive}
                       title={module.isActive ? 'Deaktivovat' : 'Aktivovat'}
-                    >
-                      {module.isActive ? <EyeOff size={12} /> : <Eye size={12} />}
-                    </button>
-                    <button
+                      iconSize={12}
+                    />
+                    <DeleteActionButton
                       onClick={() => onDeleteModule(module.moduleId)}
-                      className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700"
                       title="Smazat"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                      iconSize={12}
+                    />
+                  </CourseActionButtons>
                 </div>
               </div>
             ))}
