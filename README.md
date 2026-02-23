@@ -10,7 +10,6 @@ Projekt cílí na systematickou transformaci přípravy učitelů pro digitáln�
 │   └── agents/        # AI agenti pro generování kurzů
 ├── frontend/          # Next.js frontend
 ├── infra/docker/      # Dockerfiles
-├── authentik/         # Authentik konfigurace
 └── compose.yml        # Docker Compose
 ```
 
