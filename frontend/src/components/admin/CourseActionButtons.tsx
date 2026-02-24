@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Pencil, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Pencil, Eye, EyeOff, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
 
 // =============================================================================
 // Individual action button variants
@@ -64,6 +64,45 @@ export function DeleteActionButton({ onClick, title = 'Smazat', iconSize = 16 }:
       title={title}
     >
       <Trash2 size={iconSize} />
+    </button>
+  );
+}
+
+/**
+ * Approve / unapprove toggle button.
+ * Green check when not approved (i.e. status=generated) → approve action.
+ * Orange RotateCcw when approved → revert to generated.
+ */
+export function ApproveActionButton({
+  onClick,
+  isApproved,
+  disabled,
+  isLoading,
+  iconSize = 16,
+}: ActionButtonProps & { isApproved: boolean; isLoading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || isLoading}
+      className={`p-2 text-white rounded-md transition-colors ${
+        isLoading
+          ? 'bg-amber-400 cursor-wait'
+          : isApproved
+            ? 'bg-amber-500 hover:bg-amber-600'
+            : 'bg-teal-600 hover:bg-teal-700'
+      }`}
+      title={isApproved ? 'Zrušit schválení (zpět na Vygenerováno)' : 'Schválit kurz a generovat embeddingy'}
+    >
+      {isLoading ? (
+        <div
+          className="border-2 border-white border-t-transparent rounded-full animate-spin"
+          style={{ width: iconSize - 2, height: iconSize - 2 }}
+        />
+      ) : isApproved ? (
+        <RotateCcw size={iconSize} />
+      ) : (
+        <CheckCircle size={iconSize} />
+      )}
     </button>
   );
 }

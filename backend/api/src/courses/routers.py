@@ -72,7 +72,7 @@ async def endp_update_course(
 @router.put("/{course_id}/status", operation_id="update_course_status")
 async def endp_update_course_status(
     course_id: int,
-    status: Literal[Status.archived, Status.approved],
+    status: Literal[Status.archived, Status.approved, Status.generated],
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> Course:

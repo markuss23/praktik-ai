@@ -1,11 +1,11 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration, Status, Module } from "@/api";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus } from "@/lib/api-client";
+import { Course, CoursesApi, ModulesApi, Configuration, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect, useCallback } from "react";
 import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
-import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons } from "@/components";
+import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
 import { GenerateEmbeddingsButton } from "@/components/admin/GenerateEmbeddingsButton";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
@@ -27,6 +27,9 @@ export function CoursesListView() {
   // Embedding generation state
   const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
   const [embeddingDone, setEmbeddingDone] = useState<Set<number>>(new Set());
+
+  // Approval state
+  const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
 
   // Stavy modálních oken
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -291,6 +294,33 @@ export function CoursesListView() {
     }
   };
 
+  const handleApproveToggle = async (course: Course) => {
+    const isApproved = course.status === Status.Approved;
+    setApprovalLoading(course.courseId);
+    try {
+      if (isApproved) {
+        // Revert approved → generated (for editing)
+        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Generated);
+      } else {
+        // Approve: generated → approved, then auto-generate embeddings
+        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
+        try {
+          await generateCourseEmbeddings(course.courseId);
+          setEmbeddingDone(prev => new Set(prev).add(course.courseId));
+        } catch (embErr) {
+          console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
+          alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
+        }
+      }
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to toggle approval:', error);
+      alert(isApproved ? 'Nepodařilo se zrušit schválení kurzu.' : 'Nepodařilo se schválit kurz.');
+    } finally {
+      setApprovalLoading(null);
+    }
+  };
+
   return (
     <>
       <div className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -351,18 +381,18 @@ export function CoursesListView() {
                             onClick={() => toggleCourseExpand(course.courseId)}
                             title="Zobrazit moduly"
                           />
+                          {(course.status === Status.Generated || course.status === Status.Approved) && (
+                            <ApproveActionButton
+                              onClick={() => handleApproveToggle(course)}
+                              isApproved={course.status === Status.Approved}
+                              isLoading={approvalLoading === course.courseId}
+                            />
+                          )}
                           {(course.status === Status.Approved || course.status === Status.Archived) && (
-                            <>
-                              <PublishActionButton
-                                onClick={() => togglePublish(course)}
-                                isPublished={!!course.isPublished}
-                              />
-                              {/* <GenerateEmbeddingsButton
-                                onClick={() => handleGenerateEmbeddings(course.courseId)}
-                                isLoading={embeddingLoading === course.courseId}
-                                isDone={embeddingDone.has(course.courseId)}
-                              /> */}
-                            </>
+                            <PublishActionButton
+                              onClick={() => togglePublish(course)}
+                              isPublished={!!course.isPublished}
+                            />
                           )}
                           <DeleteActionButton
                             onClick={() => handleDeleteClick(course.courseId)}
@@ -420,6 +450,8 @@ export function CoursesListView() {
                 onGenerateEmbeddings={() => handleGenerateEmbeddings(course.courseId)}
                 embeddingGenerating={embeddingLoading === course.courseId}
                 embeddingGenerated={embeddingDone.has(course.courseId)}
+                onApproveToggle={() => handleApproveToggle(course)}
+                approvalLoading={approvalLoading === course.courseId}
               />
             ))}
           </div>
@@ -621,6 +653,8 @@ interface MobileCourseCardProps {
   onGenerateEmbeddings: () => void;
   embeddingGenerating: boolean;
   embeddingGenerated: boolean;
+  onApproveToggle: () => void;
+  approvalLoading: boolean;
 }
 
 function MobileCourseCard({
@@ -639,6 +673,8 @@ function MobileCourseCard({
   onGenerateEmbeddings,
   embeddingGenerating,
   embeddingGenerated,
+  onApproveToggle,
+  approvalLoading,
 }: MobileCourseCardProps) {
   const moduleCount = course.modules?.length || 0;
 
@@ -662,20 +698,20 @@ function MobileCourseCard({
             title="Zobrazit moduly"
             iconSize={14}
           />
+          {(course.status === Status.Generated || course.status === Status.Approved) && (
+            <ApproveActionButton
+              onClick={onApproveToggle}
+              isApproved={course.status === Status.Approved}
+              isLoading={approvalLoading}
+              iconSize={14}
+            />
+          )}
           {(course.status === Status.Approved || course.status === Status.Archived) && (
-            <>
-              <PublishActionButton
-                onClick={onTogglePublish}
-                isPublished={!!course.isPublished}
-                iconSize={14}
-              />
-              {/* <GenerateEmbeddingsButton
-                onClick={onGenerateEmbeddings}
-                isLoading={embeddingGenerating}
-                isDone={embeddingGenerated}
-                iconSize={14}
-              /> */}
-            </>
+            <PublishActionButton
+              onClick={onTogglePublish}
+              isPublished={!!course.isPublished}
+              iconSize={14}
+            />
           )}
           <DeleteActionButton
             onClick={onDelete}

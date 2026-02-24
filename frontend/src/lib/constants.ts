@@ -8,6 +8,7 @@ export const ROUTES = {
   ABOUT: "/about",
   COURSES: "/courses",
   MODULES: "/modules",
+  PROFILE: "/profil",
 } as const;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB

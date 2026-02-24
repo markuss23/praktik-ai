@@ -6,7 +6,7 @@ import Link from "next/link";
 import { getModule, getCourse, getModules } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, BookOpenText, Dumbbell } from "lucide-react";
-// import { AiTutorChat } from "@/components/admin/AiTutorChat";
+import { AiTutorChat } from "@/components/admin/AiTutorChat";
 
 type TabType = 'prirucka' | 'procvicovani';
 
@@ -31,15 +31,6 @@ export default function ModulePage() {
   // Test state
   const [testAnswers, setTestAnswers] = useState<Record<number, number | string>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
-
-  // AI Tutor state – kept for potential future use
-  // const [chatOpen, setChatOpen] = useState(false);
-  // const [chatMessage, setChatMessage] = useState('');
-  // const [isAiTyping, setIsAiTyping] = useState(false);
-  // const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
-  //   { role: 'ai', text: 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?' }
-  // ]);
-  // const chatEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Data loading
@@ -96,14 +87,6 @@ export default function ModulePage() {
       }
     });
   }, [currentBlockIndex, activeTab, module]);
-
-  // Auto-scroll chat to bottom
-  // useEffect(() => {
-  //   const el = chatEndRef.current;
-  //   if (el?.parentElement) {
-  //     el.parentElement.scrollTop = el.parentElement.scrollHeight;
-  //   }
-  // }, [chatMessages, isAiTyping]);
 
   // Loading state
   if (loading) {
@@ -304,8 +287,7 @@ export default function ModulePage() {
                 </div>
               </div>
 
-              {/* AI Tutor card – zakomentováno */}
-              {/* <AiTutorChat learnBlockId={currentBlock?.learnId} /> */}
+              <AiTutorChat learnBlockId={currentBlock?.learnId} />
             </div>
           </div>
 
@@ -313,7 +295,6 @@ export default function ModulePage() {
           <div className="flex-grow min-w-0">
             <div className="bg-white rounded-lg p-6 sm:p-10" style={{ border: '1px solid #e5e7eb' }}>
 
-              {/* ===== PŘÍRUČKA TAB ===== */}
               {activeTab === 'prirucka' && (
                 <>
                   {currentBlock ? (
@@ -374,7 +355,6 @@ export default function ModulePage() {
                 </>
               )}
 
-              {/* ===== PROCVIČOVÁNÍ TAB (practice questions) ===== */}
               {activeTab === 'procvicovani' && (
                 <>
                   {testSubmitted ? (
@@ -382,7 +362,7 @@ export default function ModulePage() {
                     (() => {
                       const { correct, total, results } = calculateScore();
                       const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-                      const passed = percentage >= 50;
+                      const passed = percentage >= 75;
                       return (
                         <div>
                           <div className="text-center mb-8">
@@ -555,7 +535,6 @@ export default function ModulePage() {
               )}
             </div>
 
-            {/* Bottom Navigation - commented out per request */}
             {/*
             <div className="flex items-center justify-between mt-6">
               <Link
@@ -599,6 +578,7 @@ export default function ModulePage() {
               )}
             </div>
             */}
+
           </div>
         </div>
       </div>

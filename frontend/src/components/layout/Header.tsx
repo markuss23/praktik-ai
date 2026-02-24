@@ -136,9 +136,15 @@ export function Header() {
             <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
               <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
             </button>
-            <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Link
+              href={ROUTES.PROFILE}
+              className={`p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
+                isActive(ROUTES.PROFILE) ? 'bg-gray-100' : ''
+              }`}
+              title="Můj profil"
+            >
               <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-            </button>
+            </Link>
           </div>
         </nav>
       </div>
