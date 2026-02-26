@@ -82,6 +82,8 @@ def update_course_status(db: Session, course_id: int, status: Status, user: dict
             pass
         elif course.status == "approved" and status == "archived":
             pass
+        elif course.status == "approved" and status == "generated":
+            pass
         else:
             raise HTTPException(status_code=400, detail="Neplatná změna statusu kurzu")
     

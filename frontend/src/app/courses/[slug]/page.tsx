@@ -7,7 +7,6 @@ import { getCourse, getModules } from "@/lib/api-client";
 import type { Course, Module } from "@/api";
 import { BookOpen, Lock } from "lucide-react";
 
-// Static: first module is "currently studying", rest are locked
 const CURRENT_MODULE_INDEX = 0;
 
 export default function CoursePage() {

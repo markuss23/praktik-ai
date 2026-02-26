@@ -6,11 +6,12 @@ from api.src.categories.controllers import (
 )
 from api.src.categories.schemas import Category, CategoryCreate
 from api.database import SessionSqlSessionDependency
+from api.dependencies import require_role
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
-@router.get("", operation_id="list_categories")
+@router.get("", operation_id="list_categories", dependencies=[require_role("user")])
 async def list_categories(
     db: SessionSqlSessionDependency,
     include_inactive: bool = False,

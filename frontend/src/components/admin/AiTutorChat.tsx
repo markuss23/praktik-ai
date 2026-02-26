@@ -9,10 +9,6 @@ interface AiTutorChatProps {
   learnBlockId?: number;
 }
 
-/**
- * AI Tutor chatbot sidebar component.
- * Provides a collapsible chat interface for students to ask questions about the current module.
- */
 export function AiTutorChat({ learnBlockId }: AiTutorChatProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');

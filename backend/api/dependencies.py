@@ -3,6 +3,7 @@ from keycloak import (
     KeycloakAuthenticationError,
     KeycloakConnectionError,
     KeycloakOpenID,
+    KeycloakAdmin,
 )
 from fastapi import Depends, HTTPException
 from fastapi.security import (
@@ -22,12 +23,20 @@ class Auth:
                 realm_name=settings.keycloak.realm_name,
                 client_secret_key=settings.keycloak.client_secret,
             )
+
+            self.keycloak_admin = KeycloakAdmin(
+                server_url=settings.keycloak.server_url,
+                realm_name=settings.keycloak.realm_name,
+                client_id=settings.keycloak.client_id,
+                client_secret_key=settings.keycloak.client_secret,
+                verify=True,
+            )
+
         except Exception as e:
             print(f"Warning: Failed to initialize Keycloak: {e}")
             self.keycloak_openid = None
 
     def get_token(self, username: str, password: str) -> dict:
-        return 
         try:
             token: dict = self.keycloak_openid.token(
                 username=username, password=password, grant_type="password"
@@ -47,10 +56,6 @@ class Auth:
             ) from e
 
     def get_current_user(self, token: Annotated[str, Depends(oauth2_bearer)]) -> dict:
-        user_dict = {"sub": "d705a727-677f-4ef7-a4df-70a3c8d51e8f"}
-        
-        return user_dict
-        
         if not token:
             raise HTTPException(
                 status_code=401,
@@ -77,6 +82,52 @@ class Auth:
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
 
+    def get_realm_roles(self, token: Annotated[str, Depends(oauth2_bearer)]) -> list:
+        try:
+            user_info: dict = self.keycloak_openid.userinfo(token)
+
+            user_id: str = user_info.get("sub")
+
+            if not user_id:
+                raise HTTPException(
+                    status_code=401, detail="ID uživatele nenalezeno v tokenu"
+                )
+
+            roles: list = self.keycloak_admin.get_realm_roles_of_user(user_id=user_id)
+
+            print(roles)
+
+            return [role["name"] for role in roles]
+
+        except (KeycloakAuthenticationError, KeycloakConnectionError) as e:
+            print(f"Keycloak error: {e}")
+            raise HTTPException(
+                status_code=401,
+                detail="Nepodařilo se ověřit uživatele nebo získat role",
+            ) from e
+
+
+ROLE_HIERARCHY: dict[str, int] = {
+    "superadmin": 3,
+    "admin": 2,
+    "user": 1,
+}
+
+
+def require_role(min_role: str):
+    min_level: int = ROLE_HIERARCHY.get(min_role, 0)
+
+    def checker(roles: Annotated[list, Depends(auth.get_realm_roles)]):
+        user_level = max(
+            (ROLE_HIERARCHY.get(role, 0) for role in roles),
+            default=0,
+        )
+        if user_level < min_level:
+            raise HTTPException(status_code=403, detail="Nedostatečná oprávnění")
+
+    return Depends(checker)
+
 
 auth = Auth()
 CurrentUser = Annotated[dict, Depends(auth.get_current_user)]
+RealmRoles = Annotated[list, Depends(auth.get_realm_roles)]
