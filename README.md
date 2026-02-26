@@ -1,81 +1,232 @@
-# Praktik-ai
+# Praktik-AI
 
-Projekt cílí na systematickou transformaci přípravy učitelů pro digitální éru prostřednictvím rozvoje AI kompetencí akademických pracovníků pedagogických fakult. Hlavním cílem je vytvořit a pilotně ověřit komplexní systém zahrnující certifikovanou metodiku rozvoje AI.
+Platforma pro systematický rozvoj AI kompetencí akademických pracovníků pedagogických fakult. Systém umožňuje tvorbu, správu a absolvování kurzů s podporou AI agentů pro generování obsahu a mentoring studentů.
+
+---
+
+## High-Level Design
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                            UŽIVATEL                                 │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │ HTTPS
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     FRONTEND  (Next.js 15)                          │
+│                                                                     │
+│   /courses        /modules        /admin        /profil             │
+│   /courses/:id    /activities     /admin/*       /about             │
+└───────┬───────────────────────────────┬─────────────────────────────┘
+        │ REST (axios)                  │ OpenID Connect
+        ▼                              ▼
+┌───────────────────┐        ┌─────────────────────┐
+│   BACKEND API     │        │   KEYCLOAK 26.4      │
+│   (FastAPI)       │◄───────│   Identity Provider  │
+│   :8000           │  JWT   │   :8080              │
+│                   │        └─────────────────────-┘
+│  ┌─────────────┐  │
+│  │   Routers   │  │
+│  │  /auth      │  │
+│  │  /courses   │  │
+│  │  /modules   │  │
+│  │  /activities│  │
+│  │  /categories│  │
+│  │  /agents    │  │
+│  └──────┬──────┘  │
+│         │         │
+│  ┌──────▼──────┐  │        ┌─────────────────────┐
+│  │  AI Agents  │  │        │   POSTGRESQL + pgvector│
+│  │  (LangGraph)│  │◄──────►│   :5432              │
+│  │             │  │        │                     │
+│  │ • Generator │  │        │  courses, modules,  │
+│  │ • Embedding │  │        │  activities, vectors│
+│  │ • Mentor    │  │        └─────────────────────┘
+│  └──────┬──────┘  │
+└─────────┼─────────┘
+          │ API calls
+          ▼
+┌─────────────────────┐
+│   OPENAI API        │
+│   GPT-4o-mini       │
+└─────────────────────┘
+```
+
+---
+
+## Učební model — průchod kurzem
+
+```text
+                        KURZ
+┌───────────────────────────────────────────────────────┐
+│                                                       │
+│   Modul 1          Modul 2          Modul N           │
+│  ┌────────┐        ┌────────┐       ┌────────┐        │
+│  │ Learn  │        │ Learn  │       │ Learn  │        │
+│  │   ↓   │ ──►    │   ↓   │ ──►   │   ↓   │        │
+│  │Practice│ unlock │Practice│ unlock│Practice│        │
+│  │   ↓   │        │   ↓   │       │   ↓   │        │
+│  │Assess. │        │Assess. │       │Assess. │        │
+│  └────────┘        └────────┘       └────────┘        │
+│    PASS ✓            PASS ✓           PASS ✓          │
+│                                         = HOTOVO      │
+└───────────────────────────────────────────────────────┘
+```
+
+Každý modul je samostatná uzavřená jednotka. Přechod do dalšího modulu je podmíněn úspěšným dokončením **Assessment** fáze aktuálního modulu.
+
+---
+
+## AI Agenti (LangGraph)
+
+### 1. Generátor kurzů
+
+Generuje strukturu kurzu ze zdrojových materiálů (markdown, dokumenty).
+
+```text
+load_data_db → load_data → summarize_content → plan_content → save_to_db
+```
+
+### 2. Generátor embeddingů
+
+Vytváří vektorové reprezentace LearnBlocků a ukládá je do pgvector pro sémantické vyhledávání.
+
+### 3. Mentor agent (RAG)
+
+Konverzační asistent pro studenty. Vyhledává relevantní obsah z kurzu pomocí sémantického vyhledávání a generuje odpovědi.
+
+```text
+load_learn_block_data → rerank → generate_answer
+```
+
+---
+
+## Autorizace — role (RBAC)
+
+| Role         | Oprávnění                              |
+|--------------|----------------------------------------|
+| `superadmin` | Vše včetně správy systému              |
+| `admin`      | Správa kurzů, uživatelů, kategorií     |
+| `user`       | Procházení a absolvování kurzů         |
+
+Hierarchie: `superadmin > admin > user`
+
+---
 
 ## Struktura projektu
 
+```text
+├── backend/
+│   ├── api/
+│   │   ├── src/
+│   │   │   ├── auth/          # Autentizace
+│   │   │   ├── courses/       # Správa kurzů
+│   │   │   ├── modules/       # Moduly kurzů
+│   │   │   ├── activities/    # LearnBlocky, otázky, odpovědi
+│   │   │   ├── categories/    # Kategorie kurzů
+│   │   │   └── agents/        # AI agent endpointy
+│   │   ├── main.py            # FastAPI aplikace
+│   │   ├── models.py          # SQLAlchemy modely
+│   │   ├── dependencies.py    # Auth dependency injection
+│   │   └── config.py          # Konfigurace (Keycloak, PostgreSQL)
+│   └── agents/
+│       ├── course_generator/  # LangGraph agent — generátor kurzů
+│       ├── embedding_generator/ # Agent pro vektorové embeddingy
+│       ├── mentor/            # Mentor chatbot agent
+│       └── base/              # Sdílené komponenty (loadery)
+├── frontend/
+│   ├── src/
+│   │   ├── app/               # Next.js stránky (App Router)
+│   │   ├── components/        # React komponenty
+│   │   ├── api/               # Generovaný TypeScript klient (OpenAPI)
+│   │   └── hooks/             # React hooks
+│   └── package.json
+├── infra/docker/              # Dockerfiles
+├── compose.yml                # Docker Compose
+└── Makefile                   # Dev příkazy
 ```
-├── backend/           # FastAPI backend + LangGraph agenti
-│   ├── api/           # REST API (FastAPI)
-│   └── agents/        # AI agenti pro generování kurzů
-├── frontend/          # Next.js frontend
-├── infra/docker/      # Dockerfiles
-└── compose.yml        # Docker Compose
-```
+
+---
+
+## Technologie
+
+| Vrstva      | Technologie                                      |
+|-------------|--------------------------------------------------|
+| Frontend    | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
+| Backend     | FastAPI, SQLAlchemy 2, Python 3.13, uv           |
+| AI          | LangGraph, LangChain, OpenAI GPT-4o-mini         |
+| Databáze    | PostgreSQL 18 + pgvector                         |
+| Auth        | Keycloak 26.4 (OpenID Connect / OAuth2)          |
+| Kontejnery  | Docker, Docker Compose                           |
+
+---
 
 ## Rychlý start
 
 ### 1. Konfigurace prostředí
 
-Vytvořte soubor `.env` v kořenovém adresáři projektu:
-
 ```bash
 cp env_example .env
 ```
 
-Pro použití AI agentů přidejte do `.env`:
+Upravte `.env` — minimálně:
 
 ```env
-OPENAI_API_KEY=your-openai-api-key
+# OpenAI (pro AI agenty)
+OPENAI_API_KEY=sk-...
+
+# PostgreSQL
+POSTGRES__HOST=db
+POSTGRES__PORT=5432
+POSTGRES__USER=...
+POSTGRES__PASSWORD=...
+POSTGRES__DB=...
+
+# Keycloak
+KEYCLOAK__SERVER_URL=http://keycloak:8080/
+KEYCLOAK__REALM_NAME=...
+KEYCLOAK__CLIENT_ID=...
+KEYCLOAK__CLIENT_SECRET=...
+KEYCLOAK__ADMIN_USERNAME=...
+KEYCLOAK__ADMIN_PASSWORD=...
+
+# Keycloak bootstrap
+KC_BOOTSTRAP_ADMIN_USERNAME=...
+KC_BOOTSTRAP_ADMIN_PASSWORD=...
 ```
 
 ### 2. Spuštění
 
 ```bash
-make dev
+make dev        # API + PostgreSQL (hot reload)
+make db         # pouze databáze
 ```
 
-Tím se spustí:
+| Služba    | URL                                    |
+|-----------|----------------------------------------|
+| API       | <http://localhost:8000>                |
+| API docs  | <http://localhost:8000/docs>           |
+| Frontend  | <http://localhost:3000>                |
+| Keycloak  | <http://localhost:8080>                |
 
-- **PostgreSQL** databáze s pgvector na portu `5432`
-- **API** server na portu `8000`
-
-### Další příkazy
+### 3. Generování TypeScript klienta
 
 ```bash
-make db      # Spustí pouze databázi
+cd frontend
+npm run generate:openapi
 ```
+
+---
 
 ## API Endpoints
 
-- `GET /courses` - Seznam kurzů
-- `POST /courses` - Vytvoření kurzu
-- `POST /courses/{id}/generate` - Generování kurzu pomocí AI
+| Prefix        | Endpointy                                              |
+|---------------|--------------------------------------------------------|
+| `/auth`       | `POST /token`, `GET /me`, `GET /roles`                 |
+| `/courses`    | CRUD kurzů, upload souborů, správa odkazů, stavů       |
+| `/modules`    | CRUD modulů v rámci kurzu                              |
+| `/activities` | LearnBlocky, PracticeQuestions, odpovědi, klíčová slova|
+| `/categories` | CRUD kategorií                                         |
+| `/agents`     | `POST /generate-course`, `/generate-course-embeddings`, `/learn-blocks-chat` |
 
-## AI Agent - Generátor kurzů
-
-Workflow pro generování kurzů ze zdrojových materiálů:
-
-```md
-load_data_db → load_data → summarize_content → plan_content → save_to_db
-```
-
-### Modely kurzu
-
-| Pole | Popis |
-|------|-------|
-| `is_generated` | Kurz byl vygenerován ze zdrojů |
-| `is_approved` | Kurz byl schválen |
-| `is_published` | Kurz je publikován |
-| `summary` | Sumarizovaný text ze zdrojů |
-
-## Technologie
-
-- **Backend**: FastAPI, SQLAlchemy, LangGraph, LangChain
-- **Frontend**: Next.js, TypeScript
-- **Databáze**: PostgreSQL + pgvector
-- **AI**: OpenAI GPT-4o-mini
-- **Auth**: Authentik
-
-## High-Level Overview
-Uživatel prochází kurzem sekvenčním způsobem. Kurz se skládá z $N$ modulů. Aby uživatel kurz úspěšně dokončil, musí splnit všechny moduly v předepsaném pořadí.Každý modul funguje jako samostatná, uzavřená jednotka (Black Box), která uvnitř obsahuje cyklus Learn – Practice – Assessment. Přechod do dalšího modulu je podmíněn úspěšným dokončením Assessmentu (vyhodnocení) aktuálního modulu.
+Všechny endpointy jsou pod prefixem `/api/v1/`.
