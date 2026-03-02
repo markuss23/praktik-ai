@@ -3,19 +3,18 @@
 import { Sparkles } from 'lucide-react';
 
 interface GenerateEmbeddingsButtonProps {
-  /** Handler for generating embeddings */
+  // Handler for generating embeddings 
   onClick: () => void;
-  /** Whether embeddings are currently being generated */
+  // Whether embeddings are currently being generated
   isLoading: boolean;
-  /** Whether embeddings have already been generated */
+  // Whether embeddings have already been generated
   isDone: boolean;
-  /** Icon size (default: 16) */
+  // Icon size (default: 16) 
   iconSize?: number;
 }
 
 /**
  * Button for generating course embeddings.
- * Shows loading spinner during generation and disabled state when complete.
  */
 export function GenerateEmbeddingsButton({
   onClick,

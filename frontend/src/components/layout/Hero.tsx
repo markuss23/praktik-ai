@@ -1,7 +1,10 @@
-import Link from "next/link";
-import { Button } from "@/components/ui";
+"use client";
+
+import { useAuth } from "@/hooks/useAuth";
 
 export function Hero() {
+  const { isAuthenticated, login } = useAuth();
+
   return (
     <section className="relative overflow-hidden" style={{ backgroundColor: '#F0F0F0', paddingTop: '48px', paddingBottom: '48px' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
@@ -48,12 +51,23 @@ export function Hero() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 sm:mb-8 leading-tight">
               Připravujeme budoucí učitele pro digitální éru
             </h1>
+            <div className="flex flex-wrap gap-4">
               <button 
                 className="text-white font-semibold rounded-md shadow-lg transition-colors px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base"
                 style={{ backgroundColor: '#00C896' }}
               >
                 Začít kurz
               </button>
+              {!isAuthenticated && (
+                <button
+                  onClick={login}
+                  className="text-white font-semibold rounded-md shadow-lg transition-opacity hover:opacity-90 px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base"
+                  style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
+                >
+                  Přihlásit se / Registrovat
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
