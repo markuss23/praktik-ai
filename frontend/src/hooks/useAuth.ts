@@ -118,6 +118,19 @@ export function useAuth() {
     return () => window.removeEventListener("kc:logout", onForced);
   }, []);
 
+  // 5. Listen for login events dispatched by storeTokens (e.g. after OAuth callback
+  //    navigates back to a page whose layout was already mounted)
+  useEffect(() => {
+    const onLogin = (e: Event) => {
+      const token = (e as CustomEvent<{ accessToken: string }>).detail?.accessToken;
+      if (!token) return;
+      const user = parseJwt(token);
+      setState({ isAuthenticated: true, user, accessToken: token, loading: false });
+    };
+    window.addEventListener("kc:login", onLogin);
+    return () => window.removeEventListener("kc:login", onLogin);
+  }, []);
+
   // Public API
   const login = useCallback(async () => {
     const url = await buildLoginUrl();

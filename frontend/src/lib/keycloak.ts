@@ -161,6 +161,10 @@ export function storeTokens(tokens: TokenResponse) {
   localStorage.setItem(STORAGE_KEYS.refreshToken, tokens.refresh_token);
   localStorage.setItem(STORAGE_KEYS.idToken, tokens.id_token);
   localStorage.setItem(STORAGE_KEYS.expiresAt, String(expiresAt));
+  // Notify any mounted useAuth instances that a new session is available
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kc:login", { detail: { accessToken: tokens.access_token } }));
+  }
 }
 
 export function clearTokens() {

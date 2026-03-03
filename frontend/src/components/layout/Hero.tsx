@@ -1,10 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
-
 export function Hero() {
-  const { isAuthenticated, login } = useAuth();
-
   return (
     <section className="relative overflow-hidden" style={{ backgroundColor: '#F0F0F0', paddingTop: '48px', paddingBottom: '48px' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
@@ -58,15 +54,6 @@ export function Hero() {
               >
                 Začít kurz
               </button>
-              {!isAuthenticated && (
-                <button
-                  onClick={login}
-                  className="text-white font-semibold rounded-md shadow-lg transition-opacity hover:opacity-90 px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base"
-                  style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
-                >
-                  Přihlásit se / Registrovat
-                </button>
-              )}
             </div>
           </div>
         </div>
