@@ -2,8 +2,6 @@
 Controllery pro mazání zdrojů kurzu.
 """
 
-from pathlib import Path
-
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,6 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.enums import Status
 from api.authorization import validate_ownership
+from api.storage import seaweedfs
 
 
 def delete_course(db: Session, course_id: int, user: dict) -> None:
@@ -70,10 +69,8 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: dict) ->
                 status_code=400, detail="Nelze mazat soubory z publikovaných kurzů"
             )
 
-        # Smaž soubor z disku
-        file_path = Path(course_file.file_path)
-        if file_path.exists():
-            file_path.unlink()
+        # Smaž soubor ze SeaweedFS
+        seaweedfs.delete_file(course_file.file_path)
 
         # Smaž záznam z DB
         db.delete(course_file)

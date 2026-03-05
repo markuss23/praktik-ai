@@ -15,7 +15,6 @@ services:
       - praktikai
     depends_on:
       - db
-      - keycloak
 
 
   db:
@@ -32,7 +31,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     ports:
-      - "5433:5432"
+      - "5433:5432" 
     networks:
       - praktikai
     healthcheck:
@@ -63,12 +62,49 @@ services:
       KC_LOG_LEVEL: info
     command: start-dev
     ports:
-      - "8090:8080" #dejdu - "8090:8080"
+      - "8080:8080" #dejdu - "8090:8080"
       - "9000:9000"
     networks:
       - praktikai
 
 
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    command: master -mdir=/data -ip=seaweedfs-master -port=9333
+    ports:
+      - "9333:9333"
+    volumes:
+      - seaweedfs-master-data:/data
+    networks:
+      - praktikai
+    restart: unless-stopped
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    command: volume -mserver=seaweedfs-master:9333 -dir=/data -port=8081 -ip=seaweedfs-volume
+    ports:
+      - "8081:8081"
+    volumes:
+      - seaweedfs-volume-data:/data
+    networks:
+      - praktikai
+    depends_on:
+      - seaweedfs-master
+    restart: unless-stopped
+
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    command: filer -master=seaweedfs-master:9333 -port=8888 -ip=seaweedfs-filer
+    ports:
+      - "8888:8888"
+    volumes:
+      - seaweedfs-filer-data:/data
+    networks:
+      - praktikai
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    restart: unless-stopped
 
   # minio:
   #   image: minio/minio
@@ -98,6 +134,9 @@ services:
 volumes:
   minio-data:
   postgres-data:
+  seaweedfs-master-data:
+  seaweedfs-volume-data:
+  seaweedfs-filer-data:
 
 networks:
   praktikai:

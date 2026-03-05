@@ -157,7 +157,60 @@ Hierarchie: `superadmin > admin > user`
 | AI          | LangGraph, LangChain, OpenAI GPT-4o-mini         |
 | Databáze    | PostgreSQL 18 + pgvector                         |
 | Auth        | Keycloak 26.4 (OpenID Connect / OAuth2)          |
+| Úložiště    | SeaweedFS (master + volume + filer)              |
 | Kontejnery  | Docker, Docker Compose                           |
+
+---
+
+## SeaweedFS – souborové úložiště
+
+SeaweedFS nahrazuje ukládání souborů na lokální disk. Používá se pro nahrávání studijních materiálů ke kurzům.
+
+### Architektura
+
+| Komponenta       | Port | Popis                                         |
+|------------------|------|-----------------------------------------------|
+| seaweedfs-master | 9333 | Koordinátor – správa metadat a volume serverů |
+| seaweedfs-volume | 8081 | Datové úložiště – ukládá samotné soubory      |
+| seaweedfs-filer  | 8888 | REST API pro práci se soubory                 |
+
+### Spuštění
+
+SeaweedFS se spouští automaticky s ostatními službami:
+
+```bash
+docker compose up -d
+```
+
+Nebo samostatně:
+
+```bash
+docker compose up -d seaweedfs-master seaweedfs-volume seaweedfs-filer
+```
+
+### Použití v backendu
+
+Helper `backend/api/storage/seaweedfs.py` poskytuje tři funkce:
+
+```python
+from api.storage.seaweedfs import upload_file, download_file, delete_file
+
+# Nahrání souboru
+url = upload_file("courses/42/dokument.pdf", content, "dokument.pdf", "application/pdf")
+
+# Stažení souboru
+data: bytes = download_file("courses/42/dokument.pdf")
+
+# Smazání souboru
+delete_file("courses/42/dokument.pdf")
+```
+
+Konfigurace přes env proměnné (viz `.env_example`):
+
+```env
+SEAWEEDFS__MASTER_URL=http://seaweedfs-master:9333
+SEAWEEDFS__FILER_URL=http://seaweedfs-filer:8888
+```
 
 ---
 
@@ -202,12 +255,14 @@ make dev        # API + PostgreSQL (hot reload)
 make db         # pouze databáze
 ```
 
-| Služba    | URL                                    |
-|-----------|----------------------------------------|
-| API       | <http://localhost:8000>                |
-| API docs  | <http://localhost:8000/docs>           |
-| Frontend  | <http://localhost:3000>                |
-| Keycloak  | <http://localhost:8080>                |
+| Služba           | URL                          |
+|------------------|------------------------------|
+| API              | <http://localhost:8000>      |
+| API docs         | <http://localhost:8000/docs> |
+| Frontend         | <http://localhost:3000>      |
+| Keycloak         | <http://localhost:8080>      |
+| SeaweedFS Master | <http://localhost:9333>      |
+| SeaweedFS Filer  | <http://localhost:8888>      |
 
 ### 3. Generování TypeScript klienta
 

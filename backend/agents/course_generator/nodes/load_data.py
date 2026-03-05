@@ -1,13 +1,16 @@
+import os
+import tempfile
 from pathlib import Path
 
 from agents.base.loaders.base import DataLoader
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
+from api.storage import seaweedfs
 
 
 def load_data_node(state: AgentState) -> AgentState:
-    """Node pro načtení obsahu souborů z cest."""
-    print("Načítám obsah souborů...")
+    """Node pro načtení obsahu souborů ze SeaweedFS."""
+    print("Načítám obsah souborů ze SeaweedFS...")
 
     course_input: CourseInput | None = state.get("course_input")
     if course_input is None:
@@ -16,13 +19,23 @@ def load_data_node(state: AgentState) -> AgentState:
     loader = DataLoader()
     content_parts: list = []
 
-    for file_path in course_input.files:
+    for remote_path in course_input.files:
+        filename = Path(remote_path).name
+        suffix = Path(remote_path).suffix
         try:
-            data: str = loader.load(file_path)
-            content_parts.append(f"--- {Path(file_path).name} ---\n{data}")
-            print(f"   -> Načten soubor: {Path(file_path).name}")
-        except FileNotFoundError as e:
-            print(f"   -> {e}")
+            # Stáhni soubor ze SeaweedFS do dočasného souboru
+            content_bytes = seaweedfs.download_file(remote_path)
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(content_bytes)
+                tmp_path = tmp.name
+            try:
+                data: str = loader.load(tmp_path)
+                content_parts.append(f"--- {filename} ---\n{data}")
+                print(f"   -> Načten soubor: {filename}")
+            finally:
+                os.unlink(tmp_path)
+        except Exception as e:
+            print(f"   -> Chyba při načítání {filename}: {e}")
 
     state["source_content"] = "\n\n".join(content_parts)
     print(f"   -> Celkem načteno {len(content_parts)} souborů")
