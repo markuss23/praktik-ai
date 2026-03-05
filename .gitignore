@@ -2,3 +2,4 @@
 deploy.sh
 compose.prod.yml
 .github/workflows/deploy.yml
+Caddyfile
