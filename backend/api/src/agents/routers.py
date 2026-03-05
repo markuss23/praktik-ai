@@ -47,7 +47,7 @@ async def generate_course(
 
     app = create_graph()
 
-    result = app.invoke({"course_id": course_id, "db": db})
+    result = await app.ainvoke({"course_id": course_id, "db": db})
 
     course = result.get("course")
 
@@ -89,7 +89,7 @@ async def generate_course_embeddings(
 
     # Vytvoř a spusť embedding generator graph
     app = create_embedding_graph()
-    result = app.invoke({"course_id": course_id, "db": db})
+    result = await app.ainvoke({"course_id": course_id, "db": db})
 
     return GenerateEmbeddingsResponse(
         course_id=result["course_id"],
@@ -136,7 +136,7 @@ async def learn_blocks_chat(
         )
 
     app = create_learn_block_mentor_graph()
-    result = app.invoke(
+    result = await app.ainvoke(
         {"learn_block_id": learn_block_id, "message": message, "db": db}
     )
 

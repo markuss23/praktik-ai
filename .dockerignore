@@ -1,0 +1,26 @@
+# Version control & secrets
+.git
+.env*
+
+# Frontend build artefacts
+frontend/node_modules
+frontend/.next
+
+# Backend – local virtual environments and byte-code caches
+backend/.venv
+backend/**/__pycache__
+backend/**/*.pyc
+backend/**/*.pyo
+
+# Large binary / data directories not needed in any Docker stage
+backend/uploads
+backend/migrations
+
+# Editor & OS noise
+.idea
+.vscode
+**/.DS_Store
+
+# Development-only directories
+examples
+garage.toml

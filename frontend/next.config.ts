@@ -1,6 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+
+  serverExternalPackages: [],
+
+  experimental: {
+    proxyTimeout: 300_000, // 5 minut
+  },
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  async rewrites() {
+    const apiUrl = process.env.NEXT_API_URL ?? "http://localhost:8000";
+    return [
+      {
+        source: "/api/backend/:path*",
+        destination: `${apiUrl}/:path*`,
+      },
+    ];
+  },
+
   // Enable React compiler optimizations
   reactStrictMode: true,
   
@@ -11,23 +33,11 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
-  // Enable SWC minification (faster than Terser)
-  swcMinify: true,
-  
   // Optimize production builds
   compiler: {
-    // Remove console.log in production
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
-  },
-  
-  // Enable experimental features for better performance
-  experimental: {
-    // Optimize font loading
-    optimizeFonts: true,
-    // Optimize CSS
-    optimizeCss: true,
   },
 };
 

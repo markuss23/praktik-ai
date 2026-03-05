@@ -1,7 +1,7 @@
 export const APP_NAME = "Praktik AI";
 export const APP_DESCRIPTION = "AI-powered learning platform";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE_URL = "/api/backend";
 
 export const ROUTES = {
   HOME: "/",

@@ -3,8 +3,7 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS export-reqs
 WORKDIR /tmp
 COPY ./backend/pyproject.toml ./backend/uv.lock /tmp/
-RUN uv sync
-RUN uv pip freeze > requirements.txt
+RUN uv export --frozen --no-dev --no-hashes -o requirements.txt
 
 # 2) Build deps do čistého prefixu (kopírujeme jen hotové knihovny)
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS deps
@@ -29,19 +28,3 @@ COPY ./backend/agents /code/agents
 
 CMD [ "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
 
-# 4) Production stage
-FROM dev-stage AS prod-stage
-
-CMD [ "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000" ]
-# COPY ./alembic.ini /code/
-# RUN mkdir /code/alembic/versions
-
-# ENTRYPOINT [ "bash", "/code/entrypoint.sh" ]
-
-
-# # 5) Test stage
-# FROM dev-stage AS test-stage
-
-# COPY ./tests /code/tests
-
-# ENTRYPOINT [ "bash", "/code/entrypoint.test.sh" ]
