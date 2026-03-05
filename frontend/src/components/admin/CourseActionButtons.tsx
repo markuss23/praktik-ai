@@ -3,9 +3,6 @@
 import { ReactNode } from 'react';
 import { Pencil, Eye, EyeOff, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
 
-// =============================================================================
-// Individual action button variants
-// =============================================================================
 
 interface ActionButtonProps {
   onClick: () => void;
@@ -15,7 +12,7 @@ interface ActionButtonProps {
 }
 
 /**
- * Edit / expand button (green).
+ * Edit / expand button
  */
 export function EditActionButton({ onClick, title = 'Editovat', iconSize = 16 }: ActionButtonProps) {
   return (
@@ -30,7 +27,7 @@ export function EditActionButton({ onClick, title = 'Editovat', iconSize = 16 }:
 }
 
 /**
- * Publish / unpublish toggle button (green ↔ orange).
+ * Publish / unpublish toggle button
  */
 export function PublishActionButton({
   onClick,
@@ -54,7 +51,7 @@ export function PublishActionButton({
 }
 
 /**
- * Delete button (red).
+ * Delete button
  */
 export function DeleteActionButton({ onClick, title = 'Smazat', iconSize = 16 }: ActionButtonProps) {
   return (
@@ -70,8 +67,6 @@ export function DeleteActionButton({ onClick, title = 'Smazat', iconSize = 16 }:
 
 /**
  * Approve / unapprove toggle button.
- * Green check when not approved (i.e. status=generated) → approve action.
- * Orange RotateCcw when approved → revert to generated.
  */
 export function ApproveActionButton({
   onClick,
@@ -107,9 +102,7 @@ export function ApproveActionButton({
   );
 }
 
-// =============================================================================
 // Generic wrapper – renders a row of action buttons
-// =============================================================================
 
 interface CourseActionButtonsProps {
   children: ReactNode;

@@ -21,6 +21,7 @@ dependencies = [
     "langchain-postgres>=0.0.16",
     "langchain-text-splitters>=1.1.0",
     "langchain-core>=1.2.9",
+    "gunicorn>=25.1.0",
 ]
 
 [tool.ruff]

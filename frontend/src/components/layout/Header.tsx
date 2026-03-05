@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { MessageCircle, UserRound } from "lucide-react";
+import { MessageCircle, UserRound, LogIn, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Header() {
   const pathname = usePathname();
+  const { isAuthenticated, user, loading, login, logout } = useAuth();
   
   const isActive = (path: string) => pathname === path;
   
@@ -133,18 +135,49 @@ export function Header() {
 
           {/* User Actions */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-            </button>
-            <Link
-              href={ROUTES.PROFILE}
-              className={`p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                isActive(ROUTES.PROFILE) ? 'bg-gray-100' : ''
-              }`}
-              title="Můj profil"
-            >
-              <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-            </Link>
+            {isAuthenticated && (
+              <button className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
+              </button>
+            )}
+
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+            ) : isAuthenticated ? (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Link
+                  href={ROUTES.PROFILE}
+                  className={`flex items-center gap-1.5 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
+                    isActive(ROUTES.PROFILE) ? "bg-gray-100" : ""
+                  }`}
+                  title={user?.preferred_username ?? "Můj profil"}
+                >
+                  <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
+                  {user?.preferred_username && (
+                    <span className="hidden lg:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                      {user.preferred_username}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  onClick={logout}
+                  title="Odhlásit se"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                >
+                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                  <span className="hidden sm:block">Odhlásit</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={login}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
+                style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
+              >
+                <LogIn className="w-4 h-4" strokeWidth={2} />
+                Přihlásit se
+              </button>
+            )}
           </div>
         </nav>
       </div>

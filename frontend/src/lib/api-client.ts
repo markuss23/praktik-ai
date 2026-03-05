@@ -15,12 +15,33 @@ import {
   PracticeOptionCreate,
   PracticeOptionUpdate,
   QuestionKeywordUpdate,
+  type Middleware,
 } from "@/api";
 import { API_BASE_URL } from "./constants";
+import { getValidAccessToken } from "./keycloak";
+
+
+// Request middleware — injects `Authorization: Bearer <token>` when the user
+//is authenticated. For unauthenticated (public) requests the header is
+// omitted entirely so the backend doesn't reject them.
+ 
+const authMiddleware: Middleware = {
+  pre: async (context) => {
+    const token = await getValidAccessToken();
+    if (token) {
+      context.init.headers = {
+        ...(context.init.headers as Record<string, string> | undefined),
+        Authorization: `Bearer ${token}`,
+      };
+    }
+    return context;
+  },
+};
 
 // Create a configured API client instance
 const configuration = new Configuration({
   basePath: API_BASE_URL,
+  middleware: [authMiddleware],
 });
 
 export const coursesApi = new CoursesApi(configuration);

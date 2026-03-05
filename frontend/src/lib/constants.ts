@@ -1,7 +1,7 @@
 export const APP_NAME = "Praktik AI";
 export const APP_DESCRIPTION = "AI-powered learning platform";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE_URL = "/api/backend";
 
 export const ROUTES = {
   HOME: "/",
@@ -9,6 +9,7 @@ export const ROUTES = {
   COURSES: "/courses",
   MODULES: "/modules",
   PROFILE: "/profil",
+  AUTH_CALLBACK: "/auth/callback",
 } as const;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB

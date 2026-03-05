@@ -3,7 +3,7 @@ Controllery pro vytváření zdrojů kurzu.
 """
 
 import uuid
-from pathlib import Path
+from pathlib import PurePosixPath
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
@@ -13,11 +13,7 @@ from api import models
 from api.src.courses.schemas import Course, CourseCreate, CourseFile, CourseLink
 from api import enums
 from api.authorization import validate_ownership
-
-
-# Složka pro ukládání souborů
-UPLOAD_DIR = Path("/code/uploads/courses")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+from api.storage import seaweedfs
 
 
 def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
@@ -92,24 +88,25 @@ async def upload_course_file(
                 status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
             )
 
-        # Vytvoř složku pro kurz
-        course_dir = UPLOAD_DIR / str(course_id)
-        course_dir.mkdir(parents=True, exist_ok=True)
-
-        # Vygeneruj unikátní název souboru
-        file_ext = Path(file.filename).suffix if file.filename else ""
+        # Vygeneruj unikátní cestu v SeaweedFS
+        file_ext = PurePosixPath(file.filename).suffix if file.filename else ""
         unique_filename = f"{uuid.uuid4()}{file_ext}"
-        file_path = course_dir / unique_filename
+        remote_path = f"courses/{course_id}/{unique_filename}"
 
-        # Ulož soubor
+        # Nahraj soubor do SeaweedFS
         content = await file.read()
-        file_path.write_bytes(content)
+        seaweedfs.upload_file(
+            remote_path,
+            content,
+            file.filename or unique_filename,
+            file.content_type or "application/octet-stream",
+        )
 
-        # Ulož záznam do DB
+        # Ulož záznam do DB (file_path = cesta v SeaweedFS)
         course_file = models.CourseFile(
             course_id=course_id,
             filename=file.filename or "unknown",
-            file_path=str(file_path),
+            file_path=remote_path,
         )
 
         db.add(course_file)

@@ -20,9 +20,15 @@ class KeycloakSettings(BaseModel):
     client_secret: str
 
 
+class SeaweedFSSettings(BaseModel):
+    master_url: str = "http://seaweedfs-master:9333"
+    filer_url: str = "http://seaweedfs-filer:8888"
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
+    seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

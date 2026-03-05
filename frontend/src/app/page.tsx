@@ -5,19 +5,32 @@ import { CourseCard } from "@/components/ui";
 import { getCourses } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 
+type ErrorKind = 'backend-down' | 'unauthorized' | 'server-error';
+
+function classifyError(err: unknown): ErrorKind {
+  // Generated OpenAPI client throws objects with a `response` property
+  if (err && typeof err === 'object' && 'response' in err) {
+    const status = (err as { response: Response }).response?.status;
+    if (status === 401 || status === 403) return 'unauthorized';
+    return 'server-error';
+  }
+  // Network / CORS / connection refused → TypeError with no response
+  return 'backend-down';
+}
+
 export default function Home() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
   
   const loadCourses = async () => {
     try {
-      setError(null);
+      setErrorKind(null);
       const data = await getCourses({ isPublished: true });
       setCourses(data);
-    } catch (error) {
-      console.error('Failed to fetch courses:', error);
-      setError('Backend server is currently unavailable. Please make sure the API is running.');
+    } catch (err) {
+      console.error('Failed to fetch courses:', err);
+      setErrorKind(classifyError(err));
       setCourses([]);
     } finally {
       setLoading(false);
@@ -43,14 +56,36 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6">
             {loading ? (
               <p className="text-gray-500">Načítání kurzů...</p>
-            ) : error ? (
+            ) : errorKind ? (
               <div className="col-span-full">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
                   <svg className="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">Backend Není Dostupný</h3>
-                  <p className="text-red-600 mb-4">{error}</p>
+                  {errorKind === 'backend-down' && (
+                    <>
+                      <h3 className="text-lg font-semibold text-red-800 mb-2">Backend není dostupný</h3>
+                      <p className="text-red-600 mb-4">
+                        Nepodařilo se připojit k API serveru. Ujistěte se, že backend běží a je dostupný.
+                      </p>
+                    </>
+                  )}
+                  {errorKind === 'unauthorized' && (
+                    <>
+                      <h3 className="text-lg font-semibold text-red-800 mb-2">Přístup odepřen</h3>
+                      <p className="text-red-600 mb-4">
+                        Tento obsah není veřejně dostupný. Pro zobrazení kurzů se prosím přihlaste.
+                      </p>
+                    </>
+                  )}
+                  {errorKind === 'server-error' && (
+                    <>
+                      <h3 className="text-lg font-semibold text-red-800 mb-2">Chyba serveru</h3>
+                      <p className="text-red-600 mb-4">
+                        Server vrátil neočekávanou chybu. Zkuste to prosím znovu.
+                      </p>
+                    </>
+                  )}
                   <button
                     onClick={loadCourses}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
