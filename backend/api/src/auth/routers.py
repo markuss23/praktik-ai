@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
+from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, RealmRoles, auth
 from api.src.auth.schemas import CurrentUserResponse
 
@@ -11,8 +12,11 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/token")
 def endp_token(
     user_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: SessionSqlSessionDependency,
 ) -> dict:
-    return auth.get_token(user_data.username, user_data.password)
+    token = auth.get_token(user_data.username, user_data.password)
+    auth.upsert_user(token["access_token"], db)
+    return token
 
 
 @router.get("/me")

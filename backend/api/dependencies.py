@@ -106,6 +106,22 @@ class Auth:
 
         return user
 
+    def upsert_user(self, token_str: str, db: Session) -> None:
+        """Zapíše uživatele do DB při přihlášení, pokud ještě neexistuje."""
+        try:
+            user_info: dict = self.keycloak_openid.userinfo(token_str)
+        except (KeycloakAuthenticationError, KeycloakConnectionError):
+            return
+
+        sub: str = user_info["sub"]
+        email: str = user_info.get("email", "")
+        name: str | None = user_info.get("name")
+
+        user: User | None = db.scalar(select(User).where(User.sub == sub))
+        if user is None:
+            db.add(User(sub=sub, email=email, display_name=name))
+            db.commit()
+
     def get_realm_roles(self, token: Annotated[str, Depends(oauth2_bearer)]) -> list:
         try:
             user_info: dict = self.keycloak_openid.userinfo(token)
@@ -141,11 +157,8 @@ ROLE_HIERARCHY: dict[str, int] = {
 def require_role(min_role: str):
     min_level: int = ROLE_HIERARCHY.get(min_role, 0)
 
-    def checker(roles: Annotated[list, Depends(auth.get_realm_roles)]):
-        user_level = max(
-            (ROLE_HIERARCHY.get(role, 0) for role in roles),
-            default=0,
-        )
+    def checker(user: Annotated[User, Depends(auth.get_current_user)]):
+        user_level = ROLE_HIERARCHY.get(user.role, 0)
         if user_level < min_level:
             raise HTTPException(status_code=403, detail="Nedostatečná oprávnění")
 
