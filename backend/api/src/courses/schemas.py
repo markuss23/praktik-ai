@@ -39,7 +39,7 @@ class CourseLink(ORMModel):
 
 class Course(CourseBase):
     course_id: int
-    owner_id: str
+    owner_id: int
     is_active: bool
     is_published: bool = False
     status: Status

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from api.dependencies import CurrentUser, RealmRoles, auth
+from api.src.auth.schemas import CurrentUserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -15,8 +16,8 @@ def endp_token(
 
 
 @router.get("/me")
-def endp_me(current_user: CurrentUser) -> dict:
-    return current_user
+def endp_me(current_user: CurrentUser) -> CurrentUserResponse:
+    return CurrentUserResponse.model_validate(current_user)
 
 
 @router.get("/roles")

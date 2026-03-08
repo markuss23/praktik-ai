@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from api.dependencies import CurrentUser
 from api.authorization import validate_ownership
@@ -47,7 +47,16 @@ async def generate_course(
 
     app = create_graph()
 
-    result = await app.ainvoke({"course_id": course_id, "db": db})
+    try:
+        result = await app.ainvoke({"course_id": course_id, "db": db})
+    except Exception as e:
+        db.execute(
+            update(models.Course)
+            .where(models.Course.course_id == course_id)
+            .values(status=models.Status.failed)
+        )
+        db.commit()
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     course = result.get("course")
 

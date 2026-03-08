@@ -29,5 +29,9 @@ def create_graph():
     workflow.add_edge("summarize_content", "plan_content")
     workflow.add_edge("plan_content", "save_to_db")
     workflow.add_edge("save_to_db", END)
+    # workflow.set_entry_point("load_data_db")
+    # workflow.add_edge("load_data_db", "load_data")
+    # workflow.add_edge("load_data", "summarize_content")
+    # workflow.add_edge("summarize_content", END)
 
     return workflow.compile()

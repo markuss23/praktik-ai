@@ -21,7 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
-from api.enums import AuditAction, QuestionType, Status
+from api.enums import AuditAction, QuestionType, Status, UserRole
 
 
 class Base(DeclarativeBase):
@@ -73,6 +73,32 @@ class SoftDeleteMixin:
             # Pokud je to jeden objekt (One-to-One)
             elif hasattr(related_obj, "soft_delete") and related_obj.is_active:
                 related_obj.soft_delete()
+
+
+# ---------- User ----------
+
+
+class User(TimestampMixin, SoftDeleteMixin, Base):
+    __tablename__ = "user"
+    __table_args__ = (
+        Index("uq_user_sub", "sub", unique=True),
+        Index("uq_user_email", "email", unique=True),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    sub: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(255))
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role"), nullable=False, default=UserRole.user
+    )
+
+    courses: Mapped[list[Course]] = relationship(
+        back_populates="owner",
+        primaryjoin="User.user_id == Course.owner_id",
+    )
 
 
 # ---------- Audit Log ----------
@@ -150,6 +176,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
             postgresql_where=text("is_active"),
         ),
         Index("ix_course_owner_id", "owner_id"),
+        Index("ix_course_owner_id_active", "owner_id", postgresql_where=text("is_active")),
     )
 
     course_id: Mapped[int] = mapped_column(
@@ -158,7 +185,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
-    owner_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("user.user_id"), nullable=False
+    )
 
     modules_count: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
 
@@ -191,10 +220,15 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="courses",
     )
 
+    owner: Mapped[User] = relationship(
+        back_populates="courses",
+        foreign_keys=[owner_id],
+    )
+
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]
 
-    def get_owner_id(self) -> str:
-        """Vrátí owner_id z parent Course."""
+    def get_owner_id(self) -> int:
+        """Vrátí owner_id (user_id) z Course."""
         return self.owner_id
 
 
@@ -246,7 +280,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
 
     _soft_delete_cascade = ["learn_blocks", "practice_questions"]
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
 
@@ -275,7 +309,7 @@ class CourseFile(TimestampMixin, SoftDeleteMixin, Base):
 
     course: Mapped[Course] = relationship(back_populates="files")
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
 
@@ -303,7 +337,7 @@ class CourseLink(TimestampMixin, SoftDeleteMixin, Base):
 
     course: Mapped[Course] = relationship(back_populates="links")
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id z parent Course."""
         return self.course.owner_id
 
@@ -335,7 +369,7 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
 
     module: Mapped[Module] = relationship(back_populates="learn_blocks")
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id přes Module -> Course."""
         return self.module.course.owner_id
 
@@ -398,7 +432,7 @@ class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
     )
     _soft_delete_cascade = ["closed_options", "open_keywords"]
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id přes Module -> Course."""
         return self.module.course.owner_id
 
@@ -428,7 +462,7 @@ class PracticeOption(TimestampMixin, SoftDeleteMixin, Base):
 
     question: Mapped[PracticeQuestion] = relationship(back_populates="closed_options")
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id přes Question -> Module -> Course."""
         return self.question.module.course.owner_id
 
@@ -457,6 +491,6 @@ class QuestionKeyword(TimestampMixin, SoftDeleteMixin, Base):
 
     question: Mapped[PracticeQuestion] = relationship(back_populates="open_keywords")
 
-    def get_owner_id(self) -> str:
+    def get_owner_id(self) -> int:
         """Vrátí owner_id přes Question -> Module -> Course."""
         return self.question.module.course.owner_id

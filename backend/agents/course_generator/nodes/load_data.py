@@ -1,4 +1,3 @@
-import os
 import tempfile
 from pathlib import Path
 
@@ -33,9 +32,15 @@ def load_data_node(state: AgentState) -> AgentState:
                 content_parts.append(f"--- {filename} ---\n{data}")
                 print(f"   -> Načten soubor: {filename}")
             finally:
-                os.unlink(tmp_path)
+                Path(tmp_path).unlink(missing_ok=True)
         except Exception as e:
             print(f"   -> Chyba při načítání {filename}: {e}")
+
+    if not content_parts:
+        raise ValueError(
+            f"Nepodařilo se načíst žádný soubor pro kurz '{course_input.title}'. "
+            "Zkontroluj, zda jsou soubory správně nahrány."
+        )
 
     state["source_content"] = "\n\n".join(content_parts)
     print(f"   -> Celkem načteno {len(content_parts)} souborů")

@@ -49,6 +49,7 @@ dependencies = [
     { name = "pgvector" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
+    { name = "python-docx" },
     { name = "python-keycloak" },
     { name = "python-multipart" },
     { name = "ruff" },
@@ -70,6 +71,7 @@ requires-dist = [
     { name = "pgvector", specifier = "==0.3.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.2" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
+    { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-keycloak", specifier = ">=7.0.3" },
     { name = "python-multipart", specifier = ">=0.0.21" },
     { name = "ruff", specifier = ">=0.14.2" },
@@ -1156,6 +1158,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/42/fd/6b5ff827a5b751a85c1a3a778a0636d1ddbe153fc03954071c431271405c/pypdf-6.3.0.tar.gz", hash = "sha256:d066a2fdf8195e1811ae5a9d5a2f97f5bed0e1e7954297295eadee6357e76c5d", size = 5275038, upload-time = "2025-11-16T14:05:16.37Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/26/4ae62da67941784913606da037172d0f14b7ba120442e63a37b257110b2c/pypdf-6.3.0-py3-none-any.whl", hash = "sha256:2d5f9741e851e378908692d571374b3cbd94582fdd1c740fcf7c029ec35ac0e6", size = 328891, upload-time = "2025-11-16T14:05:14.574Z" },
+]
+
+[[package]]
+name = "python-docx"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/f7/eddfe33871520adab45aaa1a71f0402a2252050c14c7e3009446c8f4701c/python_docx-1.2.0.tar.gz", hash = "sha256:7bc9d7b7d8a69c9c02ca09216118c86552704edc23bac179283f2e38f86220ce", size = 5723256, upload-time = "2025-06-16T20:46:27.921Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/00/1e03a4989fa5795da308cd774f05b704ace555a70f9bf9d3be057b680bcf/python_docx-1.2.0-py3-none-any.whl", hash = "sha256:3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7", size = 252987, upload-time = "2025-06-16T20:46:22.506Z" },
 ]
 
 [[package]]

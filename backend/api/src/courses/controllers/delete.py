@@ -12,7 +12,7 @@ from api.authorization import validate_ownership
 from api.storage import seaweedfs
 
 
-def delete_course(db: Session, course_id: int, user: dict) -> None:
+def delete_course(db: Session, course_id: int, user: models.User) -> None:
     """
     Smaže kurz podle course_id (soft delete - nastaví is_active=False)
     """
@@ -40,7 +40,7 @@ def delete_course(db: Session, course_id: int, user: dict) -> None:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def delete_course_file(db: Session, course_id: int, file_id: int, user: dict) -> None:
+def delete_course_file(db: Session, course_id: int, file_id: int, user: models.User) -> None:
     """Smaže soubor kurzu"""
     try:
         course_file: models.CourseFile | None = (
@@ -83,7 +83,7 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: dict) ->
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def delete_course_link(db: Session, course_id: int, link_id: int, user: dict) -> None:
+def delete_course_link(db: Session, course_id: int, link_id: int, user: models.User) -> None:
     """Smaže odkaz kurzu"""
     try:
         course_link: models.CourseLink | None = (

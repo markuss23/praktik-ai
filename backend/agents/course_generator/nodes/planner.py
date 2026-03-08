@@ -15,7 +15,7 @@ def plan_content_node(state: AgentState) -> AgentState:
     if course_input is None:
         raise ValueError("course_input is not available in state")
 
-    model = ChatOpenAI(model="gpt-5-mini")
+    model = ChatOpenAI(model="gpt-5.4")
     llm_structured = model.with_structured_output(Course)
 
     modules_count = course_input.modules_count

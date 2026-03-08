@@ -43,7 +43,7 @@ def get_modules(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def create_module(db: Session, data: ModuleCreate, user: dict) -> Module:
+def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     """
     Vytvoří modul. Ošetřuje unikátní kombinaci (course_id, position).
     """
@@ -92,7 +92,7 @@ def create_module(db: Session, data: ModuleCreate, user: dict) -> Module:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def get_module(db: Session, module_id: int, user: dict) -> Module:
+def get_module(db: Session, module_id: int, user: models.User) -> Module:
     """
     Vrátí konkrétní modul podle module_id
     """
@@ -114,7 +114,7 @@ def get_module(db: Session, module_id: int, user: dict) -> Module:
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: dict) -> Module:
+def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: models.User) -> Module:
     """
     Upraví data modulu s module_id podle dat v module_data.
     Pokud se mění pozice, automaticky přehodní pozice ostatních modulů.

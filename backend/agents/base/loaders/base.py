@@ -4,14 +4,13 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from pathlib import Path
 
-
 class SourceType(StrEnum):
     """Typy podporovaných datových zdrojů."""
 
     MARKDOWN = "md"
     TEXT = "txt"
     CSV = "csv"
-    DOCS = "docs"  # Pro budoucí Google Docs API
+    DOCX = "docx"  # Pro budoucí Google Docs API
 
 
 class BaseLoader(ABC):
@@ -35,12 +34,14 @@ class DataLoader:
     """Univerzální loader s autodetekcí typu souboru."""
 
     def __init__(self) -> None:
+        from agents.base.loaders.docx_file import DocxLoader
         from agents.base.loaders.markdown import MarkdownLoader
         # from agents.base.loaders.text import TextLoader
         # from agents.base.loaders.csv_loader import CSVLoader
 
         self._loaders = {
             SourceType.MARKDOWN: MarkdownLoader(),
+            SourceType.DOCX: DocxLoader(),
             # SourceType.TEXT: TextLoader(),
             # SourceType.CSV: CSVLoader(),
         }
@@ -54,6 +55,7 @@ class DataLoader:
             ".md": SourceType.MARKDOWN,
             ".csv": SourceType.CSV,
             ".txt": SourceType.TEXT,
+            ".docx": SourceType.DOCX,
         }
 
         return type_mapping.get(suffix, SourceType.TEXT)

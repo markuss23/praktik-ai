@@ -21,7 +21,7 @@ def summarize_content_node(state: AgentState) -> AgentState:
     if course_id is None:
         raise ValueError("course_id is not available in state")
 
-    model = ChatOpenAI(model="gpt-4o-mini")
+    model = ChatOpenAI(model="gpt-5.2")
 
     modules_count = course_input.modules_count
 
@@ -35,7 +35,7 @@ def summarize_content_node(state: AgentState) -> AgentState:
                 {source_content}
 
                 INSTRUKCE:
-                1. Identifikuj {modules_count} hlavních tematických celků, které lze rozdělit do samostatných modulů
+                1. Identifikuj až {modules_count} hlavních tematických celků, které lze rozdělit do samostatných modulů. Pokud obsah pokrývá méně témat, rozděl dostupný obsah na logické části bez vymýšlení nového obsahu.
                 2. Pro každý tematický celek extrahuj:
                 - Klíčové koncepty a pojmy k naučení
                 - Praktické příklady a ukázky
@@ -56,6 +56,9 @@ def summarize_content_node(state: AgentState) -> AgentState:
                 6. Piš v češtině, bez markdown formátování"""
 
     output: AIMessage = model.invoke(prompt)
+
+    if not output.content.strip():
+        raise ValueError("LLM vrátil prázdnou sumarizaci. Zkontroluj zdrojový obsah a nastavení modelu.")
 
     # Uložení summary do DB
     db = state.get("db")

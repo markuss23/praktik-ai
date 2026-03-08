@@ -9,7 +9,12 @@ from fastapi import Depends, HTTPException
 from fastapi.security import (
     OAuth2PasswordBearer,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from .config import settings
+from api.database import get_sql
+from api.models import User
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
@@ -55,7 +60,11 @@ class Auth:
                 detail="Chyba při získávání tokenu z Keycloak",
             ) from e
 
-    def get_current_user(self, token: Annotated[str, Depends(oauth2_bearer)]) -> dict:
+    def get_current_user(
+        self,
+        token: Annotated[str, Depends(oauth2_bearer)],
+        db: Annotated[Session, Depends(get_sql)],
+    ) -> User:
         if not token:
             raise HTTPException(
                 status_code=401,
@@ -73,7 +82,6 @@ class Auth:
                 )
 
             user_info: dict = self.keycloak_openid.userinfo(token)
-            return user_info
 
         except (KeycloakAuthenticationError, KeycloakConnectionError) as e:
             raise HTTPException(
@@ -81,6 +89,22 @@ class Auth:
                 detail="Autentizace selhala nebo Keycloak není dostupný",
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
+
+        sub: str = user_info["sub"]
+        email: str = user_info.get("email", "")
+        name: str | None = user_info.get("name")
+
+        user: User | None = db.scalar(select(User).where(User.sub == sub))
+
+        if user is None:
+            user = User(sub=sub, email=email, display_name=name)
+            db.add(user)
+            db.flush()
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account deactivated")
+
+        return user
 
     def get_realm_roles(self, token: Annotated[str, Depends(oauth2_bearer)]) -> list:
         try:
@@ -129,5 +153,5 @@ def require_role(min_role: str):
 
 
 auth = Auth()
-CurrentUser = Annotated[dict, Depends(auth.get_current_user)]
+CurrentUser = Annotated[User, Depends(auth.get_current_user)]
 RealmRoles = Annotated[list, Depends(auth.get_realm_roles)]

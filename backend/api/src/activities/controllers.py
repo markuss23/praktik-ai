@@ -20,7 +20,7 @@ from api.authorization import validate_ownership
 
 
 def update_learn_block(
-    db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: dict
+    db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: models.User
 ) -> LearnBlock:
     """
     Upraví LearnBlock s validací:
@@ -89,7 +89,7 @@ def update_learn_block(
 # Vytvořeno, potřebuje revizi
 
 def create_learn_block(
-    db: Session, learn_data: LearnBlockCreate, user: dict
+    db: Session, learn_data: LearnBlockCreate, user: models.User
 ) -> LearnBlock:
     """
     Vytvoří nový LearnBlock s validací:
@@ -159,7 +159,7 @@ def create_learn_block(
 
 
 def create_practice_question(
-    db: Session, question_data: PracticeQuestionCreate, user: dict
+    db: Session, question_data: PracticeQuestionCreate, user: models.User
 ) -> PracticeQuestion:
     """
     Vytvoří novou PracticeQuestion s validací:
@@ -232,7 +232,7 @@ def create_practice_question(
 
 
 def create_practice_option(
-    db: Session, option_data: PracticeOptionCreate, user: dict
+    db: Session, option_data: PracticeOptionCreate, user: models.User
 ) -> PracticeOption:
     """
     Vytvoří novou PracticeOption s validací:
@@ -304,7 +304,7 @@ def create_practice_option(
 #Konec revize
 
 def update_practice_question(
-    db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: dict
+    db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: models.User
 ) -> PracticeQuestion:
     """
     Upraví PracticeQuestion s validací:
@@ -372,7 +372,7 @@ def update_practice_question(
 
 
 def update_practice_option(
-    db: Session, option_id: int, option_data: PracticeOptionUpdate, user: dict
+    db: Session, option_id: int, option_data: PracticeOptionUpdate, user: models.User
 ) -> PracticeOption:
     """
     Upraví PracticeOption s validací:
@@ -441,7 +441,7 @@ def update_practice_option(
 
 
 def update_question_keyword(
-    db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate, user: dict
+    db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate, user: models.User
 ) -> QuestionKeyword:
     """
     Upraví QuestionKeyword s validací:

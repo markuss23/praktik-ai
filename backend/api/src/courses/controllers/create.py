@@ -16,7 +16,7 @@ from api.authorization import validate_ownership
 from api.storage import seaweedfs
 
 
-def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
+def create_course(db: Session, course_data: CourseCreate, user: models.User) -> Course:
     """Vytvoří nový kurz"""
     try:
         if (
@@ -31,7 +31,7 @@ def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
             raise HTTPException(
                 status_code=400, detail="Kategorie s tímto ID neexistuje"
             )
-        
+
         if db.execute(
             select(models.Course).where(
                 models.Course.title == course_data.title,
@@ -44,8 +44,8 @@ def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
 
         # Přiřadí vlastníka kurzu
         course_dict = course_data.model_dump()
-        course_dict['owner_id'] = user.get('sub')
-        
+        course_dict["owner_id"] = user.user_id
+
         course = models.Course(**course_dict)
 
         db.add(course)
@@ -61,7 +61,7 @@ def create_course(db: Session, course_data: CourseCreate, user: dict) -> Course:
 
 
 async def upload_course_file(
-    db: Session, course_id: int, file: UploadFile, user: dict
+    db: Session, course_id: int, file: UploadFile, user: models.User
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
     try:
@@ -79,7 +79,7 @@ async def upload_course_file(
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
-        
+
         # Validace vlastnictví
         validate_ownership(course, user, "kurz")
 
@@ -89,16 +89,14 @@ async def upload_course_file(
             )
 
         # Vygeneruj unikátní cestu v SeaweedFS
-        file_ext = PurePosixPath(file.filename).suffix if file.filename else ""
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        remote_path = f"courses/{course_id}/{unique_filename}"
+        remote_path = f"courses/{course_id}/{file.filename}"
 
         # Nahraj soubor do SeaweedFS
         content = await file.read()
         seaweedfs.upload_file(
             remote_path,
             content,
-            file.filename or unique_filename,
+            file.filename,
             file.content_type or "application/octet-stream",
         )
 
@@ -122,7 +120,9 @@ async def upload_course_file(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
-def create_course_link(db: Session, course_id: int, url: str, user: dict) -> CourseLink:
+def create_course_link(
+    db: Session, course_id: int, url: str, user: models.User
+) -> CourseLink:
     """Vytvoří odkaz kurzu"""
     try:
         # Ověř, že kurz existuje
@@ -139,7 +139,7 @@ def create_course_link(db: Session, course_id: int, url: str, user: dict) -> Cou
 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
-        
+
         # Validace vlastnictví
         validate_ownership(course, user, "kurz")
 

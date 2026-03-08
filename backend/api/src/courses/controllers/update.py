@@ -12,7 +12,7 @@ from api.enums import Status
 from api.authorization import validate_ownership
 
 
-def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: dict) -> Course:
+def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
     """Aktualizuje existující kurz"""
     try:
         
@@ -63,7 +63,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
     
     
-def update_course_status(db: Session, course_id: int, status: Status, user: dict) -> Course:
+def update_course_status(db: Session, course_id: int, status: Status, user: models.User) -> Course:
     """Aktualizuje status kurzu"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(
@@ -104,7 +104,7 @@ def update_course_status(db: Session, course_id: int, status: Status, user: dict
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
     
     
-def update_course_published(db: Session, course_id: int, is_published: bool, user: dict) -> Course:
+def update_course_published(db: Session, course_id: int, is_published: bool, user: models.User) -> Course:
     """Aktualizuje publikování kurzu"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(

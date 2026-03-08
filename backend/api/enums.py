@@ -17,6 +17,7 @@ class Status(enum.StrEnum):
     generated: str = "generated"
     approved: str = "approved"
     archived: str = "archived"
+    failed: str = "failed"
 
 
 class AuditAction(enum.StrEnum):
@@ -24,3 +25,9 @@ class AuditAction(enum.StrEnum):
     update = "update"
     soft_delete = "soft_delete"
     restore = "restore"
+
+
+class UserRole(enum.StrEnum):
+    user = "user"
+    admin = "admin"
+    superadmin = "superadmin"
