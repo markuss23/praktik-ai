@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.courses.schemas import Course, CourseUpdate
-from api.enums import Status
+from api.enums import Status, UserRole
 from api.authorization import validate_ownership
 
 
@@ -85,7 +85,8 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        validate_ownership(course, user, "kurz")
+        if user.role not in (UserRole.guarantor, UserRole.superadmin):
+            validate_ownership(course, user, "kurz")
 
         valid_transitions = {
             Status.generated: {Status.edited},
