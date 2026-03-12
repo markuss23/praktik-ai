@@ -1,8 +1,7 @@
 'use client';
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, categoriesApi, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
-import { Course, ModulesApi, Status, Module, UpdateCourseStatusStatusEnum, Category } from "@/api";
-import { API_BASE_URL } from "@/lib/constants";
+import { Course, Status, Module, UpdateCourseStatusStatusEnum, Category } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
@@ -433,30 +432,46 @@ export function CoursesListView() {
                             Rychlé úpravy
                           </button>
                           <span className="text-gray-400">|</span>
-                          {can('guarantor') && (
+                          {can('guarantor') && (course.status === Status.Generated || course.status === Status.Approved) && (
                             <>
-                          {(course.status === Status.Approved || course.status === Status.Archived) ? (
-                            <>
+                              <span className="text-gray-400">|</span>
                               <button
-                                onClick={() => togglePublish(course)}
-                                className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                onClick={() => handleApproveToggle(course)}
+                                disabled={approvalLoading === course.courseId}
+                                className="text-teal-600 hover:text-teal-800 hover:underline whitespace-nowrap disabled:opacity-50"
                               >
-                                {course.isPublished ? 'Deaktivovat' : 'Aktivovat'}
+                                {approvalLoading === course.courseId
+                                  ? 'Zpracovávám...'
+                                  : course.status === Status.Approved
+                                  ? 'Zrušit schválení'
+                                  : 'Schválit'}
                               </button>
-                              <span className="text-gray-400">|</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-gray-400 whitespace-nowrap">Aktivovat</span>
-                              <span className="text-gray-400">|</span>
                             </>
                           )}
-                          <button
-                            onClick={() => handleDeleteClick(course.courseId)}
-                            className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
-                          >
-                            Smazat
-                          </button>
+                          {can('guarantor') && (
+                            <>
+                              <span className="text-gray-400">|</span>
+                              {(course.status === Status.Approved || course.status === Status.Archived) ? (
+                                <button
+                                  onClick={() => togglePublish(course)}
+                                  className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                >
+                                  {course.isPublished ? 'Deaktivovat' : 'Aktivovat'}
+                                </button>
+                              ) : (
+                                <span className="text-gray-400 whitespace-nowrap">Aktivovat</span>
+                              )}
+                            </>
+                          )}
+                          {can('superadmin') && (
+                            <>
+                              <span className="text-gray-400">|</span>
+                              <button
+                                onClick={() => handleDeleteClick(course.courseId)}
+                                className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                              >
+                                Smazat
+                              </button>
                             </>
                           )}
                         </div>
@@ -559,6 +574,7 @@ export function CoursesListView() {
                 onApproveToggle={() => handleApproveToggle(course)}
                 approvalLoading={approvalLoading === course.courseId}
                 canGuarantor={can('guarantor')}
+                canSuperAdmin={can('superadmin')}
               />
             ))}
           </div>
@@ -650,6 +666,17 @@ function PublishBadge({ status, isPublished }: { status?: Status; isPublished?: 
   );
 }
 
+function ModuleActiveBadge({ isActive, size = 'md' }: { isActive?: boolean; size?: 'sm' | 'md' }) {
+  const padding = size === 'sm' ? 'px-2 py-0.5 mt-1' : 'px-3 py-1';
+  return (
+    <span className={`inline-flex ${padding} text-xs font-medium rounded-full ${
+      isActive ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+    }`}>
+      {isActive ? 'Aktivní' : 'Neaktivní'}
+    </span>
+  );
+}
+
 interface ExpandedModuleListProps {
   course: Course;
   modules: Module[];
@@ -702,11 +729,7 @@ function ExpandedModuleList({
               </div>
               
               <div className="w-32 flex-shrink-0">
-                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                  module.isActive ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                }`}>
-                  {module.isActive ? 'Aktivní' : 'Neaktivní'}
-                </span>
+                <ModuleActiveBadge isActive={module.isActive} />
               </div>
               
               <CourseActionButtons className="flex-shrink-0">
@@ -763,6 +786,7 @@ interface MobileCourseCardProps {
   onApproveToggle: () => void;
   approvalLoading: boolean;
   canGuarantor: boolean;
+  canSuperAdmin: boolean;
 }
 
 function MobileCourseCard({
@@ -784,6 +808,7 @@ function MobileCourseCard({
   onApproveToggle,
   approvalLoading,
   canGuarantor,
+  canSuperAdmin,
 }: MobileCourseCardProps) {
   const moduleCount = course.modules?.length || 0;
 
@@ -822,7 +847,7 @@ function MobileCourseCard({
               iconSize={14}
             />
           )}
-          {canGuarantor && (
+          {canSuperAdmin && (
           <DeleteActionButton
             onClick={onDelete}
             iconSize={14}
@@ -847,11 +872,7 @@ function MobileCourseCard({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-900 truncate">{module.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5">Modul {module.position || index + 1}</p>
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${
-                      module.isActive ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {module.isActive ? 'Aktivní' : 'Neaktivní'}
-                    </span>
+                    <ModuleActiveBadge isActive={module.isActive} size="sm" />
                   </div>
                   <CourseActionButtons className="flex-shrink-0">
                     <EditActionButton

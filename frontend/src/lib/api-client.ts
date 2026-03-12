@@ -24,26 +24,22 @@ import { getValidAccessToken } from "./keycloak";
 // Request middleware — injects `Authorization: Bearer <token>` when the user
 // is authenticated. For unauthenticated (public) requests the header is
 // omitted entirely so the backend doesn't reject them.
-//
-// Zakomentováno pro localhost vývoj — API je dostupné bez tokenu.
+const authMiddleware: Middleware = {
+  pre: async (context) => {
+    const token = await getValidAccessToken();
+    if (token) {
+      context.init.headers = {
+        ...(context.init.headers as Record<string, string> | undefined),
+        Authorization: `Bearer ${token}`,
+      };
+    }
+    return context;
+  },
+};
 
-// const authMiddleware: Middleware = {
-//   pre: async (context) => {
-//     const token = await getValidAccessToken();
-//     if (token) {
-//       context.init.headers = {
-//         ...(context.init.headers as Record<string, string> | undefined),
-//         Authorization: `Bearer ${token}`,
-//       };
-//     }
-//     return context;
-//   },
-// };
-
-// Konfigurace pro localhost — bez auth middleware, veřejné API volání.
 const configuration = new Configuration({
   basePath: API_BASE_URL,
-  middleware: [],
+  middleware: [authMiddleware],
 });
 
 export const coursesApi = new CoursesApi(configuration);

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Module, LearnBlock } from '@/api';
 import { getCourse, getCourses, updateModule, createModule, createLearnBlock, updateLearnBlock } from '@/lib/api-client';
-import { slugify } from '@/lib/utils';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';

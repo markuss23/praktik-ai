@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ModulesApi, Configuration } from '@/api';
-import { API_BASE_URL } from '@/lib/constants';
-import { getModules } from '@/lib/api-client';
+import { getModules, modulesApi } from '@/lib/api-client';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState } from '@/components/admin';
 
@@ -65,9 +63,6 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
     setError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const modulesApi = new ModulesApi(config);
-      
       await modulesApi.updateModule({
         moduleId: moduleId,
         moduleUpdate: {

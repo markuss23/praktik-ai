@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CoursesApi, Configuration, Module } from '@/api';
-import { API_BASE_URL } from '@/lib/constants';
-import { getCourse, updateModule, deleteCourse } from '@/lib/api-client';
+import { Module } from '@/api';
+import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { LoadingState, ErrorState } from '@/components/admin';
+import { LoadingState, ErrorState, DeleteConfirmModal } from '@/components/admin';
 
 interface CourseEditViewProps {
   courseId: number;
@@ -337,30 +336,13 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
       {/* Delete Confirmation Modal - udelt do komponenty */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-black">Potvrdit smazání</h2>
-            <p className="text-gray-700 mb-4 sm:mb-6 text-sm sm:text-base">
-              Opravdu chcete smazat tento kurz a všechny jeho moduly?
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="flex-1 px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
-              >
-                Zrušit
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 text-sm sm:text-base"
-              >
-                {deleting ? 'Mazání...' : 'Ano, smazat'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmModal
+          isOpen={showDeleteConfirm}
+          isModule={false}
+          deleting={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       )}
     </div>
   );

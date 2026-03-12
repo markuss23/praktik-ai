@@ -51,7 +51,7 @@ async def list_courses(
     )
 
 
-@router.post("", operation_id="create_course")
+@router.post("", operation_id="create_course", dependencies=[require_role("lector")])
 async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Course:

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from api.database import get_sql
 from api.models import User
+from api.enums import UserRole
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
@@ -94,12 +95,21 @@ class Auth:
         email: str = user_info.get("email", "")
         name: str | None = user_info.get("name")
 
+        # Synchronizace role z Keycloak realm_access.roles
+        realm_roles: list[str] = token_info.get("realm_access", {}).get("roles", [])
+        db_role = _resolve_db_role(realm_roles)
+
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
         if user is None:
-            user = User(sub=sub, email=email, display_name=name)
+            user = User(sub=sub, email=email, display_name=name, role=db_role)
             db.add(user)
             db.flush()
+        else:
+            # Udržuj roli synchronizovanou s Keycloakem
+            if user.role != db_role:
+                user.role = db_role
+                db.flush()
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account deactivated")
@@ -153,6 +163,22 @@ ROLE_HIERARCHY: dict[str, int] = {
     "guarantor": 3,
     "superadmin": 4,
 }
+
+
+def _resolve_db_role(realm_roles: list[str]) -> UserRole:
+    """Vybere nejvyšší roli z Keycloak realm rolí odpovídající UserRole."""
+    best = UserRole.user
+    best_level = 1
+    for r in realm_roles:
+        try:
+            candidate = UserRole(r)
+            level = ROLE_HIERARCHY.get(candidate, 0)
+            if level > best_level:
+                best = candidate
+                best_level = level
+        except ValueError:
+            pass
+    return best
 
 
 def require_role(min_role: str):
