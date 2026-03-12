@@ -154,7 +154,7 @@ async def learn_blocks_chat(
 
     app = create_learn_block_mentor_graph()
     result = await app.ainvoke(
-        {"learn_block_id": learn_block_id, "message": message, "db": db}
+        {"learn_block_id": learn_block_id, "user_id": user.user_id, "message": message, "db": db}
     )
 
     answer = result.get("answer", "Odpověď nebyla vygenerována")

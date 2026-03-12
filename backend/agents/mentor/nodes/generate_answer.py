@@ -10,6 +10,8 @@ def generate_answer(state: AgentState) -> AgentState:
 
     context_chunks: list[ChunkData] = state.get("context_chunks", [])
     user_message: str = state["message"]
+    ai_tone: str = state.get("ai_tone", "profesionální a neutrální")
+    ai_expression_level: str = state.get("ai_expression_level", "standardní srozumitelný jazyk")
 
     print(f"Uživatelská otázka: {user_message}")
     print(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
@@ -28,7 +30,7 @@ def generate_answer(state: AgentState) -> AgentState:
 
     llm = ChatOpenAI(model="gpt-5-mini", temperature=0.7)
 
-    system_prompt = """Jsi AI asistent pro výuku - mentor studenta. 
+    system_prompt = f"""Jsi AI asistent pro výuku - mentor studenta.
             Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.
 
             PRAVIDLA:
@@ -39,6 +41,10 @@ def generate_answer(state: AgentState) -> AgentState:
             - Pokud student nerozumí, zkus vysvětlit jinak
             - Odpovídej vždy v češtině
             - odpověd maximálně 500 znaků
+
+            STYL KOMUNIKACE:
+            - Tón: {ai_tone}
+            - Úroveň vyjadřování: {ai_expression_level}
 """
 
     user_prompt: str = f"""KONTEXT Z UČEBNÍCH MATERIÁLŮ:
