@@ -1,8 +1,6 @@
 from langchain_openai import ChatOpenAI
 
-from agents.course_generator.state import AgentState
-from agents.course_generator.state import CourseInput
-from api.src.courses.schemas import Course
+from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
 
 
 def plan_content_node(state: AgentState) -> AgentState:
@@ -16,9 +14,9 @@ def plan_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     model = ChatOpenAI(model="gpt-5.4")
-    llm_structured = model.with_structured_output(Course)
+    llm_structured = model.with_structured_output(CourseGenerated)
 
-    modules_count = course_input.modules_count
+    modules_count = course_input.modules_count_ai_generated
     title = course_input.title
     description = course_input.description or ""
 
@@ -39,9 +37,9 @@ INSTRUKCE - STRUKTURA MODULU:
 Pro každý modul ({modules_count}):
 - title: Výstižný název modulu (1-200 znaků)
 - position: Pořadí modulu (1, 2, 3, atd.)
-- learn_blocks: Seznam učebních bloků, kde každý blok má:
-  * position: Pořadí bloku (začíná od 1)
-  * content: Kompletní text látky k naučení (detailní vysvětlení tématu v markdown formátu)
+- learn_blocks: Přesně JEDEN učební blok (seznam s jedním prvkem), který má:
+  * position: Vždy 1
+  * content: Kompletní text veškeré látky modulu k naučení (detailní vysvětlení tématu v markdown formátu)
 - practice_questions: Seznam cvičení (pro zpětnou kompatibilitu s generátorem), kde každé cvičení obsahuje:
   * position: Pořadí cvičení (začíná od 1)
   * questions: Seznam otázek (2 uzavřené + 1 otevřená) - tyto otázky budou uloženy přímo do modulu
@@ -67,7 +65,7 @@ Všechny otázky musí ověřovat pochopení látky z learn_blocks.
 Všechno bude bez formátování, pouze čistý text. žádný markdown, žádné odrážky, pouze strohý text.
 Vytvoř kurz v českém jazyce."""
 
-    output: Course = llm_structured.invoke(prompt)
+    output: CourseGenerated = llm_structured.invoke(prompt)
 
     state["course"] = output
 

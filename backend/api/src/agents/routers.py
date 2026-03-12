@@ -40,7 +40,7 @@ async def generate_course(
     # Validace vlastnictví
     validate_ownership(course, user, "kurz")
 
-    if course.status != models.Status.draft:
+    if course.status != models.Status.draft and course.status != models.Status.failed:
         raise HTTPException(
             status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
         )

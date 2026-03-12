@@ -14,67 +14,125 @@ from api.src.activities.schemas import (
     PracticeOptionCreate,
     PracticeOptionUpdate,
     QuestionKeyword,
+    QuestionKeywordCreate,
     QuestionKeywordUpdate,
 )
 from api.authorization import validate_ownership
 
 
+# ---------- Helpers ----------
+
+
+def _assert_course_generated(course: models.Course) -> None:
+    if course.status != enums.Status.generated:
+        raise HTTPException(
+            status_code=400,
+            detail="Editace je povolena pouze pokud je kurz ve stavu 'generated'.",
+        )
+
+
+# ---------- LearnBlock ----------
+
+
+def create_learn_block(
+    db: Session, learn_data: LearnBlockCreate, user: models.User
+) -> LearnBlock:
+    """Vytvoří LearnBlock — modul smí mít nejvýše jeden aktivní."""
+    try:
+        module: models.Module | None = db.execute(
+            select(models.Module).where(
+                models.Module.module_id == learn_data.module_id,
+                models.Module.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if module is None:
+            raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
+
+        validate_ownership(module, user, "modul")
+        _assert_course_generated(module.course)
+
+        existing = db.execute(
+            select(models.LearnBlock).where(
+                models.LearnBlock.module_id == learn_data.module_id,
+                models.LearnBlock.is_active.is_(True),
+            )
+        ).first()
+        if existing is not None:
+            raise HTTPException(status_code=400, detail="Modul již má aktivní LearnBlock.")
+
+        new_lb = models.LearnBlock(
+            module_id=learn_data.module_id,
+            title=learn_data.title,
+            position=learn_data.position,
+            content=learn_data.content,
+        )
+        db.add(new_lb)
+        db.commit()
+        db.refresh(new_lb)
+
+        return LearnBlock.model_validate(new_lb)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"create_learn_block error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
 def update_learn_block(
     db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: models.User
 ) -> LearnBlock:
-    """
-    Upraví LearnBlock s validací:
-    - lze editovat pouze pokud je aktivní
-    - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - position musí být unikátní v rámci modulu
-    """
+    """Upraví title a content existujícího LearnBlock."""
     try:
-        # načti learn block
-        stm: Select[tuple[models.LearnBlock]] = select(models.LearnBlock).where(
-            models.LearnBlock.learn_id == learn_id,
-            models.LearnBlock.is_active.is_(True),
-        )
-        learn_block: models.LearnBlock | None = db.execute(stm).scalars().first()
+        learn_block: models.LearnBlock | None = db.execute(
+            select(models.LearnBlock).where(
+                models.LearnBlock.learn_id == learn_id,
+                models.LearnBlock.is_active.is_(True),
+            )
+        ).scalars().first()
 
         if learn_block is None:
             raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
 
-        # Validace vlastnictví
         validate_ownership(learn_block, user, "learn block")
+        _assert_course_generated(learn_block.module.course)
 
-        # kontrola stavu kurzu
-        module = learn_block.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="LearnBlock lze editovat pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti position (pokud se mění)
+        # Kontrola unikátnosti position (pokud se mění)
         if learn_data.position != learn_block.position:
-            exists_stm: Select[tuple[models.LearnBlock]] = select(models.LearnBlock).where(
-                and_(
-                    models.LearnBlock.module_id == learn_block.module_id,
-                    models.LearnBlock.position == learn_data.position,
-                    models.LearnBlock.is_active.is_(True),
-                    models.LearnBlock.learn_id != learn_id,
+            conflict = db.execute(
+                select(models.LearnBlock).where(
+                    and_(
+                        models.LearnBlock.module_id == learn_block.module_id,
+                        models.LearnBlock.position == learn_data.position,
+                        models.LearnBlock.is_active.is_(True),
+                        models.LearnBlock.learn_id != learn_id,
+                    )
                 )
-            )
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="LearnBlock s touto pozicí pro daný modul již existuje.",
-                )
+            ).first()
+            if conflict is not None:
+                raise HTTPException(status_code=400, detail="LearnBlock s touto pozicí pro daný modul již existuje.")
 
-        # update
-        stm = (
+        # Kontrola unikátnosti title (pokud se mění)
+        if learn_data.title != learn_block.title:
+            conflict = db.execute(
+                select(models.LearnBlock).where(
+                    and_(
+                        models.LearnBlock.module_id == learn_block.module_id,
+                        models.LearnBlock.title == learn_data.title,
+                        models.LearnBlock.is_active.is_(True),
+                        models.LearnBlock.learn_id != learn_id,
+                    )
+                )
+            ).first()
+            if conflict is not None:
+                raise HTTPException(status_code=400, detail="LearnBlock s tímto názvem pro daný modul již existuje.")
+
+        db.execute(
             update(models.LearnBlock)
             .where(models.LearnBlock.learn_id == learn_id)
             .values(**learn_data.model_dump())
         )
-        db.execute(stm)
         db.commit()
         db.refresh(learn_block)
 
@@ -86,130 +144,75 @@ def update_learn_block(
         print(f"update_learn_block error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
-# Vytvořeno, potřebuje revizi
 
-def create_learn_block(
-    db: Session, learn_data: LearnBlockCreate, user: models.User
-) -> LearnBlock:
-    """
-    Vytvoří nový LearnBlock s validací:
-    - modul musí existovat a být aktivní
-    - kurz musí být ve stavu 'generated'
-    - position musí být unikátní v rámci modulu
-    """
+def delete_learn_block(db: Session, learn_id: int, user: models.User) -> None:
+    """Soft-delete LearnBlock."""
     try:
-        # načti modul
-        stm: Select[tuple[models.Module]] = select(models.Module).where(
-            models.Module.module_id == learn_data.module_id,
-            models.Module.is_active.is_(True),
-        )
-        module: models.Module | None = db.execute(stm).scalars().first()
-
-        if module is None:
-            raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
-
-        # Validace vlastnictví
-        validate_ownership(module, user, "modul")
-
-        # kontrola stavu kurzu
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="LearnBlock lze vytvořit pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti position
-        exists_stm: Select[tuple[models.LearnBlock]] = select(models.LearnBlock).where(
-            and_(
-                models.LearnBlock.module_id == learn_data.module_id,
-                models.LearnBlock.position == learn_data.position,
+        learn_block: models.LearnBlock | None = db.execute(
+            select(models.LearnBlock).where(
+                models.LearnBlock.learn_id == learn_id,
                 models.LearnBlock.is_active.is_(True),
             )
-        )
-        if db.execute(exists_stm).first() is not None:
-            # Find next available position
-            max_pos_stm = select(models.LearnBlock.position).where(
-                models.LearnBlock.module_id == learn_data.module_id,
-                models.LearnBlock.is_active.is_(True),
-            ).order_by(models.LearnBlock.position.desc()).limit(1)
-            max_pos = db.execute(max_pos_stm).scalar() or 0
-            learn_data = LearnBlockCreate(
-                **{**learn_data.model_dump(), "position": max_pos + 1}
-            )
+        ).scalars().first()
 
-        # vytvoř learn block
-        new_learn_block = models.LearnBlock(
-            module_id=learn_data.module_id,
-            position=learn_data.position,
-            content=learn_data.content,
-        )
-        db.add(new_learn_block)
+        if learn_block is None:
+            raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
+
+        validate_ownership(learn_block, user, "learn block")
+        _assert_course_generated(learn_block.module.course)
+
+        learn_block.soft_delete()
         db.commit()
-        db.refresh(new_learn_block)
-
-        return LearnBlock.model_validate(new_learn_block)
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"create_learn_block error: {e}")
+        print(f"delete_learn_block error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+# ---------- PracticeQuestion ----------
 
 
 def create_practice_question(
     db: Session, question_data: PracticeQuestionCreate, user: models.User
 ) -> PracticeQuestion:
-    """
-    Vytvoří novou PracticeQuestion s validací:
-    - modul musí existovat a být aktivní
-    - kurz musí být ve stavu 'generated'
-    - position musí být unikátní v rámci modulu
-    """
+    """Vytvoří novou PracticeQuestion."""
     try:
-        # načti modul
-        stm: Select[tuple[models.Module]] = select(models.Module).where(
-            models.Module.module_id == question_data.module_id,
-            models.Module.is_active.is_(True),
-        )
-        module: models.Module | None = db.execute(stm).scalars().first()
+        module: models.Module | None = db.execute(
+            select(models.Module).where(
+                models.Module.module_id == question_data.module_id,
+                models.Module.is_active.is_(True),
+            )
+        ).scalars().first()
 
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
-        
-        # Validace vlastnictví
+
         validate_ownership(module, user, "modul")
+        _assert_course_generated(module.course)
 
-        # kontrola stavu kurzu
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="PracticeQuestion lze vytvořit pouze pokud je kurz ve stavu 'generated'.",
+        # Pokud je pozice obsazena, přiřaď následující
+        conflict = db.execute(
+            select(models.PracticeQuestion).where(
+                and_(
+                    models.PracticeQuestion.module_id == question_data.module_id,
+                    models.PracticeQuestion.position == question_data.position,
+                    models.PracticeQuestion.is_active.is_(True),
+                )
             )
-
-        # kontrola unikátnosti position
-        exists_stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
-            and_(
-                models.PracticeQuestion.module_id == question_data.module_id,
-                models.PracticeQuestion.position == question_data.position,
-                models.PracticeQuestion.is_active.is_(True),
-            )
-        )
-        if db.execute(exists_stm).first() is not None:
-            # Find next available position
-            max_pos_stm = select(models.PracticeQuestion.position).where(
-                models.PracticeQuestion.module_id == question_data.module_id,
-                models.PracticeQuestion.is_active.is_(True),
-            ).order_by(models.PracticeQuestion.position.desc()).limit(1)
-            max_pos = db.execute(max_pos_stm).scalar() or 0
+        ).first()
+        if conflict is not None:
+            max_pos = db.execute(
+                select(models.PracticeQuestion.position).where(
+                    models.PracticeQuestion.module_id == question_data.module_id,
+                    models.PracticeQuestion.is_active.is_(True),
+                ).order_by(models.PracticeQuestion.position.desc()).limit(1)
+            ).scalar() or 0
             question_data = PracticeQuestionCreate(
                 **{**question_data.model_dump(), "position": max_pos + 1}
             )
 
-        # vytvoř otázku
         new_question = models.PracticeQuestion(
             module_id=question_data.module_id,
             position=question_data.position,
@@ -231,59 +234,122 @@ def create_practice_question(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
+def update_practice_question(
+    db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: models.User
+) -> PracticeQuestion:
+    """Upraví PracticeQuestion."""
+    try:
+        question: models.PracticeQuestion | None = db.execute(
+            select(models.PracticeQuestion).where(
+                models.PracticeQuestion.question_id == question_id,
+                models.PracticeQuestion.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if question is None:
+            raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+
+        validate_ownership(question, user, "practice question")
+        _assert_course_generated(question.module.course)
+
+        if question_data.position != question.position:
+            conflict = db.execute(
+                select(models.PracticeQuestion).where(
+                    and_(
+                        models.PracticeQuestion.module_id == question.module_id,
+                        models.PracticeQuestion.position == question_data.position,
+                        models.PracticeQuestion.is_active.is_(True),
+                        models.PracticeQuestion.question_id != question_id,
+                    )
+                )
+            ).first()
+            if conflict is not None:
+                raise HTTPException(status_code=400, detail="PracticeQuestion s touto pozicí pro daný modul již existuje.")
+
+        db.execute(
+            update(models.PracticeQuestion)
+            .where(models.PracticeQuestion.question_id == question_id)
+            .values(**question_data.model_dump())
+        )
+        db.commit()
+        db.refresh(question)
+
+        return PracticeQuestion.model_validate(question)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"update_practice_question error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def delete_practice_question(db: Session, question_id: int, user: models.User) -> None:
+    """Soft-delete PracticeQuestion — kaskádně smaže PracticeOption a QuestionKeyword."""
+    try:
+        question: models.PracticeQuestion | None = db.execute(
+            select(models.PracticeQuestion).where(
+                models.PracticeQuestion.question_id == question_id,
+                models.PracticeQuestion.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if question is None:
+            raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+
+        validate_ownership(question, user, "practice question")
+        _assert_course_generated(question.module.course)
+
+        question.soft_delete()  # _soft_delete_cascade = ["closed_options", "open_keywords"]
+        db.commit()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_practice_question error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+# ---------- PracticeOption ----------
+
+
 def create_practice_option(
     db: Session, option_data: PracticeOptionCreate, user: models.User
 ) -> PracticeOption:
-    """
-    Vytvoří novou PracticeOption s validací:
-    - otázka musí existovat a být aktivní
-    - kurz musí být ve stavu 'generated'
-    - position musí být unikátní v rámci question
-    """
+    """Vytvoří novou PracticeOption."""
     try:
-        # načti otázku
-        stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == option_data.question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-        question: models.PracticeQuestion | None = db.execute(stm).scalars().first()
+        question: models.PracticeQuestion | None = db.execute(
+            select(models.PracticeQuestion).where(
+                models.PracticeQuestion.question_id == option_data.question_id,
+                models.PracticeQuestion.is_active.is_(True),
+            )
+        ).scalars().first()
 
         if question is None:
             raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
-        
-        # Validace vlastnictví
+
         validate_ownership(question, user, "otázka")
+        _assert_course_generated(question.module.course)
 
-        # kontrola stavu kurzu
-        module = question.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="PracticeOption lze vytvořit pouze pokud je kurz ve stavu 'generated'.",
+        conflict = db.execute(
+            select(models.PracticeOption).where(
+                and_(
+                    models.PracticeOption.question_id == option_data.question_id,
+                    models.PracticeOption.position == option_data.position,
+                    models.PracticeOption.is_active.is_(True),
+                )
             )
-
-        # kontrola unikátnosti position
-        exists_stm: Select[tuple[models.PracticeOption]] = select(models.PracticeOption).where(
-            and_(
-                models.PracticeOption.question_id == option_data.question_id,
-                models.PracticeOption.position == option_data.position,
-                models.PracticeOption.is_active.is_(True),
-            )
-        )
-        if db.execute(exists_stm).first() is not None:
-            # Find next available position
-            max_pos_stm = select(models.PracticeOption.position).where(
-                models.PracticeOption.question_id == option_data.question_id,
-                models.PracticeOption.is_active.is_(True),
-            ).order_by(models.PracticeOption.position.desc()).limit(1)
-            max_pos = db.execute(max_pos_stm).scalar() or 0
+        ).first()
+        if conflict is not None:
+            max_pos = db.execute(
+                select(models.PracticeOption.position).where(
+                    models.PracticeOption.question_id == option_data.question_id,
+                    models.PracticeOption.is_active.is_(True),
+                ).order_by(models.PracticeOption.position.desc()).limit(1)
+            ).scalar() or 0
             option_data = PracticeOptionCreate(
                 **{**option_data.model_dump(), "position": max_pos + 1}
             )
 
-        # vytvoř option
         new_option = models.PracticeOption(
             question_id=option_data.question_id,
             position=option_data.position,
@@ -301,133 +367,44 @@ def create_practice_option(
         print(f"create_practice_option error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
-#Konec revize
-
-def update_practice_question(
-    db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: models.User
-) -> PracticeQuestion:
-    """
-    Upraví PracticeQuestion s validací:
-    - lze editovat pouze pokud je aktivní
-    - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - position musí být unikátní v rámci modulu
-    """
-    try:
-        # načti question
-        stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-        question: models.PracticeQuestion | None = db.execute(stm).scalars().first()
-
-        if question is None:
-            raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
-        
-        # Validace vlastnictví
-        validate_ownership(question, user, "practice question")
-
-        # kontrola stavu kurzu
-        module = question.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="PracticeQuestion lze editovat pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti position (pokud se mění)
-        if question_data.position != question.position:
-            exists_stm: Select[tuple[models.PracticeQuestion]] = select(models.PracticeQuestion).where(
-                and_(
-                    models.PracticeQuestion.module_id == question.module_id,
-                    models.PracticeQuestion.position == question_data.position,
-                    models.PracticeQuestion.is_active.is_(True),
-                    models.PracticeQuestion.question_id != question_id,
-                )
-            )
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="PracticeQuestion s touto pozicí pro daný modul již existuje.",
-                )
-
-        # update
-        stm = (
-            update(models.PracticeQuestion)
-            .where(models.PracticeQuestion.question_id == question_id)
-            .values(**question_data.model_dump())
-        )
-        db.execute(stm)
-        db.commit()
-        db.refresh(question)
-
-        return PracticeQuestion.model_validate(question)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"update_practice_question error: {e}")
-        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
-
 
 def update_practice_option(
     db: Session, option_id: int, option_data: PracticeOptionUpdate, user: models.User
 ) -> PracticeOption:
-    """
-    Upraví PracticeOption s validací:
-    - lze editovat pouze pokud je aktivní
-    - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - position musí být unikátní v rámci question
-    """
+    """Upraví PracticeOption."""
     try:
-        # načti option
-        stm: Select[tuple[models.PracticeOption]] = select(models.PracticeOption).where(
-            models.PracticeOption.option_id == option_id,
-            models.PracticeOption.is_active.is_(True),
-        )
-        option: models.PracticeOption | None = db.execute(stm).scalars().first()
+        option: models.PracticeOption | None = db.execute(
+            select(models.PracticeOption).where(
+                models.PracticeOption.option_id == option_id,
+                models.PracticeOption.is_active.is_(True),
+            )
+        ).scalars().first()
 
         if option is None:
             raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
-        
-        # Validace vlastnictví
+
         validate_ownership(option, user, "practice option")
+        _assert_course_generated(option.question.module.course)
 
-        # kontrola stavu kurzu
-        question = option.question
-        module = question.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="PracticeOption lze editovat pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti position (pokud se mění)
         if option_data.position != option.position:
-            exists_stm: Select[tuple[models.PracticeOption]] = select(models.PracticeOption).where(
-                and_(
-                    models.PracticeOption.question_id == option.question_id,
-                    models.PracticeOption.position == option_data.position,
-                    models.PracticeOption.is_active.is_(True),
-                    models.PracticeOption.option_id != option_id,
+            conflict = db.execute(
+                select(models.PracticeOption).where(
+                    and_(
+                        models.PracticeOption.question_id == option.question_id,
+                        models.PracticeOption.position == option_data.position,
+                        models.PracticeOption.is_active.is_(True),
+                        models.PracticeOption.option_id != option_id,
+                    )
                 )
-            )
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="PracticeOption s touto pozicí pro danou question již existuje.",
-                )
+            ).first()
+            if conflict is not None:
+                raise HTTPException(status_code=400, detail="PracticeOption s touto pozicí pro danou question již existuje.")
 
-        # update
-        stm = (
+        db.execute(
             update(models.PracticeOption)
             .where(models.PracticeOption.option_id == option_id)
             .values(**option_data.model_dump())
         )
-        db.execute(stm)
         db.commit()
         db.refresh(option)
 
@@ -440,63 +417,119 @@ def update_practice_option(
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
+def delete_practice_option(db: Session, option_id: int, user: models.User) -> None:
+    """Soft-delete PracticeOption."""
+    try:
+        option: models.PracticeOption | None = db.execute(
+            select(models.PracticeOption).where(
+                models.PracticeOption.option_id == option_id,
+                models.PracticeOption.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if option is None:
+            raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
+
+        validate_ownership(option, user, "practice option")
+        _assert_course_generated(option.question.module.course)
+
+        option.soft_delete()
+        db.commit()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_practice_option error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+# ---------- QuestionKeyword ----------
+
+
+def create_question_keyword(
+    db: Session, keyword_data: QuestionKeywordCreate, user: models.User
+) -> QuestionKeyword:
+    """Přidá nový QuestionKeyword k otázce."""
+    try:
+        question: models.PracticeQuestion | None = db.execute(
+            select(models.PracticeQuestion).where(
+                models.PracticeQuestion.question_id == keyword_data.question_id,
+                models.PracticeQuestion.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if question is None:
+            raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
+
+        validate_ownership(question, user, "otázka")
+        _assert_course_generated(question.module.course)
+
+        conflict = db.execute(
+            select(models.QuestionKeyword).where(
+                and_(
+                    models.QuestionKeyword.question_id == keyword_data.question_id,
+                    models.QuestionKeyword.keyword == keyword_data.keyword,
+                    models.QuestionKeyword.is_active.is_(True),
+                )
+            )
+        ).first()
+        if conflict is not None:
+            raise HTTPException(status_code=400, detail="Keyword s tímto názvem pro danou otázku již existuje.")
+
+        new_keyword = models.QuestionKeyword(
+            question_id=keyword_data.question_id,
+            keyword=keyword_data.keyword,
+        )
+        db.add(new_keyword)
+        db.commit()
+        db.refresh(new_keyword)
+
+        return QuestionKeyword.model_validate(new_keyword)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"create_question_keyword error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
 def update_question_keyword(
     db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate, user: models.User
 ) -> QuestionKeyword:
-    """
-    Upraví QuestionKeyword s validací:
-    - lze editovat pouze pokud je aktivní
-    - lze editovat pouze pokud je kurz ve stavu 'generated'
-    - keyword musí být unikátní v rámci question
-    """
+    """Upraví QuestionKeyword."""
     try:
-        # načti keyword
-        stm: Select[tuple[models.QuestionKeyword]] = select(models.QuestionKeyword).where(
-            models.QuestionKeyword.keyword_id == keyword_id,
-            models.QuestionKeyword.is_active.is_(True),
-        )
-        keyword: models.QuestionKeyword | None = db.execute(stm).scalars().first()
+        keyword: models.QuestionKeyword | None = db.execute(
+            select(models.QuestionKeyword).where(
+                models.QuestionKeyword.keyword_id == keyword_id,
+                models.QuestionKeyword.is_active.is_(True),
+            )
+        ).scalars().first()
 
         if keyword is None:
             raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
-        
-        # Validace vlastnictví
+
         validate_ownership(keyword, user, "question keyword")
+        _assert_course_generated(keyword.question.module.course)
 
-        # kontrola stavu kurzu
-        question = keyword.question
-        module = question.module
-        course = module.course
-
-        if course.status != enums.Status.generated:
-            raise HTTPException(
-                status_code=400,
-                detail="QuestionKeyword lze editovat pouze pokud je kurz ve stavu 'generated'.",
-            )
-
-        # kontrola unikátnosti keyword (pokud se mění)
         if keyword_data.keyword != keyword.keyword:
-            exists_stm: Select[tuple[models.QuestionKeyword]] = select(models.QuestionKeyword).where(
-                and_(
-                    models.QuestionKeyword.question_id == keyword.question_id,
-                    models.QuestionKeyword.keyword == keyword_data.keyword,
-                    models.QuestionKeyword.is_active.is_(True),
-                    models.QuestionKeyword.keyword_id != keyword_id,
+            conflict = db.execute(
+                select(models.QuestionKeyword).where(
+                    and_(
+                        models.QuestionKeyword.question_id == keyword.question_id,
+                        models.QuestionKeyword.keyword == keyword_data.keyword,
+                        models.QuestionKeyword.is_active.is_(True),
+                        models.QuestionKeyword.keyword_id != keyword_id,
+                    )
                 )
-            )
-            if db.execute(exists_stm).first() is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="QuestionKeyword s tímto názvem pro danou question již existuje.",
-                )
+            ).first()
+            if conflict is not None:
+                raise HTTPException(status_code=400, detail="QuestionKeyword s tímto názvem pro danou question již existuje.")
 
-        # update
-        stm = (
+        db.execute(
             update(models.QuestionKeyword)
             .where(models.QuestionKeyword.keyword_id == keyword_id)
             .values(**keyword_data.model_dump())
         )
-        db.execute(stm)
         db.commit()
         db.refresh(keyword)
 
@@ -506,4 +539,30 @@ def update_question_keyword(
         raise
     except Exception as e:
         print(f"update_question_keyword error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
+
+
+def delete_question_keyword(db: Session, keyword_id: int, user: models.User) -> None:
+    """Soft-delete QuestionKeyword."""
+    try:
+        keyword: models.QuestionKeyword | None = db.execute(
+            select(models.QuestionKeyword).where(
+                models.QuestionKeyword.keyword_id == keyword_id,
+                models.QuestionKeyword.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if keyword is None:
+            raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
+
+        validate_ownership(keyword, user, "question keyword")
+        _assert_course_generated(keyword.question.module.course)
+
+        keyword.soft_delete()
+        db.commit()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"delete_question_keyword error: {e}")
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e

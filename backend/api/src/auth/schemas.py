@@ -2,7 +2,7 @@ from api.enums import UserRole
 from api.src.common.schemas import ORMModel
 
 
-class CurrentUserResponse(ORMModel):
+class UserResponse(ORMModel):
     user_id: int
     sub: str
     email: str

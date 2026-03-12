@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 
 from api.database import SessionSqlSessionDependency, init_db
+from api.seed import seed_db
 from api.src.routers import router as api_router
 from api.dependencies import auth
 
@@ -19,6 +20,7 @@ app.add_middleware(
 )
 
 init_db(create_extensions=True)
+seed_db()
 
 
 @app.get("/health")

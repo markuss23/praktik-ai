@@ -9,7 +9,7 @@ from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
 from api import models
-from api.src.courses.schemas import Course, CourseFile, CourseLink
+from api.src.courses.schemas import Course, CourseDetail, CourseFile, CourseLink
 
 
 def get_courses(
@@ -45,7 +45,7 @@ def get_courses(
         raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
 
 
-def get_course(db: Session, course_id: int) -> Course:
+def get_course(db: Session, course_id: int) -> CourseDetail:
     """Vrátí detail kurzu podle ID"""
     try:
         stm: Select[tuple[models.Course]] = select(models.Course).where(
@@ -57,7 +57,7 @@ def get_course(db: Session, course_id: int) -> Course:
         if result is None:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        return Course.model_validate(result)
+        return CourseDetail.model_validate(result)
     except HTTPException:
         raise
     except Exception as e:

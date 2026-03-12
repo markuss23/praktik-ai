@@ -1,7 +1,7 @@
 from typing import Literal
 from fastapi import APIRouter, UploadFile, File
 
-from api.dependencies import CurrentUser
+from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     IS_PUBLISHED_ANNOTATION,
@@ -9,7 +9,9 @@ from api.src.common.annotations import (
 )
 from api.src.courses.schemas import (
     CourseCreate,
+    CourseCreated,
     Course,
+    CourseDetail,
     CourseUpdate,
     CourseFile,
     CourseLink,
@@ -29,7 +31,6 @@ from api.src.courses.controllers import (
     update_course_published,
 )
 from api.database import SessionSqlSessionDependency
-from api.enums import Status
 
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -51,15 +52,15 @@ async def list_courses(
     )
 
 
-@router.post("", operation_id="create_course")
+@router.post("", operation_id="create_course", dependencies=[require_role("lector")])
 async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
-) -> Course:
+) -> CourseCreated:
     return create_course(db, course, user)
 
 
 @router.get("/{course_id}", operation_id="get_course")
-async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> Course:
+async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> CourseDetail:
     return get_course(db, course_id)
 
 
@@ -73,7 +74,7 @@ async def endp_update_course(
 @router.put("/{course_id}/status", operation_id="update_course_status")
 async def endp_update_course_status(
     course_id: int,
-    status: Literal[Status.archived, Status.approved, Status.generated],
+    status: Literal["edited", "in_review", "approved", "archived"],
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> Course:

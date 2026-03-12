@@ -1,7 +1,7 @@
 from sqlalchemy import Update, update
 from sqlalchemy.orm.session import Session
 
-from agents.course_generator.state import AgentState, Course as GeneratedCourse
+from agents.course_generator.state import AgentState, CourseGenerated
 from api import models
 
 
@@ -11,7 +11,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
 
     course_id: int = state.get("course_id")
     db: Session = state.get("db")
-    generated_course: GeneratedCourse | None = state.get("course")
+    generated_course: CourseGenerated | None = state.get("course")
     summary: str = state.get("summarize_content")
 
     if course_id is None:
@@ -47,6 +47,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
         for lb in module.learn_blocks:
             db_learn_block = models.LearnBlock(
                 module_id=db_module.module_id,
+                title=db_module.title,
                 content=lb.content,
                 position=lb.position,
             )
@@ -65,7 +66,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     continue
             if q.question_type.value == "open" and not q.example_answer:
                 q.example_answer = "Bez příkladu odpovědi."
-                print(f"   -> WARN: Chybí example_answer pro otevřenou otázku, nastaven fallback")
+                print("   -> WARN: Chybí example_answer pro otevřenou otázku, nastaven fallback")
 
             db_question = models.PracticeQuestion(
                 module_id=db_module.module_id,
