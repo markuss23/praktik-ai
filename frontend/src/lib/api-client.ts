@@ -22,9 +22,8 @@ import { getValidAccessToken } from "./keycloak";
 
 
 // Request middleware — injects `Authorization: Bearer <token>` when the user
-//is authenticated. For unauthenticated (public) requests the header is
+// is authenticated. For unauthenticated (public) requests the header is
 // omitted entirely so the backend doesn't reject them.
- 
 const authMiddleware: Middleware = {
   pre: async (context) => {
     const token = await getValidAccessToken();
@@ -38,7 +37,6 @@ const authMiddleware: Middleware = {
   },
 };
 
-// Create a configured API client instance
 const configuration = new Configuration({
   basePath: API_BASE_URL,
   middleware: [authMiddleware],
