@@ -1,7 +1,15 @@
 // Keycloak OIDC configuration and helpers (PKCE flow)
 
+// Remote Keycloak (d1.praktik.ujep.cz) — commented out
+// export const KC_CONFIG = {
+//   url: process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? "http://d1.praktik.ujep.cz:8080",
+//   realm: process.env.NEXT_PUBLIC_KEYCLOAK_REALM ?? "praktikai-dev",
+//   clientId: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID ?? "praktik-ai-app",
+// };
+
+// Local Keycloak (localhost:8080)
 export const KC_CONFIG = {
-  url: process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? "http://localhost:8090",
+  url: process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? "http://localhost:8080",
   realm: process.env.NEXT_PUBLIC_KEYCLOAK_REALM ?? "praktikai-dev",
   clientId: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID ?? "praktik-ai-app",
 };
@@ -126,6 +134,32 @@ export async function refreshTokens(refreshToken: string): Promise<TokenResponse
 
 // User info
 
+export type AppRole = 'user' | 'lector' | 'guarantor' | 'superadmin';
+
+export const ROLE_HIERARCHY: Record<AppRole, number> = {
+  user: 1,
+  lector: 2,
+  guarantor: 3,
+  superadmin: 4,
+};
+
+/** Returns the effective role (highest found in the JWT realm_access.roles list) */
+export function resolveRole(roles: string[]): AppRole {
+  const ordered: AppRole[] = ['superadmin', 'guarantor', 'lector', 'user'];
+  return ordered.find((r) => roles.includes(r)) ?? 'user';
+}
+
+export function hasMinRole(role: AppRole, min: AppRole): boolean {
+  return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[min];
+}
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  user: 'Uživatel',
+  lector: 'Lektor',
+  guarantor: 'Garant',
+  superadmin: 'Super Admin',
+};
+
 export interface UserInfo {
   sub: string;
   email?: string;
@@ -133,12 +167,17 @@ export interface UserInfo {
   preferred_username?: string;
   given_name?: string;
   family_name?: string;
+  realm_access?: { roles: string[] };
+  /** Resolved highest app role */
+  role: AppRole;
 }
 
 export function parseJwt(token: string): UserInfo | null {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64)) as UserInfo;
+    const payload = JSON.parse(atob(base64)) as UserInfo & { realm_access?: { roles: string[] } };
+    const roles: string[] = payload.realm_access?.roles ?? [];
+    return { ...payload, role: resolveRole(roles) };
   } catch {
     return null;
   }

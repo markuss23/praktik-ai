@@ -14,7 +14,7 @@ interface CourseEditViewProps {
 
 // Formulář pro editaci kurzu a jeho modulů
 export function CourseEditView({ courseId }: CourseEditViewProps) {
-  const { goToCourses, goBack } = useAdminNavigation();
+  const { goToCourses, goBack, goToModuleEdit } = useAdminNavigation();
   
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -232,7 +232,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                         </>
                       ) : (
                         <button
-                          onClick={(e) => { e.stopPropagation(); startEditingModule(module); }}
+                          onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }}
                           className="p-1 text-gray-600 hover:bg-gray-200 rounded"
                         >
                           <Edit2 size={16} />

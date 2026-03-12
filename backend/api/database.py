@@ -48,5 +48,15 @@ def init_db(create_extensions: bool = True) -> None:
         # Vytvoření všech tabulek a enum typů
         Base.metadata.create_all(bind=conn)
 
+        # Migrace: přidání nových hodnot do user_role enumu (nové role)
+        new_role_values = ["lector", "guarantor"]
+        for value in new_role_values:
+            try:
+                conn.exec_driver_sql(
+                    f"ALTER TYPE user_role ADD VALUE IF NOT EXISTS '{value}';"
+                )
+            except Exception:
+                pass  # Enum typ ještě neexistuje (vytvoří se výše) nebo hodnota již existuje
+
 
 SessionSqlSessionDependency = Annotated[Session, Depends(get_sql)]

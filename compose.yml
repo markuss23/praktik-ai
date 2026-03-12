@@ -60,9 +60,7 @@ services:
     depends_on:
       - db
     environment:
-      KC_HOSTNAME: 0.0.0.0
-      KC_HOSTNAME_PORT: 8080
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_DB: postgres
@@ -73,6 +71,8 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       KC_HEALTH_ENABLED: "true"
       KC_LOG_LEVEL: info
+    volumes:
+      - C:\Users\senci\Development\keycloak-themes:/opt/keycloak/themes #cesta ke themes
     command: start-dev
     ports:
       - "8080:8080" #dejdu - "8090:8080"

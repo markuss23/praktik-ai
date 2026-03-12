@@ -1,6 +1,7 @@
 // Admin views - lazy loaded for code splitting
 export { AdminViewRouter } from './AdminViewRouter';
 export { CoursesListView } from './CoursesListView';
+export { CategoriesListView } from './CategoriesListView';
 export { CourseContentView } from './CourseContentView';
 export { CourseTestsView } from './CourseTestsView';
 export { CourseSummaryView } from './CourseSummaryView';

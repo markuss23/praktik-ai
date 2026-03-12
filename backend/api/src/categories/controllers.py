@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy import select
 from api import models
-from api.src.categories.schemas import Category
+from api.src.categories.schemas import Category, CategoryCreate
 from api.database import SessionSqlSessionDependency
 
 
@@ -25,27 +25,31 @@ def get_categories(
 
 def create_category(
     db: SessionSqlSessionDependency,
-    category_data: Category,
+    category_data: CategoryCreate,
 ) -> Category:
     """Vytvoří novou kategorii"""
     try:
         if db.execute(
             select(models.Category).where(
                 models.Category.name == category_data.name,
-                models.Category.is_active.is_(True),
+                models.Category.is_active == True,
             )
-        ).first():
+        ).scalars().first():
             raise HTTPException(
                 status_code=400, detail="Kategorie s tímto názvem již existuje"
             )
 
-        category = models.Category(**category_data.model_dump())
+        category = models.Category(
+            name=category_data.name,
+            description=category_data.description,
+            is_active=True,
+        )
 
         db.add(category)
         db.commit()
         db.refresh(category)
 
-        return category
+        return Category.model_validate(category)
     except HTTPException:
         raise
     except Exception as e:

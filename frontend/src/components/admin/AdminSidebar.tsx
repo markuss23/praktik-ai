@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Users, BarChart3, Settings, Menu, X } from 'lucide-react';
+import { Home, BookOpen, Users, BarChart3, Settings, Menu, X, Boxes } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useRole } from '@/hooks/useRole';
 
-const navItems = [
+const BASE_NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/admin', label: 'Kurzy', icon: BookOpen },
   { href: '/admin/users', label: 'Uživatelé', icon: Users },
@@ -13,9 +14,18 @@ const navItems = [
   { href: '/admin/settings', label: 'Nastavení', icon: Settings },
 ];
 
+const SUPERADMIN_ITEMS = [
+  { href: '/admin/categories', label: 'Kategorie', icon: Boxes },
+];
+
 export function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { can } = useRole();
+
+  const navItems = can('superadmin')
+    ? [BASE_NAV_ITEMS[0], BASE_NAV_ITEMS[1], ...SUPERADMIN_ITEMS, ...BASE_NAV_ITEMS.slice(2)]
+    : BASE_NAV_ITEMS;
 
   // Close sidebar when route changes (mobile)
   useEffect(() => {
@@ -74,8 +84,8 @@ export function AdminSidebar() {
         <nav className="flex-1 px-4">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = item.href === '/admin' 
-              ? pathname.startsWith('/admin')
+            const active = item.href === '/admin'
+              ? (pathname === '/admin' || (pathname.startsWith('/admin') && !navItems.slice(2).some(n => pathname.startsWith(n.href))))
               : isActive(item.href);
             
             return (

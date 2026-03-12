@@ -6,7 +6,7 @@ from api.src.categories.controllers import (
 )
 from api.src.categories.schemas import Category, CategoryCreate
 from api.database import SessionSqlSessionDependency
-# from api.dependencies import require_role
+from api.dependencies import require_role
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
@@ -19,7 +19,7 @@ async def list_categories(
     return get_categories(db=db, include_inactive=include_inactive)
 
 
-@router.post("", operation_id="create_category")
+@router.post("", operation_id="create_category", dependencies=[require_role("superadmin")])
 async def endp_create_category(
     category: CategoryCreate,
     db: SessionSqlSessionDependency,
@@ -27,7 +27,7 @@ async def endp_create_category(
     return create_category(db=db, category_data=category)
 
 
-@router.delete("/{category_id}", operation_id="delete_category")
+@router.delete("/{category_id}", operation_id="delete_category", status_code=204, dependencies=[require_role("superadmin")])
 async def endp_delete_category(
     category_id: int,
     db: SessionSqlSessionDependency,

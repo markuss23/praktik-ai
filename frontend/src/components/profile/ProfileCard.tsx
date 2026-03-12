@@ -6,7 +6,16 @@ interface ProfileCardProps {
   avatarSrc?: string;
 }
 
+const ROLE_BADGE: Record<string, string> = {
+  'Super Admin': 'bg-purple-100 text-purple-700',
+  'Garant':      'bg-blue-100 text-blue-700',
+  'Lektor':      'bg-green-100 text-green-700',
+  'Uživatel':    'bg-gray-100 text-gray-600',
+};
+
 export function ProfileCard({ name, role, avatarSrc }: ProfileCardProps) {
+  const badgeClass = ROLE_BADGE[role] ?? 'bg-gray-100 text-gray-600';
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col items-center gap-3">
       {/* Avatar circle */}
@@ -33,7 +42,9 @@ export function ProfileCard({ name, role, avatarSrc }: ProfileCardProps) {
       {/* Name & role */}
       <div className="text-center">
         <p className="text-lg font-bold text-gray-900">{name}</p>
-        <p className="text-sm text-gray-500 mt-0.5">{role}</p>
+        <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+          {role}
+        </span>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, categoriesApi, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { Course, ModulesApi, Status, Module, UpdateCourseStatusStatusEnum, Category } from "@/api";
 import { API_BASE_URL } from "@/lib/constants";
 import React, { useState, useEffect, useCallback } from "react";
 import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
@@ -9,12 +9,14 @@ import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, Publish
 import { GenerateEmbeddingsButton } from "@/components/admin/GenerateEmbeddingsButton";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
+import { useRole } from "@/hooks/useRole";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
+  const { can } = useRole();
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -30,6 +32,14 @@ export function CoursesListView() {
 
   // Approval state
   const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
+
+  // Categories for quick edit dropdown
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Quick edit state (inline accordion)
+  const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
+  const [quickEditData, setQuickEditData] = useState<{ title: string; categoryId: number }>({ title: '', categoryId: 1 });
+  const [quickEditLoading, setQuickEditLoading] = useState(false);
 
   // Stavy modálních oken
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -89,6 +99,10 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
+  useEffect(() => {
+    categoriesApi.listCategories().then(setCategories).catch(console.error);
+  }, []);
+
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
     setShowDeleteConfirm(true);
@@ -99,9 +113,7 @@ export function CoursesListView() {
     
     setDeleting(true);
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.deleteCourse({ courseId: courseToDelete });
+      await sharedCoursesApi.deleteCourse({ courseId: courseToDelete });
       
       await loadCoursesList();
       setShowDeleteConfirm(false);
@@ -210,12 +222,9 @@ export function CoursesListView() {
     setModalError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      
       if (courseFormData.courseId) {
         const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
-        await coursesApi.updateCourse({
+        await sharedCoursesApi.updateCourse({
           courseId: courseFormData.courseId,
           courseUpdate: {
             title: courseFormData.title,
@@ -224,7 +233,7 @@ export function CoursesListView() {
           }
         });
       } else {
-        await coursesApi.createCourse({
+        await sharedCoursesApi.createCourse({
           courseCreate: {
             title: courseFormData.title,
             description: courseFormData.description,
@@ -248,11 +257,8 @@ export function CoursesListView() {
     setModalError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const modulesApi = new ModulesApi(config);
-      
       if (moduleFormData.moduleId) {
-        await modulesApi.updateModule({
+        await sharedModulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
           moduleUpdate: {
             title: moduleFormData.title,
@@ -321,6 +327,42 @@ export function CoursesListView() {
     }
   };
 
+  const openQuickEdit = (course: Course) => {
+    if (quickEditCourseId === course.courseId) {
+      setQuickEditCourseId(null);
+      return;
+    }
+    setQuickEditCourseId(course.courseId);
+    setQuickEditData({ title: course.title, categoryId: course.categoryId });
+  };
+
+  const closeQuickEdit = () => {
+    setQuickEditCourseId(null);
+  };
+
+  const saveQuickEdit = async () => {
+    if (!quickEditCourseId) return;
+    setQuickEditLoading(true);
+    try {
+      const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
+      await sharedCoursesApi.updateCourse({
+        courseId: quickEditCourseId,
+        courseUpdate: {
+          title: quickEditData.title,
+          description: existingCourse?.description ?? undefined,
+          categoryId: quickEditData.categoryId,
+        },
+      });
+      await loadCoursesList();
+      setQuickEditCourseId(null);
+    } catch (error) {
+      console.error('Failed to quick save course:', error);
+      alert('Nepodařilo se uložit rychlé úpravy');
+    } finally {
+      setQuickEditLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -376,30 +418,94 @@ export function CoursesListView() {
                         <PublishBadge status={course.status} isPublished={course.isPublished} />
                       </td>
                       <td className="px-6 py-4">
-                        <CourseActionButtons>
-                          <EditActionButton
+                        <div className="flex items-center gap-1 text-sm flex-wrap">
+                          <button
                             onClick={() => toggleCourseExpand(course.courseId)}
-                            title="Zobrazit moduly"
-                          />
-                          {(course.status === Status.Generated || course.status === Status.Approved) && (
-                            <ApproveActionButton
-                              onClick={() => handleApproveToggle(course)}
-                              isApproved={course.status === Status.Approved}
-                              isLoading={approvalLoading === course.courseId}
-                            />
+                            className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+                          >
+                            Úpravy
+                          </button>
+                          <span className="text-gray-400">|</span>
+                          <button
+                            onClick={() => openQuickEdit(course)}
+                            className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap"
+                          >
+                            Rychlé úpravy
+                          </button>
+                          <span className="text-gray-400">|</span>
+                          {can('guarantor') && (
+                            <>
+                          {(course.status === Status.Approved || course.status === Status.Archived) ? (
+                            <>
+                              <button
+                                onClick={() => togglePublish(course)}
+                                className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                              >
+                                {course.isPublished ? 'Deaktivovat' : 'Aktivovat'}
+                              </button>
+                              <span className="text-gray-400">|</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-400 whitespace-nowrap">Aktivovat</span>
+                              <span className="text-gray-400">|</span>
+                            </>
                           )}
-                          {(course.status === Status.Approved || course.status === Status.Archived) && (
-                            <PublishActionButton
-                              onClick={() => togglePublish(course)}
-                              isPublished={!!course.isPublished}
-                            />
-                          )}
-                          <DeleteActionButton
+                          <button
                             onClick={() => handleDeleteClick(course.courseId)}
-                          />
-                        </CourseActionButtons>
+                            className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                          >
+                            Smazat
+                          </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
+
+                    {/* Quick Edit Accordion */}
+                    {quickEditCourseId === course.courseId && (
+                      <tr>
+                        <td colSpan={5} className="bg-purple-50 p-0 border-b border-purple-200">
+                          <div className="p-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                              <span className="text-sm font-semibold text-purple-800 whitespace-nowrap">Rychlé úpravy:</span>
+                              <input
+                                type="text"
+                                value={quickEditData.title}
+                                onChange={(e) => setQuickEditData(prev => ({ ...prev, title: e.target.value }))}
+                                placeholder="Název kurzu"
+                                className="flex-1 min-w-0 px-3 py-1.5 border border-purple-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              />
+                              <select
+                                value={quickEditData.categoryId}
+                                onChange={(e) => setQuickEditData(prev => ({ ...prev, categoryId: Number(e.target.value) }))}
+                                className="px-3 py-1.5 border border-purple-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              >
+                                {categories.map(cat => (
+                                  <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={saveQuickEdit}
+                                  disabled={quickEditLoading}
+                                  className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                  {quickEditLoading ? 'Ukládání...' : 'Uložit'}
+                                </button>
+                                <button
+                                  onClick={closeQuickEdit}
+                                  className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                                >
+                                  Zrušit
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     
                     {/* Expanded Module List */}
                     {expandedCourse === course.courseId && (
@@ -452,6 +558,7 @@ export function CoursesListView() {
                 embeddingGenerated={embeddingDone.has(course.courseId)}
                 onApproveToggle={() => handleApproveToggle(course)}
                 approvalLoading={approvalLoading === course.courseId}
+                canGuarantor={can('guarantor')}
               />
             ))}
           </div>
@@ -655,6 +762,7 @@ interface MobileCourseCardProps {
   embeddingGenerated: boolean;
   onApproveToggle: () => void;
   approvalLoading: boolean;
+  canGuarantor: boolean;
 }
 
 function MobileCourseCard({
@@ -675,6 +783,7 @@ function MobileCourseCard({
   embeddingGenerated,
   onApproveToggle,
   approvalLoading,
+  canGuarantor,
 }: MobileCourseCardProps) {
   const moduleCount = course.modules?.length || 0;
 
@@ -698,7 +807,7 @@ function MobileCourseCard({
             title="Zobrazit moduly"
             iconSize={14}
           />
-          {(course.status === Status.Generated || course.status === Status.Approved) && (
+          {canGuarantor && (course.status === Status.Generated || course.status === Status.Approved) && (
             <ApproveActionButton
               onClick={onApproveToggle}
               isApproved={course.status === Status.Approved}
@@ -706,17 +815,19 @@ function MobileCourseCard({
               iconSize={14}
             />
           )}
-          {(course.status === Status.Approved || course.status === Status.Archived) && (
+          {canGuarantor && (course.status === Status.Approved || course.status === Status.Archived) && (
             <PublishActionButton
               onClick={onTogglePublish}
               isPublished={!!course.isPublished}
               iconSize={14}
             />
           )}
+          {canGuarantor && (
           <DeleteActionButton
             onClick={onDelete}
             iconSize={14}
           />
+          )}
         </CourseActionButtons>
       </div>
       

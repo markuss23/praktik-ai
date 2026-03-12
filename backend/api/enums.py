@@ -29,5 +29,6 @@ class AuditAction(enum.StrEnum):
 
 class UserRole(enum.StrEnum):
     user = "user"
-    admin = "admin"
+    lector = "lector"
+    guarantor = "guarantor"
     superadmin = "superadmin"

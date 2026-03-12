@@ -1,7 +1,7 @@
 from typing import Literal
 from fastapi import APIRouter, UploadFile, File
 
-from api.dependencies import CurrentUser
+from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     IS_PUBLISHED_ANNOTATION,
@@ -69,7 +69,7 @@ async def endp_update_course(
     return update_course(db, course_id, course, user)
 
 
-@router.put("/{course_id}/status", operation_id="update_course_status")
+@router.put("/{course_id}/status", operation_id="update_course_status", dependencies=[require_role("guarantor")])
 async def endp_update_course_status(
     course_id: int,
     status: Literal[Status.archived, Status.approved, Status.generated],
@@ -79,7 +79,7 @@ async def endp_update_course_status(
     return update_course_status(db, course_id, status, user)
 
 
-@router.put("/{course_id}/published", operation_id="update_course_published")
+@router.put("/{course_id}/published", operation_id="update_course_published", dependencies=[require_role("guarantor")])
 async def endp_update_course_published(
     course_id: int,
     is_published: bool,
@@ -89,7 +89,7 @@ async def endp_update_course_published(
     return update_course_published(db, course_id, is_published, user)
 
 
-@router.delete("/{course_id}", operation_id="delete_course", status_code=204)
+@router.delete("/{course_id}", operation_id="delete_course", status_code=204, dependencies=[require_role("guarantor")])
 async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
     delete_course(db, course_id, user)
 

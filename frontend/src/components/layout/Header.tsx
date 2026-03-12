@@ -6,10 +6,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { MessageCircle, UserRound, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
 
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user, loading, login, logout } = useAuth();
+  const { can } = useRole();
   
   const isActive = (path: string) => pathname === path;
   
@@ -111,6 +113,7 @@ export function Header() {
                 )}
               </Link>
             </li>
+            {can('lector') && (
             <li>
               <Link
                 href="/admin"
@@ -131,6 +134,7 @@ export function Header() {
                 )}
               </Link>
             </li>
+            )}
           </ul>
 
           {/* User Actions */}
