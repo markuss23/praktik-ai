@@ -24,7 +24,7 @@
     "axios": "^1.13.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
-    "next": "15.5.4",
+    "next": "^15.5.12",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.4.0"
@@ -33,7 +33,6 @@
     "@eslint/eslintrc": "^3",
     "@openapitools/openapi-generator-cli": "^2.25.0",
     "@tailwindcss/postcss": "^4",
-    "@types/axios": "^0.9.36",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
