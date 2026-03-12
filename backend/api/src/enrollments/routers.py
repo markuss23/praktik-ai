@@ -35,8 +35,8 @@ def endp_create_enrollment(
     return create_enrollment(db, user_id=data.user_id, course_id=data.course_id, actor=actor)
 
 
-@router.delete("/{enrollment_id}", operation_id="delete_enrollment", status_code=204, dependencies=[require_role("lector")])
-def endp_delete_enrollment(
+@router.delete("/{enrollment_id}", operation_id="remove_from_course", status_code=204, dependencies=[require_role("lector")])
+def endp_remove_from_course(
     enrollment_id: int,
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
@@ -45,8 +45,8 @@ def endp_delete_enrollment(
     delete_enrollment(db, enrollment_id=enrollment_id, actor=actor)
 
 
-@router.delete("/{enrollment_id}/soft", operation_id="soft_delete_enrollment", status_code=204, dependencies=[require_role("superadmin")])
-def endp_soft_delete_enrollment(
+@router.delete("/{enrollment_id}/delete", operation_id="delete_enrollment", status_code=204, dependencies=[require_role("superadmin")])
+def endp_delete_enrollment(
     enrollment_id: int,
     db: SessionSqlSessionDependency,
 ) -> None:
