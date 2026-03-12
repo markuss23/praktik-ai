@@ -33,9 +33,10 @@ from api.enums import Status
 
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
+public_router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
-@router.get("", operation_id="list_courses")
+@public_router.get("", operation_id="list_courses")
 async def list_courses(
     db: SessionSqlSessionDependency,
     include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
