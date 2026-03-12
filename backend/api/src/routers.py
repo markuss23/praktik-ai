@@ -9,6 +9,7 @@ from api.src.users.routers import router as users_router
 from api.src.enrollments.routers import router as enrollments_router
 from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
+from api.src.superadmin.routers import router as superadmin_router
 from api.dependencies import auth
 
 router = APIRouter()
@@ -26,6 +27,7 @@ router.include_router(agents_router, dependencies=[Depends(auth.get_current_user
 router.include_router(users_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(enrollments_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(feedbacks_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(superadmin_router, dependencies=[Depends(auth.get_current_user)])
 # --
 # router.include_router(categories_router)
 # router.include_router(courses_router)
