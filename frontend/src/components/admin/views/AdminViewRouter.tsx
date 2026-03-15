@@ -28,7 +28,7 @@ function ViewLoadingFallback() {
 
 // Router používá query params + shallow routing (bez reload stránky)
 export function AdminViewRouter() {
-  const { currentView, courseId, moduleId } = useAdminNavigation();
+  const { currentView, courseId, moduleId, moduleIndex } = useAdminNavigation();
 
   const renderView = () => {
     switch (currentView) {
@@ -36,13 +36,13 @@ export function AdminViewRouter() {
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseContentView courseId={courseId} />;
+        return <CourseContentView courseId={courseId} initialModuleIndex={moduleIndex} />;
 
       case 'course-tests':
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseTestsView courseId={courseId} />;
+        return <CourseTestsView courseId={courseId} initialModuleIndex={moduleIndex} />;
 
       case 'course-summary':
         if (!courseId) {

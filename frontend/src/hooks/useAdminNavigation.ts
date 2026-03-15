@@ -20,6 +20,7 @@ export interface AdminNavigationState {
   view: AdminView;
   courseId?: number;
   moduleId?: number;
+  moduleIndex?: number; // 0-based index of module in course-content / course-tests views
 }
 
 /**
@@ -37,11 +38,13 @@ export function useAdminNavigation() {
     const view = (searchParams.get('view') as AdminView) || 'courses';
     const courseIdStr = searchParams.get('courseId');
     const moduleIdStr = searchParams.get('moduleId');
+    const moduleIndexStr = searchParams.get('moduleIndex');
     
     return {
       view,
       courseId: courseIdStr ? parseInt(courseIdStr, 10) : undefined,
       moduleId: moduleIdStr ? parseInt(moduleIdStr, 10) : undefined,
+      moduleIndex: moduleIndexStr ? parseInt(moduleIndexStr, 10) : undefined,
     };
   }, [searchParams]);
 
@@ -66,6 +69,10 @@ export function useAdminNavigation() {
       params.set('moduleId', mergedState.moduleId.toString());
     }
     
+    if (mergedState.moduleIndex !== undefined) {
+      params.set('moduleIndex', mergedState.moduleIndex.toString());
+    }
+    
     const queryString = params.toString();
     const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
     
@@ -84,8 +91,8 @@ export function useAdminNavigation() {
   /**
    * Navigate to course content editor
    */
-  const goToCourseContent = useCallback((courseId: number) => {
-    navigate({ view: 'course-content', courseId, moduleId: undefined });
+  const goToCourseContent = useCallback((courseId: number, moduleIndex?: number) => {
+    navigate({ view: 'course-content', courseId, moduleId: undefined, moduleIndex });
   }, [navigate]);
 
   /**
@@ -119,8 +126,8 @@ export function useAdminNavigation() {
   /**
    * Navigate to course tests editor
    */
-  const goToCourseTests = useCallback((courseId: number) => {
-    navigate({ view: 'course-tests', courseId, moduleId: undefined });
+  const goToCourseTests = useCallback((courseId: number, moduleIndex?: number) => {
+    navigate({ view: 'course-tests', courseId, moduleId: undefined, moduleIndex });
   }, [navigate]);
 
   /**
@@ -142,6 +149,7 @@ export function useAdminNavigation() {
     currentView: currentState.view,
     courseId: currentState.courseId,
     moduleId: currentState.moduleId,
+    moduleIndex: currentState.moduleIndex,
     
     // Navigation methods
     navigate,

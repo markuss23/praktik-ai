@@ -42,12 +42,12 @@ def load_data_from_db_node(state: AgentState) -> AgentState:
     state["course_input"] = CourseInput(
         title=course.title,
         description=course.description,
-        modules_count=course.modules_count,
+        modules_count_ai_generated=course.modules_count_ai_generated,
         files=file_paths,
     )
 
     print(f"   -> Načten kurz: {course.title}")
-    print(f"   -> Počet modulů: {course.modules_count}")
+    print(f"   -> Počet modulů: {course.modules_count_ai_generated}")
     print(f"   -> Počet souborů: {len(file_paths)}")
 
     return state

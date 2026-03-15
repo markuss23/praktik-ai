@@ -23,7 +23,7 @@ def summarize_content_node(state: AgentState) -> AgentState:
 
     model = ChatOpenAI(model="gpt-5.2")
 
-    modules_count = course_input.modules_count
+    modules_count = course_input.modules_count_ai_generated
 
     prompt: str = f"""Analyzuj následující obsah a vytvoř strukturovaný souhrn optimalizovaný pro vytvoření vzdělávacího kurzu.
 

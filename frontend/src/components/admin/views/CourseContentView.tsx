@@ -26,10 +26,9 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseOutlineSidebar } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { 
-  Plus, 
   Bold, 
   Italic, 
   Underline as UnderlineIcon, 
@@ -45,7 +44,9 @@ import {
   Undo,
   Redo,
   Trash2,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ModuleContent {
@@ -64,21 +65,26 @@ interface LocalModule extends Partial<Module> {
 
 interface CourseContentViewProps {
   courseId: number;
+  initialModuleIndex?: number;
 }
 
 // Položka modulu s podporou přetahování
 function SortableModuleItem({ 
   module, 
   index, 
-  isSelected, 
-  onSelect, 
+  isSelected,
+  isExpanded,
+  onSelect,
+  onToggleExpand,
   onDelete,
   isTemporary 
 }: { 
   module: LocalModule; 
   index: number; 
-  isSelected: boolean; 
+  isSelected: boolean;
+  isExpanded?: boolean;
   onSelect: () => void;
+  onToggleExpand?: () => void;
   onDelete?: () => void;
   isTemporary?: boolean;
 }) {
@@ -101,7 +107,7 @@ function SortableModuleItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
+      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
         isSelected 
           ? 'bg-purple-50 border-l-4 border-l-purple-600' 
           : 'hover:bg-gray-50 border-l-4 border-l-transparent'
@@ -122,6 +128,20 @@ function SortableModuleItem({
         {module.title}
         {isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
       </span>
+      {onToggleExpand && module.practiceQuestions && module.practiceQuestions.length > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand();
+          }}
+          className="p-1 hover:bg-gray-100 rounded flex-shrink-0"
+          title={isExpanded ? 'Skrýt testy' : 'Zobrazit testy'}
+        >
+          {isExpanded
+            ? <ChevronUp size={14} className="text-gray-400" />
+            : <ChevronDown size={14} className="text-gray-400" />}
+        </button>
+      )}
       {isTemporary && onDelete && (
         <button
           onClick={(e) => {
@@ -170,14 +190,15 @@ function ToolbarButton({
 }
 
 // Editor obsahu kurzu s rich text editorem
-export function CourseContentView({ courseId }: CourseContentViewProps) {
+export function CourseContentView({ courseId, initialModuleIndex }: CourseContentViewProps) {
   const { goToCourseTests, goBack } = useAdminNavigation();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
   const [modules, setModules] = useState<LocalModule[]>([]);
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
+  const [selectedModuleIndex, setSelectedModuleIndex] = useState(initialModuleIndex ?? 0);
+  const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([initialModuleIndex ?? 0]));
   const [showAddModuleModal, setShowAddModuleModal] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [nextTempId, setNextTempId] = useState(-1);
@@ -301,6 +322,18 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
 
   const selectModule = (index: number) => {
     setSelectedModuleIndex(index);
+  };
+
+  const toggleOutlineItem = (index: number) => {
+    setExpandedOutlineItems(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -484,8 +517,7 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
 
   const handleContinue = async () => {
     await saveContent();
-    // Přechod na editor testů
-    goToCourseTests(courseId);
+    goToCourseTests(courseId, selectedModuleIndex);
   };
 
   const handleBack = async () => {
@@ -516,104 +548,8 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
       />
 
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
-        {/* Left Sidebar - Course Outline */}
-        <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-black">Osnova kurzu</h2>
-              <button 
-                className="p-1 hover:bg-gray-100 rounded"
-                onClick={() => setShowAddModuleModal(true)}
-                title="Přidat modul"
-              >
-                <Plus size={18} className="text-gray-600" />
-              </button>
-            </div>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={modules.map(m => m.moduleId)}
-                strategy={verticalListSortingStrategy}
-              >
-                {modules.map((module, index) => (
-                  <SortableModuleItem
-                    key={module.moduleId}
-                    module={module}
-                    index={index}
-                    isSelected={selectedModuleIndex === index}
-                    onSelect={() => selectModule(index)}
-                    onDelete={module.isTemporary ? () => handleDeleteModule(index) : undefined}
-                    isTemporary={module.isTemporary}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-            
-            {modules.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                Žádné moduly
-              </div>
-            )}
-          </div>
 
-          {/* Add Module Modal */}
-          {showAddModuleModal && (
-            <div className="fixed inset-0 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl border border-gray-300">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-black">Přidat nový modul</h3>
-                  <button
-                    onClick={() => {
-                      setShowAddModuleModal(false);
-                      setNewModuleTitle('');
-                    }}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    <X size={20} className="text-gray-500" />
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={newModuleTitle}
-                  onChange={(e) => setNewModuleTitle(e.target.value)}
-                  placeholder="Název modulu"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black mb-4"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddModule();
-                    }
-                  }}
-                />
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setShowAddModuleModal(false);
-                      setNewModuleTitle('');
-                    }}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                  >
-                    Zrušit
-                  </button>
-                  <button
-                    onClick={handleAddModule}
-                    disabled={!newModuleTitle.trim()}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  >
-                    Přidat
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Content - Editor */}
+        {/* Left Content - Editor */}
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Úpravy podkladů ke kurzu</h2>
@@ -767,9 +703,113 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
           <PageFooterActions
             onBack={handleBack}
             onContinue={handleContinue}
+            continueLabel="Pokračovat na tvorbu testu"
           />
         </div>
+
+        {/* Right Sidebar - Course Outline */}
+        <CourseOutlineSidebar
+          onAddModule={() => setShowAddModuleModal(true)}
+          width="w-72"
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={modules.map(m => m.moduleId)}
+              strategy={verticalListSortingStrategy}
+            >
+              {modules.map((module, index) => (
+                <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+                  <SortableModuleItem
+                    module={module}
+                    index={index}
+                    isSelected={selectedModuleIndex === index}
+                    isExpanded={expandedOutlineItems.has(index)}
+                    onSelect={() => selectModule(index)}
+                    onToggleExpand={() => toggleOutlineItem(index)}
+                    onDelete={module.isTemporary ? () => handleDeleteModule(index) : undefined}
+                    isTemporary={module.isTemporary}
+                  />
+                  {expandedOutlineItems.has(index) && module.practiceQuestions && module.practiceQuestions.length > 0 && (
+                    <div className="pb-1">
+                      {module.practiceQuestions.map((q, qIdx) => (
+                        <div
+                          key={q.questionId ?? qIdx}
+                          className="pl-10 pr-4 py-1.5 text-xs text-gray-500 hover:bg-gray-50 truncate"
+                        >
+                          {q.question
+                            ? (q.question.length > 35 ? q.question.substring(0, 35) + '…' : q.question)
+                            : `Otázka ${qIdx + 1}`}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          {modules.length === 0 && (
+            <div className="p-4 text-center text-gray-500 text-sm">
+              Žádné moduly
+            </div>
+          )}
+        </CourseOutlineSidebar>
       </div>
+
+      {/* Add Module Modal */}
+      {showAddModuleModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl border border-gray-300">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-black">Přidat nový modul</h3>
+              <button
+                onClick={() => {
+                  setShowAddModuleModal(false);
+                  setNewModuleTitle('');
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={newModuleTitle}
+              onChange={(e) => setNewModuleTitle(e.target.value)}
+              placeholder="Název modulu"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black mb-4"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddModule();
+                }
+              }}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowAddModuleModal(false);
+                  setNewModuleTitle('');
+                }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={handleAddModule}
+                disabled={!newModuleTitle.trim()}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Přidat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

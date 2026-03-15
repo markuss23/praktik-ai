@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Module, QuestionType } from '@/api';
 import { getCourse, updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, LoadingState, ErrorState, CourseOutlineSidebar } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { 
-  ChevronDown, 
-  ChevronUp, 
   Plus, 
-  Trash2
+  Trash2,
+  ArrowRight,
+  Check,
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -32,10 +32,11 @@ interface ValidationError {
 
 interface CourseTestsViewProps {
   courseId: number;
+  initialModuleIndex?: number;
 }
 
 // Editor testů/otázek pro moduly kurzu
-export function CourseTestsView({ courseId }: CourseTestsViewProps) {
+export function CourseTestsView({ courseId, initialModuleIndex }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
   
   const [loading, setLoading] = useState(true);
@@ -43,8 +44,8 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
-  const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
+  const [selectedModuleIndex, setSelectedModuleIndex] = useState(initialModuleIndex ?? 0);
+  const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([initialModuleIndex ?? 0]));
   
   // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
@@ -408,15 +409,22 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
   };
 
   const handleContinue = async () => {
+    await saveTestContent();
+    const nextModuleIndex = modules.length > 1
+      ? (selectedModuleIndex + 1) % modules.length
+      : 0;
+    goToCourseContent(courseId, nextModuleIndex);
+  };
+
+  const handleFinish = async () => {
     // Nejdřív validace otázek
     const errors = validateQuestions();
     if (errors.length > 0) {
       setValidationErrors(errors);
-      // Scroll nahoru pro zobrazení chyb
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    
+
     setValidationErrors([]);
     await saveTestContent();
     goToCourseSummary(courseId);
@@ -424,7 +432,7 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
 
   const handleBack = async () => {
     await saveTestContent();
-    goToCourseContent(courseId);
+    goToCourseContent(courseId, selectedModuleIndex);
   };
 
   if (loading) {
@@ -446,19 +454,6 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
   };
-
-  const outlineItems = modules.map((module, index) => {
-    const questionsForModule = moduleQuestions[index] || [];
-    return {
-      id: index,
-      title: module.title,
-      isExpanded: expandedOutlineItems.has(index),
-      subItems: questionsForModule.map((q, qIdx) => ({
-        label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
-        questionIndex: qIdx,
-      })),
-    };
-  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
@@ -490,60 +485,7 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
       )}
 
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
-        {/* Left Sidebar - Course Outline */}
-        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-black">Osnova kurzu</h2>
-              <button className="p-1 hover:bg-gray-100 rounded">
-                <Plus size={16} className="text-gray-600" />
-              </button>
-            </div>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            {outlineItems.map((item, index) => (
-              <div key={item.id} className="border-b border-gray-100 last:border-b-0">
-                <div
-                  className={`flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 ${
-                    selectedModuleIndex === index ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'border-l-4 border-l-transparent'
-                  }`}
-                  onClick={() => {
-                    const isOpening = !expandedOutlineItems.has(index);
-                    toggleOutlineItem(index);
-                    if (isOpening) {
-                      selectModule(index);
-                    }
-                  }}
-                >
-                  {item.isExpanded ? (
-                    <ChevronDown size={16} className="text-gray-400" />
-                  ) : (
-                    <ChevronUp size={16} className="text-gray-400" />
-                  )}
-                  <span className="text-sm text-black font-medium truncate">{item.title}</span>
-                </div>
-                {item.isExpanded && item.subItems && item.subItems.length > 0 && (
-                  <div className="pb-2">
-                    {item.subItems.map((subItem, subIndex) => (
-                      <div
-                        key={subIndex}
-                        className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          scrollToQuestion(index, subItem.questionIndex);
-                        }}
-                      >
-                        {subItem.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Content - Test Editor */}
+        {/* Left Content - Test Editor */}
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Úprava testu</h2>
@@ -646,14 +588,81 @@ export function CourseTestsView({ courseId }: CourseTestsViewProps) {
             </button>
           </div>
 
-          <PageFooterActions
-            onBack={handleBack}
-            onContinue={handleContinue}
-          />
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="text-gray-600 hover:text-gray-800 transition-colors text-sm font-medium"
+            >
+              Zpět
+            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleContinue}
+                className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+              >
+                <ArrowRight size={16} />
+                <span>Pokračovat</span>
+              </button>
+              <button
+                onClick={handleFinish}
+                className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+              >
+                <Check size={16} />
+                <span>Dokončit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar - Course Outline */}
+        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex flex-col">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-black">Osnova kurzu</h2>
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {outlineItems.map((item, index) => (
+              <div key={item.id} className="border-b border-gray-100 last:border-b-0">
+                <div
+                  className={`flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 ${
+                    selectedModuleIndex === index ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'border-l-4 border-l-transparent'
+                  }`}
+                  onClick={() => {
+                    const isOpening = !expandedOutlineItems.has(index);
+                    toggleOutlineItem(index);
+                    if (isOpening) {
+                      selectModule(index);
+                    }
+                  }}
+                >
+                  {item.isExpanded ? (
+                    <ChevronDown size={16} className="text-gray-400" />
+                  ) : (
+                    <ChevronUp size={16} className="text-gray-400" />
+                  )}
+                  <span className="text-sm text-black font-medium truncate">{item.title}</span>
+                </div>
+                {item.isExpanded && item.subItems && item.subItems.length > 0 && (
+                  <div className="pb-2">
+                    {item.subItems.map((subItem, subIndex) => (
+                      <div
+                        key={subIndex}
+                        className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scrollToQuestion(index, subItem.questionIndex);
+                        }}
+                      >
+                        {subItem.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default CourseTestsView;

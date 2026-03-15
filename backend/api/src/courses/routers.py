@@ -1,5 +1,6 @@
 from typing import Literal
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File
+from langgraph.graph.state import CompiledStateGraph
 
 from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
@@ -9,7 +10,9 @@ from api.src.common.annotations import (
 )
 from api.src.courses.schemas import (
     CourseCreate,
+    CourseCreated,
     Course,
+    CourseDetail,
     CourseUpdate,
     CourseFile,
     CourseLink,
@@ -28,8 +31,9 @@ from api.src.courses.controllers import (
     update_course_status,
     update_course_published,
 )
-from api.database import SessionSqlSessionDependency
-from api.enums import Status
+from api.database import SessionLocal, SessionSqlSessionDependency
+from agents.embedding_generator import create_graph as create_embedding_graph
+from agents.embedding_generator.state import AgentState
 
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -54,12 +58,12 @@ async def list_courses(
 @router.post("", operation_id="create_course", dependencies=[require_role("lector")])
 async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
-) -> Course:
+) -> CourseCreated:
     return create_course(db, course, user)
 
 
 @router.get("/{course_id}", operation_id="get_course")
-async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> Course:
+async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> CourseDetail:
     return get_course(db, course_id)
 
 
@@ -70,14 +74,32 @@ async def endp_update_course(
     return update_course(db, course_id, course, user)
 
 
-@router.put("/{course_id}/status", operation_id="update_course_status", dependencies=[require_role("guarantor")])
+async def _generate_embeddings(course_id: int) -> None:
+    """Background task: vygeneruje embeddingy pro kurz."""
+    db: SessionSqlSessionDependency = SessionLocal()
+    try:
+        app: CompiledStateGraph[AgentState, None, AgentState, AgentState] = create_embedding_graph()
+        await app.ainvoke({"course_id": course_id, "db": db})
+    except Exception as e:
+        print(f"Chyba při generování embeddingů pro kurz {course_id}: {e}")
+    finally:
+        db.close()
+
+
+@router.put("/{course_id}/status", operation_id="update_course_status")
 async def endp_update_course_status(
     course_id: int,
-    status: Literal[Status.archived, Status.approved, Status.generated],
+    status: Literal["edited", "in_review", "approved", "archived"],
     db: SessionSqlSessionDependency,
     user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> Course:
-    return update_course_status(db, course_id, status, user)
+    result = update_course_status(db, course_id, status, user)
+
+    if status == "approved":
+        background_tasks.add_task(_generate_embeddings, course_id)
+
+    return result
 
 
 @router.put("/{course_id}/published", operation_id="update_course_published", dependencies=[require_role("guarantor")])

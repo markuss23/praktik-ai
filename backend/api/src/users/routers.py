@@ -13,7 +13,6 @@ from api.src.users.schemas import UserRoleResponse, UserRoleUpdate, UserWithRole
 router = APIRouter(
     prefix="/users",
     tags=["Users"],
-    # require_role("superadmin") zajišťuje, že endpoint smí volat výhradně superadmin
     dependencies=[require_role("superadmin")],
 )
 

@@ -40,7 +40,7 @@ async def generate_course(
     # Validace vlastnictví
     validate_ownership(course, user, "kurz")
 
-    if course.status != models.Status.draft:
+    if course.status != models.Status.draft and course.status != models.Status.failed:
         raise HTTPException(
             status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
         )
@@ -131,24 +131,41 @@ async def learn_blocks_chat(
     if learn_block is None:
         raise HTTPException(status_code=404, detail="Learn block nenalezen")
 
-    if (
-        learn_block.module.course.status == "approved"
-        and learn_block.module.course.is_active == True
-    ) or (
-        learn_block.module.course.status == "archived"
-        and learn_block.module.course.is_active == True
+    if not (
+        learn_block.module.course.is_active
+        and learn_block.module.course.status in ("approved", "archived")
     ):
-        pass
-    else:
         raise HTTPException(
             status_code=400, detail="Learn block není v aktivním a schváleném kurzu"
+        )
+    print(f"User {user.user_id} is trying to chat with learn block {learn_block_id} in course {learn_block.module.course.course_id}")
+    enrollment = db.execute(
+        select(models.Enrollment).where(
+            models.Enrollment.user_id == user.user_id,
+            models.Enrollment.course_id == learn_block.module.course.course_id,
+            models.Enrollment.is_active.is_(True),
+        )
+    ).scalars().first()
+
+    if enrollment is None:
+        raise HTTPException(
+            status_code=403, detail="Nejste zapsáni v tomto kurzu"
         )
 
     app = create_learn_block_mentor_graph()
     result = await app.ainvoke(
-        {"learn_block_id": learn_block_id, "message": message, "db": db}
+        {"learn_block_id": learn_block_id, "user_id": user.user_id, "message": message, "db": db}
     )
 
-    return LearnBlocksChatResponse(
-        answer=result.get("answer", "Odpověď nebyla vygenerována")
+    answer = result.get("answer", "Odpověď nebyla vygenerována")
+
+    log = models.MentorInteractionLog(
+        user_id=user.user_id,
+        learn_id=learn_block_id,
+        user_message=message,
+        ai_response=answer,
     )
+    db.add(log)
+    db.commit()
+
+    return LearnBlocksChatResponse(answer=answer)

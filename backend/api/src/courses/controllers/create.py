@@ -2,35 +2,59 @@
 Controllery pro vytváření zdrojů kurzu.
 """
 
-import uuid
-from pathlib import PurePosixPath
-
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
-from api.src.courses.schemas import Course, CourseCreate, CourseFile, CourseLink
+from api.src.courses.schemas import CourseCreate, CourseCreated, CourseFile, CourseLink
 from api import enums
 from api.authorization import validate_ownership
 from api.storage import seaweedfs
 
 
-def create_course(db: Session, course_data: CourseCreate, user: models.User) -> Course:
-    """Vytvoří nový kurz"""
+def create_course(
+    db: Session, course_data: CourseCreate, user: models.User
+) -> CourseCreated:
+    """Vytvoří nový kurz ve stavu draft"""
     try:
         if (
             db.execute(
-                select(models.Category).where(
-                    models.Category.category_id == course_data.category_id,
-                    models.Category.is_active.is_(True),
+                select(models.CourseBlock).where(
+                    models.CourseBlock.block_id == course_data.course_block_id,
+                    models.CourseBlock.is_active.is_(True),
                 )
             ).first()
             is None
         ):
             raise HTTPException(
-                status_code=400, detail="Kategorie s tímto ID neexistuje"
+                status_code=400, detail="Tematický blok s tímto ID neexistuje"
             )
+
+        if (
+            db.execute(
+                select(models.CourseTarget).where(
+                    models.CourseTarget.target_id == course_data.course_target_id,
+                    models.CourseTarget.is_active.is_(True),
+                )
+            ).first()
+            is None
+        ):
+            raise HTTPException(
+                status_code=400, detail="Cílová skupina s tímto ID neexistuje"
+            )
+
+        if (
+            course_data.course_subject_id is not None
+            and db.execute(
+                select(models.CourseSubject).where(
+                    models.CourseSubject.subject_id == course_data.course_subject_id,
+                    models.CourseSubject.is_active.is_(True),
+                )
+            ).first()
+            is None
+        ):
+            raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
         if db.execute(
             select(models.Course).where(
@@ -42,30 +66,24 @@ def create_course(db: Session, course_data: CourseCreate, user: models.User) -> 
                 status_code=400, detail="Kurz s tímto názvem již existuje"
             )
 
-        # Přiřadí vlastníka kurzu
-        course_dict = course_data.model_dump()
-        course_dict["owner_id"] = user.user_id
-
-        course = models.Course(**course_dict)
-
+        course = models.Course(**course_data.model_dump(), owner_id=user.user_id)
         db.add(course)
         db.commit()
         db.refresh(course)
 
-        return course
+        return CourseCreated.model_validate(course)
     except HTTPException:
         raise
     except Exception as e:
         print(f"create_course error: {e}")
-        raise HTTPException(status_code=500, detail=" Nečekávaná chyba serveru") from e
+        raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
 async def upload_course_file(
     db: Session, course_id: int, file: UploadFile, user: models.User
 ) -> CourseFile:
-    """Nahraje soubor ke kurzu"""
+    """Nahraje soubor ke kurzu (pouze v draft stavu)"""
     try:
-        # Ověř, že kurz existuje
         course: models.Course | None = (
             db.execute(
                 select(models.Course).where(
@@ -80,7 +98,6 @@ async def upload_course_file(
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        # Validace vlastnictví
         validate_ownership(course, user, "kurz")
 
         if course.status != enums.Status.draft:
@@ -88,10 +105,8 @@ async def upload_course_file(
                 status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
             )
 
-        # Vygeneruj unikátní cestu v SeaweedFS
         remote_path = f"courses/{course_id}/{file.filename}"
 
-        # Nahraj soubor do SeaweedFS
         content = await file.read()
         seaweedfs.upload_file(
             remote_path,
@@ -100,7 +115,6 @@ async def upload_course_file(
             file.content_type or "application/octet-stream",
         )
 
-        # Ulož záznam do DB (file_path = cesta v SeaweedFS)
         course_file = models.CourseFile(
             course_id=course_id,
             filename=file.filename or "unknown",
@@ -123,9 +137,8 @@ async def upload_course_file(
 def create_course_link(
     db: Session, course_id: int, url: str, user: models.User
 ) -> CourseLink:
-    """Vytvoří odkaz kurzu"""
+    """Vytvoří odkaz kurzu (pouze v draft stavu)"""
     try:
-        # Ověř, že kurz existuje
         course: models.Course | None = (
             db.execute(
                 select(models.Course).where(
@@ -140,7 +153,6 @@ def create_course_link(
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        # Validace vlastnictví
         validate_ownership(course, user, "kurz")
 
         if course.status != enums.Status.draft:
@@ -148,33 +160,24 @@ def create_course_link(
                 status_code=400, detail="Nelze přidávat odkazy do publikovaných kurzů"
             )
 
-        # Ověř že je odkaz validní
         if not (url.startswith("http://") or url.startswith("https://")):
-            raise HTTPException(status_code=400, detail="Invalid URL")
+            raise HTTPException(status_code=400, detail="Neplatná URL adresa")
 
-        # Kontrola duplicitní URL
-        existing_link: models.CourseLink | None = (
+        if (
             db.execute(
                 select(models.CourseLink).where(
                     models.CourseLink.course_id == course_id,
                     models.CourseLink.url == url,
+                    models.CourseLink.is_active.is_(True),
                 )
-            )
-            .scalars()
-            .first()
-        )
-
-        if existing_link is not None:
+            ).first()
+            is not None
+        ):
             raise HTTPException(
                 status_code=400, detail="Odkaz s touto URL již pro tento kurz existuje"
             )
 
-        # Vytvoř záznam odkazu
-        course_link = models.CourseLink(
-            course_id=course_id,
-            url=url,
-        )
-
+        course_link = models.CourseLink(course_id=course_id, url=url)
         db.add(course_link)
         db.commit()
         db.refresh(course_link)

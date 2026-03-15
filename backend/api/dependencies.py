@@ -158,6 +158,9 @@ class Auth:
 
 
 ROLE_HIERARCHY: dict[str, int] = {
+    "superadmin": 4,
+    "guarantor": 3,
+    "lector": 2,
     "user": 1,
     "lector": 2,
     "guarantor": 3,

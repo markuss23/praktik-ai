@@ -1,5 +1,7 @@
 export { CourseModal } from './CourseModal';
 export { ModuleModal } from './ModuleModal';
+export { CourseOutlineSidebar } from './CourseOutlineSidebar';
+export type { OutlineModule, OutlineSubItem } from './CourseOutlineSidebar';
 export { DeleteConfirmModal } from './DeleteConfirmModal';
 export { AdminSidebar } from './AdminSidebar';
 export { CoursePageHeader } from './CoursePageHeader';
