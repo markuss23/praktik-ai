@@ -57,7 +57,8 @@ def delete_course(db: Session, course_id: int, user: models.User) -> None:
                     status_code=403,
                     detail="Nemáte oprávnění smazat kurz v tomto stavu",
                 )
-            validate_ownership(course, user, "kurz")
+            # Only owner can delete (superadmin bypassed above, guarantor cannot delete others courses)
+            validate_ownership(course, user, "kurz", allow_elevated=False)
 
         if course.status == Status.draft:
             # Hard delete — odstraň soubory ze SeaweedFS a pak z DB

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select, update
 
-from api.dependencies import CurrentUser
+from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_ownership
 from api.src.agents.schemas import (
     GenerateCourseResponse,
@@ -18,7 +18,7 @@ from api import models
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-@router.post("/generate-course", operation_id="generate_course")
+@router.post("/generate-course", operation_id="generate_course", dependencies=[require_role("lector")])
 async def generate_course(
     course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> GenerateCourseResponse:
@@ -66,7 +66,7 @@ async def generate_course(
     )
 
 
-@router.post("/generate-course-embeddings", operation_id="generate_course_embeddings")
+@router.post("/generate-course-embeddings", operation_id="generate_course_embeddings", dependencies=[require_role("lector")])
 async def generate_course_embeddings(
     course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> GenerateEmbeddingsResponse:

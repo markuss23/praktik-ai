@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Module } from '@/api';
 import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
+import { Course as CourseType } from '@/api';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState, DeleteConfirmModal } from '@/components/admin';
@@ -20,7 +21,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [categoryId, setCategoryId] = useState<number>(1);
+  const [courseData, setCourseData] = useState<CourseType | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
@@ -35,8 +36,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     async function loadCourse() {
       try {
         const course = await getCourse(courseId);
-        
-        setCategoryId(course.categoryId);
+
+        setCourseData(course);
         setModules(course.modules || []);
         setFormData({
           title: course.title,
@@ -98,19 +99,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     setError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      
-      const updateData = {
-        title: formData.title,
-        description: formData.description || undefined,
-        modulesCount: modules.length || 3,
-        categoryId: categoryId,
-      };
-      
       await coursesApi.updateCourse({
         courseId: courseId,
-        courseUpdate: updateData
+        courseUpdate: {
+          title: formData.title,
+          description: formData.description || undefined,
+          courseBlockId: courseData?.courseBlockId ?? 1,
+          courseTargetId: courseData?.courseTargetId ?? 1,
+          courseSubjectId: courseData?.courseSubjectId ?? 1,
+        },
       });
       
       goToCourses();

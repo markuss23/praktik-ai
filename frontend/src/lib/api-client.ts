@@ -1,10 +1,10 @@
-import { 
-  Configuration, 
-  CoursesApi, 
-  ModulesApi, 
-  ActivitiesApi, 
-  AgentsApi, 
-  CategoriesApi,
+import {
+  Configuration,
+  CoursesApi,
+  ModulesApi,
+  ActivitiesApi,
+  AgentsApi,
+  CatalogsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -46,7 +46,7 @@ export const coursesApi = new CoursesApi(configuration);
 export const modulesApi = new ModulesApi(configuration);
 export const activitiesApi = new ActivitiesApi(configuration);
 export const agentsApi = new AgentsApi(configuration);
-export const categoriesApi = new CategoriesApi(configuration);
+export const catalogsApi = new CatalogsApi(configuration);
 
 // Course API functions
 export async function getCourses(params?: {
@@ -68,13 +68,19 @@ export async function getCourse(courseId: number) {
 export async function createCourse(data: {
   title: string;
   description?: string;
-  modulesCount?: number;
-  categoryId?: number;
+  modulesCountAiGenerated?: number;
+  courseBlockId: number;
+  courseTargetId: number;
+  courseSubjectId: number;
 }) {
   return coursesApi.createCourse({
     courseCreate: {
-      ...data,
-      categoryId: data.categoryId ?? 1, // Default category
+      title: data.title,
+      description: data.description,
+      modulesCountAiGenerated: data.modulesCountAiGenerated ?? 3,
+      courseBlockId: data.courseBlockId,
+      courseTargetId: data.courseTargetId,
+      courseSubjectId: data.courseSubjectId,
     },
   });
 }
@@ -173,18 +179,18 @@ export async function deleteCourseLink(courseId: number, linkId: number) {
   return coursesApi.deleteCourseLink({ courseId, linkId });
 }
 
-// ============ Categories API functions ============
+// ============ Catalogs API functions ============
 
-export async function getCategories(includeInactive = false) {
-  return categoriesApi.listCategories({ includeInactive });
+export async function getCourseBlocks() {
+  return catalogsApi.listCourseBlocks();
 }
 
-export async function createCategory(name: string) {
-  return categoriesApi.createCategory({ categoryCreate: { name } });
+export async function getCourseTargets() {
+  return catalogsApi.listCourseTargets();
 }
 
-export async function deleteCategory(categoryId: number) {
-  return categoriesApi.deleteCategory({ categoryId });
+export async function getCourseSubjects() {
+  return catalogsApi.listCourseSubjects();
 }
 
 // ============ Activities API functions ============

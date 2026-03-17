@@ -11,7 +11,7 @@ class CourseBase(ORMModel):
     description: str | None = None
     course_block_id: int
     course_target_id: int
-    course_subject_id: int
+    course_subject_id: int | None = None
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     min_modules_to_open_final_exam: int = Field(default=1, ge=1)
 

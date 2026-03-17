@@ -15,7 +15,7 @@ from api.src.common.annotations import (
 
 from api.database import SessionSqlSessionDependency
 
-from api.dependencies import CurrentUser
+from api.dependencies import CurrentUser, require_role
 
 router = APIRouter(prefix="/modules", tags=["Modules"])
 
@@ -35,7 +35,7 @@ async def list_modules(
     )
 
 
-@router.post("", operation_id="create_module")
+@router.post("", operation_id="create_module", dependencies=[require_role("lector")])
 async def endp_create_module(
     module: ModuleCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Module:
@@ -51,7 +51,7 @@ async def endp_get_module(
     return get_module(db, module_id, user)
 
 
-@router.put("/{module_id}", operation_id="update_module")
+@router.put("/{module_id}", operation_id="update_module", dependencies=[require_role("lector")])
 async def endp_update_module(
     module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Module:

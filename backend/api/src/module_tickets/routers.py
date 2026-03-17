@@ -14,7 +14,7 @@ router = APIRouter(prefix="/module-tickets", tags=["Module Tickets"])
 
 
 @router.get(
-    "", operation_id="list_module_tickets", dependencies=[require_role("student")]
+    "", operation_id="list_module_tickets", dependencies=[require_role("user")]
 )
 def endp_list_module_tickets(
     course_id: int,
@@ -26,7 +26,7 @@ def endp_list_module_tickets(
 
 
 @router.post(
-    "", operation_id="create_module_ticket", dependencies=[require_role("student")]
+    "", operation_id="create_module_ticket", dependencies=[require_role("user")]
 )
 def endp_create_module_ticket(
     data: TicketCreate,
@@ -56,7 +56,7 @@ def endp_reply_to_module_ticket(
     "/{ticket_id}",
     operation_id="delete_module_ticket",
     status_code=204,
-    dependencies=[require_role("student")],
+    dependencies=[require_role("user")],
 )
 def endp_delete_module_ticket(
     ticket_id: int,

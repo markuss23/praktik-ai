@@ -55,6 +55,11 @@ async def list_courses(
     )
 
 
+@public_router.get("/{course_id}", operation_id="get_course_public")
+async def endp_get_course_public(course_id: int, db: SessionSqlSessionDependency) -> CourseDetail:
+    return get_course(db, course_id)
+
+
 @router.post("", operation_id="create_course", dependencies=[require_role("lector")])
 async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
@@ -67,7 +72,7 @@ async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> Co
     return get_course(db, course_id)
 
 
-@router.put("/{course_id}", operation_id="update_course")
+@router.put("/{course_id}", operation_id="update_course", dependencies=[require_role("lector")])
 async def endp_update_course(
     course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Course:
@@ -86,7 +91,7 @@ async def _generate_embeddings(course_id: int) -> None:
         db.close()
 
 
-@router.put("/{course_id}/status", operation_id="update_course_status")
+@router.put("/{course_id}/status", operation_id="update_course_status", dependencies=[require_role("lector")])
 async def endp_update_course_status(
     course_id: int,
     status: Literal["edited", "in_review", "approved", "archived"],
@@ -102,7 +107,7 @@ async def endp_update_course_status(
     return result
 
 
-@router.put("/{course_id}/published", operation_id="update_course_published")
+@router.put("/{course_id}/published", operation_id="update_course_published", dependencies=[require_role("lector")])
 async def endp_update_course_published(
     course_id: int,
     is_published: bool,
@@ -112,7 +117,7 @@ async def endp_update_course_published(
     return update_course_published(db, course_id, is_published, user)
 
 
-@router.delete("/{course_id}", operation_id="delete_course", status_code=204)
+@router.delete("/{course_id}", operation_id="delete_course", status_code=204, dependencies=[require_role("lector")])
 async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
     delete_course(db, course_id, user)
 
@@ -120,7 +125,7 @@ async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency, us
 # ---------- File endpoints ----------
 
 
-@router.post("/{course_id}/files", operation_id="upload_course_file")
+@router.post("/{course_id}/files", operation_id="upload_course_file", dependencies=[require_role("lector")])
 async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -132,7 +137,8 @@ async def endp_upload_course_file(
 
 
 @router.delete(
-    "/{course_id}/files/{file_id}", operation_id="delete_course_file", status_code=204
+    "/{course_id}/files/{file_id}", operation_id="delete_course_file", status_code=204,
+    dependencies=[require_role("lector")],
 )
 async def endp_delete_course_file(
     course_id: int, file_id: int, db: SessionSqlSessionDependency, user: CurrentUser
@@ -144,7 +150,7 @@ async def endp_delete_course_file(
 # ---------- Link endpoints ----------
 
 
-@router.post("/{course_id}/links", operation_id="create_course_link")
+@router.post("/{course_id}/links", operation_id="create_course_link", dependencies=[require_role("lector")])
 async def endp_create_course_link(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -168,6 +174,7 @@ async def endp_list_course_links(
     "/{course_id}/links/{link_id}",
     operation_id="delete_course_link",
     status_code=204,
+    dependencies=[require_role("lector")],
 )
 async def endp_delete_course_link(
     course_id: int, link_id: int, db: SessionSqlSessionDependency, user: CurrentUser

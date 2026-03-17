@@ -85,8 +85,8 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        if user.role not in (UserRole.guarantor, UserRole.superadmin):
-            validate_ownership(course, user, "kurz")
+        # Ownership check – guarantor/superadmin can change status of any course
+        validate_ownership(course, user, "kurz")
 
         valid_transitions = {
             Status.generated: {Status.edited},
@@ -99,10 +99,18 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if status not in allowed:
             raise HTTPException(status_code=400, detail="Neplatná změna statusu kurzu")
 
+        # Only guarantor or superadmin can approve a course
+        if status == Status.approved and user.role not in (UserRole.guarantor, UserRole.superadmin):
+            raise HTTPException(status_code=403, detail="Schvalovat kurzy může pouze garant nebo superadmin")
+
+        values: dict = {"status": status}
+        if status == Status.approved:
+            values["approved_by_id"] = user.user_id
+
         db.execute(
             update(models.Course)
             .where(models.Course.course_id == course_id)
-            .values(status=status)
+            .values(**values)
         )
         db.commit()
         db.refresh(course)

@@ -77,7 +77,9 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       await updateCourse(courseId, {
         title: editedTitle,
         description: editedDescription,
-        categoryId: course.categoryId || 1,
+        courseBlockId: course.courseBlockId,
+        courseTargetId: course.courseTargetId,
+        courseSubjectId: course.courseSubjectId,
       });
       goToCourses();
     } catch (err) {

@@ -1,7 +1,7 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, categoriesApi, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
-import { Course, Status, Module, UpdateCourseStatusStatusEnum, Category } from "@/api";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
@@ -32,12 +32,9 @@ export function CoursesListView() {
   // Approval state
   const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
 
-  // Categories for quick edit dropdown
-  const [categories, setCategories] = useState<Category[]>([]);
-
   // Quick edit state (inline accordion)
   const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
-  const [quickEditData, setQuickEditData] = useState<{ title: string; categoryId: number }>({ title: '', categoryId: 1 });
+  const [quickEditData, setQuickEditData] = useState<{ title: string }>({ title: '' });
   const [quickEditLoading, setQuickEditLoading] = useState(false);
 
   // Stavy modálních oken
@@ -97,10 +94,6 @@ export function CoursesListView() {
   useEffect(() => {
     loadCoursesList();
   }, [loadCoursesList]);
-
-  useEffect(() => {
-    categoriesApi.listCategories().then(setCategories).catch(console.error);
-  }, []);
 
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
@@ -170,7 +163,7 @@ export function CoursesListView() {
   };
 
   const getModuleCount = (course: Course) => {
-    return course.modules?.length || 0;
+    return course.modulesCount || 0;
   };
 
   // Handlery modálních oken
@@ -228,15 +221,9 @@ export function CoursesListView() {
           courseUpdate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            categoryId: existingCourse?.categoryId ?? 1,
-          }
-        });
-      } else {
-        await sharedCoursesApi.createCourse({
-          courseCreate: {
-            title: courseFormData.title,
-            description: courseFormData.description,
-            categoryId: 1,
+            courseBlockId: existingCourse?.courseBlockId ?? 1,
+            courseTargetId: existingCourse?.courseTargetId ?? 1,
+            courseSubjectId: existingCourse?.courseSubjectId ?? 1,
           }
         });
       }
@@ -299,28 +286,21 @@ export function CoursesListView() {
     }
   };
 
-  const handleApproveToggle = async (course: Course) => {
-    const isApproved = course.status === Status.Approved;
+  const handleApprove = async (course: Course) => {
     setApprovalLoading(course.courseId);
     try {
-      if (isApproved) {
-        // Revert approved → generated (for editing)
-        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Generated);
-      } else {
-        // Approve: generated → approved, then auto-generate embeddings
-        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
-        try {
-          await generateCourseEmbeddings(course.courseId);
-          setEmbeddingDone(prev => new Set(prev).add(course.courseId));
-        } catch (embErr) {
-          console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
-          alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
-        }
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
+      try {
+        await generateCourseEmbeddings(course.courseId);
+        setEmbeddingDone(prev => new Set(prev).add(course.courseId));
+      } catch (embErr) {
+        console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
+        alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
       }
       await loadCoursesList();
     } catch (error) {
-      console.error('Failed to toggle approval:', error);
-      alert(isApproved ? 'Nepodařilo se zrušit schválení kurzu.' : 'Nepodařilo se schválit kurz.');
+      console.error('Failed to approve course:', error);
+      alert('Nepodařilo se schválit kurz.');
     } finally {
       setApprovalLoading(null);
     }
@@ -332,7 +312,7 @@ export function CoursesListView() {
       return;
     }
     setQuickEditCourseId(course.courseId);
-    setQuickEditData({ title: course.title, categoryId: course.categoryId });
+    setQuickEditData({ title: course.title });
   };
 
   const closeQuickEdit = () => {
@@ -349,7 +329,9 @@ export function CoursesListView() {
         courseUpdate: {
           title: quickEditData.title,
           description: existingCourse?.description ?? undefined,
-          categoryId: quickEditData.categoryId,
+          courseBlockId: existingCourse?.courseBlockId ?? 1,
+          courseTargetId: existingCourse?.courseTargetId ?? 1,
+          courseSubjectId: existingCourse?.courseSubjectId ?? 1,
         },
       });
       await loadCoursesList();
@@ -432,18 +414,16 @@ export function CoursesListView() {
                             Rychlé úpravy
                           </button>
                           <span className="text-gray-400">|</span>
-                          {can('guarantor') && (course.status === Status.Generated || course.status === Status.Approved) && (
+                          {can('guarantor') && ((course.status as string) === 'in_review') && (
                             <>
                               <span className="text-gray-400">|</span>
                               <button
-                                onClick={() => handleApproveToggle(course)}
+                                onClick={() => handleApprove(course)}
                                 disabled={approvalLoading === course.courseId}
                                 className="text-teal-600 hover:text-teal-800 hover:underline whitespace-nowrap disabled:opacity-50"
                               >
                                 {approvalLoading === course.courseId
                                   ? 'Zpracovávám...'
-                                  : course.status === Status.Approved
-                                  ? 'Zrušit schválení'
                                   : 'Schválit'}
                               </button>
                             </>
@@ -492,15 +472,6 @@ export function CoursesListView() {
                                 placeholder="Název kurzu"
                                 className="flex-1 min-w-0 px-3 py-1.5 border border-purple-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
                               />
-                              <select
-                                value={quickEditData.categoryId}
-                                onChange={(e) => setQuickEditData(prev => ({ ...prev, categoryId: Number(e.target.value) }))}
-                                className="px-3 py-1.5 border border-purple-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                              >
-                                {categories.map(cat => (
-                                  <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>
-                                ))}
-                              </select>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={saveQuickEdit}
@@ -571,7 +542,7 @@ export function CoursesListView() {
                 onGenerateEmbeddings={() => handleGenerateEmbeddings(course.courseId)}
                 embeddingGenerating={embeddingLoading === course.courseId}
                 embeddingGenerated={embeddingDone.has(course.courseId)}
-                onApproveToggle={() => handleApproveToggle(course)}
+                onApproveToggle={() => handleApprove(course)}
                 approvalLoading={approvalLoading === course.courseId}
                 canGuarantor={can('guarantor')}
                 canSuperAdmin={can('superadmin')}
@@ -810,7 +781,7 @@ function MobileCourseCard({
   canGuarantor,
   canSuperAdmin,
 }: MobileCourseCardProps) {
-  const moduleCount = course.modules?.length || 0;
+  const moduleCount = course.modulesCount || 0;
 
   return (
     <div className="p-4">
@@ -832,7 +803,7 @@ function MobileCourseCard({
             title="Zobrazit moduly"
             iconSize={14}
           />
-          {canGuarantor && (course.status === Status.Generated || course.status === Status.Approved) && (
+          {canGuarantor && ((course.status as string) === 'in_review') && (
             <ApproveActionButton
               onClick={onApproveToggle}
               isApproved={course.status === Status.Approved}

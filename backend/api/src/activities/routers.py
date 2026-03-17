@@ -30,8 +30,9 @@ from api.src.activities.schemas import (
 )
 
 from api.database import SessionSqlSessionDependency
+from api.dependencies import require_role
 
-router = APIRouter(prefix="/activities", tags=["Activities"])
+router = APIRouter(prefix="/activities", tags=["Activities"], dependencies=[require_role("lector")])
 
 
 # ---------- LearnBlock ----------

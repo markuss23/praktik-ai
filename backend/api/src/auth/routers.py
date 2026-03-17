@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from api.database import SessionSqlSessionDependency
-from api.dependencies import CurrentUser, RealmRoles, auth
+from api.dependencies import CurrentUser, auth, oauth2_bearer
 from api.src.auth.schemas import ProfileUpdate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -15,8 +15,21 @@ def endp_token(
     db: SessionSqlSessionDependency,
 ) -> dict:
     token = auth.get_token(user_data.username, user_data.password)
-    auth.upsert_user(token["access_token"], db)
+    auth.sync_user_from_token(token["access_token"], db)
     return token
+
+
+@router.post("/sync")
+def endp_sync(
+    token: Annotated[str, Depends(oauth2_bearer)],
+    db: SessionSqlSessionDependency,
+) -> UserResponse:
+    """Called after PKCE login to sync user from Keycloak token to DB."""
+    user = auth.sync_user_from_token(token, db)
+    if user is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Token sync failed")
+    return UserResponse.model_validate(user)
 
 
 @router.get("/me")
@@ -36,8 +49,3 @@ def endp_update_profile(
     db.commit()
     db.refresh(current_user)
     return UserResponse.model_validate(current_user)
-
-
-@router.get("/roles")
-def endp_roles(roles: RealmRoles) -> list:
-    return roles

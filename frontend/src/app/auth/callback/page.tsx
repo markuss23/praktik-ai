@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { exchangeCodeForTokens, parseJwt, storeTokens } from "@/lib/keycloak";
+import { API_BASE_URL } from "@/lib/constants";
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -25,8 +26,17 @@ function AuthCallbackContent() {
     }
 
     exchangeCodeForTokens(code)
-      .then((tokens) => {
+      .then(async (tokens) => {
         storeTokens(tokens);
+        // Sync user role from Keycloak to backend DB
+        try {
+          await fetch(`${API_BASE_URL}/api/v1/auth/sync`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
+          });
+        } catch (e) {
+          console.warn("Role sync failed:", e);
+        }
         const user = parseJwt(tokens.access_token);
         console.log("Přihlášen:", user?.preferred_username ?? user?.email);
         router.replace("/");

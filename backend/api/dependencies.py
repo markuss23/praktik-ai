@@ -3,7 +3,6 @@ from keycloak import (
     KeycloakAuthenticationError,
     KeycloakConnectionError,
     KeycloakOpenID,
-    KeycloakAdmin,
 )
 from fastapi import Depends, HTTPException
 from fastapi.security import (
@@ -15,8 +14,56 @@ from sqlalchemy.orm import Session
 from .config import settings
 from api.database import get_sql
 from api.models import User
+from api.enums import UserRole
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
+
+# Keycloak realm role names mapped to our DB UserRole enum
+_KC_ROLE_MAP: dict[str, UserRole] = {
+    "superadmin": UserRole.superadmin,
+    "guarantor": UserRole.guarantor,
+    "lector": UserRole.lector,
+    "user": UserRole.user,
+}
+
+
+def _decode_jwt_roles(keycloak_openid: KeycloakOpenID, token_str: str) -> list[str]:
+    """Decode the JWT access token and return realm role names.
+
+    Falls back to the introspect response if JWT decoding fails.
+    """
+    # decoding the JWT directly (contains realm_access)
+    try:
+        decoded: dict = keycloak_openid.decode_token(
+            token_str,
+            validate=False, 
+        )
+        roles = decoded.get("realm_access", {}).get("roles", [])
+        if roles:
+            return roles
+    except Exception:
+        pass
+
+    try:
+        token_info: dict = keycloak_openid.introspect(token_str)
+        return token_info.get("realm_access", {}).get("roles", [])
+    except Exception:
+        return []
+
+
+def _resolve_role_from_token(keycloak_openid: KeycloakOpenID, token_str: str) -> UserRole:
+    """Extract the highest application role from a Keycloak access token.
+
+    Decodes the JWT to read ``realm_access.roles``.
+    No KeycloakAdmin / service-account needed.
+    """
+    realm_roles = _decode_jwt_roles(keycloak_openid, token_str)
+
+    for role_key in ("superadmin", "guarantor", "lector"):
+        if role_key in realm_roles:
+            return _KC_ROLE_MAP[role_key]
+
+    return UserRole.user
 
 
 class Auth:
@@ -28,15 +75,6 @@ class Auth:
                 realm_name=settings.keycloak.realm_name,
                 client_secret_key=settings.keycloak.client_secret,
             )
-
-            self.keycloak_admin = KeycloakAdmin(
-                server_url=settings.keycloak.server_url,
-                realm_name=settings.keycloak.realm_name,
-                client_id=settings.keycloak.client_id,
-                client_secret_key=settings.keycloak.client_secret,
-                verify=True,
-            )
-
         except Exception as e:
             print(f"Warning: Failed to initialize Keycloak: {e}")
             self.keycloak_openid = None
@@ -65,6 +103,13 @@ class Auth:
         token: Annotated[str, Depends(oauth2_bearer)],
         db: Annotated[Session, Depends(get_sql)],
     ) -> User:
+        """Validate token and return the DB user.
+
+        On the very first request for an unknown ``sub`` a new User row is
+        created with the role derived from the token's ``realm_access.roles``.
+        Subsequent role syncs happen only via the explicit ``/auth/sync``
+        endpoint (called by the frontend after PKCE login).
+        """
         if not token:
             raise HTTPException(
                 status_code=401,
@@ -97,54 +142,46 @@ class Auth:
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
         if user is None:
-            user = User(sub=sub, email=email, display_name=name)
+            # First authenticated request — resolve role from the token
+            resolved_role = _resolve_role_from_token(self.keycloak_openid, token)
+            user = User(sub=sub, email=email, display_name=name, role=resolved_role)
             db.add(user)
-            db.flush()
+            db.commit()
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account deactivated")
 
         return user
 
-    def upsert_user(self, token_str: str, db: Session) -> None:
-        """Zapíše uživatele do DB při přihlášení, pokud ještě neexistuje."""
+    def sync_user_from_token(self, token_str: str, db: Session) -> User:
+        """Create or update a user from a Keycloak access token.
+
+        Called on login (``/auth/token`` and ``/auth/sync``) to ensure the DB
+        row mirrors the current Keycloak state (email, name, **role**).
+        The role is read from ``realm_access.roles`` inside the JWT — no admin
+        API / service-account is required.
+        """
         try:
             user_info: dict = self.keycloak_openid.userinfo(token_str)
         except (KeycloakAuthenticationError, KeycloakConnectionError):
-            return
+            return None
 
         sub: str = user_info["sub"]
         email: str = user_info.get("email", "")
         name: str | None = user_info.get("name")
+        resolved_role: UserRole = _resolve_role_from_token(self.keycloak_openid, token_str)
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
         if user is None:
-            db.add(User(sub=sub, email=email, display_name=name))
-            db.commit()
-
-    def get_realm_roles(self, token: Annotated[str, Depends(oauth2_bearer)]) -> list:
-        try:
-            user_info: dict = self.keycloak_openid.userinfo(token)
-
-            user_id: str = user_info.get("sub")
-
-            if not user_id:
-                raise HTTPException(
-                    status_code=401, detail="ID uživatele nenalezeno v tokenu"
-                )
-
-            roles: list = self.keycloak_admin.get_realm_roles_of_user(user_id=user_id)
-
-            print(roles)
-
-            return [role["name"] for role in roles]
-
-        except (KeycloakAuthenticationError, KeycloakConnectionError) as e:
-            print(f"Keycloak error: {e}")
-            raise HTTPException(
-                status_code=401,
-                detail="Nepodařilo se ověřit uživatele nebo získat role",
-            ) from e
+            user = User(sub=sub, email=email, display_name=name, role=resolved_role)
+            db.add(user)
+        else:
+            user.email = email
+            user.display_name = name or user.display_name
+            user.role = resolved_role
+        db.commit()
+        db.refresh(user)
+        return user
 
 
 ROLE_HIERARCHY: dict[str, int] = {
@@ -168,4 +205,3 @@ def require_role(min_role: str):
 
 auth = Auth()
 CurrentUser = Annotated[User, Depends(auth.get_current_user)]
-RealmRoles = Annotated[list, Depends(auth.get_realm_roles)]

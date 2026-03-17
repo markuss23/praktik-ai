@@ -429,6 +429,7 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
           
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
+            title: module.title || `Blok ${i + 1}`,
             position: 1,
             content: content?.content || '',
           });
@@ -466,6 +467,7 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
         if (content?.learnId) {
           learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
+              title: module.title || `Blok`,
               position: content.position ?? 1,
               content: content.content,
             })
