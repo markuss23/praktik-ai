@@ -31,3 +31,20 @@ class Enrollment(ORMModel):
     updated_at: datetime
     user: EnrollmentUser
     course: EnrollmentCourse
+
+
+class MyEnrollmentCourse(ORMModel):
+    course_id: int
+    title: str
+    description: str | None = None
+    modules_count: int = 0
+
+
+class MyEnrollment(ORMModel):
+    enrollment_id: int
+    course_id: int
+    course: MyEnrollmentCourse
+    completed_modules: int = 0
+    total_modules: int = 0
+    enrolled_at: datetime
+    completed_at: datetime | None = None

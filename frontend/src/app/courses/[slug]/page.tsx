@@ -3,21 +3,26 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getCourse, getModules } from "@/lib/api-client";
-import type { Course, Module } from "@/api";
-import { BookOpen, Lock } from "lucide-react";
-
-const CURRENT_MODULE_INDEX = 0;
+import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
+import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
+import { BookOpen, Lock, LogIn, LogOut, CheckCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export default function CoursePage() {
   const params = useParams();
   const slug = params.slug as string;
   const courseId = Number(slug);
+  const { isAuthenticated } = useAuth();
+  const { currentUser } = useCurrentUser();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [enrollment, setEnrollment] = useState<MyEnrollment | null>(null);
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [moduleProgress, setModuleProgress] = useState<ModuleCompletionStatus[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -49,6 +54,49 @@ export default function CoursePage() {
     load();
   }, [courseId]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getMyEnrollments()
+      .then(enrollments => {
+        const found = enrollments.find(e => e.courseId === courseId);
+        setEnrollment(found ?? null);
+      })
+      .catch(() => setEnrollment(null));
+    getCourseProgress(courseId)
+      .then(setModuleProgress)
+      .catch(() => setModuleProgress([]));
+  }, [isAuthenticated, courseId]);
+
+  const handleEnroll = async () => {
+    if (!currentUser) return;
+    setEnrollLoading(true);
+    try {
+      await createEnrollment(currentUser.userId, courseId);
+      const enrollments = await getMyEnrollments();
+      setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
+      getCourseProgress(courseId).then(setModuleProgress).catch(() => {});
+    } catch (err) {
+      console.error('Failed to enroll:', err);
+      alert('Nepodařilo se zapsat do kurzu.');
+    } finally {
+      setEnrollLoading(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!enrollment) return;
+    setEnrollLoading(true);
+    try {
+      await leaveEnrollment(enrollment.enrollmentId);
+      setEnrollment(null);
+    } catch (err) {
+      console.error('Failed to leave:', err);
+      alert('Nepodařilo se opustit kurz.');
+    } finally {
+      setEnrollLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
@@ -72,14 +120,7 @@ export default function CoursePage() {
   }
 
   const sortedModules = [...modules].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-  // Static descriptions/goals per module (fallback)
-  const moduleMeta = [
-    { description: 'Úvod do komunikace s AI', goal: 'Pochopit základy AI komunikace', lessons: 3 },
-    { description: 'Naučte se klíčové principy', goal: 'Ovládnout základní techniky', lessons: 3 },
-    { description: 'Aplikujte techniky v praxi', goal: 'Vytvořit funkční prompt', lessons: 3 },
-    { description: 'Zhodnoťte své dovednosti', goal: 'Reflektovat a plánovat', lessons: 2 },
-  ];
+  const isEnrolled = !!enrollment;
 
   return (
     <div style={{ backgroundColor: '#F0F0F0' }} className="min-h-screen">
@@ -96,34 +137,87 @@ export default function CoursePage() {
 
       {/* Course Header */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <h1 className="text-3xl sm:text-4xl font-bold text-black">{course.title}</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-black">{course.title}</h1>
+          {isAuthenticated && (
+            <div>
+              {enrollment ? (
+                <button
+                  onClick={handleLeave}
+                  disabled={enrollLoading}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {enrollLoading ? 'Zpracování...' : 'Opustit kurz'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleEnroll}
+                  disabled={enrollLoading}
+                  className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium disabled:opacity-50"
+                  style={{ backgroundColor: '#00C896' }}
+                >
+                  <LogIn className="w-4 h-4" />
+                  {enrollLoading ? 'Zpracování...' : 'Zapsat se do kurzu'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {course.description && (
+          <p className="text-gray-600 mt-3 max-w-3xl">{course.description}</p>
+        )}
       </div>
 
       {/* Modules Grid */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-16" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {sortedModules.map((module, index) => {
-            const isActive = index === CURRENT_MODULE_INDEX;
-            const isLocked = index > CURRENT_MODULE_INDEX;
-            const meta = moduleMeta[index] || { description: '', goal: '', lessons: 3 };
-            const lessons = meta.lessons;
-            const progress = 0; // Static: 0%
+          {(() => {
+            // Find first incomplete accessible module index
+            let currentModuleIndex = -1;
+            if (isEnrolled) {
+              for (let i = 0; i < sortedModules.length; i++) {
+                const p = moduleProgress.find(mp => mp.moduleId === sortedModules[i].moduleId);
+                if (!(p?.passed)) { currentModuleIndex = i; break; }
+              }
+              // All passed → no current
+            }
+            return sortedModules.map((module, index) => {
+            const progress = moduleProgress.find(p => p.moduleId === module.moduleId);
+            const isPassed = progress?.passed ?? false;
+            const isCurrent = index === currentModuleIndex;
+
+            // Previous module must be passed (or this is the first module)
+            const prevModulePassed = index === 0 || (moduleProgress.find(
+              p => p.moduleId === sortedModules[index - 1]?.moduleId
+            )?.passed ?? false);
+
+            // Accessible: enrolled AND (first module OR previous passed)
+            const isAccessible = isEnrolled && prevModulePassed;
+            const isLocked = !isAccessible;
+            const learnBlockCount = module.learnBlocks?.length ?? 1;
 
             const cardContent = (
               <div
                 className={`bg-white rounded-lg flex flex-col transition-all duration-300 ${
-                  isActive ? 'hover:shadow-lg' : ''
+                  isAccessible ? 'hover:shadow-lg' : ''
                 } ${isLocked ? 'opacity-60' : ''}`}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: isPassed ? '2px solid #00C896' : '1px solid #e5e7eb',
                   padding: '24px',
-                  minHeight: '320px',
+                  minHeight: '260px',
                 }}
               >
                 {/* Header row */}
                 <div className="flex items-start justify-between mb-1">
                   <span className="text-sm text-gray-500">Modul {index + 1}</span>
-                  {isActive && (
+                  {isPassed && (
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      Dokončeno
+                    </span>
+                  )}
+                  {isCurrent && !isPassed && (
                     <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#8B5BA8' }}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -132,19 +226,19 @@ export default function CoursePage() {
                       Aktuálně studujete
                     </span>
                   )}
-                  {isLocked && (
+                  {isLocked && !isPassed && !isCurrent && (
                     <span className="flex items-center gap-1.5 text-sm text-gray-400">
                       <Lock className="w-4 h-4" />
-                      Splňte modul {index}
+                      {!isEnrolled ? 'Zapište se' : `Splňte modul ${index}`}
                     </span>
                   )}
                 </div>
 
                 {/* Title with gradient */}
                 <h3
-                  className="text-xl font-bold mb-1"
+                  className="text-xl font-bold mb-3"
                   style={{
-                    background: isLocked
+                    background: isLocked && !isPassed
                       ? '#9CA3AF'
                       : 'linear-gradient(90deg, #B1475C, #857AD2)',
                     WebkitBackgroundClip: 'text',
@@ -155,71 +249,35 @@ export default function CoursePage() {
                   {module.title}
                 </h3>
 
-                {/* Description */}
-                <p className={`text-sm mb-4 ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {meta.description}
-                </p>
-
-                {/* Short-term goals */}
-                <div className="flex items-start gap-2 mb-4">
-                  <svg className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isLocked ? 'text-gray-300' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <span className={`text-sm font-semibold ${isLocked ? 'text-gray-400' : 'text-gray-700'}`}>
-                      Krátkodobé cíle:{' '}
-                    </span>
-                    <span className={`text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {meta.goal}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Progress section - only for active module */}
-                {isActive && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-gray-700 tracking-wider">PROGRES</span>
-                      <span className="text-sm font-medium" style={{ color: progress > 0 ? '#00C896' : '#9CA3AF' }}>
-                        {progress}%
-                      </span>
-                    </div>
-                    <div className="flex gap-1.5">
-                      {[...Array(lessons)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 h-2.5 rounded-full"
-                          style={{
-                            backgroundColor: i < Math.floor((progress / 100) * lessons) ? '#00C896' : '#D1D5DB',
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Footer */}
                 <div className="flex items-center justify-between mt-auto pt-2">
                   <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
                     <BookOpen className="w-5 h-5" />
-                    <span>{isActive ? `0/${lessons} lekcí` : `0/${lessons} lekcí`}</span>
+                    <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
                   </div>
-                  {isActive && (
+                  {isAccessible && !isPassed && (
                     <span
                       className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
-                      style={{ backgroundColor: '#00C896' }}
+                      style={{ backgroundColor: isCurrent ? '#00C896' : '#8B5BA8' }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
-                      Začít modul
+                      {isCurrent ? 'Pokračovat' : 'Začít modul'}
+                    </span>
+                  )}
+                  {isPassed && (
+                    <span
+                      className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-green-700 bg-green-50"
+                    >
+                      Opakovat
                     </span>
                   )}
                 </div>
               </div>
             );
 
-            if (isLocked) {
+            if (isLocked && !isPassed) {
               return (
                 <div key={module.moduleId} className="cursor-not-allowed">
                   {cardContent}
@@ -236,7 +294,8 @@ export default function CoursePage() {
                 {cardContent}
               </Link>
             );
-          })}
+          });
+          })()}
         </div>
       </div>
 

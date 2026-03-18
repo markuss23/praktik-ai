@@ -6,6 +6,7 @@ import {
   AgentsApi,
   CatalogsApi,
   AuthenticationApi,
+  EnrollmentsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -49,6 +50,7 @@ export const activitiesApi = new ActivitiesApi(configuration);
 export const agentsApi = new AgentsApi(configuration);
 export const catalogsApi = new CatalogsApi(configuration);
 export const authApi = new AuthenticationApi(configuration);
+export const enrollmentsApi = new EnrollmentsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -229,4 +231,33 @@ export async function updatePracticeOption(optionId: number, data: PracticeOptio
 
 export async function updateQuestionKeyword(keywordId: number, data: QuestionKeywordUpdate) {
   return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
+}
+
+// ============ Enrollments API functions ============
+
+export async function getMyEnrollments() {
+  return enrollmentsApi.myEnrollments();
+}
+
+export async function createEnrollment(userId: number, courseId: number) {
+  return enrollmentsApi.createEnrollment({
+    enrollmentCreate: { userId, courseId },
+  });
+}
+
+export async function leaveEnrollment(enrollmentId: number) {
+  return enrollmentsApi.leaveEnrollment({ enrollmentId });
+}
+
+// ============ Module Progress API functions ============
+
+export async function completeModule(moduleId: number, score: number) {
+  return modulesApi.completeModule({
+    moduleId,
+    completeModuleRequest: { score },
+  });
+}
+
+export async function getCourseProgress(courseId: number) {
+  return modulesApi.getCourseProgress({ courseId });
 }

@@ -29,3 +29,14 @@ class Module(ModuleBase):
 
     learn_blocks: list[LearnBlock] = []
     practice_questions: list[PracticeQuestion] = []
+
+
+class ModuleCompletionStatus(ORMModel):
+    module_id: int
+    passed: bool = False
+    score: int | None = None
+    course_completed: bool = False
+
+
+class CompleteModuleRequest(ORMModel):
+    score: int = Field(ge=0, le=100, description="Test score percentage")

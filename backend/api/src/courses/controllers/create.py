@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.courses.schemas import CourseCreate, CourseCreated, CourseFile, CourseLink
 from api import enums
-from api.authorization import validate_ownership
+from api.authorization import validate_owner_or_superadmin
 from api.storage import seaweedfs
 
 
@@ -98,7 +98,7 @@ async def upload_course_file(
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        validate_ownership(course, user, "kurz")
+        validate_owner_or_superadmin(course, user, "kurz")
 
         if course.status != enums.Status.draft:
             raise HTTPException(
@@ -153,7 +153,7 @@ def create_course_link(
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        validate_ownership(course, user, "kurz")
+        validate_owner_or_superadmin(course, user, "kurz")
 
         if course.status != enums.Status.draft:
             raise HTTPException(

@@ -17,17 +17,17 @@ from api.src.activities.schemas import (
     QuestionKeywordCreate,
     QuestionKeywordUpdate,
 )
-from api.authorization import validate_ownership
+from api.authorization import validate_owner_or_superadmin
 
 
 # ---------- Helpers ----------
 
 
-def _assert_course_generated(course: models.Course) -> None:
-    if course.status != enums.Status.generated:
+def _assert_course_editable(course: models.Course) -> None:
+    if course.status not in (enums.Status.draft, enums.Status.generated, enums.Status.edited):
         raise HTTPException(
             status_code=400,
-            detail="Editace je povolena pouze pokud je kurz ve stavu 'generated'.",
+            detail="Editace je povolena pouze pokud je kurz ve stavu 'koncept', 'vygenerovaný' nebo 'editovaný'.",
         )
 
 
@@ -49,8 +49,8 @@ def create_learn_block(
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
 
-        validate_ownership(module, user, "modul")
-        _assert_course_generated(module.course)
+        validate_owner_or_superadmin(module, user, "modul")
+        _assert_course_editable(module.course)
 
         existing = db.execute(
             select(models.LearnBlock).where(
@@ -95,8 +95,8 @@ def update_learn_block(
         if learn_block is None:
             raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
 
-        validate_ownership(learn_block, user, "learn block")
-        _assert_course_generated(learn_block.module.course)
+        validate_owner_or_superadmin(learn_block, user, "learn block")
+        _assert_course_editable(learn_block.module.course)
 
         # Kontrola unikátnosti position (pokud se mění)
         if learn_data.position != learn_block.position:
@@ -158,8 +158,8 @@ def delete_learn_block(db: Session, learn_id: int, user: models.User) -> None:
         if learn_block is None:
             raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
 
-        validate_ownership(learn_block, user, "learn block")
-        _assert_course_generated(learn_block.module.course)
+        validate_owner_or_superadmin(learn_block, user, "learn block")
+        _assert_course_editable(learn_block.module.course)
 
         learn_block.soft_delete()
         db.commit()
@@ -189,8 +189,8 @@ def create_practice_question(
         if module is None:
             raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
 
-        validate_ownership(module, user, "modul")
-        _assert_course_generated(module.course)
+        validate_owner_or_superadmin(module, user, "modul")
+        _assert_course_editable(module.course)
 
         # Pokud je pozice obsazena, přiřaď následující
         conflict = db.execute(
@@ -249,8 +249,8 @@ def update_practice_question(
         if question is None:
             raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
 
-        validate_ownership(question, user, "practice question")
-        _assert_course_generated(question.module.course)
+        validate_owner_or_superadmin(question, user, "practice question")
+        _assert_course_editable(question.module.course)
 
         if question_data.position != question.position:
             conflict = db.execute(
@@ -296,8 +296,8 @@ def delete_practice_question(db: Session, question_id: int, user: models.User) -
         if question is None:
             raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
 
-        validate_ownership(question, user, "practice question")
-        _assert_course_generated(question.module.course)
+        validate_owner_or_superadmin(question, user, "practice question")
+        _assert_course_editable(question.module.course)
 
         question.soft_delete()  # _soft_delete_cascade = ["closed_options", "open_keywords"]
         db.commit()
@@ -327,8 +327,8 @@ def create_practice_option(
         if question is None:
             raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
 
-        validate_ownership(question, user, "otázka")
-        _assert_course_generated(question.module.course)
+        validate_owner_or_superadmin(question, user, "otázka")
+        _assert_course_editable(question.module.course)
 
         conflict = db.execute(
             select(models.PracticeOption).where(
@@ -383,8 +383,8 @@ def update_practice_option(
         if option is None:
             raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
 
-        validate_ownership(option, user, "practice option")
-        _assert_course_generated(option.question.module.course)
+        validate_owner_or_superadmin(option, user, "practice option")
+        _assert_course_editable(option.question.module.course)
 
         if option_data.position != option.position:
             conflict = db.execute(
@@ -430,8 +430,8 @@ def delete_practice_option(db: Session, option_id: int, user: models.User) -> No
         if option is None:
             raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
 
-        validate_ownership(option, user, "practice option")
-        _assert_course_generated(option.question.module.course)
+        validate_owner_or_superadmin(option, user, "practice option")
+        _assert_course_editable(option.question.module.course)
 
         option.soft_delete()
         db.commit()
@@ -461,8 +461,8 @@ def create_question_keyword(
         if question is None:
             raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
 
-        validate_ownership(question, user, "otázka")
-        _assert_course_generated(question.module.course)
+        validate_owner_or_superadmin(question, user, "otázka")
+        _assert_course_editable(question.module.course)
 
         conflict = db.execute(
             select(models.QuestionKeyword).where(
@@ -508,8 +508,8 @@ def update_question_keyword(
         if keyword is None:
             raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
 
-        validate_ownership(keyword, user, "question keyword")
-        _assert_course_generated(keyword.question.module.course)
+        validate_owner_or_superadmin(keyword, user, "question keyword")
+        _assert_course_editable(keyword.question.module.course)
 
         if keyword_data.keyword != keyword.keyword:
             conflict = db.execute(
@@ -555,8 +555,8 @@ def delete_question_keyword(db: Session, keyword_id: int, user: models.User) -> 
         if keyword is None:
             raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
 
-        validate_ownership(keyword, user, "question keyword")
-        _assert_course_generated(keyword.question.module.course)
+        validate_owner_or_superadmin(keyword, user, "question keyword")
+        _assert_course_editable(keyword.question.module.course)
 
         keyword.soft_delete()
         db.commit()

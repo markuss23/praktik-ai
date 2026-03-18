@@ -1,14 +1,7 @@
 from langchain_core.documents.base import Document
-from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGVector
+from agents.vector_store import get_vector_store
 from agents.mentor.state import AgentState, ChunkData
-from api.config import Settings
 from agents.mentor.state import LearnBlockQueryAttr
-
-
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-connection: str = Settings().postgres.get_connection_string()
-collection_name = "course_embeddings"  # Název kolekce pro embeddingy
 
 
 def query_vector_store(state: AgentState) -> AgentState:
@@ -19,16 +12,11 @@ def query_vector_store(state: AgentState) -> AgentState:
     if not query_attr:
         print("Chybí learn_block_query_attr ve state")
         return {"context_chunks": []}  # Vrať prázdné chunky
-    
+
     course_id = query_attr.course_id
     module_id = query_attr.module_id
 
-    vector_store = PGVector(
-        embeddings=embeddings,
-        collection_name=collection_name,
-        connection=connection,
-        use_jsonb=True,
-    )
+    vector_store = get_vector_store()
 
     results: list[Document] = vector_store.similarity_search(
         query=state["message"],

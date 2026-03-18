@@ -1,22 +1,14 @@
 # """Node pro generování embeddingů."""
 from langchain_core.documents.base import Document
-from langchain_openai import OpenAIEmbeddings
-from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from api.config import settings
-
+from agents.vector_store import get_vector_store
 from agents.embedding_generator.state import AgentState
 from agents.embedding_generator.state import LearnBlockData
-# from api import models
-
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
 def generate_embeddings_node(state: AgentState) -> AgentState:
     learn_blocks: list[LearnBlockData] = state.get("learn_blocks", [])
-    connection: str = settings.postgres.get_connection_string()
-    collection_name = "course_embeddings"  # Název kolekce pro embeddingy
 
     if not learn_blocks:
         print("Žádné learn blocky k zpracování")
@@ -24,12 +16,7 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
 
     print(f"Generuji embeddingy pro {len(learn_blocks)} learn blocků...")
 
-    vector_store = PGVector(
-        embeddings=embeddings,
-        collection_name=collection_name,
-        connection=connection,
-        use_jsonb=True,
-    )
+    vector_store = get_vector_store()
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,  # chunk size (characters)

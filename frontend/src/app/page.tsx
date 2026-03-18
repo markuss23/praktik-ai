@@ -2,27 +2,29 @@
 
 import { Hero } from "@/components/layout";
 import { CourseCard } from "@/components/ui";
-import { getCourses } from "@/lib/api-client";
+import { getCourses, getMyEnrollments } from "@/lib/api-client";
+import { MyEnrollment } from "@/api";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 type ErrorKind = 'backend-down' | 'unauthorized' | 'server-error';
 
 function classifyError(err: unknown): ErrorKind {
-  // Generated OpenAPI client throws objects with a `response` property
   if (err && typeof err === 'object' && 'response' in err) {
     const status = (err as { response: Response }).response?.status;
     if (status === 401 || status === 403) return 'unauthorized';
     return 'server-error';
   }
-  // Network / CORS / connection refused → TypeError with no response
   return 'backend-down';
 }
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   const [courses, setCourses] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
-  
+
   const loadCourses = async () => {
     try {
       setErrorKind(null);
@@ -40,6 +42,13 @@ export default function Home() {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getMyEnrollments()
+      .then(setEnrollments)
+      .catch(() => setEnrollments([]));
+  }, [isAuthenticated]);
 
   return (
     <div className="bg-white">
@@ -99,18 +108,22 @@ export default function Home() {
                 Zatím nejsou k dispozici žádné publikované kurzy.
               </div>
             ) : (
-              courses.map((course: any) => (
-                <CourseCard
-                  key={course.courseId || course.id}
-                  id={String(course.courseId || course.id)}
-                  title={course.title || course.name}
-                  description={course.description || ''}
-                  duration={course.modulesCount ? course.modulesCount * 20 : 60}
-                  difficulty="Začátečník"
-                  completedModules={0}
-                  totalModules={course.modulesCount || 0}
-                />
-              ))
+              courses.map((course: any) => {
+                const enrollment = enrollments.find(e => e.courseId === (course.courseId || course.id));
+                return (
+                  <CourseCard
+                    key={course.courseId || course.id}
+                    id={String(course.courseId || course.id)}
+                    title={course.title || course.name}
+                    description={course.description || ''}
+                    duration={course.modulesCount ? course.modulesCount * 20 : 60}
+                    difficulty="Začátečník"
+                    completedModules={enrollment?.completedModules ?? 0}
+                    totalModules={course.modulesCount || 0}
+                    isEnrolled={!!enrollment}
+                  />
+                );
+              })
             )}
           </div>
         </div>

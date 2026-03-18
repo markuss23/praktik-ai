@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules } from "@/lib/api-client";
+import { getModule, getCourse, getModules, completeModule } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, BookOpenText, Dumbbell } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
@@ -129,7 +129,8 @@ export default function ModulePage() {
   const prevModule = currentIndex > 0 ? allModules[currentIndex - 1] : null;
   const nextModule = currentIndex < allModules.length - 1 ? allModules[currentIndex + 1] : null;
 
-  const practiceCompleted = testSubmitted;
+  const hasPracticeQuestions = practiceQuestions.length > 0;
+  const practiceCompleted = hasPracticeQuestions ? testSubmitted : true;
   const canCompleteModule = handbookCompleted && practiceCompleted;
 
   // Handlers
@@ -156,23 +157,7 @@ export default function ModulePage() {
     setTestAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleTestSubmit = () => {
-    setTestSubmitted(true);
-  };
-
-  const handleCompleteModule = () => {
-    if (nextModule) {
-      router.push(`/modules/${nextModule.moduleId}`);
-    } else if (course) {
-      router.push(`/courses/${course.courseId}`);
-    }
-  };
-
-  const handleSendChat = async () => {
-    // Chat handler moved to AiTutorChat component
-  };
-
-  // Score calculation for evaluation
+  // Score calculation for evaluation (single source of truth)
   const calculateScore = () => {
     let correct = 0;
     const results: { questionId: number; isCorrect: boolean; userAnswer: string; correctAnswer: string; question: string; matchedKeywords?: string[]; missingKeywords?: string[] }[] = [];
@@ -213,6 +198,38 @@ export default function ModulePage() {
       });
     });
     return { correct, total: practiceQuestions.length, results };
+  };
+
+  const handleTestSubmit = async () => {
+    setTestSubmitted(true);
+
+    const { correct, total } = calculateScore();
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    if (percentage >= 75) {
+      try {
+        await completeModule(moduleId, percentage);
+      } catch (err) {
+        console.error('Failed to persist module completion:', err);
+      }
+    }
+  };
+
+  const handleCompleteModule = async () => {
+    // For modules without practice questions, persist completion here
+    if (!hasPracticeQuestions) {
+      try {
+        await completeModule(moduleId, 100);
+      } catch (err) {
+        console.error('Failed to persist module completion:', err);
+      }
+    }
+
+    if (nextModule) {
+      router.push(`/modules/${nextModule.moduleId}`);
+    } else if (course) {
+      router.push(`/courses/${course.courseId}`);
+    }
   };
 
   // Tab configuration (Test tab hidden, Procvičování now holds the test questions)
@@ -531,9 +548,22 @@ export default function ModulePage() {
                       )}
 
                       {practiceQuestions.length === 0 && (
-                        <div className="text-center py-12 text-gray-400">
-                          <p className="text-lg font-medium">Žádné otázky k procvičování</p>
-                          <p className="text-sm mt-1">Otázky pro tento modul zatím nebyly vytvořeny.</p>
+                        <div className="text-center py-12">
+                          <p className="text-lg font-medium text-gray-500 mb-4">Tento modul nemá testové otázky.</p>
+                          {handbookCompleted ? (
+                            <button
+                              onClick={handleCompleteModule}
+                              className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                              style={{ backgroundColor: '#00C896' }}
+                            >
+                              {nextModule ? 'Další modul' : 'Dokončit kurz'}
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={nextModule ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M5 13l4 4L19 7"} />
+                              </svg>
+                            </button>
+                          ) : (
+                            <p className="text-sm text-gray-400">Nejdříve projděte příručku, poté můžete pokračovat.</p>
+                          )}
                         </div>
                       )}
                     </div>

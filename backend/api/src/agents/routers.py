@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import select, update
 
 from api.dependencies import CurrentUser, require_role
-from api.authorization import validate_ownership
+from api.authorization import validate_owner_or_superadmin
 from api.src.agents.schemas import (
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
@@ -38,7 +38,7 @@ async def generate_course(
         raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
     # Validace vlastnictví
-    validate_ownership(course, user, "kurz")
+    validate_owner_or_superadmin(course, user, "kurz")
 
     if course.status != models.Status.draft and course.status != models.Status.failed:
         raise HTTPException(
@@ -86,7 +86,7 @@ async def generate_course_embeddings(
         raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
     # Validace vlastnictví
-    validate_ownership(course, user, "kurz")
+    validate_owner_or_superadmin(course, user, "kurz")
 
     # Kontrola statusu kurzu
     if course.status != models.Status.approved:
@@ -138,19 +138,27 @@ async def learn_blocks_chat(
         raise HTTPException(
             status_code=400, detail="Learn block není v aktivním a schváleném kurzu"
         )
-    print(f"User {user.user_id} is trying to chat with learn block {learn_block_id} in course {learn_block.module.course.course_id}")
-    enrollment = db.execute(
-        select(models.Enrollment).where(
-            models.Enrollment.user_id == user.user_id,
-            models.Enrollment.course_id == learn_block.module.course.course_id,
-            models.Enrollment.is_active.is_(True),
-        )
-    ).scalars().first()
+    course = learn_block.module.course
 
-    if enrollment is None:
-        raise HTTPException(
-            status_code=403, detail="Nejste zapsáni v tomto kurzu"
-        )
+    # Owner and superadmin can use the tutor without enrollment
+    is_owner_or_admin = (
+        user.user_id == course.owner_id
+        or user.role == models.UserRole.superadmin
+    )
+
+    if not is_owner_or_admin:
+        enrollment = db.execute(
+            select(models.Enrollment).where(
+                models.Enrollment.user_id == user.user_id,
+                models.Enrollment.course_id == course.course_id,
+                models.Enrollment.is_active.is_(True),
+            )
+        ).scalars().first()
+
+        if enrollment is None:
+            raise HTTPException(
+                status_code=403, detail="Nejste zapsáni v tomto kurzu"
+            )
 
     app = create_learn_block_mentor_graph()
     result = await app.ainvoke(

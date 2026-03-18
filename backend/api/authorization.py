@@ -21,6 +21,18 @@ class OwnedResource(Protocol):
 _ELEVATED_ROLES: set[str] = {UserRole.guarantor, UserRole.superadmin}
 
 
+def _check_resource_exists(resource: OwnedResource, resource_name: str) -> None:
+    if not resource:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{resource_name.capitalize()} nenalezen",
+        )
+
+
+def _is_owner(resource: OwnedResource, user: User) -> bool:
+    return int(resource.get_owner_id()) == int(user.user_id)
+
+
 def validate_ownership(
     resource: OwnedResource,
     user: User,
@@ -40,20 +52,55 @@ def validate_ownership(
     Raises:
         HTTPException: 403 pokud uživatel není vlastník a nemá elevated roli
     """
-    if not resource:
-        raise HTTPException(
-            status_code=404,
-            detail=f"{resource_name.capitalize()} nenalezen",
-        )
+    _check_resource_exists(resource, resource_name)
 
     # Guarantor and superadmin can access any resource
     if allow_elevated and user.role in _ELEVATED_ROLES:
         return
 
-    owner = int(resource.get_owner_id())
-    user_id = int(user.user_id)
-    if owner != user_id:
+    if not _is_owner(resource, user):
         raise HTTPException(
             status_code=403,
             detail=f"Nemáte oprávnění upravovat tento {resource_name}",
         )
+
+
+def validate_owner_or_superadmin(
+    resource: OwnedResource,
+    user: User,
+    resource_name: str = "zdroj",
+) -> None:
+    """
+    Povolí přístup pouze vlastníkovi nebo superadminovi.
+    Garant (guarantor) NEMÁ přístup k cizím zdrojům.
+    """
+    _check_resource_exists(resource, resource_name)
+
+    if user.role == UserRole.superadmin:
+        return
+
+    if not _is_owner(resource, user):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Nemáte oprávnění upravovat tento {resource_name}",
+        )
+
+
+def validate_guarantor_or_superadmin(
+    resource: OwnedResource,
+    user: User,
+    resource_name: str = "zdroj",
+) -> None:
+    """
+    Povolí přístup pouze garantovi nebo superadminovi (NE vlastníkovi, pokud není superadmin).
+    Používá se pro schvalování/zamítání kurzů.
+    """
+    _check_resource_exists(resource, resource_name)
+
+    if user.role in (UserRole.guarantor, UserRole.superadmin):
+        return
+
+    raise HTTPException(
+        status_code=403,
+        detail=f"Nemáte oprávnění schvalovat tento {resource_name}",
+    )

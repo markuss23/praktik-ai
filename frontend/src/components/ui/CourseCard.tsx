@@ -12,6 +12,7 @@ interface CourseCardProps {
   completedModules?: number;
   totalModules?: number;
   imageUrl?: string;
+  isEnrolled?: boolean;
 }
 
 export function CourseCard({
@@ -23,8 +24,10 @@ export function CourseCard({
   completedModules = 0,
   totalModules = 0,
   imageUrl = "/courseai2.png",
+  isEnrolled = false,
 }: CourseCardProps) {
   const hasProgress = totalModules > 0;
+  const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
   return (
     <Link href={`/courses/${id}`} className="block group">
@@ -74,15 +77,26 @@ export function CourseCard({
             </div>
           </div>
 
-          {/* Module Count */}
+          {/* Module Count & Progress */}
           {hasProgress && (
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-gray-700">{completedModules}/{totalModules} modulů</span>
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-gray-700">{completedModules}/{totalModules} modulů</span>
+                </div>
+                {isEnrolled && <span className="text-sm font-medium" style={{ color: '#00C896' }}>{progressPercent}%</span>}
               </div>
+              {isEnrolled && (
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${progressPercent}%`, backgroundColor: '#00C896' }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -90,12 +104,12 @@ export function CourseCard({
           <div className="mt-auto">
             <button
               className="w-full text-white font-semibold py-3 px-6 rounded-md transition-colors flex items-center justify-center gap-2 hover:opacity-90"
-              style={{ backgroundColor: '#00C896' }}
+              style={{ backgroundColor: isEnrolled ? '#8B5BA8' : '#00C896' }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-              <span>Začít kurz</span>
+              <span>{isEnrolled ? 'Pokračovat' : 'Zobrazit kurz'}</span>
             </button>
           </div>
         </div>

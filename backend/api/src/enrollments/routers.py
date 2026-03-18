@@ -2,15 +2,26 @@ from fastapi import APIRouter
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, require_role
-from api.src.enrollments.schemas import Enrollment, EnrollmentCreate
+from api.src.enrollments.schemas import Enrollment, EnrollmentCreate, MyEnrollment
 from api.src.enrollments.controllers import (
     list_enrollments,
     create_enrollment,
     delete_enrollment,
     soft_delete_enrollment,
+    my_enrollments,
+    leave_enrollment,
 )
 
 router = APIRouter(prefix="/enrollments", tags=["Enrollments"])
+
+
+@router.get("/my", operation_id="my_enrollments", dependencies=[require_role("user")])
+def endp_my_enrollments(
+    db: SessionSqlSessionDependency,
+    actor: CurrentUser,
+) -> list[MyEnrollment]:
+    """Vrátí zápisy aktuálního uživatele s progress informacemi."""
+    return my_enrollments(db, user=actor)
 
 
 @router.get("", operation_id="list_enrollments", dependencies=[require_role("lector")])
@@ -33,6 +44,16 @@ def endp_create_enrollment(
 ) -> Enrollment:
     """Zapíše uživatele do kurzu. Běžný uživatel může zapsat pouze sebe."""
     return create_enrollment(db, user_id=data.user_id, course_id=data.course_id, actor=actor)
+
+
+@router.delete("/{enrollment_id}/leave", operation_id="leave_enrollment", status_code=204, dependencies=[require_role("user")])
+def endp_leave_enrollment(
+    enrollment_id: int,
+    db: SessionSqlSessionDependency,
+    actor: CurrentUser,
+) -> None:
+    """Uživatel se sám odepíše z kurzu."""
+    leave_enrollment(db, enrollment_id=enrollment_id, user=actor)
 
 
 @router.delete("/{enrollment_id}", operation_id="remove_from_course", status_code=204, dependencies=[require_role("lector")])

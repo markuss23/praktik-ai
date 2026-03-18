@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.enums import Status, UserRole
-from api.authorization import validate_ownership
+from api.authorization import validate_owner_or_superadmin
 from api.storage import seaweedfs
 
 # Stavy, ve kterých může lektor (vlastník) kurz smazat
@@ -57,8 +57,8 @@ def delete_course(db: Session, course_id: int, user: models.User) -> None:
                     status_code=403,
                     detail="Nemáte oprávnění smazat kurz v tomto stavu",
                 )
-            # Only owner can delete (superadmin bypassed above, guarantor cannot delete others courses)
-            validate_ownership(course, user, "kurz", allow_elevated=False)
+            # Only owner can delete (superadmin bypassed above, guarantor cannot delete others' courses)
+            validate_owner_or_superadmin(course, user, "kurz")
 
         if course.status == Status.draft:
             # Hard delete — odstraň soubory ze SeaweedFS a pak z DB
@@ -101,7 +101,7 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: models.U
         if course_file is None:
             raise HTTPException(status_code=404, detail="Soubor nenalezen")
 
-        validate_ownership(course_file, user, "soubor kurzu")
+        validate_owner_or_superadmin(course_file, user, "soubor kurzu")
 
         if course_file.course.status != Status.draft or not course_file.course.is_active:
             raise HTTPException(
@@ -137,7 +137,7 @@ def delete_course_link(db: Session, course_id: int, link_id: int, user: models.U
         if course_link is None:
             raise HTTPException(status_code=404, detail="Odkaz nenalezen")
 
-        validate_ownership(course_link, user, "odkaz kurzu")
+        validate_owner_or_superadmin(course_link, user, "odkaz kurzu")
 
         if course_link.course.status != Status.draft or not course_link.course.is_active:
             raise HTTPException(

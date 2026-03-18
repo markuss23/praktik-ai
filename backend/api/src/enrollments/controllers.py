@@ -3,8 +3,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api import models
-from api.enums import Status, UserRole
-from api.src.enrollments.schemas import Enrollment
+from api.enums import Status, UserRole, ModuleTaskSessionStatus
+from api.src.enrollments.schemas import Enrollment, MyEnrollment, MyEnrollmentCourse
 
 
 def _get_enrollment_or_404(db: Session, enrollment_id: int) -> models.Enrollment:
@@ -67,10 +67,11 @@ def create_enrollment(
     Admin/superadmin může zapsat kohokoliv.
     """
     try:
-        if actor.user_id == user_id:
+        # Regular users can only enroll themselves; admin/superadmin can enroll anyone
+        if actor.role not in (UserRole.guarantor, UserRole.superadmin) and actor.user_id != user_id:
             raise HTTPException(
-                status_code=400,
-                detail="Nelze zapsat sám sebe do kurzu",
+                status_code=403,
+                detail="Můžete zapsat pouze sami sebe",
             )
 
         course = db.scalar(
@@ -168,4 +169,84 @@ def soft_delete_enrollment(
         raise
     except Exception as e:
         print(f"soft_delete_enrollment error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekaná chyba serveru") from e
+
+
+def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
+    """
+    Vrátí zápisy aktuálního uživatele s progress informacemi.
+    """
+    try:
+        enrollments = db.execute(
+            select(models.Enrollment).where(
+                models.Enrollment.user_id == user.user_id,
+                models.Enrollment.is_active.is_(True),
+                models.Enrollment.left_at.is_(None),
+            )
+        ).scalars().all()
+
+        result: list[MyEnrollment] = []
+        for enrollment in enrollments:
+            course = enrollment.course
+            if not course or not course.is_active:
+                continue
+
+            # Count total active modules
+            total_modules = sum(1 for m in course.modules if m.is_active)
+
+            # Count passed modules (user has at least one passed task session)
+            passed_modules = 0
+            for module in course.modules:
+                if not module.is_active:
+                    continue
+                has_passed = db.scalar(
+                    select(func.count()).select_from(models.ModuleTaskSession).where(
+                        models.ModuleTaskSession.user_id == user.user_id,
+                        models.ModuleTaskSession.module_id == module.module_id,
+                        models.ModuleTaskSession.status == ModuleTaskSessionStatus.passed,
+                    )
+                )
+                if has_passed and has_passed > 0:
+                    passed_modules += 1
+
+            result.append(MyEnrollment(
+                enrollment_id=enrollment.enrollment_id,
+                course_id=course.course_id,
+                course=MyEnrollmentCourse(
+                    course_id=course.course_id,
+                    title=course.title,
+                    description=course.description,
+                    modules_count=total_modules,
+                ),
+                completed_modules=passed_modules,
+                total_modules=total_modules,
+                enrolled_at=enrollment.created_at,
+                completed_at=enrollment.completed_at,
+            ))
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"my_enrollments error: {e}")
+        raise HTTPException(status_code=500, detail="Nečekaná chyba serveru") from e
+
+
+def leave_enrollment(db: Session, enrollment_id: int, user: models.User) -> None:
+    """Uživatel se sám odepíše z kurzu."""
+    try:
+        enrollment = _get_enrollment_or_404(db, enrollment_id)
+
+        if enrollment.user_id != user.user_id:
+            raise HTTPException(status_code=403, detail="Můžete opustit pouze vlastní zápis")
+
+        if enrollment.left_at is not None:
+            raise HTTPException(status_code=400, detail="Kurz jste již opustili")
+
+        enrollment.left_at = func.now()
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"leave_enrollment error: {e}")
         raise HTTPException(status_code=500, detail="Nečekaná chyba serveru") from e

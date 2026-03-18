@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.courses.schemas import Course, CourseUpdate
-from api.enums import Status, UserRole
-from api.authorization import validate_ownership
+from api.enums import Status
+from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin
 
 
 def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
@@ -48,14 +48,19 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        validate_ownership(course, user, "kurz")
+        # Only owner or superadmin can edit (guarantor cannot edit others' courses)
+        validate_owner_or_superadmin(course, user, "kurz")
 
-        if course.status not in (Status.draft, Status.generated):
+        if course.status not in (Status.draft, Status.generated, Status.edited):
             raise HTTPException(
-                status_code=400, detail="Lze upravovat pouze koncepty a vygenerované kurzy"
+                status_code=400, detail="Lze upravovat pouze kurzy ve stavu koncept, vygenerovaný nebo editovaný"
             )
 
         update_data = course_data.model_dump(exclude_unset=True)
+
+        # Auto-transition to "edited" when saving changes
+        if course.status in (Status.draft, Status.generated):
+            update_data["status"] = Status.edited
 
         db.execute(
             update(models.Course)
@@ -85,11 +90,9 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        # Ownership check – guarantor/superadmin can change status of any course
-        validate_ownership(course, user, "kurz")
-
         valid_transitions = {
-            Status.generated: {Status.edited},
+            Status.draft: {Status.in_review},
+            Status.generated: {Status.in_review},
             Status.edited: {Status.in_review},
             Status.in_review: {Status.approved, Status.edited},
             Status.approved: {Status.archived},
@@ -99,9 +102,16 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if status not in allowed:
             raise HTTPException(status_code=400, detail="Neplatná změna statusu kurzu")
 
-        # Only guarantor or superadmin can approve a course
-        if status == Status.approved and user.role not in (UserRole.guarantor, UserRole.superadmin):
-            raise HTTPException(status_code=403, detail="Schvalovat kurzy může pouze garant nebo superadmin")
+        # Role-based checks per transition type
+        if status == Status.in_review:
+            # Submit for review: only owner or superadmin
+            validate_owner_or_superadmin(course, user, "kurz")
+        elif status in (Status.approved, Status.edited) and course.status == Status.in_review:
+            # Approve or reject: only guarantor or superadmin
+            validate_guarantor_or_superadmin(course, user, "kurz")
+        else:
+            # Other transitions (e.g. approved → archived): owner or superadmin
+            validate_owner_or_superadmin(course, user, "kurz")
 
         values: dict = {"status": status}
         if status == Status.approved:
@@ -135,22 +145,18 @@ def update_course_published(db: Session, course_id: int, is_published: bool, use
         if course is None:
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
-        validate_ownership(course, user, "kurz")
+        # Only owner or superadmin can publish (guarantor cannot)
+        validate_owner_or_superadmin(course, user, "kurz")
 
-        # approved: lze pouze publikovat (false → true)
-        if course.status == Status.approved:
-            if not is_published:
-                raise HTTPException(status_code=400, detail="Kurz ve stavu 'approved' lze pouze publikovat.")
-            if course.is_published:
-                raise HTTPException(status_code=400, detail="Kurz je již publikován.")
-        # archived: lze pouze zrušit publikování (true → false)
-        elif course.status == Status.archived:
-            if is_published:
-                raise HTTPException(status_code=400, detail="Archivovaný kurz nelze publikovat.")
-            if not course.is_published:
-                raise HTTPException(status_code=400, detail="Kurz již není publikován.")
-        else:
+        # approved/archived: lze publikovat i odpublikovat
+        if course.status not in (Status.approved, Status.archived):
             raise HTTPException(status_code=400, detail="Publikování lze měnit pouze u kurzu ve stavu 'approved' nebo 'archived'.")
+
+        if is_published == course.is_published:
+            raise HTTPException(
+                status_code=400,
+                detail="Kurz je již publikován." if is_published else "Kurz již není publikován.",
+            )
 
         db.execute(
             update(models.Course)

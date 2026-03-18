@@ -495,7 +495,7 @@ export function CoursesListView() {
                               </>
                             )}
 
-                            {/* Publish toggle - only owner or superadmin, only when approved/archived */}
+                            {/* Publish/Unpublish - only owner or superadmin, only when approved or archived */}
                             {canPublishCourse(course) && (course.status === Status.Approved || course.status === Status.Archived) && (
                               <>
                                 <span className="text-gray-400">|</span>
@@ -503,7 +503,7 @@ export function CoursesListView() {
                                   onClick={() => togglePublish(course)}
                                   className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
                                 >
-                                  {course.isPublished ? 'Deaktivovat' : 'Aktivovat'}
+                                  {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
                                 </button>
                               </>
                             )}
