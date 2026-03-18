@@ -36,13 +36,13 @@ export function AdminViewRouter() {
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseContentView courseId={courseId} />;
+        return <CourseContentView courseId={courseId} initialModuleId={moduleId} />;
 
       case 'course-tests':
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseTestsView courseId={courseId} />;
+        return <CourseTestsView courseId={courseId} initialModuleId={moduleId} />;
 
       case 'course-summary':
         if (!courseId) {

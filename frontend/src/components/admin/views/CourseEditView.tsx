@@ -7,6 +7,9 @@ import { Course as CourseType } from '@/api';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState, DeleteConfirmModal } from '@/components/admin';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useRole } from '@/hooks/useRole';
 
 interface CourseEditViewProps {
   courseId: number;
@@ -15,7 +18,10 @@ interface CourseEditViewProps {
 // Formulář pro editaci kurzu a jeho modulů
 export function CourseEditView({ courseId }: CourseEditViewProps) {
   const { goToCourses, goBack, goToModuleEdit } = useAdminNavigation();
-  
+  const { blocks, targets, subjects, loading: catalogsLoading } = useCatalogData();
+  const { isOwner } = useCurrentUser();
+  const { isSuperAdmin } = useRole();
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -26,22 +32,27 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editModuleData, setEditModuleData] = useState({ title: '' });
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    courseBlockId: 0,
+    courseTargetId: 0,
+    courseSubjectId: 0,
   });
 
   useEffect(() => {
-    async function loadCourse() {
+    async function loadData() {
       try {
         const course = await getCourse(courseId);
-
         setCourseData(course);
         setModules(course.modules || []);
         setFormData({
           title: course.title,
           description: course.description || '',
+          courseBlockId: course.courseBlockId ?? 0,
+          courseTargetId: course.courseTargetId ?? 0,
+          courseSubjectId: course.courseSubjectId ?? 0,
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -50,17 +61,17 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         setInitialLoading(false);
       }
     }
-    loadCourse();
+    loadData();
   }, [courseId]);
+
+  // Ownership guard: only owner or superadmin can edit
+  const canEdit = courseData ? (isSuperAdmin || isOwner(courseData.ownerId)) : false;
 
   const toggleModule = (moduleId: number) => {
     setExpandedModules(prev => {
       const next = new Set(prev);
-      if (next.has(moduleId)) {
-        next.delete(moduleId);
-      } else {
-        next.add(moduleId);
-      }
+      if (next.has(moduleId)) next.delete(moduleId);
+      else next.add(moduleId);
       return next;
     });
   };
@@ -77,14 +88,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   const saveModuleEdit = async (module: Module) => {
     try {
-      await updateModule(module.moduleId, {
-        title: editModuleData.title,
-        position: module.position,
-      });
-      setModules(prev => prev.map(m => 
-        m.moduleId === module.moduleId 
-          ? { ...m, title: editModuleData.title }
-          : m
+      await updateModule(module.moduleId, { title: editModuleData.title, position: module.position });
+      setModules(prev => prev.map(m =>
+        m.moduleId === module.moduleId ? { ...m, title: editModuleData.title } : m
       ));
       setEditingModule(null);
     } catch (err) {
@@ -94,7 +100,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!canEdit) return;
+
     setLoading(true);
     setError('');
 
@@ -104,20 +111,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         courseUpdate: {
           title: formData.title,
           description: formData.description || undefined,
-          courseBlockId: courseData?.courseBlockId ?? 1,
-          courseTargetId: courseData?.courseTargetId ?? 1,
-          courseSubjectId: courseData?.courseSubjectId ?? 1,
+          courseBlockId: formData.courseBlockId,
+          courseTargetId: formData.courseTargetId,
+          courseSubjectId: formData.courseSubjectId,
         },
       });
-      
       goToCourses();
     } catch (err) {
       console.error('Update error:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Nepodařilo se aktualizovat kurz');
-      }
+      setError(err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz');
     } finally {
       setLoading(false);
     }
@@ -137,18 +139,27 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     }
   };
 
-  if (initialLoading) {
-    return <LoadingState />;
-  }
+  if (initialLoading) return <LoadingState />;
+  if (error && !formData.title) return <ErrorState message={error} />;
 
-  if (error && !formData.title) {
-    return <ErrorState message={error} />;
+  // Show guard message if user cannot edit
+  if (courseData && !canEdit) {
+    return (
+      <div className="flex-1 p-4 sm:p-6 lg:p-8">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+          Nemáte oprávnění editovat tento kurz. Editovat může pouze vlastník kurzu nebo superadmin.
+        </div>
+        <button onClick={goBack} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+          Zpět
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat kurz</h1>
-      
+
       {error && (
         <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
           {error}
@@ -157,9 +168,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-white p-4 sm:p-6 rounded-lg shadow">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-            Název kurzu *
-          </label>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">Název kurzu *</label>
           <input
             type="text"
             id="title"
@@ -172,9 +181,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-            Popis kurzu
-          </label>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">Popis kurzu</label>
           <textarea
             id="description"
             value={formData.description}
@@ -185,6 +192,48 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           />
         </div>
 
+        {/* Catalog selects */}
+        {!catalogsLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Blok</label>
+              <select
+                value={formData.courseBlockId}
+                onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+              >
+                {blocks.map((b) => (
+                  <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cílová skupina</label>
+              <select
+                value={formData.courseTargetId}
+                onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+              >
+                {targets.map((t) => (
+                  <option key={t.targetId} value={t.targetId}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Předmět</label>
+              <select
+                value={formData.courseSubjectId}
+                onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+              >
+                {subjects.map((s) => (
+                  <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Modules Section */}
         {modules.length > 0 && (
           <div className="pt-4 border-t">
@@ -192,7 +241,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
             <div className="space-y-3">
               {modules.map((module, index) => (
                 <div key={module.moduleId} className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div 
+                  <div
                     className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
                     onClick={() => toggleModule(module.moduleId)}
                   >
@@ -213,24 +262,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                     <div className="flex items-center gap-2">
                       {editingModule === module.moduleId ? (
                         <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }}
-                            className="p-1 text-green-600 hover:bg-green-100 rounded"
-                          >
+                          <button onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className="p-1 text-green-600 hover:bg-green-100 rounded">
                             <Save size={16} />
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded"
-                          >
+                          <button onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className="p-1 text-red-600 hover:bg-red-100 rounded">
                             <X size={16} />
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }}
-                          className="p-1 text-gray-600 hover:bg-gray-200 rounded"
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className="p-1 text-gray-600 hover:bg-gray-200 rounded">
                           <Edit2 size={16} />
                         </button>
                       )}
@@ -243,7 +283,6 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                   </div>
                   {expandedModules.has(module.moduleId) && (
                     <div className="p-4 bg-white border-t space-y-4">
-                      {/* Learn Blocks */}
                       {module.learnBlocks && module.learnBlocks.length > 0 && (
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700 mb-2">Učební bloky ({module.learnBlocks.length})</h4>
@@ -260,7 +299,6 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                         </div>
                       )}
 
-                      {/* Practice Questions */}
                       {module.practiceQuestions && module.practiceQuestions.length > 0 && (
                         <div>
                           <h4 className="text-sm font-semibold text-gray-700 mb-2">Otázky ({module.practiceQuestions.length})</h4>
@@ -293,8 +331,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                         </div>
                       )}
 
-                      {/* Empty state */}
-                      {(!module.learnBlocks || module.learnBlocks.length === 0) && 
+                      {(!module.learnBlocks || module.learnBlocks.length === 0) &&
                        (!module.practiceQuestions || module.practiceQuestions.length === 0) && (
                         <p className="text-sm text-gray-500 italic">Tento modul nemá žádný obsah.</p>
                       )}
@@ -314,24 +351,21 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
           </button>
-          <button
-            type="button"
-            onClick={goBack}
-            className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base"
-          >
+          <button type="button" onClick={goBack} className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base">
             Zpět
           </button>
-          <button
-            type="button"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 sm:ml-auto text-sm sm:text-base"
-          >
-            Smazat kurz
-          </button>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 sm:ml-auto text-sm sm:text-base"
+            >
+              Smazat kurz
+            </button>
+          )}
         </div>
       </form>
 
-      {/* Delete Confirmation Modal - udelt do komponenty */}
       {showDeleteConfirm && (
         <DeleteConfirmModal
           isOpen={showDeleteConfirm}

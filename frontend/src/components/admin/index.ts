@@ -8,6 +8,7 @@ export { LoadingState, ErrorState } from './StateDisplays';
 export { AiTutorChat } from './AiTutorChat';
 export { GenerateEmbeddingsButton } from './GenerateEmbeddingsButton';
 export { CourseActionButtons, EditActionButton, PublishActionButton, DeleteActionButton, ApproveActionButton } from './CourseActionButtons';
+export { CourseOutlineSidebar } from './CourseOutlineSidebar';
 
 // Views - exported separately for lazy loading
 export * from './views';

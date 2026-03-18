@@ -7,6 +7,7 @@ import { getModule, getCourse, getModules } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, BookOpenText, Dumbbell } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
+import { Alert } from "@/components/ui";
 
 type TabType = 'prirucka' | 'procvicovani';
 
@@ -104,9 +105,15 @@ export default function ModulePage() {
   if (error || !module) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Modul nebyl nalezen.'}</p>
-          <Link href="/" className="text-purple-600 hover:underline">← Zpět na přehled</Link>
+        <div className="w-full max-w-lg px-4">
+          <Alert variant="error" title="Nepodařilo se načíst data modulu.">
+            {error === 'Nepodařilo se načíst data modulu.'
+              ? 'Zkontrolujte, zda jste přihlášeni, a zkuste to znovu.'
+              : (error || 'Modul nebyl nalezen.')}
+          </Alert>
+          <div className="text-center mt-4">
+            <Link href="/" className="text-purple-600 hover:underline text-sm">← Zpět na přehled</Link>
+          </div>
         </div>
       </div>
     );

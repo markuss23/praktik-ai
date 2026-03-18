@@ -108,44 +108,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       />
 
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
-        {/* Left Sidebar - Course Outline */}
-        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-black">Osnova kurzu</h2>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            {modules.map((module, index) => (
-              <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
-                <div
-                  className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 border-l-4 border-l-transparent"
-                  onClick={() => toggleOutlineItem(index)}
-                >
-                  {expandedOutlineItems.has(index) ? (
-                    <ChevronDown size={16} className="text-gray-400" />
-                  ) : (
-                    <ChevronUp size={16} className="text-gray-400" />
-                  )}
-                  <span className="text-sm text-black font-medium truncate">{module.title}</span>
-                </div>
-                {expandedOutlineItems.has(index) && (
-                  <div className="pb-2 pl-10 pr-4">
-                    <span className="text-xs text-gray-500">
-                      {module.practiceQuestions?.length || 0} otázek
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {modules.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                Žádné moduly
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Content - Summary */}
+        {/* Left Content - Summary */}
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Přehled kurzu</h2>
@@ -218,6 +181,43 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
             backLabel="Zpět k testům"
             continueDisabled={saving}
           />
+        </div>
+
+        {/* Right Sidebar - Course Outline */}
+        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="font-semibold text-black">Osnova kurzu</h2>
+          </div>
+          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+            {modules.map((module, index) => (
+              <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+                <div
+                  className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 border-l-4 border-l-transparent"
+                  onClick={() => toggleOutlineItem(index)}
+                >
+                  {expandedOutlineItems.has(index) ? (
+                    <ChevronDown size={16} className="text-gray-400" />
+                  ) : (
+                    <ChevronUp size={16} className="text-gray-400" />
+                  )}
+                  <span className="text-sm text-black font-medium truncate">{module.title}</span>
+                </div>
+                {expandedOutlineItems.has(index) && (
+                  <div className="pb-2 pl-10 pr-4">
+                    <span className="text-xs text-gray-500">
+                      {module.practiceQuestions?.length || 0} otázek
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {modules.length === 0 && (
+              <div className="p-4 text-center text-gray-500 text-sm">
+                Žádné moduly
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

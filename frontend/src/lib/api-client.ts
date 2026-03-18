@@ -5,6 +5,7 @@ import {
   ActivitiesApi,
   AgentsApi,
   CatalogsApi,
+  AuthenticationApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -47,6 +48,13 @@ export const modulesApi = new ModulesApi(configuration);
 export const activitiesApi = new ActivitiesApi(configuration);
 export const agentsApi = new AgentsApi(configuration);
 export const catalogsApi = new CatalogsApi(configuration);
+export const authApi = new AuthenticationApi(configuration);
+
+// ============ Auth / Current User ============
+
+export async function getMe() {
+  return authApi.endpMeApiV1AuthMeGet();
+}
 
 // Course API functions
 export async function getCourses(params?: {
