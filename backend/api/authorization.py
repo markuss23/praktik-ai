@@ -86,6 +86,20 @@ def validate_owner_or_superadmin(
         )
 
 
+def validate_superadmin(
+    user: User,
+    resource_name: str = "zdroj",
+) -> None:
+    """
+    Povolí přístup pouze superadminovi.
+    """
+    if user.role != UserRole.superadmin:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Nemáte oprávnění upravovat tento {resource_name}",
+        )
+
+
 def validate_guarantor_or_superadmin(
     resource: OwnedResource,
     user: User,

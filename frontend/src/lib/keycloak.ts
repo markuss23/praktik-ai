@@ -66,11 +66,14 @@ export async function buildLoginUrl(state?: string): Promise<string> {
   return `${KC_BASE}/auth?${params.toString()}`;
 }
 
-export function buildLogoutUrl(redirectAfter?: string): string {
+export function buildLogoutUrl(redirectAfter?: string, idTokenHint?: string): string {
   const params = new URLSearchParams({
     client_id: KC_CONFIG.clientId,
     post_logout_redirect_uri: redirectAfter ?? (typeof window !== "undefined" ? window.location.origin : ""),
   });
+  if (idTokenHint) {
+    params.set("id_token_hint", idTokenHint);
+  }
   return `${KC_BASE}/logout?${params.toString()}`;
 }
 
@@ -206,8 +209,8 @@ export function storeTokens(tokens: TokenResponse) {
   }
 }
 
-export function clearTokens() {
-  if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.accessToken)) {
+export function clearTokens(silent = false) {
+  if (!silent && typeof window !== "undefined" && localStorage.getItem(STORAGE_KEYS.accessToken)) {
     // Let useAuth (and any other listener) know the session ended
     window.dispatchEvent(new CustomEvent("kc:logout"));
   }

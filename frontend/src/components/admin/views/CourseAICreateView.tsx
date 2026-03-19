@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowRight, Loader2, Upload, X, FileText } from 'lucide-react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
 import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
@@ -58,12 +58,49 @@ export function CourseAICreateView() {
     loadCatalogs();
   }, []);
 
+  const ACCEPTED_TYPES = '.md,.docx';
+  const ACCEPTED_EXTENSIONS = ['md', 'docx'];
+  const [dragActive, setDragActive] = useState(false);
+
+  const addFiles = useCallback((incoming: FileList | File[]) => {
+    const valid = Array.from(incoming).filter((f) => {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      return ACCEPTED_EXTENSIONS.includes(ext);
+    });
+    if (valid.length === 0) return;
+    setFiles((prev) => {
+      const names = new Set(prev.map((f) => f.name));
+      return [...prev, ...valid.filter((f) => !names.has(f.name))];
+    });
+    setError('');
+  }, []);
+
+  const removeFile = (name: string) => {
+    setFiles((prev) => prev.filter((f) => f.name !== name));
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (selectedFiles && selectedFiles.length > 0) {
-      setFiles(Array.from(selectedFiles));
-      setError('');
-    }
+    if (e.target.files) addFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragActive(false);
+      if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    },
+    [addFiles],
+  );
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -295,26 +332,63 @@ export function CourseAICreateView() {
               <label className="block text-sm font-semibold text-black mb-2">
                 Nahrát podklady
               </label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Nahrát podklady
-                </button>
-                <span className="text-sm text-gray-500">
-                  {files.length > 0 ? `${files.length} soubor(ů) vybráno: ${files.map(f => f.name).join(', ')}` : 'Žádné soubory vybrány'}
-                </span>
+
+              {/* Drop zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors ${
+                  dragActive
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-purple-500' : 'text-gray-400'}`} size={32} />
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Přetáhněte soubory sem nebo klikněte pro výběr
+                </p>
+                <p className="text-xs text-gray-500">
+                  Markdown (.md) a Word (.docx) — lze vybrat více souborů najednou
+                </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".md"
+                  accept={ACCEPTED_TYPES}
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
               </div>
+
+              {/* File list */}
+              {files.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {files.map((f) => (
+                    <li
+                      key={f.name}
+                      className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-gray-700 truncate">{f.name}</span>
+                        <span className="text-gray-400 flex-shrink-0">
+                          ({(f.size / 1024).toFixed(0)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(f.name)}
+                        className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        title="Odebrat soubor"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Tlačítka */}

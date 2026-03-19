@@ -138,9 +138,15 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(() => {
-    const logoutUrl = buildLogoutUrl(window.location.origin);
-    clearTokens();
-    setState(LOGGED_OUT);
+    const tokens = getStoredTokens();
+    const logoutUrl = buildLogoutUrl(
+      window.location.origin,
+      tokens?.idToken || undefined,
+    );
+    // Set loading: true to prevent UI flash (header won't show "Přihlásit se"
+    // and profile page won't auto-redirect to login) during the redirect.
+    setState({ isAuthenticated: false, user: null, accessToken: null, loading: true });
+    clearTokens(true); // silent — we already set state ourselves
     window.location.href = logoutUrl;
   }, []);
 

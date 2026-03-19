@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
-from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin
+from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin, validate_superadmin
 
 
 def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
@@ -95,7 +95,7 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
             Status.generated: {Status.in_review},
             Status.edited: {Status.in_review},
             Status.in_review: {Status.approved, Status.edited},
-            Status.approved: {Status.archived},
+            Status.approved: {Status.archived, Status.edited},
         }
 
         allowed = valid_transitions.get(course.status, set())
@@ -106,9 +106,12 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         if status == Status.in_review:
             # Submit for review: only owner or superadmin
             validate_owner_or_superadmin(course, user, "kurz")
-        elif status in (Status.approved, Status.edited) and course.status == Status.in_review:
+        elif course.status == Status.in_review and status in (Status.approved, Status.edited):
             # Approve or reject: only guarantor or superadmin
             validate_guarantor_or_superadmin(course, user, "kurz")
+        elif course.status == Status.approved and status == Status.edited:
+            # Revert approved course back to editing: superadmin only
+            validate_superadmin(user, "kurz")
         else:
             # Other transitions (e.g. approved → archived): owner or superadmin
             validate_owner_or_superadmin(course, user, "kurz")
@@ -116,6 +119,10 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
         values: dict = {"status": status}
         if status == Status.approved:
             values["approved_by_id"] = user.user_id
+        elif course.status == Status.approved and status == Status.edited:
+            # Reverting from approved: unpublish and clear approval
+            values["is_published"] = False
+            values["approved_by_id"] = None
 
         db.execute(
             update(models.Course)

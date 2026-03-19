@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
 import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
-import { BookOpen, Lock, LogIn, LogOut, CheckCircle } from "lucide-react";
+import { BookOpen, Lock, LogIn, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -142,14 +142,16 @@ export default function CoursePage() {
           {isAuthenticated && (
             <div>
               {enrollment ? (
-                <button
-                  onClick={handleLeave}
-                  disabled={enrollLoading}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50"
-                >
-                  <LogOut className="w-4 h-4" />
-                  {enrollLoading ? 'Zpracování...' : 'Opustit kurz'}
-                </button>
+                // TODO: "Opustit kurz" button temporarily disabled
+                // <button
+                //   onClick={handleLeave}
+                //   disabled={enrollLoading}
+                //   className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50"
+                // >
+                //   <LogOut className="w-4 h-4" />
+                //   {enrollLoading ? 'Zpracování...' : 'Opustit kurz'}
+                // </button>
+                null
               ) : (
                 <button
                   onClick={handleEnroll}

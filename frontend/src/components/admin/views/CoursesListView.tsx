@@ -3,7 +3,7 @@
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
-import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
+import { GripVertical, X, BicepsFlexed, Upload, RotateCcw } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
@@ -238,6 +238,20 @@ export function CoursesListView() {
       alert('Nepodařilo se vrátit kurz k úpravám.');
     } finally {
       setApprovalLoading(null);
+    }
+  };
+
+  /** Superadmin reverts approved course back to editing (unpublishes too) */
+  const handleRevertToEditing = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to revert course:', error);
+      alert('Nepodařilo se vrátit kurz do úprav.');
+    } finally {
+      setStatusLoading(null);
     }
   };
 
@@ -508,6 +522,20 @@ export function CoursesListView() {
                               </>
                             )}
 
+                            {/* Revert to editing - superadmin only, when approved */}
+                            {isSuperAdmin && course.status === Status.Approved && (
+                              <>
+                                <span className="text-gray-400">|</span>
+                                <button
+                                  onClick={() => handleRevertToEditing(course)}
+                                  disabled={statusLoading === course.courseId}
+                                  className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                >
+                                  {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
+                                </button>
+                              </>
+                            )}
+
                             {/* Delete - superadmin only */}
                             {isSuperAdmin && (
                               <>
@@ -646,6 +674,8 @@ export function CoursesListView() {
                 onSubmitForReview={() => handleSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
                 onReject={() => handleReject(course)}
+                onRevertToEditing={() => handleRevertToEditing(course)}
+                statusLoading={statusLoading === course.courseId}
               />
             ))}
           </div>
@@ -804,6 +834,8 @@ interface MobileCourseCardProps {
   onSubmitForReview: () => void;
   canSubmitReview: boolean;
   onReject: () => void;
+  onRevertToEditing: () => void;
+  statusLoading: boolean;
 }
 
 function MobileCourseCard({
@@ -828,6 +860,8 @@ function MobileCourseCard({
   onSubmitForReview,
   canSubmitReview,
   onReject,
+  onRevertToEditing,
+  statusLoading,
 }: MobileCourseCardProps) {
   const moduleCount = course.modulesCount || 0;
   const statusStr = course.status as string;
@@ -866,6 +900,11 @@ function MobileCourseCard({
           )}
           {canPublish && (course.status === Status.Approved || course.status === Status.Archived) && (
             <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+          )}
+          {canDelete && course.status === Status.Approved && (
+            <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
+              <RotateCcw size={14} />
+            </button>
           )}
           {canDelete && (
             <DeleteActionButton onClick={onDelete} iconSize={14} />
