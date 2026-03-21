@@ -131,6 +131,9 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     ai_expression_level: Mapped[str] = mapped_column(
         String(100), nullable=False, default="standardní srozumitelný jazyk"
     )
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     courses: Mapped[list[Course]] = relationship(
         back_populates="owner",

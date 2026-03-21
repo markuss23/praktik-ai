@@ -1,13 +1,18 @@
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
 from typing import Annotated
+
 from keycloak import (
+    KeycloakAdmin,
     KeycloakAuthenticationError,
     KeycloakConnectionError,
     KeycloakOpenID,
+    KeycloakOpenIDConnection,
 )
 from fastapi import Depends, HTTPException
-from fastapi.security import (
-    OAuth2PasswordBearer,
-)
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,9 +21,11 @@ from api.database import get_sql
 from api.models import User
 from api.enums import UserRole
 
+log = logging.getLogger(__name__)
+
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
-# Keycloak realm role names mapped to our DB UserRole enum
+# Keycloak realm role names → DB enum
 _KC_ROLE_MAP: dict[str, UserRole] = {
     "superadmin": UserRole.superadmin,
     "guarantor": UserRole.guarantor,
@@ -26,44 +33,51 @@ _KC_ROLE_MAP: dict[str, UserRole] = {
     "user": UserRole.user,
 }
 
+# Priority order (index = weight, higher wins)
+_ROLE_PRIORITY: list[str] = ["user", "lector", "guarantor", "superadmin"]
 
-def _decode_jwt_roles(keycloak_openid: KeycloakOpenID, token_str: str) -> list[str]:
-    """Decode the JWT access token and return realm role names.
 
-    Falls back to the introspect response if JWT decoding fails.
+def _resolve_highest_role(role_names: list[str]) -> UserRole:
+    """Pick the highest application role from a list of realm role names."""
+    best = UserRole.user
+    best_idx = 0
+    for name in role_names:
+        if name in _KC_ROLE_MAP:
+            idx = _ROLE_PRIORITY.index(name)
+            if idx > best_idx:
+                best_idx = idx
+                best = _KC_ROLE_MAP[name]
+    return best
+
+
+def _get_admin_client() -> KeycloakAdmin:
+    """Create a KeycloakAdmin authenticated via client credentials.
+
+    Both authentication and queries happen in the same realm (praktikai-dev).
+    The 'app' client must have Service Accounts Enabled + realm-management roles.
     """
-    # decoding the JWT directly (contains realm_access)
-    try:
-        decoded: dict = keycloak_openid.decode_token(
-            token_str,
-            validate=False, 
-        )
-        roles = decoded.get("realm_access", {}).get("roles", [])
-        if roles:
-            return roles
-    except Exception:
-        pass
-
-    try:
-        token_info: dict = keycloak_openid.introspect(token_str)
-        return token_info.get("realm_access", {}).get("roles", [])
-    except Exception:
-        return []
+    connection = KeycloakOpenIDConnection(
+        server_url=settings.keycloak.server_url,
+        client_id=settings.keycloak.client_id,
+        client_secret_key=settings.keycloak.client_secret,
+        realm_name=settings.keycloak.realm_name,
+    )
+    return KeycloakAdmin(connection=connection)
 
 
-def _resolve_role_from_token(keycloak_openid: KeycloakOpenID, token_str: str) -> UserRole:
-    """Extract the highest application role from a Keycloak access token.
+def _fetch_roles_from_admin_api(user_sub: str) -> UserRole:
+    """Fetch realm roles for a user via Keycloak Admin REST API.
 
-    Decodes the JWT to read ``realm_access.roles``.
-    No KeycloakAdmin / service-account needed.
+    Falls back to UserRole.user if the Admin API is unreachable.
     """
-    realm_roles = _decode_jwt_roles(keycloak_openid, token_str)
-
-    for role_key in ("superadmin", "guarantor", "lector"):
-        if role_key in realm_roles:
-            return _KC_ROLE_MAP[role_key]
-
-    return UserRole.user
+    try:
+        admin = _get_admin_client()
+        realm_roles = admin.get_realm_roles_of_user(user_id=user_sub)
+        role_names = [r["name"] for r in realm_roles]
+        return _resolve_highest_role(role_names)
+    except Exception:
+        log.exception("Failed to fetch roles from Admin API for user %s", user_sub)
+        return UserRole.user
 
 
 class Auth:
@@ -105,10 +119,9 @@ class Auth:
     ) -> User:
         """Validate token and return the DB user.
 
-        On the very first request for an unknown ``sub`` a new User row is
-        created with the role derived from the token's ``realm_access.roles``.
-        Subsequent role syncs happen only via the explicit ``/auth/sync``
-        endpoint (called by the frontend after PKCE login).
+        Token is used ONLY for authentication (identity via sub).
+        Roles are NEVER read from the JWT — they come from the DB
+        (synced via Admin API on login).
         """
         if not token:
             raise HTTPException(
@@ -142,9 +155,15 @@ class Auth:
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
         if user is None:
-            # First authenticated request — resolve role from the token
-            resolved_role = _resolve_role_from_token(self.keycloak_openid, token)
-            user = User(sub=sub, email=email, display_name=name, role=resolved_role)
+            # First request — sync role from Admin API
+            resolved_role = _fetch_roles_from_admin_api(sub)
+            user = User(
+                sub=sub,
+                email=email,
+                display_name=name,
+                role=resolved_role,
+                last_synced_at=datetime.now(timezone.utc),
+            )
             db.add(user)
             db.commit()
 
@@ -156,10 +175,9 @@ class Auth:
     def sync_user_from_token(self, token_str: str, db: Session) -> User:
         """Create or update a user from a Keycloak access token.
 
-        Called on login (``/auth/token`` and ``/auth/sync``) to ensure the DB
-        row mirrors the current Keycloak state (email, name, **role**).
-        The role is read from ``realm_access.roles`` inside the JWT — no admin
-        API / service-account is required.
+        Called on login (/auth/token and /auth/sync).
+        JWT is used only to identify the user (sub).
+        Roles are fetched from Keycloak Admin REST API.
         """
         try:
             user_info: dict = self.keycloak_openid.userinfo(token_str)
@@ -169,16 +187,24 @@ class Auth:
         sub: str = user_info["sub"]
         email: str = user_info.get("email", "")
         name: str | None = user_info.get("name")
-        resolved_role: UserRole = _resolve_role_from_token(self.keycloak_openid, token_str)
+        resolved_role: UserRole = _fetch_roles_from_admin_api(sub)
+        now = datetime.now(timezone.utc)
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
         if user is None:
-            user = User(sub=sub, email=email, display_name=name, role=resolved_role)
+            user = User(
+                sub=sub,
+                email=email,
+                display_name=name,
+                role=resolved_role,
+                last_synced_at=now,
+            )
             db.add(user)
         else:
             user.email = email
             user.display_name = name or user.display_name
             user.role = resolved_role
+            user.last_synced_at = now
         db.commit()
         db.refresh(user)
         return user
