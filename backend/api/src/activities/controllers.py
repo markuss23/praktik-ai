@@ -2,8 +2,8 @@ from fastapi import HTTPException
 from sqlalchemy import select, update, and_
 from sqlalchemy.orm import Session
 
-from api import models, enums
-from api.src.common.utils import get_or_404
+from api import models
+from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.activities.schemas import (
     LearnBlock,
     LearnBlockCreate,
@@ -21,17 +21,6 @@ from api.src.activities.schemas import (
 from api.authorization import validate_owner_or_superadmin
 
 
-# ---------- Helpers ----------
-
-
-def _assert_course_editable(course: models.Course) -> None:
-    if course.status not in (enums.Status.draft, enums.Status.generated, enums.Status.edited):
-        raise HTTPException(
-            status_code=400,
-            detail="Editace je povolena pouze pokud je kurz ve stavu 'koncept', 'vygenerovaný' nebo 'editovaný'.",
-        )
-
-
 # ---------- LearnBlock ----------
 
 
@@ -42,7 +31,7 @@ def create_learn_block(
     module = get_or_404(db, models.Module, learn_data.module_id, detail="Modul nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(module, user, "modul")
-    _assert_course_editable(module.course)
+    assert_course_editable(module.course)
 
     existing = db.execute(
         select(models.LearnBlock).where(
@@ -72,7 +61,7 @@ def update_learn_block(
     learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
-    _assert_course_editable(learn_block.module.course)
+    assert_course_editable(learn_block.module.course)
 
     # Kontrola unikátnosti title (pokud se mění)
     if learn_data.title != learn_block.title:
@@ -105,7 +94,7 @@ def delete_learn_block(db: Session, learn_id: int, user: models.User) -> None:
     learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
-    _assert_course_editable(learn_block.module.course)
+    assert_course_editable(learn_block.module.course)
 
     learn_block.soft_delete()
     db.commit()
@@ -121,7 +110,7 @@ def create_practice_question(
     module = get_or_404(db, models.Module, question_data.module_id, detail="Modul nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(module, user, "modul")
-    _assert_course_editable(module.course)
+    assert_course_editable(module.course)
 
     new_question = models.PracticeQuestion(
         module_id=question_data.module_id,
@@ -144,7 +133,7 @@ def update_practice_question(
     question = get_or_404(db, models.PracticeQuestion, question_id, detail="PracticeQuestion nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "practice question")
-    _assert_course_editable(question.module.course)
+    assert_course_editable(question.module.course)
 
     db.execute(
         update(models.PracticeQuestion)
@@ -162,7 +151,7 @@ def delete_practice_question(db: Session, question_id: int, user: models.User) -
     question = get_or_404(db, models.PracticeQuestion, question_id, detail="PracticeQuestion nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "practice question")
-    _assert_course_editable(question.module.course)
+    assert_course_editable(question.module.course)
 
     question.soft_delete()  # _soft_delete_cascade = ["closed_options", "open_keywords"]
     db.commit()
@@ -178,7 +167,7 @@ def create_practice_option(
     question = get_or_404(db, models.PracticeQuestion, option_data.question_id, detail="Otázka nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "otázka")
-    _assert_course_editable(question.module.course)
+    assert_course_editable(question.module.course)
 
     new_option = models.PracticeOption(
         question_id=option_data.question_id,
@@ -198,7 +187,7 @@ def update_practice_option(
     option = get_or_404(db, models.PracticeOption, option_id, detail="PracticeOption nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(option, user, "practice option")
-    _assert_course_editable(option.question.module.course)
+    assert_course_editable(option.question.module.course)
 
     db.execute(
         update(models.PracticeOption)
@@ -216,7 +205,7 @@ def delete_practice_option(db: Session, option_id: int, user: models.User) -> No
     option = get_or_404(db, models.PracticeOption, option_id, detail="PracticeOption nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(option, user, "practice option")
-    _assert_course_editable(option.question.module.course)
+    assert_course_editable(option.question.module.course)
 
     option.soft_delete()
     db.commit()
@@ -232,7 +221,7 @@ def create_question_keyword(
     question = get_or_404(db, models.PracticeQuestion, keyword_data.question_id, detail="Otázka nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "otázka")
-    _assert_course_editable(question.module.course)
+    assert_course_editable(question.module.course)
 
     conflict = db.execute(
         select(models.QuestionKeyword).where(
@@ -264,7 +253,7 @@ def update_question_keyword(
     keyword = get_or_404(db, models.QuestionKeyword, keyword_id, detail="QuestionKeyword nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(keyword, user, "question keyword")
-    _assert_course_editable(keyword.question.module.course)
+    assert_course_editable(keyword.question.module.course)
 
     if keyword_data.keyword != keyword.keyword:
         conflict = db.execute(
@@ -296,7 +285,7 @@ def delete_question_keyword(db: Session, keyword_id: int, user: models.User) -> 
     keyword = get_or_404(db, models.QuestionKeyword, keyword_id, detail="QuestionKeyword nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(keyword, user, "question keyword")
-    _assert_course_editable(keyword.question.module.course)
+    assert_course_editable(keyword.question.module.course)
 
     keyword.soft_delete()
     db.commit()

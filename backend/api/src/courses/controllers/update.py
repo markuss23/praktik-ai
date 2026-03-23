@@ -7,7 +7,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api import models
-from api.src.common.utils import get_or_404
+from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
 from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin, validate_superadmin
@@ -46,10 +46,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)
     validate_owner_or_superadmin(course, user, "kurz")
 
-    if course.status not in (Status.draft, Status.generated, Status.edited):
-        raise HTTPException(
-            status_code=400, detail="Lze upravovat pouze kurzy ve stavu koncept, vygenerovaný nebo editovaný"
-        )
+    assert_course_editable(course)
 
     update_data = course_data.model_dump(exclude_unset=True)
 

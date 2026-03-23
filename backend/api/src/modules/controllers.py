@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
-from api.src.common.utils import get_or_404
+from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion
 from api import enums, models
 from api.authorization import validate_owner_or_superadmin
@@ -75,11 +75,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
     validate_owner_or_superadmin(module, user, "modul")
 
     # kontrola, zda je kurz v editovatelném stavu
-    if module.course.status not in (enums.Status.draft, enums.Status.generated, enums.Status.edited):
-        raise HTTPException(
-            status_code=400,
-            detail="Modul lze editovat pouze pokud je kurz ve stavu 'koncept', 'vygenerovaný' nebo 'editovaný'.",
-        )
+    assert_course_editable(module.course)
 
     # kontrola unikátnosti názvu (pokud se mění)
     if module_data.title != module.title:
@@ -128,21 +124,7 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
         raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
     # Check enrollment (owner/superadmin bypass)
-    is_owner_or_admin = (
-        user.user_id == course.owner_id
-        or user.role == enums.UserRole.superadmin
-    )
-    if not is_owner_or_admin:
-        enrollment = db.scalar(
-            select(models.Enrollment).where(
-                models.Enrollment.user_id == user.user_id,
-                models.Enrollment.course_id == course.course_id,
-                models.Enrollment.is_active.is_(True),
-                models.Enrollment.left_at.is_(None),
-            )
-        )
-        if enrollment is None:
-            raise HTTPException(status_code=403, detail="Nejste zapsáni v tomto kurzu")
+    check_enrollment(db, user, course, bypass_for_owner=True)
 
     # Check if already passed
     existing = db.scalar(

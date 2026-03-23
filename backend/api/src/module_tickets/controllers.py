@@ -3,21 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
-from api.src.common.utils import get_or_404
+from api.src.common.utils import get_or_404, check_enrollment
 from api.enums import TicketStatus, UserRole
 from api.src.module_tickets.schemas import TicketCreate, TicketItem
-
-
-def _check_enrollment(db: Session, user_id: int, course_id: int) -> None:
-    enrollment = db.scalar(
-        select(models.Enrollment).where(
-            models.Enrollment.user_id == user_id,
-            models.Enrollment.course_id == course_id,
-            models.Enrollment.is_active.is_(True),
-        )
-    )
-    if enrollment is None:
-        raise HTTPException(status_code=403, detail="Nejste zapsáni v tomto kurzu")
 
 
 def get_tickets(
@@ -50,7 +38,7 @@ def create_ticket(
     """Vytvoří ticket. Student musí být zapsán v kurzu."""
     module = get_or_404(db, models.Module, data.module_id, detail="Modul nenalezen")
 
-    _check_enrollment(db, actor.user_id, module.course_id)
+    check_enrollment(db, actor, module.course)
 
     ticket = models.ModuleTicket(
         user_id=actor.user_id,

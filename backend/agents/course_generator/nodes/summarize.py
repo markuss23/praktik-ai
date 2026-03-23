@@ -1,10 +1,8 @@
 from langchain_core.messages.ai import AIMessage
 from langchain_openai import ChatOpenAI
-from sqlalchemy import update
 
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
-from api import models
 
 
 def summarize_content_node(state: AgentState) -> AgentState:
@@ -59,18 +57,6 @@ def summarize_content_node(state: AgentState) -> AgentState:
 
     if not output.content.strip():
         raise ValueError("LLM vrátil prázdnou sumarizaci. Zkontroluj zdrojový obsah a nastavení modelu.")
-
-    # Uložení summary do DB
-    db = state.get("db")
-    if db:
-        stmt = (
-            update(models.Course)
-            .where(models.Course.course_id == course_id)
-            .values(summary=output.content)
-        )
-        db.execute(stmt)
-        db.commit()
-        print("   -> Summary uloženo do databáze")
 
     state["summarize_content"] = output.content
     print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(output.content)} znaků)")

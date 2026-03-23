@@ -3,7 +3,7 @@ from sqlalchemy import select, update
 
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
-from api.src.common.utils import get_or_404
+from api.src.common.utils import get_or_404, check_enrollment
 from api.src.agents.schemas import (
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
@@ -110,24 +110,7 @@ async def learn_blocks_chat(
     course = learn_block.module.course
 
     # Owner and superadmin can use the tutor without enrollment
-    is_owner_or_admin = (
-        user.user_id == course.owner_id
-        or user.role == models.UserRole.superadmin
-    )
-
-    if not is_owner_or_admin:
-        enrollment = db.execute(
-            select(models.Enrollment).where(
-                models.Enrollment.user_id == user.user_id,
-                models.Enrollment.course_id == course.course_id,
-                models.Enrollment.is_active.is_(True),
-            )
-        ).scalars().first()
-
-        if enrollment is None:
-            raise HTTPException(
-                status_code=403, detail="Nejste zapsáni v tomto kurzu"
-            )
+    check_enrollment(db, user, course, bypass_for_owner=True)
 
     app = create_learn_block_mentor_graph()
     result = await app.ainvoke(
@@ -169,21 +152,7 @@ async def generate_assessment(
         )
 
     # Ověření zápisu – platí pro všechny uživatele včetně vlastníka a superadmina
-    enrollment = (
-        db.execute(
-            select(models.Enrollment).where(
-                models.Enrollment.user_id == user.user_id,
-                models.Enrollment.course_id == course.course_id,
-                models.Enrollment.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-    if enrollment is None:
-        raise HTTPException(
-            status_code=403, detail="Nejste zapsáni v tomto kurzu"
-        )
+    check_enrollment(db, user, course)
 
     # Nelze generovat, pokud už existuje aktivní session s otázkou
     existing_session: models.ModuleTaskSession | None = (
