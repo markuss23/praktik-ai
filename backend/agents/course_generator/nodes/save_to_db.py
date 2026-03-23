@@ -37,19 +37,21 @@ def save_to_db_node(state: AgentState) -> AgentState:
         db_module = models.Module(
             course_id=course_id,
             title=module.title,
-            position=module.position,
             is_active=True,
         )
         db.add(db_module)
-        db.flush()  # Získání module_id před přidáním learn_blocks a practices
+        db.flush()  # Získání module_id před přidáním learn_block a practices
 
-        # Uložení learn_blocks
+        # Uložení learn_block (max 1 na modul)
+        if len(module.learn_blocks) > 1:
+            raise ValueError(
+                f"Modul '{module.title}' má {len(module.learn_blocks)} learn bloků, povolený je max 1."
+            )
         for lb in module.learn_blocks:
             db_learn_block = models.LearnBlock(
                 module_id=db_module.module_id,
                 title=db_module.title,
                 content=lb.content,
-                position=lb.position,
             )
             db.add(db_learn_block)
 
@@ -72,7 +74,6 @@ def save_to_db_node(state: AgentState) -> AgentState:
                 module_id=db_module.module_id,
                 question_type=q.question_type.value,
                 question=q.question,
-                position=q.position,
                 correct_answer=q.correct_answer if q.question_type.value == "closed" else None,
                 example_answer=q.example_answer if q.question_type.value == "open" else None,
             )
@@ -84,7 +85,6 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     db_option = models.PracticeOption(
                         question_id=db_question.question_id,
                         text=opt.text,
-                        position=opt.position,
                     )
                     db.add(db_option)
             elif q.question_type.value == "open":

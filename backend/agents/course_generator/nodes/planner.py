@@ -36,24 +36,18 @@ INSTRUKCE - STRUKTURA KURZU:
 INSTRUKCE - STRUKTURA MODULU:
 Pro každý modul ({modules_count}):
 - title: Výstižný název modulu (1-200 znaků)
-- position: Pořadí modulu (1, 2, 3, atd.)
 - learn_blocks: Přesně JEDEN učební blok (seznam s jedním prvkem), který má:
-  * position: Vždy 1
   * content: Kompletní text veškeré látky modulu k naučení (detailní vysvětlení tématu v markdown formátu)
-- practice_questions: Seznam cvičení (pro zpětnou kompatibilitu s generátorem), kde každé cvičení obsahuje:
-  * position: Pořadí cvičení (začíná od 1)
-  * questions: Seznam otázek (2 uzavřené + 1 otevřená) - tyto otázky budou uloženy přímo do modulu
+- practice_questions: Seznam otázek (2 uzavřené + 1 otevřená)
 
 INSTRUKCE - STRUKTURA OTÁZEK:
 Pro každou otázku specifikuj:
-- position: Pořadí otázky (1, 2, 3)
 - question_type: "closed" pro uzavřené nebo "open" pro otevřené
 - question: Text otázky
 
 Pro UZAVŘENÉ otázky (question_type="closed"):
 - correct_answer: text správné odpovědi (musí přesně odpovídat textu jedné z closed_options). A nesmí být prázdné.
 - closed_options: Seznam 3 možností, kde každá má:
-  * position: 1, 2, 3 (pro A, B, C)
   * text: Text odpovědi
 
 Pro OTEVŘENÉ otázky (question_type="open"):

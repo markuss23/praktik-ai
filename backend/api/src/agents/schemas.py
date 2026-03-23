@@ -27,6 +27,19 @@ class GenerateEmbeddingsResponse(BaseModel):
     )
 
 
+class GenerateAssessmentRequest(BaseModel):
+    """Request pro generování assessment otázky"""
+
+    module_id: int = Field(..., description="ID modulu")
+
+
+class GenerateAssessmentResponse(BaseModel):
+    """Response s vygenerovanou assessment otázkou"""
+
+    session_id: int = Field(..., description="ID task session")
+    generated_question: str = Field(..., description="Vygenerovaná otázka")
+
+
 class LearnBlocksChatRequest(BaseModel):
     """Request pro chat s learn blocky"""
 

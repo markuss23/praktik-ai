@@ -40,7 +40,7 @@ def load_course_data_node(state: AgentState) -> AgentState:
                 models.Module.is_active.is_(True),
                 models.LearnBlock.is_active.is_(True),
             )
-            .order_by(models.Module.position, models.LearnBlock.position)
+            .order_by(models.Module.module_id, models.LearnBlock.learn_id)
         )
         .scalars()
         .all()
@@ -52,7 +52,6 @@ def load_course_data_node(state: AgentState) -> AgentState:
             learn_id=lb.learn_id,
             module_id=lb.module_id,
             course_id=course_id,
-            position=lb.position,
             content=lb.content,
         )
         for lb in learn_blocks_db

@@ -36,7 +36,6 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
                     "learn_block_id": learn_block.learn_id,
                     "module_id": learn_block.module_id,
                     "course_id": state["course_id"],
-                    "position": learn_block.position,
                     "chunk_index": idx,
                 },
             )

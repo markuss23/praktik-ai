@@ -4,6 +4,8 @@ from sqlalchemy import select, update
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
 from api.src.agents.schemas import (
+    GenerateAssessmentRequest,
+    GenerateAssessmentResponse,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
     LearnBlocksChatRequest,
@@ -12,6 +14,7 @@ from api.src.agents.schemas import (
 from agents.course_generator import create_graph
 from agents.embedding_generator import create_graph as create_embedding_graph
 from agents.mentor.graph import create_graph as create_learn_block_mentor_graph
+from agents.assessment_generator.service import AssessmentService
 from api.database import SessionSqlSessionDependency
 from api import models
 
@@ -177,3 +180,83 @@ async def learn_blocks_chat(
     db.commit()
 
     return LearnBlocksChatResponse(answer=answer)
+
+
+@router.post(
+    "/generate-assessment",
+    operation_id="generate_assessment",
+)
+async def generate_assessment(
+    body: GenerateAssessmentRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> GenerateAssessmentResponse:
+    """Vygeneruje assessment otázku pro modul. Vyžaduje zápis do kurzu."""
+
+    module: models.Module | None = (
+        db.execute(
+            select(models.Module).where(
+                models.Module.module_id == body.module_id,
+                models.Module.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if module is None:
+        raise HTTPException(status_code=404, detail="Modul nenalezen")
+
+    course = module.course
+    if not course.is_active or course.status not in ("approved", "archived"):
+        raise HTTPException(
+            status_code=400,
+            detail="Modul není v aktivním a schváleném kurzu",
+        )
+
+    # Ověření zápisu – platí pro všechny uživatele včetně vlastníka a superadmina
+    enrollment = (
+        db.execute(
+            select(models.Enrollment).where(
+                models.Enrollment.user_id == user.user_id,
+                models.Enrollment.course_id == course.course_id,
+                models.Enrollment.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if enrollment is None:
+        raise HTTPException(
+            status_code=403, detail="Nejste zapsáni v tomto kurzu"
+        )
+
+    # Nelze generovat, pokud už existuje aktivní session s otázkou
+    existing_session: models.ModuleTaskSession | None = (
+        db.execute(
+            select(models.ModuleTaskSession).where(
+                models.ModuleTaskSession.user_id == user.user_id,
+                models.ModuleTaskSession.module_id == body.module_id,
+                models.ModuleTaskSession.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if existing_session is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Pro tento modul již máte vygenerovanou otázku",
+        )
+
+    service = AssessmentService(db=db, module_id=body.module_id, user_id=user.user_id)
+
+    try:
+        result = await service.generate()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return GenerateAssessmentResponse(
+        session_id=result.session_id,
+        generated_question=result.generated_question,
+    )

@@ -64,7 +64,6 @@ def create_learn_block(
         new_lb = models.LearnBlock(
             module_id=learn_data.module_id,
             title=learn_data.title,
-            position=learn_data.position,
             content=learn_data.content,
         )
         db.add(new_lb)
@@ -97,21 +96,6 @@ def update_learn_block(
 
         validate_owner_or_superadmin(learn_block, user, "learn block")
         _assert_course_editable(learn_block.module.course)
-
-        # Kontrola unikátnosti position (pokud se mění)
-        if learn_data.position != learn_block.position:
-            conflict = db.execute(
-                select(models.LearnBlock).where(
-                    and_(
-                        models.LearnBlock.module_id == learn_block.module_id,
-                        models.LearnBlock.position == learn_data.position,
-                        models.LearnBlock.is_active.is_(True),
-                        models.LearnBlock.learn_id != learn_id,
-                    )
-                )
-            ).first()
-            if conflict is not None:
-                raise HTTPException(status_code=400, detail="LearnBlock s touto pozicí pro daný modul již existuje.")
 
         # Kontrola unikátnosti title (pokud se mění)
         if learn_data.title != learn_block.title:
@@ -192,30 +176,8 @@ def create_practice_question(
         validate_owner_or_superadmin(module, user, "modul")
         _assert_course_editable(module.course)
 
-        # Pokud je pozice obsazena, přiřaď následující
-        conflict = db.execute(
-            select(models.PracticeQuestion).where(
-                and_(
-                    models.PracticeQuestion.module_id == question_data.module_id,
-                    models.PracticeQuestion.position == question_data.position,
-                    models.PracticeQuestion.is_active.is_(True),
-                )
-            )
-        ).first()
-        if conflict is not None:
-            max_pos = db.execute(
-                select(models.PracticeQuestion.position).where(
-                    models.PracticeQuestion.module_id == question_data.module_id,
-                    models.PracticeQuestion.is_active.is_(True),
-                ).order_by(models.PracticeQuestion.position.desc()).limit(1)
-            ).scalar() or 0
-            question_data = PracticeQuestionCreate(
-                **{**question_data.model_dump(), "position": max_pos + 1}
-            )
-
         new_question = models.PracticeQuestion(
             module_id=question_data.module_id,
-            position=question_data.position,
             question_type=question_data.question_type,
             question=question_data.question,
             correct_answer=question_data.correct_answer,
@@ -251,20 +213,6 @@ def update_practice_question(
 
         validate_owner_or_superadmin(question, user, "practice question")
         _assert_course_editable(question.module.course)
-
-        if question_data.position != question.position:
-            conflict = db.execute(
-                select(models.PracticeQuestion).where(
-                    and_(
-                        models.PracticeQuestion.module_id == question.module_id,
-                        models.PracticeQuestion.position == question_data.position,
-                        models.PracticeQuestion.is_active.is_(True),
-                        models.PracticeQuestion.question_id != question_id,
-                    )
-                )
-            ).first()
-            if conflict is not None:
-                raise HTTPException(status_code=400, detail="PracticeQuestion s touto pozicí pro daný modul již existuje.")
 
         db.execute(
             update(models.PracticeQuestion)
@@ -330,29 +278,8 @@ def create_practice_option(
         validate_owner_or_superadmin(question, user, "otázka")
         _assert_course_editable(question.module.course)
 
-        conflict = db.execute(
-            select(models.PracticeOption).where(
-                and_(
-                    models.PracticeOption.question_id == option_data.question_id,
-                    models.PracticeOption.position == option_data.position,
-                    models.PracticeOption.is_active.is_(True),
-                )
-            )
-        ).first()
-        if conflict is not None:
-            max_pos = db.execute(
-                select(models.PracticeOption.position).where(
-                    models.PracticeOption.question_id == option_data.question_id,
-                    models.PracticeOption.is_active.is_(True),
-                ).order_by(models.PracticeOption.position.desc()).limit(1)
-            ).scalar() or 0
-            option_data = PracticeOptionCreate(
-                **{**option_data.model_dump(), "position": max_pos + 1}
-            )
-
         new_option = models.PracticeOption(
             question_id=option_data.question_id,
-            position=option_data.position,
             text=option_data.text,
         )
         db.add(new_option)
@@ -385,20 +312,6 @@ def update_practice_option(
 
         validate_owner_or_superadmin(option, user, "practice option")
         _assert_course_editable(option.question.module.course)
-
-        if option_data.position != option.position:
-            conflict = db.execute(
-                select(models.PracticeOption).where(
-                    and_(
-                        models.PracticeOption.question_id == option.question_id,
-                        models.PracticeOption.position == option_data.position,
-                        models.PracticeOption.is_active.is_(True),
-                        models.PracticeOption.option_id != option_id,
-                    )
-                )
-            ).first()
-            if conflict is not None:
-                raise HTTPException(status_code=400, detail="PracticeOption s touto pozicí pro danou question již existuje.")
 
         db.execute(
             update(models.PracticeOption)

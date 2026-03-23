@@ -7,9 +7,10 @@ from api.src.modules.controllers import (
     update_module,
     complete_module,
     get_course_progress,
+    get_assessment_question,
     # delete_module,
 )
-from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, CompleteModuleRequest
+from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, CompleteModuleRequest, ModuleAssessmentQuestion
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
@@ -79,6 +80,16 @@ async def endp_get_course_progress(
 ) -> list[ModuleCompletionStatus]:
     """Vrátí stav dokončení všech modulů kurzu pro aktuálního uživatele."""
     return get_course_progress(db, course_id, user)
+
+
+@router.get("/{module_id}/assessment", operation_id="get_module_assessment")
+async def endp_get_assessment_question(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> ModuleAssessmentQuestion:
+    """Vrátí aktivní assessment otázku pro modul a aktuálního uživatele."""
+    return get_assessment_question(db, module_id, user)
 
 
 # @router.delete("/{module_id}", operation_id="delete_module", status_code=204)

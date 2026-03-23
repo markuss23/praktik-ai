@@ -6,9 +6,6 @@ from api.src.activities.schemas import LearnBlock, PracticeQuestion
 
 class ModuleBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
-    position: int = Field(
-        default=1, ge=1, description="Pořadí modulu v rámci kurzu (>= 1)"
-    )
 
 
 class ModuleCreate(ModuleBase):
@@ -40,3 +37,9 @@ class ModuleCompletionStatus(ORMModel):
 
 class CompleteModuleRequest(ORMModel):
     score: int = Field(ge=0, le=100, description="Test score percentage")
+
+
+class ModuleAssessmentQuestion(ORMModel):
+    session_id: int
+    generated_task: str
+    status: str

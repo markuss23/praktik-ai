@@ -12,7 +12,6 @@ class LearnBlockData(BaseModel):
     learn_id: int
     module_id: int
     course_id: int
-    position: int
     content: str
 
 

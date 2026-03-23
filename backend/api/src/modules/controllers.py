@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from fastapi import HTTPException
-from sqlalchemy import Select, and_, func, select, update
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus
+from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion
 from api import enums, models
 from api.authorization import validate_owner_or_superadmin
 
@@ -33,8 +33,7 @@ def get_modules(
         if text_search:
             stm = stm.where(models.Module.title.ilike(f"%{text_search}%"))
 
-        # doporučené řazení: nejdřív podle course_id, pak position
-        stm = stm.order_by(models.Module.course_id, models.Module.position)
+        stm = stm.order_by(models.Module.course_id, models.Module.module_id)
 
         rows: Sequence[models.Module] = db.execute(stm).scalars().all()
         return [Module.model_validate(m) for m in rows]
@@ -45,33 +44,21 @@ def get_modules(
 
 def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     """
-    Vytvoří modul. Ošetřuje unikátní kombinaci (course_id, position).
+    Vytvoří modul.
     """
     try:
         course = db.execute(
             select(models.Course).where(models.Course.course_id == data.course_id)
         ).scalars().first()
-        
+
         if course is None:
             raise HTTPException(
                 status_code=404,
                 detail="Kurz neexistuje.",
             )
-        
+
         # Validace vlastnictví kurzu
         validate_owner_or_superadmin(course, user, "modul")
-        # Volitelný pre-check unikátu (rychlá validace před DB constraintem)
-        exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
-            and_(
-                models.Module.course_id == data.course_id,
-                models.Module.position == data.position,
-            )
-        )
-        if db.execute(exists_stm).first():
-            raise HTTPException(
-                status_code=400,
-                detail="Modul s tímto pořadím pro daný kurz již existuje.",
-            )
 
         obj = models.Module(**data.model_dump())
         obj.is_active = True
@@ -156,56 +143,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
                     detail="Modul s tímto názvem pro daný kurz již existuje.",
                 )
 
-    # Změna - pro posouvání modulů (potřeba revize)
-    
-        # Při změně pozice automaticky posuneme ostatní moduly
-        old_position = module.position
-        new_position = module_data.position
-        
-        if new_position != old_position:
-            # Najdi modul na cílové pozici
-            conflicting_module_stm: Select[tuple[models.Module]] = select(models.Module).where(
-                and_(
-                    models.Module.course_id == module.course_id,
-                    models.Module.position == new_position,
-                    models.Module.is_active.is_(True),
-                    models.Module.module_id != module_id,
-                )
-            )
-            conflicting_module = db.execute(conflicting_module_stm).scalars().first()
-            
-            # Pokud existuje konfliktní modul, nejdřív nastavíme dočasnou pozici
-            if conflicting_module is not None:
-                # Použij dočasnou zápornou pozici, pak přehoď na starou pozici
-                temp_position = -module_id  # Unikátní záporná hodnota
-                db.execute(
-                    update(models.Module)
-                    .where(models.Module.module_id == conflicting_module.module_id)
-                    .values(position=temp_position)
-                )
-                db.flush()
-                
-                # Nastav aktuální modul na novou pozici
-                db.execute(
-                    update(models.Module)
-                    .where(models.Module.module_id == module_id)
-                    .values(title=module_data.title, position=new_position)
-                )
-                db.flush()
-                
-                # Nastav konfliktní modul na starou pozici
-                db.execute(
-                    update(models.Module)
-                    .where(models.Module.module_id == conflicting_module.module_id)
-                    .values(position=old_position)
-                )
-                db.commit()
-                db.refresh(module)
-                return Module.model_validate(module)
-
-        # Aktualizuj aktuální modul (když není konflikt)
         module.title = module_data.title
-        module.position = module_data.position
         db.add(module)
         db.commit()
         db.refresh(module)
@@ -278,27 +216,6 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
             if enrollment is None:
                 raise HTTPException(status_code=403, detail="Nejste zapsáni v tomto kurzu")
 
-        # Check previous modules are completed (sequential unlock)
-        active_modules = sorted(
-            [m for m in course.modules if m.is_active],
-            key=lambda m: m.position or 0,
-        )
-        for prev_module in active_modules:
-            if (prev_module.position or 0) >= (module.position or 0):
-                break
-            prev_passed = db.scalar(
-                select(models.ModuleTaskSession).where(
-                    models.ModuleTaskSession.user_id == user.user_id,
-                    models.ModuleTaskSession.module_id == prev_module.module_id,
-                    models.ModuleTaskSession.status == enums.ModuleTaskSessionStatus.passed,
-                )
-            )
-            if prev_passed is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Nejdříve musíte dokončit modul '{prev_module.title}'",
-                )
-
         # Check if already passed
         existing = db.scalar(
             select(models.ModuleTaskSession).where(
@@ -322,7 +239,7 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
 
         # Check if ALL active modules are now passed → mark enrollment as completed
         all_passed = True
-        for m in active_modules:
+        for m in [m for m in course.modules if m.is_active]:
             if m.module_id == module_id:
                 continue  # just completed this one
             m_passed = db.scalar(
@@ -358,6 +275,34 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
         raise HTTPException(status_code=500, detail="Nečekávaná chyba serveru") from e
 
 
+def get_assessment_question(db: Session, module_id: int, user: models.User) -> ModuleAssessmentQuestion:
+    """Vrátí aktivní assessment otázku pro daný modul a uživatele."""
+    module = db.scalar(
+        select(models.Module).where(
+            models.Module.module_id == module_id,
+            models.Module.is_active.is_(True),
+        )
+    )
+    if module is None:
+        raise HTTPException(status_code=404, detail="Modul nenalezen")
+
+    session = db.scalar(
+        select(models.ModuleTaskSession).where(
+            models.ModuleTaskSession.user_id == user.user_id,
+            models.ModuleTaskSession.module_id == module_id,
+            models.ModuleTaskSession.is_active.is_(True),
+        )
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Žádná aktivní assessment otázka pro tento modul")
+
+    return ModuleAssessmentQuestion(
+        session_id=session.session_id,
+        generated_task=session.generated_task,
+        status=session.status.value,
+    )
+
+
 def get_course_progress(db: Session, course_id: int, user: models.User) -> list[ModuleCompletionStatus]:
     """Vrátí stav dokončení všech modulů kurzu pro daného uživatele."""
     try:
@@ -371,7 +316,7 @@ def get_course_progress(db: Session, course_id: int, user: models.User) -> list[
             raise HTTPException(status_code=404, detail="Kurz nenalezen")
 
         result: list[ModuleCompletionStatus] = []
-        for module in sorted(course.modules, key=lambda m: m.position or 0):
+        for module in course.modules:
             if not module.is_active:
                 continue
             passed_session = db.scalar(

@@ -11,12 +11,10 @@ from api.enums import QuestionType
 
 
 class LearnBlockGenerated(BaseModel):
-    position: int
     content: str
 
 
 class PracticeOptionGenerated(BaseModel):
-    position: int
     text: str
 
 
@@ -25,7 +23,6 @@ class QuestionKeywordGenerated(BaseModel):
 
 
 class PracticeQuestionGenerated(BaseModel):
-    position: int
     question_type: QuestionType
     question: str
     correct_answer: str | None = None
@@ -36,7 +33,6 @@ class PracticeQuestionGenerated(BaseModel):
 
 class ModuleGenerated(BaseModel):
     title: str
-    position: int
     learn_blocks: list[LearnBlockGenerated] = []
     practice_questions: list[PracticeQuestionGenerated] = []
 

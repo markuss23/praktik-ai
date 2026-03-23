@@ -118,6 +118,8 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
 
         values: dict = {"status": status}
         if status == Status.approved:
+            if course.owner_id == user.user_id:
+                raise HTTPException(status_code=400, detail="Vlastní kurz si nelze schválit")
             values["approved_by_id"] = user.user_id
         elif course.status == Status.approved and status == Status.edited:
             # Reverting from approved: unpublish and clear approval
