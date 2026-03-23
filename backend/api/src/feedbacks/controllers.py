@@ -3,32 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.enums import Status, UserRole
 from api.src.feedbacks.schemas import FeedbackItem, FeedbackSection, FeedbackCourse
-
-
-def _get_course_or_404(db: Session, course_id: int) -> models.Course:
-    course = db.scalar(
-        select(models.Course).where(
-            models.Course.course_id == course_id,
-            models.Course.is_active.is_(True),
-        )
-    )
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
-    return course
-
-
-def _get_feedback_or_404(db: Session, feedback_id: int) -> models.CourseFeedback:
-    feedback = db.scalar(
-        select(models.CourseFeedback).where(
-            models.CourseFeedback.feedback_id == feedback_id,
-            models.CourseFeedback.is_active.is_(True),
-        )
-    )
-    if feedback is None:
-        raise HTTPException(status_code=404, detail="Feedback nenalezen")
-    return feedback
 
 
 def get_feedback_section(
@@ -43,7 +20,7 @@ def get_feedback_section(
       "with_reply"      – pouze okomentované (reply IS NOT NULL)
       "without_reply"   – pouze neokomentované (reply IS NULL)
     """
-    course = _get_course_or_404(db, course_id)
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     stm = (
         select(models.CourseFeedback)
@@ -73,7 +50,7 @@ def create_feedback(
     feedback_text: str,
     actor: models.User,
 ) -> FeedbackItem:
-    course = _get_course_or_404(db, course_id)
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     if course.status != Status.in_review and course.status != Status.edited:
         raise HTTPException(
@@ -101,7 +78,7 @@ def reply_to_feedback(
     reply_text: str,
     actor: models.User,
 ) -> FeedbackItem:
-    feedback = _get_feedback_or_404(db, feedback_id)
+    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
 
     if feedback.course.owner_id != actor.user_id:
         raise HTTPException(
@@ -122,7 +99,7 @@ def reply_to_feedback(
 
 
 def delete_feedback(db: Session, feedback_id: int, actor: models.User) -> None:
-    feedback = _get_feedback_or_404(db, feedback_id)
+    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
 
     if actor.role == UserRole.superadmin:
         pass

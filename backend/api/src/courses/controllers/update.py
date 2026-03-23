@@ -3,10 +3,11 @@ Controllery pro editaci zdrojů kurzu.
 """
 
 from fastapi import HTTPException
-from sqlalchemy import Select, select, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
 from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin, validate_superadmin
@@ -14,6 +15,8 @@ from api.authorization import validate_owner_or_superadmin, validate_guarantor_o
 
 def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
     """Aktualizuje existující kurz (v draft nebo generated stavu)"""
+    from sqlalchemy import select
+
     if db.execute(
         select(models.CourseBlock).where(
             models.CourseBlock.block_id == course_data.course_block_id,
@@ -38,14 +41,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
-    stm: Select[tuple[models.Course]] = select(models.Course).where(
-        models.Course.course_id == course_id, models.Course.is_active.is_(True)
-    )
-
-    course: models.Course | None = db.execute(stm).scalars().first()
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)
     validate_owner_or_superadmin(course, user, "kurz")
@@ -74,14 +70,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
 
 def update_course_status(db: Session, course_id: int, status: Status, user: models.User) -> Course:
     """Aktualizuje status kurzu"""
-    course: models.Course | None = db.execute(
-        select(models.Course).where(
-            models.Course.course_id == course_id, models.Course.is_active.is_(True)
-        )
-    ).scalars().first()
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     valid_transitions = {
         Status.draft: {Status.in_review},
@@ -132,14 +121,7 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
 
 def update_course_published(db: Session, course_id: int, is_published: bool, user: models.User) -> Course:
     """Aktualizuje publikování kurzu"""
-    course: models.Course | None = db.execute(
-        select(models.Course).where(
-            models.Course.course_id == course_id, models.Course.is_active.is_(True)
-        )
-    ).scalars().first()
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can publish (guarantor cannot)
     validate_owner_or_superadmin(course, user, "kurz")

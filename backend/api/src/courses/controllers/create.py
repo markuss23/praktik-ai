@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.src.courses.schemas import CourseCreate, CourseCreated, CourseFile, CourseLink
 from api import enums
 from api.authorization import validate_owner_or_superadmin
@@ -77,19 +78,7 @@ async def upload_course_file(
     db: Session, course_id: int, file: UploadFile, user: models.User
 ) -> CourseFile:
     """Nahraje soubor ke kurzu (pouze v draft stavu)"""
-    course: models.Course | None = (
-        db.execute(
-            select(models.Course).where(
-                models.Course.course_id == course_id,
-                models.Course.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     validate_owner_or_superadmin(course, user, "kurz")
 
@@ -125,19 +114,7 @@ def create_course_link(
     db: Session, course_id: int, url: str, user: models.User
 ) -> CourseLink:
     """Vytvoří odkaz kurzu (pouze v draft stavu)"""
-    course: models.Course | None = (
-        db.execute(
-            select(models.Course).where(
-                models.Course.course_id == course_id,
-                models.Course.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     validate_owner_or_superadmin(course, user, "kurz")
 

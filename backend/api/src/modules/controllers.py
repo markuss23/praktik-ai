@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
+from api.src.common.utils import get_or_404
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion
 from api import enums, models
 from api.authorization import validate_owner_or_superadmin
@@ -41,15 +42,7 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     """
     Vytvoří modul.
     """
-    course = db.execute(
-        select(models.Course).where(models.Course.course_id == data.course_id)
-    ).scalars().first()
-
-    if course is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Kurz neexistuje.",
-        )
+    course = get_or_404(db, models.Course, data.course_id, detail="Kurz neexistuje.", check_active=False)
 
     # Validace vlastnictví kurzu
     validate_owner_or_superadmin(course, user, "modul")
@@ -67,16 +60,8 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
     """
     Vrátí konkrétní modul podle module_id
     """
-    stm: Select[tuple[models.Module]] = select(models.Module).where(
-        models.Module.module_id == module_id
-    )
-
-    result: models.Module | None = db.execute(stm).scalars().first()
-
-    if result is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
-
-    return Module.model_validate(result)
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen", check_active=False)
+    return Module.model_validate(module)
 
 
 def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: models.User) -> Module:
@@ -84,15 +69,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
     Upraví data modulu s module_id podle dat v module_data.
     Pokud se mění pozice, automaticky přehodní pozice ostatních modulů.
     """
-    stm: Select[tuple[models.Module]] = select(models.Module).where(
-        models.Module.module_id == module_id,
-        models.Module.is_active.is_(True),
-    )
-
-    module: models.Module | None = db.execute(stm).scalars().first()
-
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
     # Validace vlastnictví
     validate_owner_or_superadmin(module, user, "modul")
@@ -132,14 +109,7 @@ def delete_module(db: Session, module_id: int) -> None:
     """
     Smaže modul podle module_id (soft delete - nastaví is_active=False)
     """
-    stm: Select[tuple[models.Module]] = select(models.Module).where(
-        models.Module.module_id == module_id
-    )
-
-    module: models.Module | None = db.execute(stm).scalars().first()
-
-    if module is None:
-        raise HTTPException(status_code=404, detail="Module not found")
+    module = get_or_404(db, models.Module, module_id, detail="Module not found", check_active=False)
 
     # Soft delete - nastavíme is_active na False
     module.is_active = False
@@ -151,14 +121,7 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
     Označí modul jako dokončený (passed) pro daného uživatele.
     Vyžaduje, aby uživatel byl zapsán v kurzu a předchozí moduly byly dokončeny.
     """
-    module = db.scalar(
-        select(models.Module).where(
-            models.Module.module_id == module_id,
-            models.Module.is_active.is_(True),
-        )
-    )
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
     course = module.course
     if not course or not course.is_active:
@@ -237,14 +200,7 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
 
 def get_assessment_question(db: Session, module_id: int, user: models.User) -> ModuleAssessmentQuestion:
     """Vrátí aktivní assessment otázku pro daný modul a uživatele."""
-    module = db.scalar(
-        select(models.Module).where(
-            models.Module.module_id == module_id,
-            models.Module.is_active.is_(True),
-        )
-    )
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
     session = db.scalar(
         select(models.ModuleTaskSession).where(
@@ -265,14 +221,7 @@ def get_assessment_question(db: Session, module_id: int, user: models.User) -> M
 
 def get_course_progress(db: Session, course_id: int, user: models.User) -> list[ModuleCompletionStatus]:
     """Vrátí stav dokončení všech modulů kurzu pro daného uživatele."""
-    course = db.scalar(
-        select(models.Course).where(
-            models.Course.course_id == course_id,
-            models.Course.is_active.is_(True),
-        )
-    )
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     result: list[ModuleCompletionStatus] = []
     for module in course.modules:

@@ -1,8 +1,9 @@
 from fastapi import HTTPException
-from sqlalchemy import Select, select, update, and_
+from sqlalchemy import select, update, and_
 from sqlalchemy.orm import Session
 
 from api import models, enums
+from api.src.common.utils import get_or_404
 from api.src.activities.schemas import (
     LearnBlock,
     LearnBlockCreate,
@@ -38,15 +39,7 @@ def create_learn_block(
     db: Session, learn_data: LearnBlockCreate, user: models.User
 ) -> LearnBlock:
     """Vytvoří LearnBlock — modul smí mít nejvýše jeden aktivní."""
-    module: models.Module | None = db.execute(
-        select(models.Module).where(
-            models.Module.module_id == learn_data.module_id,
-            models.Module.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
+    module = get_or_404(db, models.Module, learn_data.module_id, detail="Modul nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(module, user, "modul")
     _assert_course_editable(module.course)
@@ -76,15 +69,7 @@ def update_learn_block(
     db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: models.User
 ) -> LearnBlock:
     """Upraví title a content existujícího LearnBlock."""
-    learn_block: models.LearnBlock | None = db.execute(
-        select(models.LearnBlock).where(
-            models.LearnBlock.learn_id == learn_id,
-            models.LearnBlock.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if learn_block is None:
-        raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
+    learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
     _assert_course_editable(learn_block.module.course)
@@ -117,15 +102,7 @@ def update_learn_block(
 
 def delete_learn_block(db: Session, learn_id: int, user: models.User) -> None:
     """Soft-delete LearnBlock."""
-    learn_block: models.LearnBlock | None = db.execute(
-        select(models.LearnBlock).where(
-            models.LearnBlock.learn_id == learn_id,
-            models.LearnBlock.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if learn_block is None:
-        raise HTTPException(status_code=404, detail="LearnBlock nenalezen nebo není aktivní")
+    learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
     _assert_course_editable(learn_block.module.course)
@@ -141,15 +118,7 @@ def create_practice_question(
     db: Session, question_data: PracticeQuestionCreate, user: models.User
 ) -> PracticeQuestion:
     """Vytvoří novou PracticeQuestion."""
-    module: models.Module | None = db.execute(
-        select(models.Module).where(
-            models.Module.module_id == question_data.module_id,
-            models.Module.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen nebo není aktivní")
+    module = get_or_404(db, models.Module, question_data.module_id, detail="Modul nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(module, user, "modul")
     _assert_course_editable(module.course)
@@ -172,15 +141,7 @@ def update_practice_question(
     db: Session, question_id: int, question_data: PracticeQuestionUpdate, user: models.User
 ) -> PracticeQuestion:
     """Upraví PracticeQuestion."""
-    question: models.PracticeQuestion | None = db.execute(
-        select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if question is None:
-        raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+    question = get_or_404(db, models.PracticeQuestion, question_id, detail="PracticeQuestion nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "practice question")
     _assert_course_editable(question.module.course)
@@ -198,15 +159,7 @@ def update_practice_question(
 
 def delete_practice_question(db: Session, question_id: int, user: models.User) -> None:
     """Soft-delete PracticeQuestion — kaskádně smaže PracticeOption a QuestionKeyword."""
-    question: models.PracticeQuestion | None = db.execute(
-        select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if question is None:
-        raise HTTPException(status_code=404, detail="PracticeQuestion nenalezena nebo není aktivní")
+    question = get_or_404(db, models.PracticeQuestion, question_id, detail="PracticeQuestion nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "practice question")
     _assert_course_editable(question.module.course)
@@ -222,15 +175,7 @@ def create_practice_option(
     db: Session, option_data: PracticeOptionCreate, user: models.User
 ) -> PracticeOption:
     """Vytvoří novou PracticeOption."""
-    question: models.PracticeQuestion | None = db.execute(
-        select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == option_data.question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if question is None:
-        raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
+    question = get_or_404(db, models.PracticeQuestion, option_data.question_id, detail="Otázka nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "otázka")
     _assert_course_editable(question.module.course)
@@ -250,15 +195,7 @@ def update_practice_option(
     db: Session, option_id: int, option_data: PracticeOptionUpdate, user: models.User
 ) -> PracticeOption:
     """Upraví PracticeOption."""
-    option: models.PracticeOption | None = db.execute(
-        select(models.PracticeOption).where(
-            models.PracticeOption.option_id == option_id,
-            models.PracticeOption.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if option is None:
-        raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
+    option = get_or_404(db, models.PracticeOption, option_id, detail="PracticeOption nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(option, user, "practice option")
     _assert_course_editable(option.question.module.course)
@@ -276,15 +213,7 @@ def update_practice_option(
 
 def delete_practice_option(db: Session, option_id: int, user: models.User) -> None:
     """Soft-delete PracticeOption."""
-    option: models.PracticeOption | None = db.execute(
-        select(models.PracticeOption).where(
-            models.PracticeOption.option_id == option_id,
-            models.PracticeOption.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if option is None:
-        raise HTTPException(status_code=404, detail="PracticeOption nenalezena nebo není aktivní")
+    option = get_or_404(db, models.PracticeOption, option_id, detail="PracticeOption nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(option, user, "practice option")
     _assert_course_editable(option.question.module.course)
@@ -300,15 +229,7 @@ def create_question_keyword(
     db: Session, keyword_data: QuestionKeywordCreate, user: models.User
 ) -> QuestionKeyword:
     """Přidá nový QuestionKeyword k otázce."""
-    question: models.PracticeQuestion | None = db.execute(
-        select(models.PracticeQuestion).where(
-            models.PracticeQuestion.question_id == keyword_data.question_id,
-            models.PracticeQuestion.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if question is None:
-        raise HTTPException(status_code=404, detail="Otázka nenalezena nebo není aktivní")
+    question = get_or_404(db, models.PracticeQuestion, keyword_data.question_id, detail="Otázka nenalezena nebo není aktivní")
 
     validate_owner_or_superadmin(question, user, "otázka")
     _assert_course_editable(question.module.course)
@@ -340,15 +261,7 @@ def update_question_keyword(
     db: Session, keyword_id: int, keyword_data: QuestionKeywordUpdate, user: models.User
 ) -> QuestionKeyword:
     """Upraví QuestionKeyword."""
-    keyword: models.QuestionKeyword | None = db.execute(
-        select(models.QuestionKeyword).where(
-            models.QuestionKeyword.keyword_id == keyword_id,
-            models.QuestionKeyword.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if keyword is None:
-        raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
+    keyword = get_or_404(db, models.QuestionKeyword, keyword_id, detail="QuestionKeyword nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(keyword, user, "question keyword")
     _assert_course_editable(keyword.question.module.course)
@@ -380,15 +293,7 @@ def update_question_keyword(
 
 def delete_question_keyword(db: Session, keyword_id: int, user: models.User) -> None:
     """Soft-delete QuestionKeyword."""
-    keyword: models.QuestionKeyword | None = db.execute(
-        select(models.QuestionKeyword).where(
-            models.QuestionKeyword.keyword_id == keyword_id,
-            models.QuestionKeyword.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if keyword is None:
-        raise HTTPException(status_code=404, detail="QuestionKeyword nenalezen nebo není aktivní")
+    keyword = get_or_404(db, models.QuestionKeyword, keyword_id, detail="QuestionKeyword nenalezen nebo není aktivní")
 
     validate_owner_or_superadmin(keyword, user, "question keyword")
     _assert_course_editable(keyword.question.module.course)

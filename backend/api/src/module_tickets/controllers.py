@@ -3,20 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.enums import TicketStatus, UserRole
 from api.src.module_tickets.schemas import TicketCreate, TicketItem
-
-
-def _get_ticket_or_404(db: Session, ticket_id: int) -> models.ModuleTicket:
-    ticket = db.scalar(
-        select(models.ModuleTicket).where(
-            models.ModuleTicket.ticket_id == ticket_id,
-            models.ModuleTicket.is_active.is_(True),
-        )
-    )
-    if ticket is None:
-        raise HTTPException(status_code=404, detail="Ticket nenalezen")
-    return ticket
 
 
 def _check_enrollment(db: Session, user_id: int, course_id: int) -> None:
@@ -59,14 +48,7 @@ def create_ticket(
     actor: models.User,
 ) -> TicketItem:
     """Vytvoří ticket. Student musí být zapsán v kurzu."""
-    module = db.scalar(
-        select(models.Module).where(
-            models.Module.module_id == data.module_id,
-            models.Module.is_active.is_(True),
-        )
-    )
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    module = get_or_404(db, models.Module, data.module_id, detail="Modul nenalezen")
 
     _check_enrollment(db, actor.user_id, module.course_id)
 
@@ -91,7 +73,7 @@ def reply_to_ticket(
     actor: models.User,
 ) -> TicketItem:
     """Odpovědět na ticket. Může autor kurzu, garant nebo superadmin."""
-    ticket = _get_ticket_or_404(db, ticket_id)
+    ticket = get_or_404(db, models.ModuleTicket, ticket_id, detail="Ticket nenalezen")
 
     is_course_owner = ticket.course.owner_id == actor.user_id
     is_privileged = actor.role in (UserRole.guarantor, UserRole.superadmin)
@@ -131,7 +113,7 @@ def delete_ticket(
     actor: models.User,
 ) -> None:
     """Smazat ticket. Student jen bez reply, superadmin vždy."""
-    ticket = _get_ticket_or_404(db, ticket_id)
+    ticket = get_or_404(db, models.ModuleTicket, ticket_id, detail="Ticket nenalezen")
 
     if actor.role == UserRole.superadmin:
         pass

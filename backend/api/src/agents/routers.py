@@ -3,6 +3,7 @@ from sqlalchemy import select, update
 
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
+from api.src.common.utils import get_or_404
 from api.src.agents.schemas import (
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
@@ -27,18 +28,7 @@ async def generate_course(
 ) -> GenerateCourseResponse:
     """Endpoint pro generování kurzu z obsahu."""
 
-    course: models.Course | None = (
-        db.execute(
-            select(models.Course).where(
-                models.Course.course_id == course_id, models.Course.is_active.is_(True)
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Validace vlastnictví
     validate_owner_or_superadmin(course, user, "kurz")
@@ -75,18 +65,7 @@ async def generate_course_embeddings(
 ) -> GenerateEmbeddingsResponse:
     """Endpoint pro generování embeddingů pro LearnBlocky v kurzu."""
 
-    course: models.Course | None = (
-        db.execute(
-            select(models.Course).where(
-                models.Course.course_id == course_id, models.Course.is_active.is_(True)
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Validace vlastnictví
     validate_owner_or_superadmin(course, user, "kurz")
@@ -118,21 +97,8 @@ async def learn_blocks_chat(
 ) -> LearnBlocksChatResponse:
     """Endpoint pro chat s learn blockem."""
 
-    learn_block_id: int = user_input.learn_block_id
+    learn_block = get_or_404(db, models.LearnBlock, user_input.learn_block_id, detail="Learn block nenalezen")
     message: str = user_input.message
-    learn_block: models.LearnBlock | None = (
-        db.execute(
-            select(models.LearnBlock).where(
-                models.LearnBlock.learn_id == learn_block_id,
-                models.LearnBlock.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if learn_block is None:
-        raise HTTPException(status_code=404, detail="Learn block nenalezen")
 
     if not (
         learn_block.module.course.is_active
@@ -165,14 +131,14 @@ async def learn_blocks_chat(
 
     app = create_learn_block_mentor_graph()
     result = await app.ainvoke(
-        {"learn_block_id": learn_block_id, "user_id": user.user_id, "message": message, "db": db}
+        {"learn_block_id": user_input.learn_block_id, "user_id": user.user_id, "message": message, "db": db}
     )
 
     answer = result.get("answer", "Odpověď nebyla vygenerována")
 
     log = models.MentorInteractionLog(
         user_id=user.user_id,
-        learn_id=learn_block_id,
+        learn_id=user_input.learn_block_id,
         user_message=message,
         ai_response=answer,
     )
@@ -193,19 +159,7 @@ async def generate_assessment(
 ) -> GenerateAssessmentResponse:
     """Vygeneruje assessment otázku pro modul. Vyžaduje zápis do kurzu."""
 
-    module: models.Module | None = (
-        db.execute(
-            select(models.Module).where(
-                models.Module.module_id == body.module_id,
-                models.Module.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if module is None:
-        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    module = get_or_404(db, models.Module, body.module_id, detail="Modul nenalezen")
 
     course = module.course
     if not course.is_active or course.status not in ("approved", "archived"):

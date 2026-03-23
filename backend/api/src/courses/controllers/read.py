@@ -9,6 +9,7 @@ from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.src.courses.schemas import Course, CourseDetail, CourseFile, CourseLink
 
 
@@ -43,31 +44,13 @@ def get_courses(
 
 def get_course(db: Session, course_id: int) -> CourseDetail:
     """Vrátí detail kurzu podle ID"""
-    stm: Select[tuple[models.Course]] = select(models.Course).where(
-        models.Course.course_id == course_id
-    )
-
-    result: models.Course | None = db.execute(stm).scalars().first()
-
-    if result is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    return CourseDetail.model_validate(result)
+    course = get_or_404(db, models.Course, course_id, check_active=False)
+    return CourseDetail.model_validate(course)
 
 
 def get_course_files(db: Session, course_id: int) -> list[CourseFile]:
     """Vrátí seznam souborů kurzu"""
-    # Ověř, že kurz existuje
-    course = (
-        db.execute(
-            select(models.Course).where(models.Course.course_id == course_id)
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
+    get_or_404(db, models.Course, course_id, check_active=False)
 
     files = (
         db.execute(
@@ -84,17 +67,7 @@ def get_course_files(db: Session, course_id: int) -> list[CourseFile]:
 
 def get_course_links(db: Session, course_id: int) -> list[CourseLink]:
     """Vrátí seznam odkazů kurzu"""
-    # Ověř, že kurz existuje
-    course = (
-        db.execute(
-            select(models.Course).where(models.Course.course_id == course_id)
-        )
-        .scalars()
-        .first()
-    )
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Course not found")
+    get_or_404(db, models.Course, course_id, check_active=False)
 
     links = (
         db.execute(

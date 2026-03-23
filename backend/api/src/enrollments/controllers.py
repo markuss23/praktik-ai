@@ -3,19 +3,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.enums import Status, UserRole, ModuleTaskSessionStatus
 from api.src.enrollments.schemas import Enrollment, MyEnrollment, MyEnrollmentCourse
-
-
-def _get_enrollment_or_404(db: Session, enrollment_id: int) -> models.Enrollment:
-    enrollment = db.scalar(
-        select(models.Enrollment).where(
-            models.Enrollment.enrollment_id == enrollment_id
-        )
-    )
-    if enrollment is None:
-        raise HTTPException(status_code=404, detail="Zápis nenalezen")
-    return enrollment
 
 
 def list_enrollments(
@@ -67,14 +57,7 @@ def create_enrollment(
             detail="Můžete zapsat pouze sami sebe",
         )
 
-    course = db.scalar(
-        select(models.Course).where(
-            models.Course.course_id == course_id,
-            models.Course.is_active.is_(True),
-        )
-    )
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     if not course.is_published or course.status != Status.approved:
         raise HTTPException(
@@ -82,14 +65,7 @@ def create_enrollment(
             detail="Kurz není publikovaný nebo schválený, nelze se zapsat",
         )
 
-    user = db.scalar(
-        select(models.User).where(
-            models.User.user_id == user_id,
-            models.User.is_active.is_(True),
-        )
-    )
-    if user is None:
-        raise HTTPException(status_code=404, detail="Uživatel nenalezen")
+    user = get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     existing = db.scalar(
         select(models.Enrollment).where(
@@ -116,7 +92,7 @@ def delete_enrollment(
     Vyřadí uživatele z kurzu (nastaví left_at).
     Endpoint je zamčený přes require_role("lector").
     """
-    enrollment = _get_enrollment_or_404(db, enrollment_id)
+    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
 
     if enrollment.left_at is not None:
         raise HTTPException(
@@ -136,7 +112,7 @@ def soft_delete_enrollment(
     Soft-delete zápisu (is_active = False).
     Endpoint zamčený přes require_role("superadmin").
     """
-    enrollment = _get_enrollment_or_404(db, enrollment_id)
+    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
 
     if not enrollment.is_active:
         raise HTTPException(
@@ -204,7 +180,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
 def leave_enrollment(db: Session, enrollment_id: int, user: models.User) -> None:
     """Uživatel se sám odepíše z kurzu."""
-    enrollment = _get_enrollment_or_404(db, enrollment_id)
+    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
 
     if enrollment.user_id != user.user_id:
         raise HTTPException(status_code=403, detail="Můžete opustit pouze vlastní zápis")

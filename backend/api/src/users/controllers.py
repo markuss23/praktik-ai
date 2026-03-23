@@ -1,10 +1,12 @@
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.enums import UserRole
 from api.src.users.schemas import UserRoleResponse, UserRoleUpdate, UserWithRole
+
+from sqlalchemy import select
 
 
 def list_users(db: Session) -> list[UserWithRole]:
@@ -23,14 +25,7 @@ def list_users(db: Session) -> list[UserWithRole]:
 
 def get_user_role(db: Session, user_id: int) -> UserRoleResponse:
     """Vrátí roli konkrétního uživatele."""
-    user = db.scalar(
-        select(models.User).where(
-            models.User.user_id == user_id,
-            models.User.is_active.is_(True),
-        )
-    )
-    if user is None:
-        raise HTTPException(status_code=404, detail="Uživatel nenalezen")
+    user = get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
     return UserRoleResponse.model_validate(user)
 
 
@@ -41,14 +36,7 @@ def set_user_role(
     Nastaví roli uživatele.
     Role uživatele s rolí superadmin nelze měnit.
     """
-    user = db.scalar(
-        select(models.User).where(
-            models.User.user_id == user_id,
-            models.User.is_active.is_(True),
-        )
-    )
-    if user is None:
-        raise HTTPException(status_code=404, detail="Uživatel nenalezen")
+    user = get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     # Roli superadmina nelze měnit (ani samotným superadminem)
     if user.role == UserRole.superadmin:
@@ -68,14 +56,7 @@ def reset_user_role(db: Session, user_id: int, actor: models.User) -> UserRoleRe
     Resetuje roli uživatele na výchozí hodnotu (user).
     Role uživatele s rolí superadmin nelze resetovat.
     """
-    user = db.scalar(
-        select(models.User).where(
-            models.User.user_id == user_id,
-            models.User.is_active.is_(True),
-        )
-    )
-    if user is None:
-        raise HTTPException(status_code=404, detail="Uživatel nenalezen")
+    user = get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     # Roli superadmina nelze měnit (ani samotným superadminem)
     if user.role == UserRole.superadmin:

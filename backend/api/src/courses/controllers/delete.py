@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.common.utils import get_or_404
 from api.enums import Status, UserRole
 from api.authorization import validate_owner_or_superadmin
 from api.storage import seaweedfs
@@ -41,15 +42,7 @@ def delete_course(db: Session, course_id: int, user: models.User) -> None:
     - draft/generated/edited/in_review nebo approved+nepublikovaný: soft delete — vlastník nebo superadmin
     - published nebo archived: soft delete — pouze superadmin
     """
-    course: models.Course | None = db.execute(
-        select(models.Course).where(
-            models.Course.course_id == course_id,
-            models.Course.is_active.is_(True),
-        )
-    ).scalars().first()
-
-    if course is None:
-        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     is_superadmin = user.role == UserRole.superadmin
 
