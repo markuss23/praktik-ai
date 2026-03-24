@@ -15,6 +15,7 @@ dependencies = [
     "pgvector==0.3.0",
     "langgraph>=1.0.5",
     "langchain-openai>=1.1.6",
+    "langchain-anthropic>=0.3.12",
     "python-multipart>=0.0.21",
     "python-keycloak>=7.0.3",
     "langchain>=1.2.9",

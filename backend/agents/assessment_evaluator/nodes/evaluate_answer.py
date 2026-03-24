@@ -1,32 +1,33 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from agents.base.llm import get_llm_config, create_chat_llm
 from agents.assessment_evaluator.state import EvaluationState
 
-SYSTEM_PROMPT = """Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.
+DEFAULT_MODEL = "gpt-5.2"
 
-K dispozici máš:
-1. Výukový text (zdroj správných informací)
-2. Kontrolní otázku
-3. Odpověď studenta
-
-Pravidla hodnocení:
-- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu
-- Ověřuj věcnou správnost, ne stylistiku
-- Částečně správná odpověď získá částečné body
-- Zcela špatná nebo prázdná odpověď = 0 bodů
-- Za úspěšné splnění považuj skóre odpovídající minimálnímu požadavku modulu
-
-Pravidla pro zpětnou vazbu:
-- NIKDY neprozrazuj správnou odpověď ani její části
-- Pouze naznač, ve které oblasti má student mezery (např. „Chybí vám pochopení vztahu mezi X a Y")
-- Při neúspěchu motivuj studenta k dalšímu studiu, ale NEŘÍKEJ mu, co měl napsat
-- Cílem je, aby se student vrátil k výukovému materiálu a odpověď našel sám
-
-Odpověz PŘESNĚ v tomto formátu (3 řádky, nic jiného):
-SCORE: <číslo 0-100>
-PASSED: <true nebo false>
-FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"""
+DEFAULT_PROMPT = (
+    "Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.\n\n"
+    "K dispozici máš:\n"
+    "1. Výukový text (zdroj správných informací)\n"
+    "2. Kontrolní otázku\n"
+    "3. Odpověď studenta\n\n"
+    "Pravidla hodnocení:\n"
+    "- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu\n"
+    "- Ověřuj věcnou správnost, ne stylistiku\n"
+    "- Částečně správná odpověď získá částečné body\n"
+    "- Zcela špatná nebo prázdná odpověď = 0 bodů\n"
+    "- Za úspěšné splnění považuj skóre odpovídající minimálnímu požadavku modulu\n\n"
+    "Pravidla pro zpětnou vazbu:\n"
+    "- NIKDY neprozrazuj správnou odpověď ani její části\n"
+    "- Pouze naznač, ve které oblasti má student mezery "
+    "(např. \u201eChybí vám pochopení vztahu mezi X a Y\u201c)\\n"
+    "- Při neúspěchu motivuj studenta k dalšímu studiu, ale NEŘÍKEJ mu, co měl napsat\n"
+    "- Cílem je, aby se student vrátil k výukovému materiálu a odpověď našel sám\n\n"
+    "Odpověz PŘESNĚ v tomto formátu (3 řádky, nic jiného):\n"
+    "SCORE: <číslo 0-100>\n"
+    "PASSED: <true nebo false>\n"
+    "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"
+)
 
 DEFAULT_PASSING_SCORE = 60
 
@@ -41,16 +42,25 @@ def evaluate_answer(state: EvaluationState) -> dict:
     learn_content: str = state["learn_content"]
     question: str = state["generated_question"]
     user_response: str = state["user_response"]
+    db = state["db"]
 
-    llm = ChatOpenAI(model="gpt-5.2", temperature=0.3)
+    cfg = get_llm_config(
+        db,
+        "assessment_evaluator",
+        default_model=DEFAULT_MODEL,
+        default_prompt=DEFAULT_PROMPT,
+    )
+    llm = create_chat_llm(cfg.model, temperature=0.3)
 
     messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=(
-            f"VÝUKOVÝ TEXT:\n{learn_content}\n\n"
-            f"KONTROLNÍ OTÁZKA:\n{question}\n\n"
-            f"ODPOVĚĎ STUDENTA:\n{user_response}"
-        )),
+        SystemMessage(content=cfg.prompt),
+        HumanMessage(
+            content=(
+                f"VÝUKOVÝ TEXT:\n{learn_content}\n\n"
+                f"KONTROLNÍ OTÁZKA:\n{question}\n\n"
+                f"ODPOVĚĎ STUDENTA:\n{user_response}"
+            )
+        ),
     ]
 
     response = llm.invoke(messages)
@@ -63,7 +73,9 @@ def evaluate_answer(state: EvaluationState) -> dict:
     passing_score = state.get("passing_score", DEFAULT_PASSING_SCORE)
     is_passed = score >= passing_score
 
-    print(f"Hodnocení: score={score}, passed={is_passed} (passing_score={passing_score})")
+    print(
+        f"Hodnocení: score={score}, passed={is_passed} (passing_score={passing_score})"
+    )
 
     return {
         "ai_score": score,

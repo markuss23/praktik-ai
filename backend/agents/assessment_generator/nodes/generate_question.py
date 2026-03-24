@@ -1,16 +1,20 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from agents.base.llm import get_llm_config, create_chat_llm
 from agents.assessment_generator.state import AssessmentState
 
-SYSTEM_PROMPT = """Jsi odborný lektor. Na základě níže uvedeného výukového textu vytvoř jednu otevřenou kontrolní otázku.
+DEFAULT_MODEL = "gpt-5.2"
 
-Pravidla:
-- Otázka musí být zodpověditelná výhradně z poskytnutého textu
-- Ověřuj porozumění, ne memorování
-- Otázka musí být v češtině
-- Otázka musí být konkrétní a jednoznačná
-- Délka otázky: 1-2 věty"""
+DEFAULT_PROMPT = (
+    "Jsi odborný lektor. Na základě níže uvedeného výukového textu "
+    "vytvoř jednu otevřenou kontrolní otázku.\n\n"
+    "Pravidla:\n"
+    "- Otázka musí být zodpověditelná výhradně z poskytnutého textu\n"
+    "- Ověřuj porozumění, ne memorování\n"
+    "- Otázka musí být v češtině\n"
+    "- Otázka musí být konkrétní a jednoznačná\n"
+    "- Délka otázky: 1-2 věty"
+)
 
 
 def generate_question(state: AssessmentState) -> dict:
@@ -22,11 +26,18 @@ def generate_question(state: AssessmentState) -> dict:
         return {}
 
     learn_content: str = state["learn_content"]
+    db = state["db"]
 
-    llm = ChatOpenAI(model="gpt-5.2", temperature=0.7)
+    cfg = get_llm_config(
+        db,
+        "assessment_generator",
+        default_model=DEFAULT_MODEL,
+        default_prompt=DEFAULT_PROMPT,
+    )
+    llm = create_chat_llm(cfg.model, temperature=0.7)
 
     messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
+        SystemMessage(content=cfg.prompt),
         HumanMessage(
             content=f"Výukový text:\n{learn_content}\n\nVrať pouze text otázky, nic jiného."
         ),

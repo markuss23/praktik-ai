@@ -1,21 +1,39 @@
 # backend/agents/mentor/nodes/rerank_documents.py
 from langchain_core.messages.ai import AIMessage
-from langchain_openai import ChatOpenAI
+
+from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState, ChunkData
+
+DEFAULT_MODEL = "gpt-4o-mini"
+
+DEFAULT_PROMPT = (
+    "Máš seznam dokumentů a otázku uživatele.\n"
+    "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
+    "Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího "
+    "(např: 3, 7, 1, 5).\n"
+    "Odpověz pouze čísly oddělenými čárkami, nic dalšího."
+)
 
 
 def rerank_documents(state: AgentState) -> dict:
     """LLM reranking dokumentů podle relevance k otázce."""
     print("Reranking dokumentů pomocí LLM...")
-    
+
     context_chunks = state.get("context_chunks", [])
     user_message = state["message"]
+    db = state["db"]
 
     if len(context_chunks) <= 3:
         print("Málo dokumentů, přeskakuji reranking")
         return {}  # Necháme původní pořadí
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    cfg = get_llm_config(
+        db,
+        "mentor_reranker",
+        default_model=DEFAULT_MODEL,
+        default_prompt=DEFAULT_PROMPT,
+    )
+    llm = create_chat_llm(cfg.model, temperature=0)
 
     # Vytvoř prompt s dokumenty
     docs_text = "\n\n".join(
@@ -25,16 +43,12 @@ def rerank_documents(state: AgentState) -> dict:
         ]
     )
 
-    rerank_prompt = f"""Máš seznam dokumentů a otázku uživatele.
-            Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).
+    rerank_prompt = f"""{cfg.prompt}
 
             OTÁZKA: {user_message}
 
             DOKUMENTY:
-            {docs_text}
-
-            Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího (např: 3, 7, 1, 5).
-            Odpověz pouze čísly oddělenými čárkami, nic dalšího."""
+            {docs_text}"""
 
     try:
         response: AIMessage = llm.invoke(rerank_prompt)
@@ -59,6 +73,6 @@ def rerank_documents(state: AgentState) -> dict:
         return {"context_chunks": reranked_chunks}
 
     except Exception as e:
-        print(f"⚠️ Chyba při rerankingu: {e}")
+        print(f"Chyba při rerankingu: {e}")
         # Fallback: vrať top 3 z původních
         return {"context_chunks": context_chunks[:3]}
