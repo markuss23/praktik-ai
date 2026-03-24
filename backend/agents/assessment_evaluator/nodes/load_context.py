@@ -56,4 +56,5 @@ def load_context(state: EvaluationState) -> dict:
     return {
         "learn_content": learn_content,
         "generated_question": session.generated_task,
+        "passing_score": module.passing_score,
     }

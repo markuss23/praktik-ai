@@ -11,6 +11,7 @@ class EvaluationState(TypedDict):
     # Načteno z DB
     learn_content: NotRequired[str]
     generated_question: NotRequired[str]
+    passing_score: NotRequired[int]
     # Výstup LLM
     ai_score: NotRequired[int]
     ai_feedback: NotRequired[str]

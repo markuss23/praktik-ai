@@ -15,7 +15,7 @@ Pravidla hodnocení:
 - Ověřuj věcnou správnost, ne stylistiku
 - Částečně správná odpověď získá částečné body
 - Zcela špatná nebo prázdná odpověď = 0 bodů
-- Za úspěšné splnění považuj skóre 60 a více
+- Za úspěšné splnění považuj skóre odpovídající minimálnímu požadavku modulu
 
 Pravidla pro zpětnou vazbu:
 - NIKDY neprozrazuj správnou odpověď ani její části
@@ -28,7 +28,7 @@ SCORE: <číslo 0-100>
 PASSED: <true nebo false>
 FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"""
 
-PASSING_SCORE = 60
+DEFAULT_PASSING_SCORE = 60
 
 
 def evaluate_answer(state: EvaluationState) -> dict:
@@ -57,9 +57,13 @@ def evaluate_answer(state: EvaluationState) -> dict:
     raw = response.content.strip()
 
     # Parsování strukturované odpovědi
-    score, is_passed, feedback = _parse_evaluation(raw)
+    score, _, feedback = _parse_evaluation(raw)
 
-    print(f"Hodnocení: score={score}, passed={is_passed}")
+    # Bezpečnostní pojistka — score rozhoduje
+    passing_score = state.get("passing_score", DEFAULT_PASSING_SCORE)
+    is_passed = score >= passing_score
+
+    print(f"Hodnocení: score={score}, passed={is_passed} (passing_score={passing_score})")
 
     return {
         "ai_score": score,
@@ -87,8 +91,5 @@ def _parse_evaluation(raw: str) -> tuple[int, bool, str]:
             is_passed = val == "true"
         elif line.upper().startswith("FEEDBACK:"):
             feedback = line.split(":", 1)[1].strip()
-
-    # Bezpečnostní pojistka — score rozhoduje
-    is_passed = score >= PASSING_SCORE
 
     return score, is_passed, feedback

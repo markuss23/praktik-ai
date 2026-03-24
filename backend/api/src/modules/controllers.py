@@ -94,6 +94,8 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
             )
 
     module.title = module_data.title
+    module.max_task_attempts = module_data.max_task_attempts
+    module.passing_score = module_data.passing_score
     db.add(module)
     db.commit()
     db.refresh(module)
@@ -236,5 +238,6 @@ def get_course_progress(db: Session, course_id: int, user: models.User) -> list[
             task_session_status=task_session_status,
             attempts_used=attempts_used,
             max_attempts=module.max_task_attempts,
+            passing_score=module.passing_score,
         ))
     return result
