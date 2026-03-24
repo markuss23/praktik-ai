@@ -14,9 +14,9 @@ from api.src.agents.schemas import (
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
 )
-from agents.course_generator import create_graph
-from agents.embedding_generator import create_graph as create_embedding_graph
-from agents.mentor.graph import create_graph as create_learn_block_mentor_graph
+from agents.course_generator.service import CourseGeneratorService
+from agents.embedding_generator.service import EmbeddingGeneratorService
+from agents.mentor.service import MentorService
 from agents.assessment_generator.service import AssessmentService
 from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
@@ -41,10 +41,10 @@ async def generate_course(
             status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
         )
 
-    app = create_graph()
+    service = CourseGeneratorService(db=db, course_id=course_id)
 
     try:
-        result = await app.ainvoke({"course_id": course_id, "db": db})
+        result = await service.generate()
     except Exception as e:
         db.execute(
             update(models.Course)
@@ -54,11 +54,9 @@ async def generate_course(
         db.commit()
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    course = result.get("course")
-
     return GenerateCourseResponse(
-        title=course.title,
-        modules=[module.model_dump() for module in course.modules],
+        title=result.title,
+        modules=result.modules,
     )
 
 
@@ -81,14 +79,14 @@ async def generate_course_embeddings(
             f"Aktuální status: {course.status.value}",
         )
 
-    # Vytvoř a spusť embedding generator graph
-    app = create_embedding_graph()
-    result = await app.ainvoke({"course_id": course_id, "db": db})
+    service = EmbeddingGeneratorService(db=db, course_id=course_id)
+
+    result = await service.generate()
 
     return GenerateEmbeddingsResponse(
-        course_id=result["course_id"],
-        blocks_processed=result.get("blocks_processed", 0),
-        chunks_created=result.get("chunks_created", 0),
+        course_id=result.course_id,
+        blocks_processed=result.blocks_processed,
+        chunks_created=result.chunks_created,
     )
 
 
@@ -101,7 +99,6 @@ async def learn_blocks_chat(
     """Endpoint pro chat s learn blockem."""
 
     learn_block = get_or_404(db, models.LearnBlock, user_input.learn_block_id, detail="Learn block nenalezen")
-    message: str = user_input.message
 
     if not (
         learn_block.module.course.is_active
@@ -115,23 +112,25 @@ async def learn_blocks_chat(
     # Owner and superadmin can use the tutor without enrollment
     check_enrollment(db, user, course, bypass_for_owner=True)
 
-    app = create_learn_block_mentor_graph()
-    result = await app.ainvoke(
-        {"learn_block_id": user_input.learn_block_id, "user_id": user.user_id, "message": message, "db": db}
+    service = MentorService(
+        db=db,
+        learn_block_id=user_input.learn_block_id,
+        user_id=user.user_id,
+        message=user_input.message,
     )
 
-    answer = result.get("answer", "Odpověď nebyla vygenerována")
+    result = await service.chat()
 
     log = models.MentorInteractionLog(
         user_id=user.user_id,
         learn_id=user_input.learn_block_id,
-        user_message=message,
-        ai_response=answer,
+        user_message=user_input.message,
+        ai_response=result.answer,
     )
     db.add(log)
     db.commit()
 
-    return LearnBlocksChatResponse(answer=answer)
+    return LearnBlocksChatResponse(answer=result.answer)
 
 
 @router.post(
