@@ -209,15 +209,32 @@ def get_course_progress(db: Session, course_id: int, user: models.User) -> list[
     for module in course.modules:
         if not module.is_active:
             continue
-        passed_session = db.scalar(
+
+        # Najdi aktivní task session pro uživatele a modul
+        session = db.scalar(
             select(models.ModuleTaskSession).where(
                 models.ModuleTaskSession.user_id == user.user_id,
                 models.ModuleTaskSession.module_id == module.module_id,
-                models.ModuleTaskSession.status == enums.ModuleTaskSessionStatus.passed,
+                models.ModuleTaskSession.is_active.is_(True),
             )
         )
+
+        task_session_status: str | None = None
+        attempts_used = 0
+        if session is not None:
+            task_session_status = session.status.value
+            attempts_used = db.scalar(
+                select(func.count()).where(
+                    models.TaskAttempt.session_id == session.session_id,
+                    models.TaskAttempt.status == enums.AttemptStatus.evaluated,
+                )
+            ) or 0
+
         result.append(ModuleCompletionStatus(
             module_id=module.module_id,
-            passed=passed_session is not None,
+            passed=task_session_status == enums.ModuleTaskSessionStatus.passed,
+            task_session_status=task_session_status,
+            attempts_used=attempts_used,
+            max_attempts=module.max_task_attempts,
         ))
     return result

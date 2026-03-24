@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import get_or_404, check_enrollment
 from api.src.agents.schemas import (
+    EvaluateAssessmentRequest,
+    EvaluateAssessmentResponse,
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
     GenerateCourseResponse,
@@ -16,6 +18,7 @@ from agents.course_generator import create_graph
 from agents.embedding_generator import create_graph as create_embedding_graph
 from agents.mentor.graph import create_graph as create_learn_block_mentor_graph
 from agents.assessment_generator.service import AssessmentService
+from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
 from api import models
 
@@ -182,4 +185,72 @@ async def generate_assessment(
     return GenerateAssessmentResponse(
         session_id=result.session_id,
         generated_question=result.generated_question,
+    )
+
+
+@router.post(
+    "/evaluate-assessment",
+    operation_id="evaluate_assessment",
+)
+async def evaluate_assessment(
+    body: EvaluateAssessmentRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> EvaluateAssessmentResponse:
+    """Vyhodnotí odpověď studenta na assessment otázku."""
+
+    # Ověření, že session patří tomuto uživateli
+    session: models.ModuleTaskSession | None = (
+        db.execute(
+            select(models.ModuleTaskSession).where(
+                models.ModuleTaskSession.session_id == body.session_id,
+                models.ModuleTaskSession.user_id == user.user_id,
+                models.ModuleTaskSession.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Assessment session nenalezena")
+
+    if session.status != models.ModuleTaskSessionStatus.in_progress:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Session není ve stavu in_progress (aktuální: {session.status.value})",
+        )
+
+    # Kontrola počtu pokusů proti max_task_attempts modulu
+    module = session.module
+    evaluated_attempts_count: int = db.execute(
+        select(func.count()).where(
+            models.TaskAttempt.session_id == session.session_id,
+            models.TaskAttempt.status == models.AttemptStatus.evaluated,
+        )
+    ).scalar_one()
+
+    if evaluated_attempts_count >= module.max_task_attempts:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Vyčerpali jste maximální počet pokusů ({module.max_task_attempts}) pro tento modul",
+        )
+
+    service = EvaluationService(
+        db=db,
+        session_id=body.session_id,
+        user_id=user.user_id,
+        user_response=body.user_response,
+    )
+
+    try:
+        result = await service.evaluate()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return EvaluateAssessmentResponse(
+        attempt_id=result.attempt_id,
+        ai_score=result.ai_score,
+        is_passed=result.is_passed,
+        ai_feedback=result.ai_feedback,
     )

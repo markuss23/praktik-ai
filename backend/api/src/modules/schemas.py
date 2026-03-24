@@ -33,6 +33,9 @@ class ModuleCompletionStatus(ORMModel):
     passed: bool = False
     score: int | None = None
     course_completed: bool = False
+    task_session_status: str | None = None
+    attempts_used: int = 0
+    max_attempts: int = 0
 
 
 class CompleteModuleRequest(ORMModel):

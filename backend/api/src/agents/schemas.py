@@ -40,6 +40,22 @@ class GenerateAssessmentResponse(BaseModel):
     generated_question: str = Field(..., description="Vygenerovaná otázka")
 
 
+class EvaluateAssessmentRequest(BaseModel):
+    """Request pro vyhodnocení assessment odpovědi"""
+
+    session_id: int = Field(..., description="ID assessment session")
+    user_response: str = Field(..., min_length=1, description="Odpověď studenta")
+
+
+class EvaluateAssessmentResponse(BaseModel):
+    """Response s výsledkem hodnocení"""
+
+    attempt_id: int = Field(..., description="ID pokusu")
+    ai_score: int = Field(..., description="Skóre 0-100")
+    is_passed: bool = Field(..., description="Zda student uspěl")
+    ai_feedback: str = Field(..., description="Zpětná vazba od AI")
+
+
 class LearnBlocksChatRequest(BaseModel):
     """Request pro chat s learn blocky"""
 
