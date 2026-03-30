@@ -4,7 +4,6 @@ Controllery pro čtení zdrojů kurzu.
 
 from collections.abc import Sequence
 
-from fastapi import HTTPException
 from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
@@ -18,6 +17,10 @@ def get_courses(
     include_inactive: bool = False,
     text_search: str | None = None,
     is_published: bool = False,
+    course_block_id: int | None = None,
+    course_target_id: int | None = None,
+    course_subject_id: int | None = None,
+    status: str | None = None,
 ) -> list[Course]:
     """Vrátí seznam kurzů"""
     stm: Select[tuple[models.Course]] = select(models.Course).order_by(
@@ -37,6 +40,18 @@ def get_courses(
                 models.Course.description.ilike(f"%{text_search}%"),
             )
         )
+
+    if course_block_id is not None:
+        stm = stm.where(models.Course.course_block_id == course_block_id)
+
+    if course_target_id is not None:
+        stm = stm.where(models.Course.course_target_id == course_target_id)
+
+    if course_subject_id is not None:
+        stm = stm.where(models.Course.course_subject_id == course_subject_id)
+
+    if status is not None:
+        stm = stm.where(models.Course.status == status)
 
     rows: Sequence[Course] = db.execute(stm).scalars().all()
     return [Course.model_validate(c) for c in rows]

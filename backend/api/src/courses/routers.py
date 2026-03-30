@@ -4,6 +4,10 @@ from langgraph.graph.state import CompiledStateGraph
 
 from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
+    COURSE_BLOCK_ID_ANNOTATION,
+    COURSE_STATUS_ANNOTATION,
+    COURSE_SUBJECT_ID_ANNOTATION,
+    COURSE_TARGET_ID_ANNOTATION,
     INCLUDE_INACTIVE_ANNOTATION,
     IS_PUBLISHED_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
@@ -46,12 +50,20 @@ async def list_courses(
     include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
     is_published: IS_PUBLISHED_ANNOTATION = False,
     text_search: TEXT_SEARCH_ANNOTATION = None,
+    course_block_id: COURSE_BLOCK_ID_ANNOTATION = None,
+    course_target_id: COURSE_TARGET_ID_ANNOTATION = None,
+    course_subject_id: COURSE_SUBJECT_ID_ANNOTATION = None,
+    status: COURSE_STATUS_ANNOTATION = None,
 ) -> list[Course]:
     return get_courses(
         db,
         include_inactive=include_inactive,
         is_published=is_published,
         text_search=text_search,
+        course_block_id=course_block_id,
+        course_target_id=course_target_id,
+        course_subject_id=course_subject_id,
+        status=status,
     )
 
 
