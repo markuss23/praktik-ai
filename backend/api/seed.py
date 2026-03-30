@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from api.database import SessionLocal
 from api.models import CourseBlock, CourseSubject, CourseTarget, SystemSetting
@@ -179,6 +180,8 @@ COURSE_SUBJECTS: list[dict[str, str]] = [
 def seed_db() -> None:
     db: Session = SessionLocal()
     try:
+        db.execute(text("CREATE SCHEMA IF NOT EXISTS keycloak;"))
+
         if db.query(CourseBlock).count() == 0:
             db.add_all([CourseBlock(**row) for row in COURSE_BLOCKS])
 
