@@ -7,6 +7,7 @@ import {
   CatalogsApi,
   AuthenticationApi,
   EnrollmentsApi,
+  FeedbacksApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -23,9 +24,7 @@ import { API_BASE_URL } from "./constants";
 import { getValidAccessToken } from "./keycloak";
 
 
-// Request middleware — injects `Authorization: Bearer <token>` when the user
-// is authenticated. For unauthenticated (public) requests the header is
-// omitted entirely so the backend doesn't reject them.
+// Request middleware — injects `Authorization: Bearer <token>` when the user is authenticated. For unauthenticated (public) requests the header is comitted entirely so the backend doesn't reject them.
 const authMiddleware: Middleware = {
   pre: async (context) => {
     const token = await getValidAccessToken();
@@ -51,6 +50,7 @@ export const agentsApi = new AgentsApi(configuration);
 export const catalogsApi = new CatalogsApi(configuration);
 export const authApi = new AuthenticationApi(configuration);
 export const enrollmentsApi = new EnrollmentsApi(configuration);
+export const feedbacksApi = new FeedbacksApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -125,8 +125,6 @@ export async function createModule(data: ModuleCreate) {
 
 export async function updateModule(moduleId: number, data: {
   title: string;
-  position?: number;
-  isActive?: boolean;
 }) {
   return modulesApi.updateModule({
     moduleId,
@@ -260,4 +258,83 @@ export async function completeModule(moduleId: number, score: number) {
 
 export async function getCourseProgress(courseId: number) {
   return modulesApi.getCourseProgress({ courseId });
+}
+
+// ============ Feedbacks API functions ============
+
+export async function getFeedbackSection(courseId: number) {
+  return feedbacksApi.getFeedbackSection({ courseId });
+}
+
+export async function createFeedback(courseId: number, feedback: string) {
+  return feedbacksApi.createFeedback({ feedbackCreate: { courseId, feedback } });
+}
+
+export async function replyToFeedback(feedbackId: number, reply: string) {
+  return feedbacksApi.replyToFeedback({ feedbackId, feedbackReply: { reply } });
+}
+
+export async function deleteFeedback(feedbackId: number) {
+  return feedbacksApi.deleteFeedback({ feedbackId });
+}
+
+// ============ System Settings (Superadmin) API functions ============
+
+export interface SystemSettingResponse {
+  settingId: number;
+  name: string;
+  key: string;
+  model: string;
+  prompt: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SystemSettingUpdate {
+  name?: string;
+  model?: string;
+  prompt?: string;
+  description?: string;
+}
+
+async function fetchWithAuth(path: string, options: RequestInit = {}) {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+function mapSettingFromApi(raw: Record<string, unknown>): SystemSettingResponse {
+  return {
+    settingId: raw['setting_id'] as number,
+    name: raw['name'] as string,
+    key: raw['key'] as string,
+    model: raw['model'] as string,
+    prompt: raw['prompt'] as string,
+    description: (raw['description'] as string) ?? null,
+    createdAt: raw['created_at'] as string,
+    updatedAt: raw['updated_at'] as string,
+  };
+}
+
+export async function listSystemSettings(): Promise<SystemSettingResponse[]> {
+  const data = await fetchWithAuth('/api/v1/superadmin/settings');
+  return (data as Record<string, unknown>[]).map(mapSettingFromApi);
+}
+
+export async function updateSystemSetting(
+  settingId: number,
+  update: SystemSettingUpdate,
+): Promise<SystemSettingResponse> {
+  const data = await fetchWithAuth(`/api/v1/superadmin/settings/${settingId}`, {
+    method: 'PUT',
+    body: JSON.stringify(update),
+  });
+  return mapSettingFromApi(data as Record<string, unknown>);
 }

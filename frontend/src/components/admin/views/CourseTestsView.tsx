@@ -8,80 +8,18 @@ import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
   Plus,
   Trash2,
-  GripVertical,
-  Loader2,
 } from 'lucide-react';
-
-// Přetahovatelná položka otázky v osnově
-function SortableQuestionItem({
-  id,
-  label,
-  onClick,
-}: {
-  id: string;
-  label: string;
-  onClick: (e: React.MouseEvent) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  const style = {
-    transform: transform ? `translateY(${transform.y}px)` : undefined,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
-      onClick={onClick}
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical size={12} className="text-gray-400" />
-      </div>
-      <span className="truncate">{label}</span>
-    </div>
-  );
-}
 
 interface QuestionItem {
   id: number;
   questionId?: number;
-  position?: number;
   question: string;
   type: 'closed' | 'open';
   correctAnswer?: string;
   exampleAnswer?: string;
-  options: { id: number; optionId?: number; text: string; isCorrect: boolean; position?: number }[];
+  options: { id: number; optionId?: number; text: string; isCorrect: boolean }[];
 }
 
 interface ValidationError {
@@ -114,11 +52,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   } = useCourseData({ courseId, initialModuleId });
 
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-  const [reordering, setReordering] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
 
   // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
@@ -132,7 +65,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         allModuleQuestions[moduleIndex] = module.practiceQuestions.map((q, qIndex) => ({
           id: qIndex + 1,
           questionId: q.questionId,
-          position: q.position,
           question: q.question,
           type: q.questionType === QuestionType.Closed ? 'closed' : 'open',
           correctAnswer: q.correctAnswer ?? undefined,
@@ -140,7 +72,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           options: q.closedOptions?.map((opt, oIndex) => ({
             id: oIndex + 1,
             optionId: opt.optionId,
-            position: opt.position,
             text: opt.text,
             isCorrect: opt.text === q.correctAnswer,
           })) || [],
@@ -162,27 +93,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         ? newQuestions(prev[selectedModuleIndex] || [])
         : newQuestions
     }));
-  };
-
-  const handleQuestionDragEnd = (moduleIndex: number) => (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const questionsForModule = moduleQuestions[moduleIndex] || [];
-    const oldIdx = questionsForModule.findIndex(q => `q-${moduleIndex}-${q.id}` === active.id);
-    const newIdx = questionsForModule.findIndex(q => `q-${moduleIndex}-${q.id}` === over.id);
-    if (oldIdx === -1 || newIdx === -1) return;
-
-    setReordering(true);
-    const reordered = arrayMove(questionsForModule, oldIdx, newIdx).map((q, idx) => ({
-      ...q,
-      position: idx + 1,
-    }));
-
-    setTimeout(() => {
-      setModuleQuestions(prev => ({ ...prev, [moduleIndex]: reordered }));
-      setReordering(false);
-    }, 600);
   };
 
   const addQuestion = () => {
@@ -265,7 +175,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             questionUpdates.push({
               questionId: question.questionId,
               data: {
-                position: question.position ?? question.id,
                 question: question.question,
                 questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
                 correctAnswer: correctOption?.text ?? question.correctAnswer,
@@ -278,7 +187,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 const option = question.options[optIndex];
                 if (option.optionId) {
                   optionUpdatePromises.push(
-                    updatePracticeOption(option.optionId, { text: option.text, position: option.position ?? option.id })
+                    updatePracticeOption(option.optionId, { text: option.text })
                   );
                 } else {
                   newOptionsForExistingQuestions.push({
@@ -293,10 +202,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         }
       }
 
-      for (let i = 0; i < questionUpdates.length; i++) {
-        const { questionId, data } = questionUpdates[i];
-        await updatePracticeQuestion(questionId, { ...data, position: 9000 + i });
-      }
       for (const { questionId, data } of questionUpdates) {
         await updatePracticeQuestion(questionId, data);
       }
@@ -304,7 +209,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       await Promise.all(optionUpdatePromises);
 
       for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
-        const createdOption = await createPracticeOption({ questionId, position: option.position ?? option.id, text: option.text });
+        const createdOption = await createPracticeOption({ questionId, text: option.text });
         setModuleQuestions(prev => {
           const updated = { ...prev };
           if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -324,7 +229,6 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         const correctOption = question.options.find(opt => opt.isCorrect);
         const createdQuestion = await createPracticeQuestion({
           moduleId: module.moduleId,
-          position: question.position ?? question.id,
           questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
           question: question.question,
           correctAnswer: correctOption?.text ?? question.correctAnswer,
@@ -344,7 +248,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
             const option = question.options[optIndex];
             const createdOption = await createPracticeOption({
-              questionId: createdQuestion.questionId, position: option.position ?? option.id, text: option.text,
+              questionId: createdQuestion.questionId, text: option.text,
             });
             setModuleQuestions(prev => {
               const updated = { ...prev };
@@ -448,7 +352,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       isExpanded: expandedOutlineItems.has(index),
       isSelected: selectedModuleIndex === index,
       subItems: questionsForModule.map((q, qIdx) => ({
-        sortId: `q-${index}-${q.id}`,
+        id: `q-${index}-${q.id}`,
         label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
         questionIndex: qIdx,
       })),
@@ -486,15 +390,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             <h2 className="font-semibold text-black">Úprava testu</h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 relative">
-            {reordering && (
-              <div className="absolute inset-0 bg-white/80 z-10 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 size={24} className="animate-spin text-purple-600" />
-                  <span className="text-sm text-gray-500">Přeřazuji otázky...</span>
-                </div>
-              </div>
-            )}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {questions.map((question, qIndex) => (
               <div key={question.id} id={`question-${selectedModuleIndex}-${qIndex}`} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-4 mb-4">
@@ -613,21 +509,18 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             if (!subItems || subItems.length === 0) return null;
             return (
               <div className="pb-2">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd(index)}>
-                  <SortableContext items={subItems.map(s => s.sortId)} strategy={verticalListSortingStrategy}>
-                    {subItems.map((subItem) => (
-                      <SortableQuestionItem
-                        key={subItem.sortId}
-                        id={subItem.sortId}
-                        label={subItem.label}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          scrollToQuestion(index, subItem.questionIndex);
-                        }}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
+                {subItems.map((subItem) => (
+                  <div
+                    key={subItem.id}
+                    className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      scrollToQuestion(index, subItem.questionIndex);
+                    }}
+                  >
+                    <span className="truncate">{subItem.label}</span>
+                  </div>
+                ))}
               </div>
             );
           }}

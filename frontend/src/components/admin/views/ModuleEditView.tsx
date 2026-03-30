@@ -21,7 +21,6 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
   
   const [formData, setFormData] = useState({
     title: '',
-    position: 1,
   });
 
   useEffect(() => {
@@ -40,7 +39,6 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
           setCourseId(module.courseId);
           setFormData({
             title: module.title,
-            position: module.position || 1,
           });
         } else {
           // Záložní stav - courseId by mělo být vždy k dispozici
@@ -67,7 +65,6 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
         moduleId: moduleId,
         moduleUpdate: {
           title: formData.title,
-          position: formData.position,
         }
       });
       
@@ -111,20 +108,6 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
               placeholder="Název modulu"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-2">
-              Pozice
-            </label>
-            <input
-              type="number"
-              id="position"
-              min="1"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: parseInt(e.target.value) || 1 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
             />
           </div>
 

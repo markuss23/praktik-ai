@@ -49,10 +49,10 @@ export default function ModulePage() {
         setCourse(courseData);
 
         if (courseData.modules && courseData.modules.length > 0) {
-          setAllModules(courseData.modules.filter(m => m.isActive).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
+          setAllModules(courseData.modules.filter(m => m.isActive));
         } else {
           const modulesData = await getModules({ courseId: moduleData.courseId });
-          setAllModules(modulesData.filter(m => m.isActive).sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
+          setAllModules(modulesData.filter(m => m.isActive));
         }
       } catch (err) {
         console.error('Failed to fetch module data:', err);
@@ -120,8 +120,8 @@ export default function ModulePage() {
   }
 
   // Computed data
-  const learnBlocks = (module.learnBlocks ?? []).sort((a, b) => a.position - b.position);
-  const practiceQuestions = (module.practiceQuestions ?? []).sort((a, b) => a.position - b.position);
+  const learnBlocks = module.learnBlocks ?? [];
+  const practiceQuestions = module.practiceQuestions ?? [];
   const totalBlocks = learnBlocks.length;
   const currentBlock = learnBlocks[currentBlockIndex];
 
@@ -494,7 +494,7 @@ export default function ModulePage() {
 
                             {q.questionType === 'closed' && q.closedOptions && (
                               <div className="space-y-2 ml-6">
-                                {[...q.closedOptions].sort((a, b) => a.position - b.position).map(opt => (
+                                {(q.closedOptions ?? []).map(opt => (
                                   <label
                                     key={opt.optionId}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${

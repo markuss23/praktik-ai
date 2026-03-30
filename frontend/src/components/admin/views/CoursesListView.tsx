@@ -3,7 +3,7 @@
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
-import { GripVertical, X, BicepsFlexed, Upload, RotateCcw } from "lucide-react";
+import { X, BicepsFlexed, Upload, RotateCcw } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
@@ -62,7 +62,6 @@ export function CoursesListView() {
     moduleId: null as number | null,
     title: '',
     courseId: 0,
-    position: 1,
   });
 
   // ─── Permissions helpers ─────────────────────────────────────────────────────
@@ -264,15 +263,13 @@ export function CoursesListView() {
   };
 
   const openCreateModuleModal = (courseId: number) => {
-    const modules = courseModules[courseId] || [];
-    const maxPosition = modules.length > 0 ? Math.max(...modules.map((m: Module) => m.position || 1)) : 0;
-    setModuleFormData({ moduleId: null, title: '', courseId: courseId, position: maxPosition + 1 });
+    setModuleFormData({ moduleId: null, title: '', courseId: courseId });
     setModalError('');
     setActiveModal('module-create');
   };
 
   const openEditModuleModal = (module: Module) => {
-    setModuleFormData({ moduleId: module.moduleId, title: module.title, courseId: module.courseId, position: module.position || 1 });
+    setModuleFormData({ moduleId: module.moduleId, title: module.title, courseId: module.courseId });
     setModalError('');
     setActiveModal('module-edit');
   };
@@ -319,7 +316,7 @@ export function CoursesListView() {
       if (moduleFormData.moduleId) {
         await sharedModulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
-          moduleUpdate: { title: moduleFormData.title, position: moduleFormData.position }
+          moduleUpdate: { title: moduleFormData.title }
         });
         if (moduleFormData.courseId) {
           const modules = await getModules({ courseId: moduleFormData.courseId });
@@ -768,12 +765,11 @@ function ExpandedModuleList({
         <div className="divide-y">
           {modules.map((module, index) => (
             <div key={module.moduleId} className="p-4 flex items-center gap-4 hover:bg-gray-50">
-              <GripVertical size={20} className="text-gray-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-gray-900">{module.title}</div>
               </div>
               <div className="text-sm text-gray-600 w-24 text-center flex-shrink-0">
-                Modul {module.position || index + 1}
+                Modul {index + 1}
               </div>
               <div className="w-32 flex-shrink-0">
                 <ModuleActiveBadge isActive={module.isActive} />
@@ -927,7 +923,7 @@ function MobileCourseCard({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-900 truncate">{module.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Modul {module.position || index + 1}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Modul {index + 1}</p>
                     <ModuleActiveBadge isActive={module.isActive} size="sm" />
                   </div>
                   <CourseActionButtons className="flex-shrink-0">

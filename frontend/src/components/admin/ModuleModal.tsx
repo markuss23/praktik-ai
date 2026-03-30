@@ -10,7 +10,6 @@ interface ModuleModalProps {
     moduleId: number | null;
     title: string;
     courseId: number;
-    position: number;
   };
   courses: Course[];
   loading: boolean;

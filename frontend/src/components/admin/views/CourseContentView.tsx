@@ -3,22 +3,6 @@
 import { useState, useEffect } from 'react';
 import { LearnBlock } from '@/api';
 import { updateModule, createModule, createLearnBlock, updateLearnBlock } from '@/lib/api-client';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { Modal } from '@/components/ui/Modal';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
@@ -26,7 +10,6 @@ import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
 import {
   Plus,
-  GripVertical,
   Trash2,
   ChevronDown,
   ChevronUp,
@@ -35,13 +18,11 @@ import {
 interface ModuleContent {
   content: string;
   learnId?: number;
-  position?: number;
 }
 
 interface LocalModule {
   moduleId: number;
   title: string;
-  position: number;
   isActive?: boolean;
   courseId?: number;
   learnBlocks?: LearnBlock[];
@@ -53,10 +34,9 @@ interface CourseContentViewProps {
   initialModuleId?: number;
 }
 
-// Položka modulu s podporou přetahování
-function SortableModuleItem({
+// Položka modulu v osnově
+function ModuleItem({
   module,
-  index,
   isSelected,
   isExpanded,
   onSelect,
@@ -64,32 +44,14 @@ function SortableModuleItem({
   onDelete,
 }: {
   module: LocalModule;
-  index: number;
   isSelected: boolean;
   isExpanded: boolean;
   onSelect: () => void;
   onToggle: () => void;
   onDelete?: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: module.moduleId });
-
-  const style = {
-    transform: transform ? `translateY(${transform.y}px)` : undefined,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
       className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
         isSelected
           ? 'bg-purple-50 border-l-4 border-l-purple-600'
@@ -97,14 +59,6 @@ function SortableModuleItem({
       } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
       onClick={onSelect}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical size={14} className="text-gray-400" />
-      </div>
       <button
         className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
         onClick={(e) => {
@@ -151,12 +105,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
 
-  // Senzory pro drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
   // Rich text editor
   const { editor, EditorToolbar, EditorContent: EditorContentComponent, editorContentClass } = useRichTextEditor({
     content: '',
@@ -175,10 +123,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   useEffect(() => {
     if (!courseData) return;
 
-    const localModules: LocalModule[] = (courseData.modules || []).map((m, idx) => ({
+    const localModules: LocalModule[] = (courseData.modules || []).map((m) => ({
       moduleId: m.moduleId,
       title: m.title,
-      position: m.position ?? idx + 1,
       isActive: m.isActive,
       courseId: m.courseId,
       learnBlocks: m.learnBlocks,
@@ -203,7 +150,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       initialContents[index] = {
         content,
         learnId: learnBlock?.learnId,
-        position: learnBlock?.position ?? 1,
       };
     });
     setModuleContents(initialContents);
@@ -233,34 +179,11 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     });
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setModules((items) => {
-        const oldIndex = items.findIndex((item) => item.moduleId === active.id);
-        const newIndex = items.findIndex((item) => item.moduleId === over.id);
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        return newItems.map((item, idx) => ({ ...item, position: idx + 1 }));
-      });
-
-      const oldIndex = modules.findIndex((item) => item.moduleId === active.id);
-      const newIndex = modules.findIndex((item) => item.moduleId === over.id);
-      if (selectedModuleIndex === oldIndex) {
-        setSelectedModuleIndex(newIndex);
-      } else if (selectedModuleIndex > oldIndex && selectedModuleIndex <= newIndex) {
-        setSelectedModuleIndex(selectedModuleIndex - 1);
-      } else if (selectedModuleIndex < oldIndex && selectedModuleIndex >= newIndex) {
-        setSelectedModuleIndex(selectedModuleIndex + 1);
-      }
-    }
-  };
-
   const handleAddModule = () => {
     if (!newModuleTitle.trim()) return;
     const newModule: LocalModule = {
       moduleId: nextTempId,
       title: newModuleTitle.trim(),
-      position: modules.length + 1,
       isTemporary: true,
     };
     setModules([...modules, newModule]);
@@ -275,7 +198,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     const moduleToDelete = modules[index];
     if (!moduleToDelete.isTemporary) return;
 
-    const newModules = modules.filter((_, i) => i !== index).map((m, idx) => ({ ...m, position: idx + 1 }));
+    const newModules = modules.filter((_, i) => i !== index);
     setModules(newModules);
 
     const newContents: {[key: number]: ModuleContent} = {};
@@ -303,16 +226,15 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         const content = updatedContents[i];
 
         if (module.isTemporary) {
-          const createdModule = await createModule({ courseId, title: module.title, position: module.position });
+          const createdModule = await createModule({ courseId, title: module.title });
           updatedModules[i] = { ...module, moduleId: createdModule.moduleId, isTemporary: false };
 
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
             title: module.title || `Blok ${i + 1}`,
-            position: 1,
             content: content?.content || '',
           });
-          updatedContents[i] = { ...content, content: content?.content || '', learnId: createdLearnBlock.learnId, position: 1 };
+          updatedContents[i] = { ...content, content: content?.content || '', learnId: createdLearnBlock.learnId };
         }
       }
 
@@ -322,7 +244,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
         if (module.isTemporary) continue;
-        await updateModule(module.moduleId, { title: module.title, position: module.position });
+        await updateModule(module.moduleId, { title: module.title });
       }
 
       const learnBlockPromises: Promise<unknown>[] = [];
@@ -334,7 +256,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
               title: module.title || `Blok`,
-              position: content.position ?? 1,
               content: content.content,
             })
           );
@@ -413,33 +334,28 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             </div>
           </div>
           <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={modules.map(m => m.moduleId)} strategy={verticalListSortingStrategy}>
-                {modules.map((module, index) => (
-                  <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
-                    <SortableModuleItem
-                      module={module}
-                      index={index}
-                      isSelected={selectedModuleIndex === index}
-                      isExpanded={expandedOutlineItems.has(index)}
-                      onSelect={() => setSelectedModuleIndex(index)}
-                      onToggle={() => toggleOutlineItem(index)}
-                      onDelete={module.isTemporary ? () => handleDeleteModule(index) : undefined}
-                    />
-                    {expandedOutlineItems.has(index) && moduleContents[index] && (
-                      <div
-                        className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
-                        onClick={() => setSelectedModuleIndex(index)}
-                      >
-                        {moduleContents[index].content
-                          ? moduleContents[index].content.replace(/<[^>]*>/g, '').substring(0, 40) + '...'
-                          : 'Prázdný obsah'}
-                      </div>
-                    )}
+            {modules.map((module, index) => (
+              <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+                <ModuleItem
+                  module={module}
+                  isSelected={selectedModuleIndex === index}
+                  isExpanded={expandedOutlineItems.has(index)}
+                  onSelect={() => setSelectedModuleIndex(index)}
+                  onToggle={() => toggleOutlineItem(index)}
+                  onDelete={module.isTemporary ? () => handleDeleteModule(index) : undefined}
+                />
+                {expandedOutlineItems.has(index) && moduleContents[index] && (
+                  <div
+                    className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+                    onClick={() => setSelectedModuleIndex(index)}
+                  >
+                    {moduleContents[index].content
+                      ? moduleContents[index].content.replace(/<[^>]*>/g, '').substring(0, 40) + '...'
+                      : 'Prázdný obsah'}
                   </div>
-                ))}
-              </SortableContext>
-            </DndContext>
+                )}
+              </div>
+            ))}
 
             {modules.length === 0 && (
               <div className="p-4 text-center text-gray-500 text-sm">Žádné moduly</div>

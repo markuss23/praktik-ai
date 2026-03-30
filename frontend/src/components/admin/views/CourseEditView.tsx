@@ -88,7 +88,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   const saveModuleEdit = async (module: Module) => {
     try {
-      await updateModule(module.moduleId, { title: editModuleData.title, position: module.position });
+      await updateModule(module.moduleId, { title: editModuleData.title });
       setModules(prev => prev.map(m =>
         m.moduleId === module.moduleId ? { ...m, title: editModuleData.title } : m
       ));
@@ -289,7 +289,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                           <div className="space-y-2">
                             {module.learnBlocks.map((block, bIndex) => (
                               <div key={bIndex} className="p-3 bg-blue-50 rounded border border-blue-100">
-                                <div className="text-xs text-blue-600 mb-1">Blok #{block.position || bIndex + 1}</div>
+                                <div className="text-xs text-blue-600 mb-1">Blok #{bIndex + 1}</div>
                                 <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
                                   {block.content}
                                 </div>

@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 
 export interface OutlineSubItem {
-  sortId: string;
+  id: string;
   label: string;
 }
 

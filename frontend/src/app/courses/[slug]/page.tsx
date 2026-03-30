@@ -119,7 +119,7 @@ export default function CoursePage() {
     );
   }
 
-  const sortedModules = [...modules].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const sortedModules = [...modules];
   const isEnrolled = !!enrollment;
 
   return (
