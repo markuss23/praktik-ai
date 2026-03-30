@@ -10,9 +10,6 @@ class UserWithRole(ORMModel):
     is_active: bool
 
 
-class UserRoleUpdate(ORMModel):
-    role: UserRole
-
 
 class UserRoleResponse(ORMModel):
     user_id: int

@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from api.database import SessionSqlSessionDependency, init_db
 from api.seed import seed_db
 from api.src.routers import router as api_router
-from api.dependencies import auth
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +42,13 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         content={"detail": "Nečekávaná chyba serveru"},
     )
 
+
 init_db(create_extensions=True)
 seed_db()
 
 
 @app.get("/health")
 async def root(db: SessionSqlSessionDependency):
-    print(db.execute(text("Select 1")).all())
     return {"message": "ok"}
 
 
