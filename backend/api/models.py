@@ -419,12 +419,6 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
     # course_type: Mapped[CourseType] = relationship(back_populates="courses")
 
-    feedbacks: Mapped[list[CourseFeedback]] = relationship(
-        back_populates="course",
-        order_by="CourseFeedback.created_at.desc()",
-        primaryjoin="and_(Course.course_id==CourseFeedback.course_id, CourseFeedback.is_active==True)",
-    )
-
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]
 
     def get_owner_id(self) -> int:
@@ -438,19 +432,15 @@ class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
     """
 
     __tablename__ = "course_feedback"
-    __table_args__ = (Index("ix_course_feedback_course_id", "course_id"),)
 
     feedback_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
     )
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("course.course_id"), nullable=False
-    )
     # Garant který napsal komentář
     author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
     # Kontextové informace – ke kterému modulu/bloku/otázce se komentář váže
-    module_id: Mapped[int | None] = mapped_column(
-        ForeignKey("module.module_id"), nullable=True
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
     )
     content_type: Mapped[str | None] = mapped_column(
         String(20), nullable=True
@@ -465,9 +455,8 @@ class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
     # Označení jako vyřešené autorem kurzu
     is_resolved: Mapped[bool] = mapped_column(default=False, nullable=False)
 
-    course: Mapped[Course] = relationship(back_populates="feedbacks")
     author: Mapped[User] = relationship(foreign_keys=[author_id])
-    module: Mapped[Module | None] = relationship(foreign_keys=[module_id])
+    module: Mapped[Module] = relationship(foreign_keys=[module_id])
 
 
 class Module(TimestampMixin, SoftDeleteMixin, Base):

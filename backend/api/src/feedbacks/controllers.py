@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, contains_eager
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -24,12 +24,13 @@ def get_feedback_section(
 
     stm = (
         select(models.CourseFeedback)
+        .join(models.CourseFeedback.module)
         .options(
-            joinedload(models.CourseFeedback.module),
+            contains_eager(models.CourseFeedback.module),
             joinedload(models.CourseFeedback.author),
         )
         .where(
-            models.CourseFeedback.course_id == course_id,
+            models.Module.course_id == course_id,
             models.CourseFeedback.is_active.is_(True),
         )
         .order_by(models.CourseFeedback.created_at.asc())
@@ -50,14 +51,14 @@ def get_feedback_section(
 
 def create_feedback(
     db: Session,
-    course_id: int,
+    module_id: int,
     feedback_text: str,
     actor: models.User,
-    module_id: int | None = None,
     content_type: str | None = None,
     content_ref: str | None = None,
 ) -> FeedbackItem:
-    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    course = get_or_404(db, models.Course, module.course_id, detail="Kurz nenalezen")
 
     if course.status != Status.in_review and course.status != Status.edited:
         raise HTTPException(
@@ -68,14 +69,7 @@ def create_feedback(
     if not feedback_text.strip():
         raise HTTPException(status_code=422, detail="Text feedbacku nesmí být prázdný")
 
-    # Validate module belongs to the course if provided
-    if module_id is not None:
-        module = db.get(models.Module, module_id)
-        if not module or module.course_id != course_id:
-            raise HTTPException(status_code=422, detail="Modul nepatří k tomuto kurzu")
-
     feedback = models.CourseFeedback(
-        course_id=course_id,
         author_id=actor.user_id,
         feedback=feedback_text,
         module_id=module_id,
@@ -85,9 +79,7 @@ def create_feedback(
     db.add(feedback)
     db.commit()
     db.refresh(feedback)
-    db.refresh(feedback, ["author"])
-    if feedback.module_id:
-        db.refresh(feedback, ["module"])
+    db.refresh(feedback, ["author", "module"])
     return FeedbackItem.model_validate(feedback)
 
 
@@ -98,8 +90,9 @@ def reply_to_feedback(
     actor: models.User,
 ) -> FeedbackItem:
     feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+    course = db.get(models.Course, feedback.module.course_id)
 
-    if feedback.course.owner_id != actor.user_id:
+    if course.owner_id != actor.user_id:
         raise HTTPException(
             status_code=403,
             detail="Pouze autor kurzu může odpovědět na feedback",
@@ -114,9 +107,7 @@ def reply_to_feedback(
     feedback.reply = reply_text
     db.commit()
     db.refresh(feedback)
-    db.refresh(feedback, ["author"])
-    if feedback.module_id:
-        db.refresh(feedback, ["module"])
+    db.refresh(feedback, ["author", "module"])
     return FeedbackItem.model_validate(feedback)
 
 
@@ -127,8 +118,9 @@ def resolve_feedback(
     actor: models.User,
 ) -> FeedbackItem:
     feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+    course = db.get(models.Course, feedback.module.course_id)
 
-    if feedback.course.owner_id != actor.user_id:
+    if course.owner_id != actor.user_id:
         raise HTTPException(
             status_code=403,
             detail="Pouze autor kurzu může označit feedback jako vyřešený",
@@ -137,9 +129,7 @@ def resolve_feedback(
     feedback.is_resolved = is_resolved
     db.commit()
     db.refresh(feedback)
-    db.refresh(feedback, ["author"])
-    if feedback.module_id:
-        db.refresh(feedback, ["module"])
+    db.refresh(feedback, ["author", "module"])
     return FeedbackItem.model_validate(feedback)
 
 

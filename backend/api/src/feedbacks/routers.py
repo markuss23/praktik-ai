@@ -35,10 +35,9 @@ def endp_create_feedback(
     """Přidá feedback ke kurzu. Kurz musí být ve stavu 'in_review'."""
     return create_feedback(
         db,
-        course_id=data.course_id,
+        module_id=data.module_id,
         feedback_text=data.feedback,
         actor=actor,
-        module_id=data.module_id,
         content_type=data.content_type,
         content_ref=data.content_ref,
     )
