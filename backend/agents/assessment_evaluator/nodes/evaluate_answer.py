@@ -29,7 +29,7 @@ DEFAULT_PROMPT = (
     "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"
 )
 
-DEFAULT_PASSING_SCORE = 60
+DEFAULT_PASSING_SCORE = 75
 
 
 def evaluate_answer(state: EvaluationState) -> dict:

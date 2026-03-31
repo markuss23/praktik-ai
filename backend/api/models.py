@@ -481,7 +481,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-    passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
+    passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 
