@@ -10,6 +10,8 @@ from api.src.modules.controllers import (
     get_assessment_question,
     # delete_module,
 )
+from api.src.agents.practice_controllers import list_practice_questions
+from api.src.agents.schemas import PracticeQuestionWithAttempts
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, CompleteModuleRequest, ModuleAssessmentQuestion
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
@@ -80,6 +82,16 @@ async def endp_get_course_progress(
 ) -> list[ModuleCompletionStatus]:
     """Vrátí stav dokončení všech modulů kurzu pro aktuálního uživatele."""
     return get_course_progress(db, course_id, user)
+
+
+@router.get("/{module_id}/practice-questions", operation_id="list_practice_questions")
+async def endp_list_practice_questions(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> list[PracticeQuestionWithAttempts]:
+    """Vrátí seznam procvičovacích otázek s pokusy pro aktuálního uživatele a daný modul."""
+    return list_practice_questions(db=db, module_id=module_id, user=user)
 
 
 @router.get("/{module_id}/assessment", operation_id="get_module_assessment")

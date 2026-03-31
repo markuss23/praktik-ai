@@ -7,12 +7,20 @@ from api.src.common.utils import get_or_404, check_enrollment
 from api.src.agents.schemas import (
     EvaluateAssessmentRequest,
     EvaluateAssessmentResponse,
+    EvaluatePracticeAnswerRequest,
+    EvaluatePracticeAnswerResponse,
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
+    GeneratePracticeQuestionRequest,
+    GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
+)
+from api.src.agents.practice_controllers import (
+    generate_practice_question,
+    evaluate_practice_answer,
 )
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
@@ -252,4 +260,40 @@ async def evaluate_assessment(
         ai_score=result.ai_score,
         is_passed=result.is_passed,
         ai_feedback=result.ai_feedback,
+    )
+
+
+@router.post(
+    "/generate-practice-question",
+    operation_id="generate_practice_question",
+)
+async def endp_generate_practice_question(
+    body: GeneratePracticeQuestionRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> GeneratePracticeQuestionResponse:
+    """Vygeneruje personalizovanou procvičovací otázku z obsahu modulu."""
+    return await generate_practice_question(
+        db=db,
+        module_id=body.module_id,
+        question_type=body.question_type,
+        user=user,
+    )
+
+
+@router.post(
+    "/evaluate-practice-answer",
+    operation_id="evaluate_practice_answer",
+)
+async def endp_evaluate_practice_answer(
+    body: EvaluatePracticeAnswerRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> EvaluatePracticeAnswerResponse:
+    """Vyhodnotí odpověď studenta na procvičovací otázku."""
+    return await evaluate_practice_answer(
+        db=db,
+        user_question_id=body.user_question_id,
+        user_input=body.user_input,
+        user=user,
     )
