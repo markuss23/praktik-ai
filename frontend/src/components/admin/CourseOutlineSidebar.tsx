@@ -13,6 +13,7 @@ export interface OutlineItem {
   isExpanded: boolean;
   isSelected: boolean;
   isTemporary?: boolean;
+  feedbackCount?: number;
   subItems?: OutlineSubItem[];
   subContent?: string;
 }
@@ -71,6 +72,11 @@ export function CourseOutlineSidebar({
                 {item.title}
                 {item.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
               </span>
+              {(item.feedbackCount ?? 0) > 0 && (
+                <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {item.feedbackCount}
+                </span>
+              )}
             </div>
             {item.isExpanded && renderSubItems && renderSubItems(item, index)}
             {item.isExpanded && !renderSubItems && item.subContent && (

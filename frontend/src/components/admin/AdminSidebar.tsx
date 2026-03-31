@@ -29,36 +29,30 @@ export function AdminSidebar() {
   const { currentUser } = useCurrentUser();
   const [reviewCount, setReviewCount] = useState(0);
 
-  // Fetch in_review count for badge
+  // Fetch in_review count for badge (guarantors and superadmins only)
   useEffect(() => {
-    if (!isLector) return;
+    if (!isGuarantor) return;
     let cancelled = false;
     async function loadCount() {
       try {
         const courses = await getCourses({ includeInactive: false });
         const inReview = courses.filter(c => c.status === Status.InReview);
         if (cancelled) return;
-        if (isGuarantor) {
-          setReviewCount(inReview.length);
-        } else {
-          // Lector: only own courses
-          const own = inReview.filter(c => c.ownerId === currentUser?.userId);
-          setReviewCount(own.length);
-        }
+        setReviewCount(inReview.length);
       } catch {
         // ignore
       }
     }
     loadCount();
     return () => { cancelled = true; };
-  }, [isLector, isGuarantor, currentUser?.userId]);
+  }, [isGuarantor]);
 
   // Build nav items
   const navItems = [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
     ...(can('superadmin') ? SUPERADMIN_ITEMS : []),
-    ...(isLector ? [
+    ...(isGuarantor ? [
       { href: '/admin/review', label: 'Ke schválení', icon: ClipboardCheck, badge: reviewCount > 0 ? reviewCount : undefined },
     ] : []),
     ...BASE_NAV_ITEMS.slice(2),

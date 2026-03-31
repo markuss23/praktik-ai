@@ -448,13 +448,26 @@ class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
     )
     # Garant který napsal komentář
     author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    # Kontextové informace – ke kterému modulu/bloku/otázce se komentář váže
+    module_id: Mapped[int | None] = mapped_column(
+        ForeignKey("module.module_id"), nullable=True
+    )
+    content_type: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )  # "learn_block" | "practice"
+    content_ref: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )  # identifikátor bloku/otázky (např. číslo stránky nebo index otázky)
     # Komentář garanta
     feedback: Mapped[str] = mapped_column(Text, nullable=False)
     # Vyjádření autora kurzu (nullable dokud autor neodpoví)
     reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Označení jako vyřešené autorem kurzu
+    is_resolved: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     course: Mapped[Course] = relationship(back_populates="feedbacks")
     author: Mapped[User] = relationship(foreign_keys=[author_id])
+    module: Mapped[Module | None] = relationship(foreign_keys=[module_id])
 
 
 class Module(TimestampMixin, SoftDeleteMixin, Base):

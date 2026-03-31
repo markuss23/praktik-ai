@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -24,6 +24,10 @@ def get_feedback_section(
 
     stm = (
         select(models.CourseFeedback)
+        .options(
+            joinedload(models.CourseFeedback.module),
+            joinedload(models.CourseFeedback.author),
+        )
         .where(
             models.CourseFeedback.course_id == course_id,
             models.CourseFeedback.is_active.is_(True),
@@ -49,6 +53,9 @@ def create_feedback(
     course_id: int,
     feedback_text: str,
     actor: models.User,
+    module_id: int | None = None,
+    content_type: str | None = None,
+    content_ref: str | None = None,
 ) -> FeedbackItem:
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -61,14 +68,26 @@ def create_feedback(
     if not feedback_text.strip():
         raise HTTPException(status_code=422, detail="Text feedbacku nesmí být prázdný")
 
+    # Validate module belongs to the course if provided
+    if module_id is not None:
+        module = db.get(models.Module, module_id)
+        if not module or module.course_id != course_id:
+            raise HTTPException(status_code=422, detail="Modul nepatří k tomuto kurzu")
+
     feedback = models.CourseFeedback(
         course_id=course_id,
         author_id=actor.user_id,
         feedback=feedback_text,
+        module_id=module_id,
+        content_type=content_type,
+        content_ref=content_ref,
     )
     db.add(feedback)
     db.commit()
     db.refresh(feedback)
+    db.refresh(feedback, ["author"])
+    if feedback.module_id:
+        db.refresh(feedback, ["module"])
     return FeedbackItem.model_validate(feedback)
 
 
@@ -95,6 +114,32 @@ def reply_to_feedback(
     feedback.reply = reply_text
     db.commit()
     db.refresh(feedback)
+    db.refresh(feedback, ["author"])
+    if feedback.module_id:
+        db.refresh(feedback, ["module"])
+    return FeedbackItem.model_validate(feedback)
+
+
+def resolve_feedback(
+    db: Session,
+    feedback_id: int,
+    is_resolved: bool,
+    actor: models.User,
+) -> FeedbackItem:
+    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+
+    if feedback.course.owner_id != actor.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Pouze autor kurzu může označit feedback jako vyřešený",
+        )
+
+    feedback.is_resolved = is_resolved
+    db.commit()
+    db.refresh(feedback)
+    db.refresh(feedback, ["author"])
+    if feedback.module_id:
+        db.refresh(feedback, ["module"])
     return FeedbackItem.model_validate(feedback)
 
 

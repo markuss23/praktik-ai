@@ -266,12 +266,28 @@ export async function getFeedbackSection(courseId: number) {
   return feedbacksApi.getFeedbackSection({ courseId });
 }
 
-export async function createFeedback(courseId: number, feedback: string) {
-  return feedbacksApi.createFeedback({ feedbackCreate: { courseId, feedback } });
+export async function createFeedback(
+  courseId: number,
+  feedback: string,
+  opts?: { moduleId?: number; contentType?: string; contentRef?: string },
+) {
+  return feedbacksApi.createFeedback({
+    feedbackCreate: {
+      courseId,
+      feedback,
+      moduleId: opts?.moduleId,
+      contentType: opts?.contentType,
+      contentRef: opts?.contentRef,
+    },
+  });
 }
 
 export async function replyToFeedback(feedbackId: number, reply: string) {
   return feedbacksApi.replyToFeedback({ feedbackId, feedbackReply: { reply } });
+}
+
+export async function resolveFeedback(feedbackId: number, isResolved: boolean) {
+  return feedbacksApi.resolveFeedback({ feedbackId, feedbackResolve: { isResolved } });
 }
 
 export async function deleteFeedback(feedbackId: number) {

@@ -10,6 +10,11 @@ class FeedbackAuthor(ORMModel):
     display_name: str | None
 
 
+class FeedbackModule(ORMModel):
+    module_id: int
+    title: str
+
+
 class FeedbackCourse(ORMModel):
     course_id: int
     title: str
@@ -25,6 +30,11 @@ class FeedbackItem(ORMModel):
     feedback_id: int
     feedback: str
     reply: str | None
+    is_resolved: bool
+    module_id: int | None
+    content_type: str | None
+    content_ref: str | None
+    module: FeedbackModule | None = None
     author: FeedbackAuthor
     created_at: datetime
 
@@ -37,7 +47,14 @@ class FeedbackSection(ORMModel):
 class FeedbackCreate(ORMModel):
     course_id: int
     feedback: str
+    module_id: int | None = None
+    content_type: str | None = None
+    content_ref: str | None = None
 
 
 class FeedbackReply(ORMModel):
     reply: str
+
+
+class FeedbackResolve(ORMModel):
+    is_resolved: bool

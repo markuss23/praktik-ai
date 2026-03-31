@@ -1,15 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { QuestionType } from '@/api';
-import { updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption } from '@/lib/api-client';
+import { useState, useEffect } from 'react';
+import { QuestionType, FeedbackItem, Status } from '@/api';
+import {
+  updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption,
+  getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
+} from '@/lib/api-client';
+import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, LoadingState, ErrorState } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import {
   Plus,
   Trash2,
+  Send,
+  CheckCircle,
+  CornerDownRight,
+  ArrowUpCircle,
 } from 'lucide-react';
 
 interface QuestionItem {
@@ -37,6 +46,7 @@ interface CourseTestsViewProps {
 // Editor testů/otázek pro moduly kurzu
 export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
+  const { isOwner } = useCurrentUser();
   const {
     loading,
     error,
@@ -52,6 +62,80 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   } = useCourseData({ courseId, initialModuleId });
 
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+
+  // Feedback state
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [replyTexts, setReplyTexts] = useState<Record<number, string>>({});
+  const [showReplyFor, setShowReplyFor] = useState<number | null>(null);
+  const [submittingReply, setSubmittingReply] = useState<number | null>(null);
+  const [resolvingFeedback, setResolvingFeedback] = useState<number | null>(null);
+  const [resubmitLoading, setResubmitLoading] = useState(false);
+
+  const courseStatus = courseData?.status as string | undefined;
+  const isEdited = courseStatus === Status.Edited;
+  const hasFeedbacks = feedbacks.length > 0;
+  const showCommentsPanel = isEdited && hasFeedbacks;
+  const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
+  const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
+
+  useEffect(() => {
+    if (!courseId) return;
+    getFeedbackSection(courseId)
+      .then(section => setFeedbacks(section.feedbacks))
+      .catch(() => {});
+  }, [courseId]);
+
+  const currentModuleFeedbacks = modules[selectedModuleIndex]
+    ? feedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
+    : [];
+
+  const feedbackCountByModule = (moduleId: number) =>
+    feedbacks.filter(fb => fb.moduleId === moduleId).length;
+
+  const feedbackContextLabel = (fb: FeedbackItem) => {
+    if (fb.contentType === 'learn_block' && fb.contentRef) return `Příručka – str. ${fb.contentRef}`;
+    if (fb.contentType === 'practice' && fb.contentRef) return `Procvičování – ot. ${fb.contentRef}`;
+    return null;
+  };
+
+  const handleReply = async (feedbackId: number) => {
+    const text = replyTexts[feedbackId]?.trim();
+    if (!text) return;
+    setSubmittingReply(feedbackId);
+    try {
+      const updated = await replyToFeedback(feedbackId, text);
+      setFeedbacks(prev => prev.map(fb => fb.feedbackId === feedbackId ? updated : fb));
+      setShowReplyFor(null);
+      setReplyTexts(prev => ({ ...prev, [feedbackId]: '' }));
+    } catch (err) {
+      console.error('Failed to reply:', err);
+    } finally {
+      setSubmittingReply(null);
+    }
+  };
+
+  const handleToggleResolve = async (fb: FeedbackItem) => {
+    setResolvingFeedback(fb.feedbackId);
+    try {
+      const updated = await resolveFeedback(fb.feedbackId, !fb.isResolved);
+      setFeedbacks(prev => prev.map(f => f.feedbackId === fb.feedbackId ? updated : f));
+    } catch (err) {
+      console.error('Failed to resolve:', err);
+    } finally {
+      setResolvingFeedback(null);
+    }
+  };
+
+  const handleResubmit = async () => {
+    setResubmitLoading(true);
+    try {
+      await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.InReview);
+    } catch (err) {
+      console.error('Failed to resubmit:', err);
+    } finally {
+      setResubmitLoading(false);
+    }
+  };
 
   // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
@@ -351,6 +435,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       title: module.title,
       isExpanded: expandedOutlineItems.has(index),
       isSelected: selectedModuleIndex === index,
+      feedbackCount: feedbackCountByModule(module.moduleId),
       subItems: questionsForModule.map((q, qIdx) => ({
         id: `q-${index}-${q.id}`,
         label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
@@ -368,6 +453,25 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         showButtons={false}
       />
 
+      {/* Resubmit banner */}
+      {/* {isEdited && hasFeedbacks && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+          <p className="text-sm text-amber-800">
+            Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
+          </p>
+          {canResubmit && (
+            <button
+              onClick={handleResubmit}
+              disabled={resubmitLoading}
+              className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              <ArrowUpCircle size={14} />
+              {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
+            </button>
+          )}
+        </div>
+      )} */}
+
       {validationErrors.length > 0 && (
         <div className="mx-4 sm:mx-6 mt-2 bg-red-50 rounded-lg p-2">
           <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
@@ -384,7 +488,38 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       )}
 
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
-        {/* Left Content - Test Editor */}
+        {/* Left Sidebar - Course Outline */}
+        <CourseOutlineSidebar
+          items={outlineItems}
+          onToggle={(index) => {
+            const isOpening = !expandedOutlineItems.has(index);
+            toggleOutlineItem(index);
+            if (isOpening) selectModule(index);
+          }}
+          onSelect={selectModule}
+          renderSubItems={(item, index) => {
+            const subItems = (item as typeof outlineItems[number]).subItems;
+            if (!subItems || subItems.length === 0) return null;
+            return (
+              <div className="pb-2">
+                {subItems.map((subItem) => (
+                  <div
+                    key={subItem.id}
+                    className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      scrollToQuestion(index, subItem.questionIndex);
+                    }}
+                  >
+                    <span className="truncate">{subItem.label}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          }}
+        />
+
+        {/* Center Content - Test Editor */}
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Úprava testu</h2>
@@ -495,36 +630,117 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </div>
         </div>
 
-        {/* Right Sidebar - Course Outline */}
-        <CourseOutlineSidebar
-          items={outlineItems}
-          onToggle={(index) => {
-            const isOpening = !expandedOutlineItems.has(index);
-            toggleOutlineItem(index);
-            if (isOpening) selectModule(index);
-          }}
-          onSelect={selectModule}
-          renderSubItems={(item, index) => {
-            const subItems = (item as typeof outlineItems[number]).subItems;
-            if (!subItems || subItems.length === 0) return null;
-            return (
-              <div className="pb-2">
-                {subItems.map((subItem) => (
-                  <div
-                    key={subItem.id}
-                    className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      scrollToQuestion(index, subItem.questionIndex);
-                    }}
-                  >
-                    <span className="truncate">{subItem.label}</span>
+        {/* Right - Comments panel (only when course has feedbacks from review) */}
+        {showCommentsPanel && (
+          <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex flex-col">
+            <div className="p-3 border-b border-gray-200">
+              <h2 className="text-sm font-semibold text-black">
+                Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
+              </h2>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {currentModuleFeedbacks.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+              ) : (
+                currentModuleFeedbacks.map(fb => (
+                  <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+                    <div className="px-3.5 py-2.5">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-semibold text-gray-800 text-xs">
+                          {fb.author.displayName ?? 'Uživatel'}
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => handleToggleResolve(fb)}
+                            disabled={resolvingFeedback === fb.feedbackId}
+                            className={`p-0.5 rounded transition-colors ${
+                              fb.isResolved
+                                ? 'text-green-600 hover:text-green-700'
+                                : 'text-gray-300 hover:text-green-500'
+                            }`}
+                            title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {feedbackContextLabel(fb) && (
+                        <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                      )}
+
+                      <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                    </div>
+
+                    {fb.reply && (
+                      <div className="px-3.5 pb-2.5">
+                        <div className="ml-3 bg-purple-50 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <CornerDownRight size={10} className="text-purple-400" />
+                            <span className="text-[10px] text-purple-500 font-medium">Vaše odpověď</span>
+                          </div>
+                          <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!fb.reply && (
+                      <div className="px-3.5 pb-2.5">
+                        {showReplyFor === fb.feedbackId ? (
+                          <div>
+                            <textarea
+                              value={replyTexts[fb.feedbackId] ?? ''}
+                              onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
+                              rows={2}
+                              placeholder="Napište odpověď..."
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                            />
+                            <div className="flex gap-1 mt-1">
+                              <button
+                                onClick={() => handleReply(fb.feedbackId)}
+                                disabled={submittingReply === fb.feedbackId}
+                                className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
+                              >
+                                Odeslat
+                              </button>
+                              <button
+                                onClick={() => setShowReplyFor(null)}
+                                className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                              >
+                                Zrušit
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowReplyFor(fb.feedbackId)}
+                            className="text-xs text-purple-600 hover:underline flex items-center gap-0.5"
+                          >
+                            <CornerDownRight size={11} /> Odpovědět
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
+                ))
+              )}
+            </div>
+
+            <div className="p-3 border-t border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">
+                  Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
+                </span>
+                {allResolved && (
+                  <span className="text-green-600 font-medium flex items-center gap-1">
+                    <CheckCircle size={12} /> Vše vyřešeno
+                  </span>
+                )}
               </div>
-            );
-          }}
-        />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

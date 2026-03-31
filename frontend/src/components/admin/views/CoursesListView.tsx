@@ -484,28 +484,6 @@ export function CoursesListView() {
                               </>
                             )}
 
-                            {/* Approve / Reject - guarantor (not owner) or superadmin, only when in_review */}
-                            {canApproveCourse(course) && statusStr === 'in_review' && (
-                              <>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => handleApprove(course)}
-                                  disabled={approvalLoading === course.courseId}
-                                  className="text-teal-600 hover:text-teal-800 hover:underline whitespace-nowrap disabled:opacity-50"
-                                >
-                                  {approvalLoading === course.courseId ? 'Zpracovávám...' : 'Schválit'}
-                                </button>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => handleReject(course)}
-                                  disabled={approvalLoading === course.courseId}
-                                  className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
-                                >
-                                  Vrátit k úpravám
-                                </button>
-                              </>
-                            )}
-
                             {/* Publish/Unpublish - only owner or superadmin, only when approved or archived */}
                             {canPublishCourse(course) && (course.status === Status.Approved || course.status === Status.Archived) && (
                               <>
@@ -662,15 +640,11 @@ export function CoursesListView() {
                 onGenerateEmbeddings={() => handleGenerateEmbeddings(course.courseId)}
                 embeddingGenerating={embeddingLoading === course.courseId}
                 embeddingGenerated={embeddingDone.has(course.courseId)}
-                onApproveToggle={() => handleApprove(course)}
-                approvalLoading={approvalLoading === course.courseId}
                 canEdit={canEditCourse(course)}
                 canPublish={canPublishCourse(course)}
-                canApprove={canApproveCourse(course)}
                 canDelete={isSuperAdmin}
                 onSubmitForReview={() => handleSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
-                onReject={() => handleReject(course)}
                 onRevertToEditing={() => handleRevertToEditing(course)}
                 statusLoading={statusLoading === course.courseId}
               />
@@ -821,15 +795,11 @@ interface MobileCourseCardProps {
   onGenerateEmbeddings: () => void;
   embeddingGenerating: boolean;
   embeddingGenerated: boolean;
-  onApproveToggle: () => void;
-  approvalLoading: boolean;
   canEdit: boolean;
   canPublish: boolean;
-  canApprove: boolean;
   canDelete: boolean;
   onSubmitForReview: () => void;
   canSubmitReview: boolean;
-  onReject: () => void;
   onRevertToEditing: () => void;
   statusLoading: boolean;
 }
@@ -847,15 +817,11 @@ function MobileCourseCard({
   onToggleModuleActive,
   onDeleteModule,
   onAddModule,
-  onApproveToggle,
-  approvalLoading,
   canEdit,
   canPublish,
-  canApprove,
   canDelete,
   onSubmitForReview,
   canSubmitReview,
-  onReject,
   onRevertToEditing,
   statusLoading,
 }: MobileCourseCardProps) {
@@ -885,14 +851,6 @@ function MobileCourseCard({
           )}
           {canSubmitReview && (
             <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
-          )}
-          {canApprove && statusStr === 'in_review' && (
-            <>
-              <ApproveActionButton onClick={onApproveToggle} isApproved={course.status === Status.Approved} isLoading={approvalLoading} iconSize={14} />
-              <button onClick={onReject} disabled={approvalLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit k úpravám">
-                <X size={14} />
-              </button>
-            </>
           )}
           {canPublish && (course.status === Status.Approved || course.status === Status.Archived) && (
             <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />

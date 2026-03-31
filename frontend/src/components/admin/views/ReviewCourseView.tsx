@@ -10,13 +10,9 @@ import {
   getModules,
   getFeedbackSection,
   createFeedback,
-  replyToFeedback,
   deleteFeedback,
   updateCourseStatus,
   generateCourseEmbeddings,
-  updateLearnBlock,
-  updatePracticeQuestion,
-  updatePracticeOption,
 } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -31,10 +27,6 @@ import {
   Trash2,
   CornerDownRight,
   Check,
-  Pencil,
-  Save,
-  X,
-  ArrowUpCircle,
 } from 'lucide-react';
 
 type TabType = 'handbook' | 'practice';
@@ -60,7 +52,7 @@ interface ReviewCourseViewProps {
 export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   const router = useRouter();
   const { isGuarantor, isSuperAdmin } = useRole();
-  const { currentUser, isOwner } = useCurrentUser();
+  const { currentUser } = useCurrentUser();
 
   // Data state
   const [course, setCourse] = useState<Course | null>(null);
@@ -79,9 +71,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   // Feedback state
   const [newFeedbackText, setNewFeedbackText] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
-  const [replyTexts, setReplyTexts] = useState<Record<number, string>>({});
-  const [showReplyFor, setShowReplyFor] = useState<number | null>(null);
-  const [submittingReply, setSubmittingReply] = useState<number | null>(null);
   const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
 
   // Per-module approval state (local only)
@@ -91,25 +80,10 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   // Course-level approval state
   const [approvalLoading, setApprovalLoading] = useState(false);
 
-  // Block editing state
-  const [editingBlockId, setEditingBlockId] = useState<number | null>(null);
-  const [editBlockContent, setEditBlockContent] = useState('');
-  const [savingBlock, setSavingBlock] = useState(false);
-
-  // Question editing state
-  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
-  const [editQuestionText, setEditQuestionText] = useState('');
-  const [editCorrectAnswer, setEditCorrectAnswer] = useState('');
-  const [editExampleAnswer, setEditExampleAnswer] = useState('');
-  const [editCorrectOptionId, setEditCorrectOptionId] = useState<number | null>(null);
-  const [editOptions, setEditOptions] = useState<{ optionId: number; text: string }[]>([]);
-  const [savingQuestion, setSavingQuestion] = useState(false);
-
   const contentRef = useRef<HTMLDivElement>(null);
 
   const canApprove = isGuarantor;
-  const canAddFeedback = isGuarantor || (course ? isOwner(course.ownerId) : false);
-  const canReply = course ? isOwner(course.ownerId) : false;
+  const canAddFeedback = isGuarantor;
   const canDeleteFeedback = (authorId: number) =>
     isSuperAdmin || (isGuarantor && authorId === currentUser?.userId);
 
@@ -155,8 +129,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     setSelectedModuleIndex(index);
     setActiveTab('handbook');
     setCurrentBlockIndex(0);
-    setEditingBlockId(null);
-    setEditingQuestionId(null);
     setLoadingModule(true);
     try {
       const full = await getModule(mod.moduleId);
@@ -177,7 +149,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     if (activeTab === 'handbook') {
       if (currentBlockIndex < totalBlocks - 1) {
         setCurrentBlockIndex(prev => prev + 1);
-        setEditingBlockId(null);
       } else if (practiceQuestions.length > 0) {
         setActiveTab('practice');
       } else {
@@ -197,15 +168,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   const handlePrevBlock = () => {
     if (currentBlockIndex > 0) {
       setCurrentBlockIndex(prev => prev - 1);
-      setEditingBlockId(null);
     }
   };
 
   // Derived state
   const isApproved = course?.status === Status.Approved;
   const isInReview = course?.status === Status.InReview;
-  const isEdited = course?.status === Status.Edited;
-  const isEditable = !!(isEdited && course && isOwner(course.ownerId));
 
   // Per-module approval
   const currentModuleId = selectedModule?.moduleId;
@@ -232,145 +200,47 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     });
   };
 
-  // Block editing handlers
-  const handleStartEditBlock = () => {
-    if (!currentBlock) return;
-    setEditingBlockId(currentBlock.learnId);
-    setEditBlockContent(currentBlock.content);
-  };
 
-  const handleSaveBlock = async () => {
-    if (!editingBlockId || !selectedModule || !currentBlock) return;
-    setSavingBlock(true);
-    try {
-      await updateLearnBlock(editingBlockId, {
-        title: currentBlock.title,
-        content: editBlockContent,
-      });
-      setSelectedModule(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          learnBlocks: (prev.learnBlocks ?? []).map(b =>
-            b.learnId === editingBlockId ? { ...b, content: editBlockContent } : b
-          ),
-        };
-      });
-      setEditingBlockId(null);
-    } catch (err) {
-      console.error('Failed to save block:', err);
-    } finally {
-      setSavingBlock(false);
+  // Feedback filtered by current module
+  const currentModuleFeedbacks = selectedModule
+    ? feedbacks.filter(fb => fb.moduleId === selectedModule.moduleId)
+    : feedbacks;
+
+  // Comment count per module
+  const feedbackCountByModule = (moduleId: number) =>
+    feedbacks.filter(fb => fb.moduleId === moduleId).length;
+
+  // Build context label for a feedback item
+  const feedbackContextLabel = (fb: FeedbackItem) => {
+    const parts: string[] = [];
+    if (fb.module) parts.push(fb.module.title);
+    if (fb.contentType === 'learn_block' && fb.contentRef) {
+      parts.push(`Příručka – str. ${fb.contentRef}`);
+    } else if (fb.contentType === 'practice' && fb.contentRef) {
+      parts.push(`Procvičování – ot. ${fb.contentRef}`);
     }
-  };
-
-  // Question editing handlers
-  const handleStartEditQuestion = (q: typeof practiceQuestions[number]) => {
-    setEditingQuestionId(q.questionId);
-    setEditQuestionText(q.question);
-    setEditCorrectAnswer(q.correctAnswer ?? '');
-    setEditExampleAnswer(q.exampleAnswer ?? '');
-    if (q.questionType === 'closed') {
-      const opts = (q.closedOptions ?? []).map(o => ({ optionId: o.optionId, text: o.text }));
-      setEditOptions(opts);
-      const correctOpt = (q.closedOptions ?? []).find(o => o.text === q.correctAnswer);
-      setEditCorrectOptionId(correctOpt?.optionId ?? null);
-    }
-  };
-
-  const handleSaveQuestion = async () => {
-    if (!editingQuestionId || !selectedModule) return;
-    setSavingQuestion(true);
-    try {
-      const q = practiceQuestions.find(pq => pq.questionId === editingQuestionId);
-      if (!q) return;
-
-      let newCorrectAnswer: string | null = null;
-      if (q.questionType === 'closed') {
-        const correctOpt = editOptions.find(o => o.optionId === editCorrectOptionId);
-        newCorrectAnswer = correctOpt?.text ?? null;
-      } else {
-        newCorrectAnswer = editCorrectAnswer || null;
-      }
-
-      await updatePracticeQuestion(editingQuestionId, {
-        questionType: q.questionType,
-        question: editQuestionText,
-        correctAnswer: newCorrectAnswer,
-        exampleAnswer: q.questionType === 'open' ? (editExampleAnswer || null) : (q.exampleAnswer ?? null),
-      });
-
-      if (q.questionType === 'closed') {
-        for (const opt of editOptions) {
-          const original = (q.closedOptions ?? []).find(o => o.optionId === opt.optionId);
-          if (original && original.text !== opt.text) {
-            await updatePracticeOption(opt.optionId, { text: opt.text });
-          }
-        }
-      }
-
-      setSelectedModule(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          practiceQuestions: (prev.practiceQuestions ?? []).map(pq =>
-            pq.questionId === editingQuestionId
-              ? {
-                  ...pq,
-                  question: editQuestionText,
-                  correctAnswer: newCorrectAnswer,
-                  exampleAnswer: q.questionType === 'open' ? (editExampleAnswer || null) : pq.exampleAnswer,
-                  closedOptions: q.questionType === 'closed'
-                    ? (pq.closedOptions ?? []).map(o => {
-                        const edited = editOptions.find(eo => eo.optionId === o.optionId);
-                        return edited ? { ...o, text: edited.text } : o;
-                      })
-                    : pq.closedOptions,
-                }
-              : pq
-          ),
-        };
-      });
-      setEditingQuestionId(null);
-    } catch (err) {
-      console.error('Failed to save question:', err);
-    } finally {
-      setSavingQuestion(false);
-    }
+    return parts.length > 0 ? parts.join(' / ') : null;
   };
 
   // Feedback handlers
   const handleAddFeedback = async () => {
-    if (!newFeedbackText.trim()) return;
+    if (!newFeedbackText.trim() || !selectedModule) return;
     setSubmittingFeedback(true);
     try {
-      const item = await createFeedback(courseId, newFeedbackText.trim());
+      const contentRef = activeTab === 'handbook'
+        ? String(currentBlockIndex + 1)
+        : undefined;
+      const item = await createFeedback(courseId, newFeedbackText.trim(), {
+        moduleId: selectedModule.moduleId,
+        contentType: activeTab === 'handbook' ? 'learn_block' : 'practice',
+        contentRef,
+      });
       setFeedbacks(prev => [...prev, item]);
       setNewFeedbackText('');
     } catch (err) {
       console.error('Failed to add feedback:', err);
     } finally {
       setSubmittingFeedback(false);
-    }
-  };
-
-  const handleReply = async (feedbackId: number) => {
-    const text = replyTexts[feedbackId]?.trim();
-    if (!text) return;
-    setSubmittingReply(feedbackId);
-    try {
-      await replyToFeedback(feedbackId, text);
-      setFeedbacks(prev =>
-        prev.map(fb =>
-          fb.feedbackId === feedbackId ? { ...fb, reply: text } : fb
-        )
-      );
-      setShowReplyFor(null);
-      setReplyTexts(prev => ({ ...prev, [feedbackId]: '' }));
-    } catch (err) {
-      console.error('Failed to reply:', err);
-    } finally {
-      setSubmittingReply(null);
     }
   };
 
@@ -409,21 +279,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       router.push('/admin/review');
     } catch (err) {
       console.error('Failed to reject:', err);
-      setApprovalLoading(false);
-    }
-  };
-
-  const handleResubmit = async () => {
-    if (!course) return;
-    setApprovalLoading(true);
-    try {
-      await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.InReview);
-      setCourse(prev => prev ? { ...prev, status: Status.InReview } : prev);
-      setEditingBlockId(null);
-      setEditingQuestionId(null);
-    } catch (err) {
-      console.error('Failed to resubmit:', err);
-    } finally {
       setApprovalLoading(false);
     }
   };
@@ -486,24 +341,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               </button>
             </>
           )}
-          {/* Owner: resubmit (only when edited/rejected) */}
-          {isEditable && (
-            <button
-              onClick={handleResubmit}
-              disabled={approvalLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-            >
-              <ArrowUpCircle size={16} />
-              Odeslat ke kontrole
-            </button>
-          )}
           {/* Status badges */}
-          {isEdited && !isEditable && (
-            <span className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200">
-              <XCircle size={15} />
-              Zamítnuto
-            </span>
-          )}
           {isApproved && (
             <span className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
               <CheckCircle size={15} />
@@ -512,16 +350,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           )}
         </div>
       </div>
-
-      {/* Editable banner for owner */}
-      {isEditable && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center gap-2 flex-shrink-0">
-          <Pencil size={14} className="text-amber-600" />
-          <p className="text-sm text-amber-800">
-            Kurz byl zamítnut — můžete upravit obsah a znovu odeslat ke kontrole.
-          </p>
-        </div>
-      )}
 
       {/* Main 3-column layout */}
       <div className="flex-1 flex overflow-hidden p-4 gap-4">
@@ -555,7 +383,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       <XCircle size={10} className="text-white" />
                     </span>
                   )}
-                  <span className="truncate">{mod.title}</span>
+                  <span className="truncate flex-1">{mod.title}</span>
+                  {feedbackCountByModule(mod.moduleId) > 0 && (
+                    <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {feedbackCountByModule(mod.moduleId)}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -574,7 +407,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
             {/* Tabs — freely switchable */}
             <div className="flex gap-2">
               <button
-                onClick={() => { setActiveTab('handbook'); setEditingQuestionId(null); }}
+                onClick={() => setActiveTab('handbook')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'handbook'
                     ? 'bg-purple-600 text-white'
@@ -585,7 +418,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 Příručka
               </button>
               <button
-                onClick={() => { setActiveTab('practice'); setEditingBlockId(null); }}
+                onClick={() => setActiveTab('practice')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'practice'
                     ? 'bg-purple-600 text-white'
@@ -607,54 +440,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               /* ===== HANDBOOK TAB ===== */
               currentBlock ? (
                 <>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-4">
                     <span className="text-xs text-gray-500">
                       Stránka {currentBlockIndex + 1} z {totalBlocks}
                     </span>
-                    {isEditable && editingBlockId !== currentBlock.learnId && (
-                      <button
-                        onClick={handleStartEditBlock}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <Pencil size={12} />
-                        Upravit
-                      </button>
-                    )}
                   </div>
-                  {editingBlockId === currentBlock.learnId ? (
-                    <div className="space-y-3">
-                      <textarea
-                        value={editBlockContent}
-                        onChange={e => setEditBlockContent(e.target.value)}
-                        rows={20}
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-purple-300 resize-y"
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => setEditingBlockId(null)}
-                          disabled={savingBlock}
-                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <X size={14} />
-                          Zrušit
-                        </button>
-                        <button
-                          onClick={handleSaveBlock}
-                          disabled={savingBlock}
-                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                        >
-                          <Save size={14} />
-                          {savingBlock ? 'Ukládám...' : 'Uložit'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      ref={contentRef}
-                      className="module-content prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: currentBlock.content }}
-                    />
-                  )}
+                  <div
+                    ref={contentRef}
+                    className="module-content prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: currentBlock.content }}
+                  />
                 </>
               ) : (
                 <div className="text-center py-16 text-gray-400">
@@ -673,103 +468,11 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 ) : (
                   practiceQuestions.map((q, idx) => (
                     <div key={q.questionId} className="pb-5 border-b border-gray-100 last:border-b-0">
-                      {editingQuestionId === q.questionId ? (
-                        /* Question edit mode */
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-xs font-medium text-gray-500 mb-1 block">Otázka</label>
-                            <textarea
-                              value={editQuestionText}
-                              onChange={e => setEditQuestionText(e.target.value)}
-                              rows={2}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
-                            />
-                          </div>
-                          {q.questionType === 'closed' && (
-                            <div>
-                              <label className="text-xs font-medium text-gray-500 mb-2 block">Možnosti (vyberte správnou)</label>
-                              <div className="space-y-2">
-                                {editOptions.map((opt, i) => (
-                                  <div key={opt.optionId} className="flex items-center gap-2">
-                                    <input
-                                      type="radio"
-                                      name={`edit-correct-${q.questionId}`}
-                                      checked={editCorrectOptionId === opt.optionId}
-                                      onChange={() => setEditCorrectOptionId(opt.optionId)}
-                                      className="w-4 h-4 text-green-600"
-                                    />
-                                    <input
-                                      type="text"
-                                      value={opt.text}
-                                      onChange={e => {
-                                        const newOpts = [...editOptions];
-                                        newOpts[i] = { ...newOpts[i], text: e.target.value };
-                                        setEditOptions(newOpts);
-                                      }}
-                                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {q.questionType === 'open' && (
-                            <>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">Správná odpověď</label>
-                                <input
-                                  type="text"
-                                  value={editCorrectAnswer}
-                                  onChange={e => setEditCorrectAnswer(e.target.value)}
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">Příklad odpovědi</label>
-                                <input
-                                  type="text"
-                                  value={editExampleAnswer}
-                                  onChange={e => setEditExampleAnswer(e.target.value)}
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
-                                />
-                              </div>
-                            </>
-                          )}
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setEditingQuestionId(null)}
-                              disabled={savingQuestion}
-                              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                            >
-                              <X size={14} />
-                              Zrušit
-                            </button>
-                            <button
-                              onClick={handleSaveQuestion}
-                              disabled={savingQuestion}
-                              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                            >
-                              <Save size={14} />
-                              {savingQuestion ? 'Ukládám...' : 'Uložit'}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* Question read-only mode */
-                        <>
-                          <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="mb-3">
                             <p className="font-semibold text-gray-800 text-sm">
                               <span className="text-purple-600 mr-1">{idx + 1}.</span>
                               {q.question}
                             </p>
-                            {isEditable && (
-                              <button
-                                onClick={() => handleStartEditQuestion(q)}
-                                className="flex-shrink-0 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                            )}
                           </div>
                           {q.questionType === 'closed' && (
                             <div className="space-y-2 ml-4">
@@ -830,8 +533,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                               )}
                             </div>
                           )}
-                        </>
-                      )}
                     </div>
                   ))
                 )}
@@ -911,14 +612,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
         {/* Right: Comments panel */}
         <div className="w-72 flex-shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
           <div className="p-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-black">Komentáře</h2>
+            <h2 className="text-sm font-semibold text-black">
+              Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
+            </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {feedbacks.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře</p>
+            {currentModuleFeedbacks.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
             ) : (
-              feedbacks.map(fb => (
+              currentModuleFeedbacks.map(fb => (
                 <div key={fb.feedbackId}>
                   {/* Feedback bubble */}
                   <div className="bg-gray-100 rounded-xl px-3.5 py-2.5">
@@ -939,6 +642,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                         )}
                       </div>
                     </div>
+                    {feedbackContextLabel(fb) && (
+                      <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                    )}
                     <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
                   </div>
 
@@ -955,44 +661,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                     </div>
                   )}
 
-                  {/* Reply action (in_review only) */}
-                  {!fb.reply && canReply && isInReview && (
-                    <div className="mt-1 ml-4">
-                      {showReplyFor === fb.feedbackId ? (
-                        <div className="mt-1">
-                          <textarea
-                            value={replyTexts[fb.feedbackId] ?? ''}
-                            onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
-                            rows={2}
-                            placeholder="Napište odpověď..."
-                            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
-                          />
-                          <div className="flex gap-1 mt-1">
-                            <button
-                              onClick={() => handleReply(fb.feedbackId)}
-                              disabled={submittingReply === fb.feedbackId}
-                              className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
-                            >
-                              Odeslat
-                            </button>
-                            <button
-                              onClick={() => setShowReplyFor(null)}
-                              className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
-                            >
-                              Zrušit
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setShowReplyFor(fb.feedbackId)}
-                          className="text-xs text-purple-600 hover:underline flex items-center gap-0.5 mt-0.5"
-                        >
-                          <CornerDownRight size={11} /> Odpovědět
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))
             )}
@@ -1027,11 +695,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           )}
 
           {/* Info for non-commentable states */}
-          {isEdited && (
-            <div className="p-3 border-t border-gray-200">
-              <p className="text-xs text-gray-400 text-center">Upravte obsah a odešlete znovu ke kontrole.</p>
-            </div>
-          )}
           {isApproved && (
             <div className="p-3 border-t border-gray-200">
               <p className="text-xs text-gray-400 text-center">Kurz je schválený – komentáře jsou uzavřeny.</p>

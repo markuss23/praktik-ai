@@ -3,11 +3,12 @@ from fastapi import APIRouter
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, require_role
-from api.src.feedbacks.schemas import FeedbackSection, FeedbackItem, FeedbackCreate, FeedbackReply
+from api.src.feedbacks.schemas import FeedbackSection, FeedbackItem, FeedbackCreate, FeedbackReply, FeedbackResolve
 from api.src.feedbacks.controllers import (
     get_feedback_section,
     create_feedback,
     reply_to_feedback,
+    resolve_feedback,
     delete_feedback,
 )
 
@@ -32,7 +33,15 @@ def endp_create_feedback(
     actor: CurrentUser,
 ) -> FeedbackItem:
     """Přidá feedback ke kurzu. Kurz musí být ve stavu 'in_review'."""
-    return create_feedback(db, course_id=data.course_id, feedback_text=data.feedback, actor=actor)
+    return create_feedback(
+        db,
+        course_id=data.course_id,
+        feedback_text=data.feedback,
+        actor=actor,
+        module_id=data.module_id,
+        content_type=data.content_type,
+        content_ref=data.content_ref,
+    )
 
 
 @router.patch("/{feedback_id}/reply", operation_id="reply_to_feedback", dependencies=[require_role("lector")])
@@ -44,6 +53,17 @@ def endp_reply_to_feedback(
 ) -> FeedbackItem:
     """Autor kurzu přidá odpověď na feedback garanta."""
     return reply_to_feedback(db, feedback_id=feedback_id, reply_text=data.reply, actor=actor)
+
+
+@router.patch("/{feedback_id}/resolve", operation_id="resolve_feedback", dependencies=[require_role("lector")])
+def endp_resolve_feedback(
+    feedback_id: int,
+    data: FeedbackResolve,
+    db: SessionSqlSessionDependency,
+    actor: CurrentUser,
+) -> FeedbackItem:
+    """Autor kurzu označí feedback jako vyřešený / nevyřešený."""
+    return resolve_feedback(db, feedback_id=feedback_id, is_resolved=data.is_resolved, actor=actor)
 
 
 @router.delete("/{feedback_id}", operation_id="delete_feedback", status_code=204, dependencies=[require_role("guarantor")])

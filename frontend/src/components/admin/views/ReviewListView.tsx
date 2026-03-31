@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Course, Status } from '@/api';
 import { getCourses } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen } from 'lucide-react';
 
 function timeAgo(date: Date): string {
@@ -35,13 +34,6 @@ function StatusBadge({ status }: { status: Status }) {
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
         Schváleno
-      </span>
-    );
-  }
-  if (status === Status.Edited) {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-        Zamítnuto
       </span>
     );
   }
@@ -81,29 +73,18 @@ function CourseCard({ course, onStart }: { course: Course; onStart: () => void }
 
 export function ReviewListView() {
   const router = useRouter();
-  const { isLector, isGuarantor } = useRole();
-  const { currentUser, loading: userLoading } = useCurrentUser();
+  useRole(); // guard: only guarantors/superadmins see this page
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userLoading) return;
     async function load() {
       try {
         const all = await getCourses({ includeInactive: false });
-        let filtered: Course[];
-        if (isGuarantor) {
-          // Guarantors see all in_review + approved
-          filtered = all.filter(c =>
-            c.status === Status.InReview || c.status === Status.Approved
-          );
-        } else {
-          // Lectors see own courses: in_review + approved + edited (rejected)
-          filtered = all.filter(c =>
-            c.ownerId === currentUser?.userId &&
-            (c.status === Status.InReview || c.status === Status.Approved || c.status === Status.Edited)
-          );
-        }
+        // Guarantors and superadmins see all in_review + approved
+        const filtered = all.filter(c =>
+          c.status === Status.InReview || c.status === Status.Approved
+        );
         setCourses(filtered);
       } catch (err) {
         console.error('Failed to load review courses:', err);
@@ -112,14 +93,13 @@ export function ReviewListView() {
       }
     }
     load();
-  }, [isGuarantor, currentUser?.userId, userLoading]);
+  }, []);
 
   const handleStart = (courseId: number) => {
     router.push(`/admin/review/${courseId}`);
   };
 
   const inReview = courses.filter(c => c.status === Status.InReview);
-  const edited = courses.filter(c => c.status === Status.Edited);
   const approved = courses.filter(c => c.status === Status.Approved);
 
   return (
@@ -135,9 +115,7 @@ export function ReviewListView() {
           <BookOpen size={48} className="text-gray-300 mb-4" />
           <p className="text-gray-500 text-lg font-medium">Žádné kurzy ke schválení</p>
           <p className="text-gray-400 text-sm mt-1">
-            {isGuarantor
-              ? 'Momentálně nejsou žádné kurzy čekající na schválení.'
-              : 'Zatím žádný z vašich kurzů není odeslaný ke schválení.'}
+            Momentálně nejsou žádné kurzy čekající na schválení.
           </p>
         </div>
       ) : (
@@ -149,23 +127,6 @@ export function ReviewListView() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {inReview.map(course => (
-                  <CourseCard
-                    key={course.courseId}
-                    course={course}
-                    onStart={() => handleStart(course.courseId)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {edited.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Zamítnuto ({edited.length})
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {edited.map(course => (
                   <CourseCard
                     key={course.courseId}
                     course={course}

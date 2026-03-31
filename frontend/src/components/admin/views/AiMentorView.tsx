@@ -7,7 +7,7 @@ import {
   type SystemSettingResponse,
   type SystemSettingUpdate,
 } from '@/lib/api-client';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export function AiMentorView() {
   const [settings, setSettings] = useState<SystemSettingResponse[]>([]);
@@ -15,11 +15,15 @@ export function AiMentorView() {
   const [error, setError] = useState<string | null>(null);
   const [editState, setEditState] = useState<Record<number, SystemSettingUpdate>>({});
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
 
   useEffect(() => {
     listSystemSettings()
       .then(data => {
         setSettings(data);
+        if (data.length > 0) {
+          setExpandedCard(data[0].settingId);
+        }
         const initial: Record<number, SystemSettingUpdate> = {};
         data.forEach(s => {
           initial[s.settingId] = { name: s.name, model: s.model, prompt: s.prompt };
@@ -96,67 +100,86 @@ export function AiMentorView() {
           const dirty = isDirty(setting);
           const saving = savingId === setting.settingId;
 
+          const isExpanded = expandedCard === setting.settingId;
+
           return (
             <div
               key={setting.settingId}
-              className="bg-white rounded-xl border border-gray-200 p-6"
+              className="bg-white rounded-xl border border-gray-200"
             >
-              <div className="flex items-center justify-between mb-5">
+              <button
+                type="button"
+                onClick={() => setExpandedCard(isExpanded ? null : setting.settingId)}
+                className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors rounded-xl"
+              >
                 <h2 className="text-base font-bold text-black">
                   {setting.name} config
                 </h2>
-                {dirty && (
-                  <button
-                    onClick={() => handleSave(setting)}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Save size={14} />
+                <div className="flex items-center gap-3">
+                  {dirty && (
+                    <span className="text-xs text-purple-600 font-medium">Neuložené změny</span>
+                  )}
+                  {isExpanded ? <ChevronUp size={18} className="text-gray-500" /> : <ChevronDown size={18} className="text-gray-500" />}
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="px-6 pb-6 border-t border-gray-100">
+                  <div className="flex justify-end mt-4 mb-4">
+                    {dirty && (
+                      <button
+                        onClick={() => handleSave(setting)}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+                      >
+                        {saving ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Save size={14} />
+                        )}
+                        {saving ? 'Ukládám...' : 'Uložit'}
+                      </button>
                     )}
-                    {saving ? 'Ukládám...' : 'Uložit'}
-                  </button>
-                )}
-              </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">
-                    Název
-                  </label>
-                  <input
-                    type="text"
-                    value={edit?.name ?? ''}
-                    onChange={e => handleChange(setting.settingId, 'name', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-black mb-1.5">
-                    AI model
-                  </label>
-                  <input
-                    type="text"
-                    value={edit?.model ?? ''}
-                    onChange={e => handleChange(setting.settingId, 'model', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-black mb-1.5">
+                        Název
+                      </label>
+                      <input
+                        type="text"
+                        value={edit?.name ?? ''}
+                        onChange={e => handleChange(setting.settingId, 'name', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-black mb-1.5">
+                        AI model
+                      </label>
+                      <input
+                        type="text"
+                        value={edit?.model ?? ''}
+                        onChange={e => handleChange(setting.settingId, 'model', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-black mb-1.5">
-                  Prompt
-                </label>
-                <textarea
-                  value={edit?.prompt ?? ''}
-                  onChange={e => handleChange(setting.settingId, 'prompt', e.target.value)}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-y"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-black mb-1.5">
+                      Prompt
+                    </label>
+                    <textarea
+                      value={edit?.prompt ?? ''}
+                      onChange={e => handleChange(setting.settingId, 'prompt', e.target.value)}
+                      rows={6}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-y"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
