@@ -16,7 +16,7 @@ export function Header() {
   const isActive = (path: string) => pathname === path;
   
   return (
-    <header className="bg-white" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
+    <header className="bg-white sticky top-0 z-50" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px] py-2 lg:py-[7px]" style={{ maxWidth: '1440px', width: '100%', minHeight: '70px', height: 'auto' }}>
         <nav className="flex items-center justify-between h-full">
           {/* Logo and Brand */}
@@ -36,17 +36,18 @@ export function Header() {
             <li>
               <Link
                 href={ROUTES.HOME}
-                className={`relative pb-1 transition-colors ${
-                  isActive(ROUTES.HOME) 
-                    ? 'text-black font-bold' 
+                data-text="Home"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive(ROUTES.HOME)
+                    ? 'text-black font-bold'
                     : 'text-gray-700 hover:text-black font-medium'
                 }`}
               >
                 Home
                 {isActive(ROUTES.HOME) && (
-                  <span 
+                  <span
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
                     }}
                   />
@@ -56,17 +57,18 @@ export function Header() {
             <li>
               <Link
                 href="/moje-kurzy"
-                className={`relative pb-1 transition-colors ${
-                  isActive('/moje-kurzy') 
-                    ? 'text-black font-bold' 
+                data-text="Moje kurzy"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive('/moje-kurzy')
+                    ? 'text-black font-bold'
                     : 'text-gray-700 hover:text-black font-medium'
                 }`}
               >
                 Moje kurzy
                 {isActive('/moje-kurzy') && (
-                  <span 
+                  <span
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
                     }}
                   />
@@ -76,17 +78,18 @@ export function Header() {
             <li>
               <Link
                 href="/odmeny"
-                className={`relative pb-1 transition-colors ${
-                  isActive('/odmeny') 
-                    ? 'text-black font-bold' 
+                data-text="Odměny"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive('/odmeny')
+                    ? 'text-black font-bold'
                     : 'text-gray-700 hover:text-black font-medium'
                 }`}
               >
                 Odměny
                 {isActive('/odmeny') && (
-                  <span 
+                  <span
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
                     }}
                   />
@@ -96,17 +99,18 @@ export function Header() {
             <li>
               <Link
                 href="/tutor"
-                className={`relative pb-1 transition-colors ${
-                  isActive('/tutor') 
-                    ? 'text-black font-bold' 
+                data-text="Tutor"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive('/tutor')
+                    ? 'text-black font-bold'
                     : 'text-gray-700 hover:text-black font-medium'
                 }`}
               >
                 Tutor
                 {isActive('/tutor') && (
-                  <span 
+                  <span
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
                     }}
                   />
@@ -117,17 +121,18 @@ export function Header() {
             <li>
               <Link
                 href="/admin"
-                className={`relative pb-1 transition-colors ${
-                  isActive('/admin') 
-                    ? 'text-black font-bold' 
+                data-text="Admin"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive('/admin')
+                    ? 'text-black font-bold'
                     : 'text-gray-700 hover:text-black font-medium'
                 }`}
               >
                 Admin
                 {isActive('/admin') && (
-                  <span 
+                  <span
                     className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
                     }}
                   />

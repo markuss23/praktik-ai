@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import {
   buildLoginUrl,
   buildLogoutUrl,
@@ -12,6 +12,9 @@ import {
   storeTokens,
   type UserInfo,
 } from "@/lib/keycloak";
+
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -62,8 +65,13 @@ export function useAuth() {
     }
   }, []);
 
-  // 1. Initialise from localStorage on first render
-  useEffect(() => {
+  // 1. Initialise from localStorage synchronously before paint to avoid
+  //    a visible flash in the header (loading skeleton → real content).
+  const initRef = useRef(false);
+  useIsomorphicLayoutEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
     const tokens = getStoredTokens();
     if (!tokens) {
       setState(LOGGED_OUT);
@@ -72,10 +80,8 @@ export function useAuth() {
 
     const user = parseJwt(tokens.accessToken);
     if (user && !isTokenExpiring(0)) {
-      // Access token is still valid
       setState({ isAuthenticated: true, user, accessToken: tokens.accessToken, loading: false });
     } else {
-      // Expired or missing — try silent refresh immediately
       applyRefresh();
     }
   }, [applyRefresh]);
