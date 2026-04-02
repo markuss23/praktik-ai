@@ -45,15 +45,16 @@ export default function ModulePage() {
         const moduleData = await getModule(moduleId);
         setModule(moduleData);
 
-        const courseData = await getCourse(moduleData.courseId);
+        // Fetch course and modules in parallel (instead of sequentially)
+        const [courseData, modulesData] = await Promise.all([
+          getCourse(moduleData.courseId),
+          getModules({ courseId: moduleData.courseId }),
+        ]);
         setCourse(courseData);
-
-        if (courseData.modules && courseData.modules.length > 0) {
-          setAllModules(courseData.modules.filter(m => m.isActive));
-        } else {
-          const modulesData = await getModules({ courseId: moduleData.courseId });
-          setAllModules(modulesData.filter(m => m.isActive));
-        }
+        setAllModules(
+          (courseData.modules?.length ? courseData.modules : modulesData)
+            .filter(m => m.isActive)
+        );
       } catch (err) {
         console.error('Failed to fetch module data:', err);
         setError('Nepodařilo se načíst data modulu.');

@@ -169,7 +169,7 @@ export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }
 
-// ============ Course Status & Published API functions ============
+//  Course Status & Published API functions 
 
 export async function updateCoursePublished(courseId: number, isPublished: boolean) {
   return coursesApi.updateCoursePublished({ courseId, isPublished });
@@ -179,7 +179,7 @@ export async function updateCourseStatus(courseId: number, status: UpdateCourseS
   return coursesApi.updateCourseStatus({ courseId, status });
 }
 
-// ============ Course Links API functions ============
+//  Course Links API functions 
 
 export async function createCourseLink(courseId: number, url: string) {
   return coursesApi.createCourseLink({ courseId, url });
@@ -193,7 +193,7 @@ export async function deleteCourseLink(courseId: number, linkId: number) {
   return coursesApi.deleteCourseLink({ courseId, linkId });
 }
 
-// ============ Catalogs API functions ============
+//  Catalogs API functions 
 
 export async function getCourseBlocks() {
   return catalogsApi.listCourseBlocks();
@@ -207,7 +207,7 @@ export async function getCourseSubjects() {
   return catalogsApi.listCourseSubjects();
 }
 
-// ============ Activities API functions ============
+//  Activities API functions 
 
 export async function createLearnBlock(data: LearnBlockCreate) {
   return activitiesApi.createLearnBlock({ learnBlockCreate: data });
@@ -237,7 +237,7 @@ export async function updateQuestionKeyword(keywordId: number, data: QuestionKey
   return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
 }
 
-// ============ Enrollments API functions ============
+//  Enrollments API functions 
 
 export async function getMyEnrollments() {
   return enrollmentsApi.myEnrollments();
@@ -253,7 +253,7 @@ export async function leaveEnrollment(enrollmentId: number) {
   return enrollmentsApi.leaveEnrollment({ enrollmentId });
 }
 
-// ============ Module Progress API functions ============
+//  Module Progress API functions 
 
 export async function completeModule(moduleId: number, score: number) {
   return modulesApi.completeModule({
@@ -266,7 +266,7 @@ export async function getCourseProgress(courseId: number) {
   return modulesApi.getCourseProgress({ courseId });
 }
 
-// ============ Feedbacks API functions ============
+//  Feedbacks API functions 
 
 export async function getFeedbackSection(courseId: number) {
   return feedbacksApi.getFeedbackSection({ courseId });
@@ -299,7 +299,7 @@ export async function deleteFeedback(feedbackId: number) {
   return feedbacksApi.deleteFeedback({ feedbackId });
 }
 
-// ============ System Settings (Superadmin) API functions ============
+//  System Settings (Superadmin) API functions 
 
 export interface SystemSettingResponse {
   settingId: number;

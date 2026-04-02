@@ -40,15 +40,16 @@ export default function CoursePage() {
           return;
         }
 
-        const courseData = await getCourse(courseId);
+        // Fetch course and modules in parallel
+        const [courseData, modulesData] = await Promise.all([
+          getCourse(courseId),
+          getModules({ courseId }),
+        ]);
         setCourse(courseData);
-
-        if (courseData.modules && courseData.modules.length > 0) {
-          setModules(courseData.modules.filter(m => m.isActive));
-        } else {
-          const modulesData = await getModules({ courseId: courseData.courseId });
-          setModules(modulesData.filter(m => m.isActive));
-        }
+        setModules(
+          (courseData.modules?.length ? courseData.modules : modulesData)
+            .filter(m => m.isActive)
+        );
       } catch (err) {
         console.error('Failed to fetch course data:', err);
         setError('Nepodařilo se načíst data kurzu.');
@@ -61,6 +62,7 @@ export default function CoursePage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // These are already parallel (fire-and-forget promises)
     getMyEnrollments()
       .then(enrollments => {
         const found = enrollments.find(e => e.courseId === courseId);
@@ -77,9 +79,11 @@ export default function CoursePage() {
     setEnrollLoading(true);
     try {
       await createEnrollment(currentUser.userId, courseId);
-      const enrollments = await getMyEnrollments();
+      const [enrollments] = await Promise.all([
+        getMyEnrollments(),
+        getCourseProgress(courseId).then(setModuleProgress).catch(() => {}),
+      ]);
       setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
-      getCourseProgress(courseId).then(setModuleProgress).catch(() => {});
       setJustEnrolled(true);
       setTimeout(() => setJustEnrolled(false), 1500);
     } catch (err) {

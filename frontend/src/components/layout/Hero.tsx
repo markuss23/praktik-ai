@@ -1,5 +1,3 @@
-"use client";
-
 export function Hero() {
   return (
     <section className="relative overflow-hidden" style={{ backgroundColor: '#F0F0F0', paddingTop: '48px', paddingBottom: '48px' }}>

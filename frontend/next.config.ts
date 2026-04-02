@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
 
   experimental: {
     proxyTimeout: 300_000, // 5 minut
+    optimizePackageImports: ['lucide-react', '@tiptap/react', '@tiptap/starter-kit'],
   },
 
   eslint: {
