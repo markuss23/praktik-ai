@@ -14,6 +14,7 @@ class CourseBase(ORMModel):
     course_subject_id: int | None = None
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     min_modules_to_open_final_exam: int = Field(default=1, ge=1)
+    duration_minutes: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def validate_min_modules(self) -> "CourseBase":
@@ -56,6 +57,7 @@ class CourseCreated(ORMModel):
     description: str | None = None
     modules_count_ai_generated: int
     min_modules_to_open_final_exam: int
+    duration_minutes: int | None = None
     course_id: int
     owner_id: int
     is_published: bool

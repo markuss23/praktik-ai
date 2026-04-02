@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
 import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
-import { BookOpen, Lock, LogIn, CheckCircle } from "lucide-react";
+import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { CourseDetailSkeleton } from "@/components/ui";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function CoursePage() {
   const params = useParams();
@@ -23,6 +25,9 @@ export default function CoursePage() {
   const [enrollment, setEnrollment] = useState<MyEnrollment | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [moduleProgress, setModuleProgress] = useState<ModuleCompletionStatus[]>([]);
+  const [moduleSearch, setModuleSearch] = useState('');
+  // Track that enrollment just happened so we can animate the transition
+  const [justEnrolled, setJustEnrolled] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -75,6 +80,8 @@ export default function CoursePage() {
       const enrollments = await getMyEnrollments();
       setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
       getCourseProgress(courseId).then(setModuleProgress).catch(() => {});
+      setJustEnrolled(true);
+      setTimeout(() => setJustEnrolled(false), 1500);
     } catch (err) {
       console.error('Failed to enroll:', err);
       alert('Nepodařilo se zapsat do kurzu.');
@@ -97,15 +104,16 @@ export default function CoursePage() {
     }
   };
 
+  const isEnrolled = !!enrollment;
+
+  const filteredModules = useMemo(() => {
+    if (!moduleSearch.trim()) return [...modules];
+    const q = moduleSearch.toLowerCase();
+    return modules.filter(m => m.title.toLowerCase().includes(q));
+  }, [modules, moduleSearch]);
+
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Načítání kurzu...</p>
-        </div>
-      </div>
-    );
+    return <CourseDetailSkeleton />;
   }
 
   if (error || !course) {
@@ -118,9 +126,6 @@ export default function CoursePage() {
       </div>
     );
   }
-
-  const sortedModules = [...modules];
-  const isEnrolled = !!enrollment;
 
   return (
     <div style={{ backgroundColor: '#F0F0F0' }} className="min-h-screen">
@@ -141,28 +146,50 @@ export default function CoursePage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-black">{course.title}</h1>
           {isAuthenticated && (
             <div>
-              {enrollment ? (
-                // TODO: "Opustit kurz" button temporarily disabled
-                // <button
-                //   onClick={handleLeave}
-                //   disabled={enrollLoading}
-                //   className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50"
-                // >
-                //   <LogOut className="w-4 h-4" />
-                //   {enrollLoading ? 'Zpracování...' : 'Opustit kurz'}
-                // </button>
-                null
-              ) : (
-                <button
-                  onClick={handleEnroll}
-                  disabled={enrollLoading}
-                  className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md hover:opacity-90 transition-colors text-sm font-medium disabled:opacity-50"
-                  style={{ backgroundColor: '#00C896' }}
-                >
-                  <LogIn className="w-4 h-4" />
-                  {enrollLoading ? 'Zpracování...' : 'Zapsat se do kurzu'}
-                </button>
-              )}
+              <AnimatePresence mode="wait">
+                {enrollment ? (
+                  // TODO: "Opustit kurz" button temporarily disabled
+                  justEnrolled ? (
+                    <motion.div
+                      key="enrolled-confirm"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-green-700 bg-green-50 border border-green-200"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Zapsáno!
+                    </motion.div>
+                  ) : null
+                ) : (
+                  <motion.button
+                    key="enroll-btn"
+                    onClick={handleEnroll}
+                    disabled={enrollLoading}
+                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md text-sm font-medium disabled:opacity-50"
+                    style={{ backgroundColor: '#00C896' }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {enrollLoading ? (
+                      <motion.div
+                        className="w-4 h-4 rounded-full"
+                        style={{ border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }}
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                      />
+                    ) : (
+                      <LogIn className="w-4 h-4" />
+                    )}
+                    {enrollLoading ? 'Zpracování...' : 'Zapsat se do kurzu'}
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>
@@ -171,134 +198,193 @@ export default function CoursePage() {
         )}
       </div>
 
+      {/* Module Filter */}
+      {modules.length > 3 && (
+        <div className="px-4 sm:px-6 lg:px-[100px] pb-6" style={{ maxWidth: '1440px', margin: '0 auto' }}>
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={moduleSearch}
+              onChange={(e) => setModuleSearch(e.target.value)}
+              placeholder="Hledat modul…"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              style={{ backgroundColor: '#F0F0F0' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Modules Grid */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-16" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {(() => {
-            // Find first incomplete accessible module index
-            let currentModuleIndex = -1;
-            if (isEnrolled) {
-              for (let i = 0; i < sortedModules.length; i++) {
-                const p = moduleProgress.find(mp => mp.moduleId === sortedModules[i].moduleId);
-                if (!(p?.passed)) { currentModuleIndex = i; break; }
-              }
-              // All passed → no current
-            }
-            return sortedModules.map((module, index) => {
-            const progress = moduleProgress.find(p => p.moduleId === module.moduleId);
-            const isPassed = progress?.passed ?? false;
-            const isCurrent = index === currentModuleIndex;
+        <AnimatePresence mode="wait">
+          {filteredModules.length === 0 && moduleSearch ? (
+            <motion.p
+              key="no-results"
+              className="text-center text-gray-500 py-12"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              Žádné moduly neodpovídají hledání „{moduleSearch}"
+            </motion.p>
+          ) : (
+            <motion.div
+              key={`modules-${moduleSearch}-${isEnrolled}`}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.07 },
+                },
+              }}
+            >
+              {(() => {
+                // Find first incomplete accessible module index (use full modules list for logic)
+                let currentModuleIndex = -1;
+                if (isEnrolled) {
+                  for (let i = 0; i < modules.length; i++) {
+                    const p = moduleProgress.find(mp => mp.moduleId === modules[i].moduleId);
+                    if (!(p?.passed)) { currentModuleIndex = i; break; }
+                  }
+                }
+                return filteredModules.map((module) => {
+                  // Find the original index in full sorted modules
+                  const index = modules.findIndex(m => m.moduleId === module.moduleId);
+                  const progress = moduleProgress.find(p => p.moduleId === module.moduleId);
+                  const isPassed = progress?.passed ?? false;
+                  const isCurrent = index === currentModuleIndex;
 
-            // Previous module must be passed (or this is the first module)
-            const prevModulePassed = index === 0 || (moduleProgress.find(
-              p => p.moduleId === sortedModules[index - 1]?.moduleId
-            )?.passed ?? false);
+                  const prevModulePassed = index === 0 || (moduleProgress.find(
+                    p => p.moduleId === modules[index - 1]?.moduleId
+                  )?.passed ?? false);
 
-            // Accessible: enrolled AND (first module OR previous passed)
-            const isAccessible = isEnrolled && prevModulePassed;
-            const isLocked = !isAccessible;
-            const learnBlockCount = module.learnBlocks?.length ?? 1;
+                  const isAccessible = isEnrolled && prevModulePassed;
+                  const isLocked = !isAccessible;
+                  const learnBlockCount = module.learnBlocks?.length ?? 1;
 
-            const cardContent = (
-              <div
-                className={`bg-white rounded-lg flex flex-col transition-all duration-300 ${
-                  isAccessible ? 'hover:shadow-lg' : ''
-                } ${isLocked ? 'opacity-60' : ''}`}
-                style={{
-                  border: isPassed ? '2px solid #00C896' : '1px solid #e5e7eb',
-                  padding: '24px',
-                  minHeight: '260px',
-                }}
-              >
-                {/* Header row */}
-                <div className="flex items-start justify-between mb-1">
-                  <span className="text-sm text-gray-500">Modul {index + 1}</span>
-                  {isPassed && (
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
-                      <CheckCircle className="w-4 h-4" />
-                      Dokončeno
-                    </span>
-                  )}
-                  {isCurrent && !isPassed && (
-                    <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#8B5BA8' }}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Aktuálně studujete
-                    </span>
-                  )}
-                  {isLocked && !isPassed && !isCurrent && (
-                    <span className="flex items-center gap-1.5 text-sm text-gray-400">
-                      <Lock className="w-4 h-4" />
-                      {!isEnrolled ? 'Zapište se' : `Splňte modul ${index}`}
-                    </span>
-                  )}
-                </div>
-
-                {/* Title with gradient */}
-                <h3
-                  className="text-xl font-bold mb-3"
-                  style={{
-                    background: isLocked && !isPassed
-                      ? '#9CA3AF'
-                      : 'linear-gradient(90deg, #B1475C, #857AD2)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  {module.title}
-                </h3>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-auto pt-2">
-                  <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                    <BookOpen className="w-5 h-5" />
-                    <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
-                  </div>
-                  {isAccessible && !isPassed && (
-                    <span
-                      className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
-                      style={{ backgroundColor: isCurrent ? '#00C896' : '#8B5BA8' }}
+                  const cardContent = (
+                    <div
+                      className={`bg-white rounded-lg flex flex-col transition-all duration-300 ${
+                        isAccessible ? 'hover:shadow-lg' : ''
+                      } ${isLocked ? 'opacity-60' : ''}`}
+                      style={{
+                        border: isPassed ? '2px solid #00C896' : '1px solid #e5e7eb',
+                        padding: '24px',
+                        minHeight: '260px',
+                      }}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                      {isCurrent ? 'Pokračovat' : 'Začít modul'}
-                    </span>
-                  )}
-                  {isPassed && (
-                    <span
-                      className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-green-700 bg-green-50"
+                      {/* Header row */}
+                      <div className="flex items-start justify-between mb-1">
+                        <span className="text-sm text-gray-500">Modul {index + 1}</span>
+                        {isPassed && (
+                          <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                            <CheckCircle className="w-4 h-4" />
+                            Dokončeno
+                          </span>
+                        )}
+                        {isCurrent && !isPassed && (
+                          <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#8B5BA8' }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Aktuálně studujete
+                          </span>
+                        )}
+                        {isLocked && !isPassed && !isCurrent && (
+                          <span className="flex items-center gap-1.5 text-sm text-gray-400">
+                            <Lock className="w-4 h-4" />
+                            {!isEnrolled ? 'Zapište se' : `Splňte modul ${index}`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title with gradient */}
+                      <h3
+                        className="text-xl font-bold mb-3"
+                        style={{
+                          background: isLocked && !isPassed
+                            ? '#9CA3AF'
+                            : 'linear-gradient(90deg, #B1475C, #857AD2)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text',
+                        }}
+                      >
+                        {module.title}
+                      </h3>
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between mt-auto pt-2">
+                        <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <BookOpen className="w-5 h-5" />
+                          <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
+                        </div>
+                        {isAccessible && !isPassed && (
+                          <span
+                            className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
+                            style={{ backgroundColor: isCurrent ? '#00C896' : '#8B5BA8' }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                            {isCurrent ? 'Pokračovat' : 'Začít modul'}
+                          </span>
+                        )}
+                        {isPassed && (
+                          <span
+                            className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-green-700 bg-green-50"
+                          >
+                            Opakovat
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+
+                  if (isLocked && !isPassed) {
+                    return (
+                      <motion.div
+                        key={module.moduleId}
+                        className="cursor-not-allowed"
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: { opacity: 1, y: 0 },
+                        }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      >
+                        {cardContent}
+                      </motion.div>
+                    );
+                  }
+
+                  return (
+                    <motion.div
+                      key={module.moduleId}
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
                     >
-                      Opakovat
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-
-            if (isLocked && !isPassed) {
-              return (
-                <div key={module.moduleId} className="cursor-not-allowed">
-                  {cardContent}
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={module.moduleId}
-                href={`/modules/${module.moduleId}`}
-                className="block group"
-              >
-                {cardContent}
-              </Link>
-            );
-          });
-          })()}
-        </div>
+                      <Link
+                        href={`/modules/${module.moduleId}`}
+                        className="block group"
+                      >
+                        {cardContent}
+                      </Link>
+                    </motion.div>
+                  );
+                });
+              })()}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom Navigation */}

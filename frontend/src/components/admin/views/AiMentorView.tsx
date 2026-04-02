@@ -8,6 +8,7 @@ import {
   type SystemSettingUpdate,
 } from '@/lib/api-client';
 import { Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { AiMentorSkeleton } from '@/components/ui';
 
 export function AiMentorView() {
   const [settings, setSettings] = useState<SystemSettingResponse[]>([]);
@@ -75,11 +76,7 @@ export function AiMentorView() {
   };
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <AiMentorSkeleton />;
   }
 
   if (error) {

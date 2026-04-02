@@ -28,6 +28,7 @@ import {
   CornerDownRight,
   Check,
 } from 'lucide-react';
+import { PageSpinner } from '@/components/ui';
 
 type TabType = 'handbook' | 'practice';
 
@@ -284,11 +285,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   };
 
   if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageSpinner message="Načítání kurzu…" />;
   }
 
   if (error || !course) {
@@ -433,9 +430,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
 
           <div className="flex-1 overflow-y-auto p-6">
             {loadingModule ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-              </div>
+              <PageSpinner />
             ) : activeTab === 'handbook' ? (
               /* ===== HANDBOOK TAB ===== */
               currentBlock ? (

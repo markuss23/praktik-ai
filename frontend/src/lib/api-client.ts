@@ -63,11 +63,15 @@ export async function getCourses(params?: {
   includeInactive?: boolean;
   isPublished?: boolean;
   textSearch?: string;
+  courseBlockId?: number;
+  courseSubjectId?: number;
 }) {
   return coursesApi.listCourses({
     includeInactive: params?.includeInactive,
     isPublished: params?.isPublished,
     textSearch: params?.textSearch,
+    courseBlockId: params?.courseBlockId,
+    courseSubjectId: params?.courseSubjectId,
   });
 }
 
@@ -79,6 +83,7 @@ export async function createCourse(data: {
   title: string;
   description?: string;
   modulesCountAiGenerated?: number;
+  durationMinutes?: number;
   courseBlockId: number;
   courseTargetId: number;
   courseSubjectId: number;
@@ -88,6 +93,7 @@ export async function createCourse(data: {
       title: data.title,
       description: data.description,
       modulesCountAiGenerated: data.modulesCountAiGenerated ?? 3,
+      durationMinutes: data.durationMinutes,
       courseBlockId: data.courseBlockId,
       courseTargetId: data.courseTargetId,
       courseSubjectId: data.courseSubjectId,

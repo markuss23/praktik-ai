@@ -10,6 +10,7 @@ import { useRole } from '@/hooks/useRole';
 import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
 import { BookOpen } from 'lucide-react';
+import { ProfileSkeleton } from '@/components/ui';
 
 export default function ProfilPage() {
   const { user, loading, login, isAuthenticated } = useAuth();
@@ -33,11 +34,7 @@ export default function ProfilPage() {
   }, [isAuthenticated]);
 
   if (loading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-gray-500">Načítání...</p>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   const progressItems: ProgressItem[] = enrollments.map(e => ({

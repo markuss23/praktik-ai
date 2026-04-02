@@ -6,6 +6,7 @@ import { Course, Status } from '@/api';
 import { getCourses } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { ArrowRight, BookOpen } from 'lucide-react';
+import { ReviewCardsSkeleton } from '@/components/ui';
 
 function timeAgo(date: Date): string {
   const now = new Date();
@@ -65,7 +66,7 @@ function CourseCard({ course, onStart }: { course: Course; onStart: () => void }
         style={{ backgroundColor: '#00C896' }}
       >
         <ArrowRight size={16} />
-        Začít modul
+        Začít kurz
       </button>
     </div>
   );
@@ -107,9 +108,7 @@ export function ReviewListView() {
       <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Obsah ke schválení</h1>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <ReviewCardsSkeleton />
       ) : courses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <BookOpen size={48} className="text-gray-300 mb-4" />

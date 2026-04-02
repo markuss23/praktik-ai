@@ -369,6 +369,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     min_modules_to_open_final_exam: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1
     )
+    duration_minutes: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
     status: Mapped[Status] = mapped_column(
         Enum(Status, name="course_status"), nullable=False, default=Status.draft

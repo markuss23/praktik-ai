@@ -7,7 +7,7 @@ import { getModule, getCourse, getModules, completeModule } from "@/lib/api-clie
 import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, BookOpenText, Dumbbell } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert } from "@/components/ui";
+import { Alert, PageSpinner } from "@/components/ui";
 
 type TabType = 'prirucka' | 'procvicovani';
 
@@ -92,11 +92,8 @@ export default function ModulePage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-gray-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Načítání modulu...</p>
-        </div>
+      <div className="min-h-screen" style={{ backgroundColor: '#F0F0F0' }}>
+        <PageSpinner message="Načítání modulu…" />
       </div>
     );
   }

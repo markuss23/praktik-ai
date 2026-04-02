@@ -25,6 +25,7 @@ export function CourseAICreateView() {
     title: '',
     description: '',
     moduleCount: 3,
+    durationMinutes: '',
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
@@ -127,6 +128,7 @@ export function CourseAICreateView() {
           title: formData.title,
           description: formData.description || undefined,
           modulesCountAiGenerated: formData.moduleCount,
+          durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : undefined,
           courseBlockId: formData.courseBlockId,
           courseTargetId: formData.courseTargetId,
           courseSubjectId: formData.courseSubjectId,
@@ -296,36 +298,53 @@ export function CourseAICreateView() {
               />
             </div>
 
-            {/* Počet modulů */}
-            <div>
-              <label className="block text-sm font-semibold text-black mb-2">
-                Počet modulů
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
-                >
-                  -
-                </button>
+            {/* Počet modulů + Délka kurzu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-black mb-2">
+                  Počet modulů
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={formData.moduleCount}
+                    onChange={(e) => setFormData({ ...formData, moduleCount: parseInt(e.target.value) || 1 })}
+                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, moduleCount: Math.min(20, formData.moduleCount + 1) })}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-2">
+                  Délka kurzu (minuty)
+                </label>
                 <input
                   type="number"
                   min="1"
-                  max="20"
-                  value={formData.moduleCount}
-                  onChange={(e) => setFormData({ ...formData, moduleCount: parseInt(e.target.value) || 1 })}
-                  className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  value={formData.durationMinutes}
+                  onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
+                  className="w-32 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  placeholder="60"
                 />
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, moduleCount: Math.min(20, formData.moduleCount + 1) })}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
-                >
-                  +
-                </button>
               </div>
             </div>
+
 
             {/* Nahrát podklady */}
             <div>
