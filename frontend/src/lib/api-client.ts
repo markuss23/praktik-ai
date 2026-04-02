@@ -273,15 +273,14 @@ export async function getFeedbackSection(courseId: number) {
 }
 
 export async function createFeedback(
-  courseId: number,
+  moduleId: number,
   feedback: string,
-  opts?: { moduleId?: number; contentType?: string; contentRef?: string },
+  opts?: { contentType?: string; contentRef?: string },
 ) {
   return feedbacksApi.createFeedback({
     feedbackCreate: {
-      courseId,
+      moduleId,
       feedback,
-      moduleId: opts?.moduleId,
       contentType: opts?.contentType,
       contentRef: opts?.contentRef,
     },

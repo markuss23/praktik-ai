@@ -231,8 +231,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       const contentRef = activeTab === 'handbook'
         ? String(currentBlockIndex + 1)
         : undefined;
-      const item = await createFeedback(courseId, newFeedbackText.trim(), {
-        moduleId: selectedModule.moduleId,
+      const item = await createFeedback(selectedModule.moduleId, newFeedbackText.trim(), {
         contentType: activeTab === 'handbook' ? 'learn_block' : 'practice',
         contentRef,
       });
