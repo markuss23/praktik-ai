@@ -7,11 +7,11 @@ import { Camera } from 'lucide-react';
 interface AccountFormValues {
   firstName: string;
   lastName: string;
-  email: string;
 }
 
 interface AccountSettingsCardProps {
-  initialValues?: Partial<AccountFormValues>;
+  initialFirstName?: string;
+  initialLastName?: string;
   avatarSrc?: string;
   onSave?: (values: AccountFormValues) => void;
   onChangePassword?: () => void;
@@ -19,16 +19,16 @@ interface AccountSettingsCardProps {
 }
 
 export function AccountSettingsCard({
-  initialValues = {},
+  initialFirstName = '',
+  initialLastName = '',
   avatarSrc,
   onSave,
   onChangePassword,
   onAvatarChange,
 }: AccountSettingsCardProps) {
   const [values, setValues] = useState<AccountFormValues>({
-    firstName: initialValues.firstName ?? '',
-    lastName: initialValues.lastName ?? '',
-    email: initialValues.email ?? '',
+    firstName: initialFirstName,
+    lastName: initialLastName,
   });
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(avatarSrc);
   const [uploading, setUploading] = useState(false);
@@ -50,7 +50,6 @@ export function AccountSettingsCard({
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      // Use a simple identifier - in production this would come from auth
       formData.append('userId', 'user');
 
       const res = await fetch('/api/avatar', { method: 'POST', body: formData });
@@ -63,7 +62,6 @@ export function AccountSettingsCard({
       onAvatarChange?.(data.url);
     } catch (err) {
       console.error('Avatar upload failed:', err);
-      // Keep preview but show it might not be saved
     } finally {
       setUploading(false);
     }
@@ -134,7 +132,7 @@ export function AccountSettingsCard({
               value={values.firstName}
               onChange={(e) => handleChange('firstName', e.target.value)}
               className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition"
-              placeholder=""
+              placeholder="Zadejte jméno"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -144,21 +142,9 @@ export function AccountSettingsCard({
               value={values.lastName}
               onChange={(e) => handleChange('lastName', e.target.value)}
               className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition"
-              placeholder=""
+              placeholder="Zadejte příjmení"
             />
           </div>
-        </div>
-
-        {/* Email */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm text-gray-500 font-medium">Email</label>
-          <input
-            type="email"
-            value={values.email}
-            onChange={(e) => handleChange('email', e.target.value)}
-            className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition"
-            placeholder=""
-          />
         </div>
 
         {/* Actions */}

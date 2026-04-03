@@ -276,6 +276,8 @@ export default function ProfilPage() {
         onClose={() => setEditModalOpen(false)}
         avatarSrc={avatarSrc}
         onAvatarChange={handleAvatarChange}
+        initialFirstName={user?.given_name ?? ''}
+        initialLastName={user?.family_name ?? ''}
       />
 
       {/* New badges notification modal */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getModule, getCourse, getModules, completeModule } from "@/lib/api-client";
@@ -8,6 +8,7 @@ import type { Module, Course } from "@/api";
 import { CheckCircle, XCircle, BookOpenText, Dumbbell } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
 import { Alert, PageSpinner } from "@/components/ui";
+import { motion, AnimatePresence } from "motion/react";
 
 type TabType = 'prirucka' | 'procvicovani';
 
@@ -15,7 +16,11 @@ export default function ModulePage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
-  const moduleId = Number(slug);
+  const initialModuleId = Number(slug);
+
+  // Active module ID — driven by client-side state, NOT the URL slug,
+  // so the AI mentor stays mounted when switching modules.
+  const [activeModuleId, setActiveModuleId] = useState(initialModuleId);
 
   // Data state
   const [module, setModule] = useState<Module | null>(null);
@@ -23,6 +28,9 @@ export default function ModulePage() {
   const [allModules, setAllModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Transition animation
+  const [transitioning, setTransitioning] = useState(false);
 
   // Tab & handbook navigation
   const [activeTab, setActiveTab] = useState<TabType>('prirucka');
@@ -34,36 +42,49 @@ export default function ModulePage() {
   const [testSubmitted, setTestSubmitted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Data loading
+  // Sync URL slug → activeModuleId only on initial load
   useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        if (isNaN(moduleId)) { setError('Modul nebyl nalezen.'); return; }
-
-        const moduleData = await getModule(moduleId);
-        setModule(moduleData);
-
-        // Fetch course and modules in parallel (instead of sequentially)
-        const [courseData, modulesData] = await Promise.all([
-          getCourse(moduleData.courseId),
-          getModules({ courseId: moduleData.courseId }),
-        ]);
-        setCourse(courseData);
-        setAllModules(
-          (courseData.modules?.length ? courseData.modules : modulesData)
-            .filter(m => m.isActive)
-        );
-      } catch (err) {
-        console.error('Failed to fetch module data:', err);
-        setError('Nepodařilo se načíst data modulu.');
-      } finally {
-        setLoading(false);
-      }
+    const id = Number(slug);
+    if (!isNaN(id) && id !== activeModuleId) {
+      setActiveModuleId(id);
     }
-    load();
-  }, [moduleId]);
+    // Only react to slug changes from URL (e.g. direct navigation)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  // Load module data
+  const loadModuleData = useCallback(async (modId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      if (isNaN(modId)) { setError('Modul nebyl nalezen.'); return; }
+
+      const moduleData = await getModule(modId);
+      setModule(moduleData);
+
+      // Only fetch course/modules if we don't already have them
+      // or if the course changed
+      const [courseData, modulesData] = await Promise.all([
+        getCourse(moduleData.courseId),
+        getModules({ courseId: moduleData.courseId }),
+      ]);
+      setCourse(courseData);
+      setAllModules(
+        (courseData.modules?.length ? courseData.modules : modulesData)
+          .filter(m => m.isActive)
+      );
+    } catch (err) {
+      console.error('Failed to fetch module data:', err);
+      setError('Nepodařilo se načíst data modulu.');
+    } finally {
+      setLoading(false);
+      setTransitioning(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadModuleData(activeModuleId);
+  }, [activeModuleId, loadModuleData]);
 
   // Hide key concepts sections after content renders
   useEffect(() => {
@@ -90,8 +111,24 @@ export default function ModulePage() {
     });
   }, [currentBlockIndex, activeTab, module]);
 
+  // Navigate to next module without remounting the whole page
+  const navigateToModule = useCallback((moduleId: number) => {
+    setTransitioning(true);
+    // Reset module-specific state
+    setActiveTab('prirucka');
+    setCurrentBlockIndex(0);
+    setHandbookCompleted(false);
+    setTestAnswers({});
+    setTestSubmitted(false);
+    // Update URL without full navigation
+    window.history.pushState(null, '', `/modules/${moduleId}`);
+    // Set the new active module — this triggers data reload
+    setActiveModuleId(moduleId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Loading state
-  if (loading) {
+  if (loading && !transitioning) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#F0F0F0' }}>
         <PageSpinner message="Načítání modulu…" />
@@ -124,12 +161,10 @@ export default function ModulePage() {
   const currentBlock = learnBlocks[currentBlockIndex];
 
   const currentIndex = allModules.findIndex(m => m.moduleId === module.moduleId);
-  const prevModule = currentIndex > 0 ? allModules[currentIndex - 1] : null;
   const nextModule = currentIndex < allModules.length - 1 ? allModules[currentIndex + 1] : null;
 
   const hasPracticeQuestions = practiceQuestions.length > 0;
   const practiceCompleted = hasPracticeQuestions ? testSubmitted : true;
-  const canCompleteModule = handbookCompleted && practiceCompleted;
 
   // Handlers
   const handleContinue = () => {
@@ -155,7 +190,7 @@ export default function ModulePage() {
     setTestAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
-  // Score calculation for evaluation (single source of truth)
+  // Score calculation
   const calculateScore = () => {
     let correct = 0;
     const results: { questionId: number; isCorrect: boolean; userAnswer: string; correctAnswer: string; question: string; matchedKeywords?: string[]; missingKeywords?: string[] }[] = [];
@@ -206,7 +241,7 @@ export default function ModulePage() {
 
     if (percentage >= 75) {
       try {
-        await completeModule(moduleId, percentage);
+        await completeModule(activeModuleId, percentage);
       } catch (err) {
         console.error('Failed to persist module completion:', err);
       }
@@ -217,20 +252,21 @@ export default function ModulePage() {
     // For modules without practice questions, persist completion here
     if (!hasPracticeQuestions) {
       try {
-        await completeModule(moduleId, 100);
+        await completeModule(activeModuleId, 100);
       } catch (err) {
         console.error('Failed to persist module completion:', err);
       }
     }
 
     if (nextModule) {
-      router.push(`/modules/${nextModule.moduleId}`);
+      // Client-side navigation — AI mentor stays mounted
+      navigateToModule(nextModule.moduleId);
     } else if (course) {
       router.push(`/courses/${course.courseId}`);
     }
   };
 
-  // Tab configuration (Test tab hidden, Procvičování now holds the test questions)
+  // Tab configuration
   const tabs: { key: TabType; label: string; sublabel: string; locked?: boolean; completed?: boolean; icon: React.ReactNode }[] = [
     {
       key: 'prirucka',
@@ -313,307 +349,295 @@ export default function ModulePage() {
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Main Content — with transition animation */}
           <div className="flex-grow min-w-0">
-            <div className="bg-white rounded-lg p-6 sm:p-10" style={{ border: '1px solid #e5e7eb' }}>
-
-              {activeTab === 'prirucka' && (
-                <>
-                  {currentBlock ? (
-                    <>
-                      {/* Block header */}
-                      <div className="mb-6 pb-4 border-b border-gray-100">
-                        <span className="text-sm text-gray-500">
-                          Stránka {currentBlockIndex + 1} z {totalBlocks}
-                        </span>
-                      </div>
-
-                      {/* Block content */}
-                      <div
-                        ref={contentRef}
-                        className="module-content"
-                        dangerouslySetInnerHTML={{ __html: currentBlock.content }}
-                      />
-
-                      {/* Navigation buttons */}
-                      <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
-                        <button
-                          onClick={handlePrevBlock}
-                          disabled={currentBlockIndex === 0}
-                          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                            currentBlockIndex === 0
-                              ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                          }`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                          </svg>
-                          Předchozí
-                        </button>
-
-                        <button
-                          onClick={handleContinue}
-                          className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-                          style={{ backgroundColor: '#00C896' }}
-                        >
-                          {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                          </svg>
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-16 text-gray-400">
-                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                      <p className="text-lg font-medium">Obsah příručky zatím není k dispozici</p>
-                      <p className="text-sm mt-1">Obsah bude brzy doplněn.</p>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeModuleId}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="bg-white rounded-lg p-6 sm:p-10"
+                style={{ border: '1px solid #e5e7eb' }}
+              >
+                {/* Transition loading overlay */}
+                {transitioning && (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                      <p className="text-sm text-gray-500">Načítání dalšího modulu...</p>
                     </div>
-                  )}
-                </>
-              )}
+                  </div>
+                )}
 
-              {activeTab === 'procvicovani' && (
-                <>
-                  {testSubmitted ? (
-                    /* Evaluation view */
-                    (() => {
-                      const { correct, total, results } = calculateScore();
-                      const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-                      const passed = percentage >= 75;
-                      return (
-                        <div>
-                          <div className="text-center mb-8">
-                            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                              passed ? 'bg-green-50' : 'bg-red-50'
-                            }`}>
-                              {passed ? (
-                                <CheckCircle className="w-12 h-12 text-green-500" />
-                              ) : (
-                                <XCircle className="w-12 h-12 text-red-400" />
-                              )}
-                            </div>
-                            <h3 className="text-2xl font-bold text-gray-800 mb-1">Vyhodnocení</h3>
-                            <p className={`text-lg font-semibold ${passed ? 'text-green-600' : 'text-red-500'}`}>
-                              {correct}/{total} správně ({percentage}%)
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {passed ? 'Gratulujeme! Úspěšně jste prošli procvičováním.' : 'Bohužel jste neprošli. Zkuste to znovu.'}
-                            </p>
-                          </div>
+                {!transitioning && (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
 
-                          <div className="space-y-4 mb-8">
-                            {results.map((r, idx) => (
-                              <div key={r.questionId}
-                                className={`p-4 rounded-lg border ${r.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="flex-grow">
-                                    <p className="font-medium text-gray-800 text-sm">
-                                      {idx + 1}. {r.question}
-                                    </p>
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      Vaše odpověď: <span className="font-medium">{r.userAnswer || '(bez odpovědi)'}</span>
-                                    </p>
-                                    {!r.isCorrect && r.correctAnswer && !r.missingKeywords && (
-                                      <p className="text-sm text-green-700 mt-1">
-                                        Správná odpověď: <span className="font-medium">{r.correctAnswer}</span>
-                                      </p>
-                                    )}
-                                    {r.matchedKeywords && r.matchedKeywords.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-2">
-                                        {r.matchedKeywords.map(kw => (
-                                          <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                                            <CheckCircle className="w-3 h-3" /> {kw}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {r.missingKeywords && r.missingKeywords.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {r.missingKeywords.map(kw => (
-                                          <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-                                            <XCircle className="w-3 h-3" /> {kw}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex items-center justify-between pt-6 border-t border-gray-100">
-                            <button
-                              onClick={() => { setTestSubmitted(false); setTestAnswers({}); }}
-                              className="text-gray-600 hover:text-gray-800 font-medium text-sm"
-                            >
-                              Zkusit znovu
-                            </button>
-                            <button
-                              onClick={handleCompleteModule}
-                              disabled={!passed}
-                              className={`inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-all ${
-                                passed ? 'text-white hover:opacity-90' : 'text-gray-400 cursor-not-allowed'
-                              }`}
-                              style={{ backgroundColor: passed ? '#00C896' : '#D1D5DB' }}
-                            >
-                              {nextModule ? 'Další modul' : 'Dokončit modul'}
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={passed && nextModule ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M5 13l4 4L19 7"} />
-                              </svg>
-                            </button>
-                          </div>
+                {activeTab === 'prirucka' && (
+                  <>
+                    {currentBlock ? (
+                      <>
+                        {/* Block header */}
+                        <div className="mb-6 pb-4 border-b border-gray-100">
+                          <span className="text-sm text-gray-500">
+                            Stránka {currentBlockIndex + 1} z {totalBlocks}
+                          </span>
                         </div>
-                      );
-                    })()
-                  ) : (
-                    /* Practice questions */
-                    <div>
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-gray-800">Procvičování</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Odpovězte na otázky a ověřte si své znalosti z příručky.
-                        </p>
-                      </div>
 
-                      <div className="space-y-8">
-                        {practiceQuestions.map((q, qIdx) => (
-                          <div key={q.questionId} className="pb-6 border-b border-gray-100 last:border-b-0">
-                            <p className="font-semibold text-gray-800 mb-3">
-                              <span className="text-purple-600 mr-2">{qIdx + 1}.</span>
-                              {q.question}
-                            </p>
+                        {/* Block content */}
+                        <div
+                          ref={contentRef}
+                          className="module-content"
+                          dangerouslySetInnerHTML={{ __html: currentBlock.content }}
+                        />
 
-                            {q.questionType === 'closed' && q.closedOptions && (
-                              <div className="space-y-2 ml-6">
-                                {(q.closedOptions ?? []).map(opt => (
-                                  <label
-                                    key={opt.optionId}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                                      testAnswers[q.questionId] === opt.optionId
-                                        ? 'border-purple-300 bg-purple-50'
-                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`q-${q.questionId}`}
-                                      value={opt.optionId}
-                                      checked={testAnswers[q.questionId] === opt.optionId}
-                                      onChange={() => handleAnswerChange(q.questionId, opt.optionId)}
-                                      className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <span className="text-sm text-gray-700">{opt.text}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-
-                            {q.questionType === 'open' && (
-                              <div className="ml-6">
-                                <textarea
-                                  value={String(testAnswers[q.questionId] || '')}
-                                  onChange={(e) => handleAnswerChange(q.questionId, e.target.value)}
-                                  placeholder="Napište svou odpověď..."
-                                  rows={3}
-                                  className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 resize-none"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {practiceQuestions.length > 0 && (
-                        <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
+                        {/* Navigation buttons */}
+                        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
                           <button
-                            onClick={handleTestSubmit}
-                            className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
-                            style={{ backgroundColor: '#8B5BA8' }}
+                            onClick={handlePrevBlock}
+                            disabled={currentBlockIndex === 0}
+                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                              currentBlockIndex === 0
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                            }`}
                           >
-                            Odevzdat
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                            </svg>
+                            Předchozí
+                          </button>
+
+                          <button
+                            onClick={handleContinue}
+                            className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                            style={{ backgroundColor: '#00C896' }}
+                          >
+                            {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
                           </button>
                         </div>
-                      )}
+                      </>
+                    ) : (
+                      <div className="text-center py-16 text-gray-400">
+                        <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        <p className="text-lg font-medium">Obsah příručky zatím není k dispozici</p>
+                        <p className="text-sm mt-1">Obsah bude brzy doplněn.</p>
+                      </div>
+                    )}
+                  </>
+                )}
 
-                      {practiceQuestions.length === 0 && (
-                        <div className="text-center py-12">
-                          <p className="text-lg font-medium text-gray-500 mb-4">Tento modul nemá testové otázky.</p>
-                          {handbookCompleted ? (
+                {activeTab === 'procvicovani' && (
+                  <>
+                    {testSubmitted ? (
+                      /* Evaluation view */
+                      (() => {
+                        const { correct, total, results } = calculateScore();
+                        const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+                        const passed = percentage >= 75;
+                        return (
+                          <div>
+                            <div className="text-center mb-8">
+                              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                                passed ? 'bg-green-50' : 'bg-red-50'
+                              }`}>
+                                {passed ? (
+                                  <CheckCircle className="w-12 h-12 text-green-500" />
+                                ) : (
+                                  <XCircle className="w-12 h-12 text-red-400" />
+                                )}
+                              </div>
+                              <h3 className="text-2xl font-bold text-gray-800 mb-1">Vyhodnocení</h3>
+                              <p className={`text-lg font-semibold ${passed ? 'text-green-600' : 'text-red-500'}`}>
+                                {correct}/{total} správně ({percentage}%)
+                              </p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {passed ? 'Gratulujeme! Úspěšně jste prošli procvičováním.' : 'Bohužel jste neprošli. Zkuste to znovu.'}
+                              </p>
+                            </div>
+
+                            <div className="space-y-4 mb-8">
+                              {results.map((r, idx) => (
+                                <div key={r.questionId}
+                                  className={`p-4 rounded-lg border ${r.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-grow">
+                                      <p className="font-medium text-gray-800 text-sm">
+                                        {idx + 1}. {r.question}
+                                      </p>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        Vaše odpověď: <span className="font-medium">{r.userAnswer || '(bez odpovědi)'}</span>
+                                      </p>
+                                      {!r.isCorrect && r.correctAnswer && !r.missingKeywords && (
+                                        <p className="text-sm text-green-700 mt-1">
+                                          Správná odpověď: <span className="font-medium">{r.correctAnswer}</span>
+                                        </p>
+                                      )}
+                                      {r.matchedKeywords && r.matchedKeywords.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                          {r.matchedKeywords.map(kw => (
+                                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                              <CheckCircle className="w-3 h-3" /> {kw}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {r.missingKeywords && r.missingKeywords.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {r.missingKeywords.map(kw => (
+                                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">
+                                              <XCircle className="w-3 h-3" /> {kw}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                              <button
+                                onClick={() => { setTestSubmitted(false); setTestAnswers({}); }}
+                                className="text-gray-600 hover:text-gray-800 font-medium text-sm"
+                              >
+                                Zkusit znovu
+                              </button>
+                              <button
+                                onClick={handleCompleteModule}
+                                disabled={!passed}
+                                className={`inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-all ${
+                                  passed ? 'text-white hover:opacity-90' : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                                style={{ backgroundColor: passed ? '#00C896' : '#D1D5DB' }}
+                              >
+                                {nextModule ? 'Další modul' : 'Dokončit modul'}
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={passed && nextModule ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M5 13l4 4L19 7"} />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      /* Practice questions */
+                      <div>
+                        <div className="mb-6">
+                          <h3 className="text-xl font-bold text-gray-800">Procvičování</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Odpovězte na otázky a ověřte si své znalosti z příručky.
+                          </p>
+                        </div>
+
+                        <div className="space-y-8">
+                          {practiceQuestions.map((q, qIdx) => (
+                            <div key={q.questionId} className="pb-6 border-b border-gray-100 last:border-b-0">
+                              <p className="font-semibold text-gray-800 mb-3">
+                                <span className="text-purple-600 mr-2">{qIdx + 1}.</span>
+                                {q.question}
+                              </p>
+
+                              {q.questionType === 'closed' && q.closedOptions && (
+                                <div className="space-y-2 ml-6">
+                                  {(q.closedOptions ?? []).map(opt => (
+                                    <label
+                                      key={opt.optionId}
+                                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                        testAnswers[q.questionId] === opt.optionId
+                                          ? 'border-purple-300 bg-purple-50'
+                                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`q-${q.questionId}`}
+                                        value={opt.optionId}
+                                        checked={testAnswers[q.questionId] === opt.optionId}
+                                        onChange={() => handleAnswerChange(q.questionId, opt.optionId)}
+                                        className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{opt.text}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+
+                              {q.questionType === 'open' && (
+                                <div className="ml-6">
+                                  <textarea
+                                    value={String(testAnswers[q.questionId] || '')}
+                                    onChange={(e) => handleAnswerChange(q.questionId, e.target.value)}
+                                    placeholder="Napište svou odpověď..."
+                                    rows={3}
+                                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 resize-none"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {practiceQuestions.length > 0 && (
+                          <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
                             <button
-                              onClick={handleCompleteModule}
+                              onClick={handleTestSubmit}
                               className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
-                              style={{ backgroundColor: '#00C896' }}
+                              style={{ backgroundColor: '#8B5BA8' }}
                             >
-                              {nextModule ? 'Další modul' : 'Dokončit kurz'}
+                              Odevzdat
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={nextModule ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M5 13l4 4L19 7"} />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                             </button>
-                          ) : (
-                            <p className="text-sm text-gray-400">Nejdříve projděte příručku, poté můžete pokračovat.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                          </div>
+                        )}
 
-            {/*
-            <div className="flex items-center justify-between mt-6">
-              <Link
-                href={prevModule ? `/modules/${prevModule.moduleId}` : `/courses/${course?.courseId}`}
-                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors font-medium"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                </svg>
-                {prevModule ? `Předchozí modul` : 'Zpět na přehled'}
-              </Link>
+                        {practiceQuestions.length === 0 && (
+                          <div className="text-center py-12">
+                            <p className="text-lg font-medium text-gray-500 mb-4">Tento modul nemá testové otázky.</p>
+                            {handbookCompleted ? (
+                              <button
+                                onClick={handleCompleteModule}
+                                className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                                style={{ backgroundColor: '#00C896' }}
+                              >
+                                {nextModule ? 'Další modul' : 'Dokončit kurz'}
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={nextModule ? "M13 7l5 5m0 0l-5 5m5-5H6" : "M5 13l4 4L19 7"} />
+                                </svg>
+                              </button>
+                            ) : (
+                              <p className="text-sm text-gray-400">Nejdříve projděte příručku, poté můžete pokračovat.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
 
-              {nextModule ? (
-                <Link
-                  href={`/modules/${nextModule.moduleId}`}
-                  className={`inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-colors ${
-                    canCompleteModule ? 'text-white hover:opacity-90' : 'text-gray-400 cursor-not-allowed pointer-events-none'
-                  }`}
-                  style={{ backgroundColor: canCompleteModule ? '#00C896' : '#D1D5DB' }}
-                  aria-disabled={!canCompleteModule}
-                >
-                  Další modul
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-              ) : (
-                <Link
-                  href={`/courses/${course?.courseId}`}
-                  className={`inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-colors ${
-                    canCompleteModule ? 'text-white hover:opacity-90' : 'text-gray-400 cursor-not-allowed pointer-events-none'
-                  }`}
-                  style={{ backgroundColor: canCompleteModule ? '#00C896' : '#D1D5DB' }}
-                  aria-disabled={!canCompleteModule}
-                >
-                  Dokončit kurz
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </Link>
-              )}
-            </div>
-            */}
-
+                  </motion.div>
+                </AnimatePresence>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

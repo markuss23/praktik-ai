@@ -9,9 +9,11 @@ interface ProfileEditModalProps {
   onClose: () => void;
   avatarSrc?: string;
   onAvatarChange?: (url: string) => void;
+  initialFirstName?: string;
+  initialLastName?: string;
 }
 
-export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange }: ProfileEditModalProps) {
+export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, initialFirstName, initialLastName }: ProfileEditModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -48,6 +50,8 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange }:
             {/* Body */}
             <div className="px-2 pb-2">
               <AccountSettingsCard
+                initialFirstName={initialFirstName}
+                initialLastName={initialLastName}
                 avatarSrc={avatarSrc}
                 onAvatarChange={onAvatarChange}
                 onSave={(values) => {

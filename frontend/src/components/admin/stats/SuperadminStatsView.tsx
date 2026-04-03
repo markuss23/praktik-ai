@@ -413,9 +413,14 @@ export function SuperadminStatsView() {
                           </div>
                         </div>
 
-                        <p className="text-sm text-gray-500 mt-3">
-                          {course.modulesCount ?? 0} modulů · Stav: {course.status}
-                        </p>
+                        {/* Module info */}
+                        <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-5 h-5 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center text-xs font-bold">{course.modulesCount ?? 0}</span>
+                            modulů v kurzu
+                          </span>
+                          <span>Stav: <span className="font-medium text-gray-700">{course.status}</span></span>
+                        </div>
                       </div>
                     </motion.div>
                   )}
