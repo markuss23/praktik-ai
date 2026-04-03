@@ -277,6 +277,7 @@ export default function CourseSection() {
                         completedModules={enrollment?.completedModules ?? 0}
                         totalModules={course.modulesCount || 0}
                         isEnrolled={!!enrollment}
+                        isCompleted={!!enrollment?.completedAt}
                       />
                     </motion.div>
                   );

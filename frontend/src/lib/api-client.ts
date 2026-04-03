@@ -243,6 +243,18 @@ export async function getMyEnrollments() {
   return enrollmentsApi.myEnrollments();
 }
 
+export async function listEnrollments(params?: {
+  courseId?: number;
+  userId?: number;
+  includeInactive?: boolean;
+}) {
+  return enrollmentsApi.listEnrollments({
+    courseId: params?.courseId,
+    userId: params?.userId,
+    includeInactive: params?.includeInactive,
+  });
+}
+
 export async function createEnrollment(userId: number, courseId: number) {
   return enrollmentsApi.createEnrollment({
     enrollmentCreate: { userId, courseId },

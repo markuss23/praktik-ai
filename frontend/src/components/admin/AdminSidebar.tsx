@@ -16,16 +16,18 @@ const BASE_NAV_ITEMS = [
   { href: '/admin/settings', label: 'Nastavení', icon: Settings },
 ];
 
-const SUPERADMIN_ITEMS = [
-  // { href: '/admin/categories', label: 'Kategorie', icon: Boxes },
-  { href: '/admin/ai-mentor', label: 'AI Mentor', icon: Bot },
+const LECTOR_ITEMS = [
   { href: '/admin/stats', label: 'Statistiky', icon: BarChart3 },
+];
+
+const SUPERADMIN_ITEMS = [
+  { href: '/admin/ai-mentor', label: 'AI Mentor', icon: Bot },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const { can, isLector, isGuarantor } = useRole();
+  const { can, isGuarantor } = useRole();
   const { currentUser } = useCurrentUser();
   const [reviewCount, setReviewCount] = useState(0);
 
@@ -51,6 +53,7 @@ export function AdminSidebar() {
   const navItems = [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
+    ...LECTOR_ITEMS,
     ...(can('superadmin') ? SUPERADMIN_ITEMS : []),
     ...(isGuarantor ? [
       { href: '/admin/review', label: 'Ke schválení', icon: ClipboardCheck, badge: reviewCount > 0 ? reviewCount : undefined },
