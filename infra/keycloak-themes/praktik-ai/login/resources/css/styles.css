@@ -42,7 +42,8 @@ body {
     padding: 0.75rem 1rem;
     border-radius: 4px;
     font-size: 0.875rem;
-    margin-bottom: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 0;
     text-align: left;
 }
 
@@ -56,6 +57,18 @@ body {
     background-color: #f0fdf4;
     border: 1px solid #86efac;
     color: #166534;
+}
+
+.alert-warning {
+    background-color: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+}
+
+.alert-info {
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
 }
 
 /* Chybové pole a zpráva pod inputem */

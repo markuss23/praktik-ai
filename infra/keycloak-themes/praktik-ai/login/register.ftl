@@ -7,10 +7,6 @@
             </div>
             <h1 class="praktik-title">Pojďme začít</h1>
 
-            <#if message?? && message.type = "error">
-                <div class="alert alert-error">${kcSanitize(message.summary)?no_esc}</div>
-            </#if>
-
             <form id="kc-register-form" action="${url.registrationAction}" method="post" onsubmit="return validateRegister()">
                 <div class="form-group">
                     <label for="firstName">Jméno</label>
@@ -76,6 +72,10 @@
                     <input class="btn-primary" type="submit" value="Zaregistrovat se" />
                 </div>
             </form>
+
+            <#if message?has_content && (message.type = 'error' || message.type = 'warning' || message.type = 'success' || message.type = 'info')>
+                <div class="alert alert-${message.type}">${kcSanitize(message.summary)?no_esc}</div>
+            </#if>
 
             <script>
             function validateRegister() {

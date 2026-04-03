@@ -23,6 +23,10 @@
                 </div>
             </form>
 
+            <#if message?has_content && (message.type = 'error' || message.type = 'warning' || message.type = 'success' || message.type = 'info')>
+                <div class="alert alert-${message.type}">${kcSanitize(message.summary)?no_esc}</div>
+            </#if>
+
             <div class="form-links">
                 <#if realm.resetPasswordAllowed>
                     <p><a href="${url.loginResetCredentialsUrl}" class="link-subtle">Zapomenuté heslo?</a></p>
