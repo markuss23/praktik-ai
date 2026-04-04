@@ -2,7 +2,7 @@
   "realm": "praktikai-dev",
   "enabled": true,
   "registrationAllowed": true,
-  "registrationEmailAsUsername": true,
+  "registrationEmailAsUsername": false,
   "loginWithEmailAllowed": true,
   "loginTheme": "praktik-ai",
   "defaultRoles": ["user"],
