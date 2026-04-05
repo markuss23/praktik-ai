@@ -3,7 +3,7 @@
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
-import { X, BicepsFlexed, Upload, RotateCcw } from "lucide-react";
+import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
@@ -254,6 +254,20 @@ export function CoursesListView() {
     }
   };
 
+  /** Archive a published course */
+  const handleArchive = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Archived);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to archive course:', error);
+      alert('Nepodařilo se archivovat kurz.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
   // ─── Modal handlers ──────────────────────────────────────────────────────────
 
   const openCreateCourseModal = () => {
@@ -451,76 +465,102 @@ export function CoursesListView() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1 text-sm flex-wrap">
-                            {/* Edit actions - only for owner or superadmin */}
-                            {editable && (
+                            {course.isPublished ? (
                               <>
+                                {/* Published: only archive (+ delete for superadmin) */}
                                 <button
-                                  onClick={() => toggleCourseExpand(course.courseId)}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
-                                >
-                                  Úpravy
-                                </button>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => openQuickEdit(course)}
-                                  className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap"
-                                >
-                                  Rychlé úpravy
-                                </button>
-                              </>
-                            )}
-
-                            {/* Submit for review - owner can submit when in editable status */}
-                            {canSubmitForReview(course) && (
-                              <>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => handleSubmitForReview(course)}
+                                  onClick={() => handleArchive(course)}
                                   disabled={statusLoading === course.courseId}
-                                  className="text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                  className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap disabled:opacity-50"
                                 >
-                                  {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
+                                  {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
                                 </button>
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
                               </>
-                            )}
-
-                            {/* Publish/Unpublish - only owner or superadmin, only when approved or archived */}
-                            {canPublishCourse(course) && (course.status === Status.Approved || course.status === Status.Archived) && (
+                            ) : (
                               <>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => togglePublish(course)}
-                                  className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
-                                >
-                                  {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-                                </button>
-                              </>
-                            )}
+                                {/* Edit actions - only in editable statuses (draft/generated/edited) */}
+                                {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+                                  <>
+                                    <button
+                                      onClick={() => toggleCourseExpand(course.courseId)}
+                                      className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Úpravy
+                                    </button>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => openQuickEdit(course)}
+                                      className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Rychlé úpravy
+                                    </button>
+                                  </>
+                                )}
 
-                            {/* Revert to editing - superadmin only, when approved */}
-                            {isSuperAdmin && course.status === Status.Approved && (
-                              <>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => handleRevertToEditing(course)}
-                                  disabled={statusLoading === course.courseId}
-                                  className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
-                                >
-                                  {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
-                                </button>
-                              </>
-                            )}
+                                {/* Submit for review - owner can submit when in editable status */}
+                                {canSubmitForReview(course) && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleSubmitForReview(course)}
+                                      disabled={statusLoading === course.courseId}
+                                      className="text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
+                                    </button>
+                                  </>
+                                )}
 
-                            {/* Delete - superadmin only */}
-                            {isSuperAdmin && (
-                              <>
-                                <span className="text-gray-400">|</span>
-                                <button
-                                  onClick={() => handleDeleteClick(course.courseId)}
-                                  className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
-                                >
-                                  Smazat
-                                </button>
+                                {/* Publish - only when approved or archived and not yet published */}
+                                {canPublishCourse(course) && (course.status === Status.Approved || course.status === Status.Archived) && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => togglePublish(course)}
+                                      className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Publikovat
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Revert to editing - superadmin only, when approved */}
+                                {isSuperAdmin && course.status === Status.Approved && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleRevertToEditing(course)}
+                                      disabled={statusLoading === course.courseId}
+                                      className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Delete - superadmin only */}
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
@@ -646,6 +686,7 @@ export function CoursesListView() {
                 onSubmitForReview={() => handleSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
                 onRevertToEditing={() => handleRevertToEditing(course)}
+                onArchive={() => handleArchive(course)}
                 statusLoading={statusLoading === course.courseId}
               />
             ))}
@@ -801,6 +842,7 @@ interface MobileCourseCardProps {
   onSubmitForReview: () => void;
   canSubmitReview: boolean;
   onRevertToEditing: () => void;
+  onArchive: () => void;
   statusLoading: boolean;
 }
 
@@ -823,6 +865,7 @@ function MobileCourseCard({
   onSubmitForReview,
   canSubmitReview,
   onRevertToEditing,
+  onArchive,
   statusLoading,
 }: MobileCourseCardProps) {
   const moduleCount = course.modulesCount || 0;
@@ -846,22 +889,37 @@ function MobileCourseCard({
           </div>
         </div>
         <CourseActionButtons className="flex-shrink-0">
-          {canEdit && (
-            <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
-          )}
-          {canSubmitReview && (
-            <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
-          )}
-          {canPublish && (course.status === Status.Approved || course.status === Status.Archived) && (
-            <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
-          )}
-          {canDelete && course.status === Status.Approved && (
-            <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
-              <RotateCcw size={14} />
-            </button>
-          )}
-          {canDelete && (
-            <DeleteActionButton onClick={onDelete} iconSize={14} />
+          {course.isPublished ? (
+            <>
+              {/* Published: only archive (+ delete for superadmin) */}
+              <button onClick={onArchive} disabled={statusLoading} className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50" title="Archivovat">
+                <Archive size={14} />
+              </button>
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
+          ) : (
+            <>
+              {/* Edit - only in editable statuses */}
+              {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+                <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
+              )}
+              {canSubmitReview && (
+                <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
+              )}
+              {canPublish && (course.status === Status.Approved || course.status === Status.Archived) && (
+                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+              )}
+              {canDelete && course.status === Status.Approved && (
+                <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
+                  <RotateCcw size={14} />
+                </button>
+              )}
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
           )}
         </CourseActionButtons>
       </div>

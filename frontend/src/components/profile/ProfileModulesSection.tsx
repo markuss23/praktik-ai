@@ -48,14 +48,14 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
           <BookOpen size={14} />
           <span>{enrollment.totalModules ?? 0} lekce</span>
         </div>
-        {isCompleted && (
+        {/* {isCompleted && (
           <button
             onClick={() => onRepeatClick(enrollment)}
             className="px-3 py-1.5 text-xs font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors"
           >
-            Zopakovat modul
+            Zopakovat kurz
           </button>
-        )}
+        )} */}
       </div>
     </motion.div>
   );
