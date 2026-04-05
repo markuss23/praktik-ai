@@ -1,5 +1,5 @@
-from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from api import models
 from api.enums import ModuleTaskSessionStatus

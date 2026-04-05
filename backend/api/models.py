@@ -837,7 +837,7 @@ class ModuleTaskSession(TimestampMixin, SoftDeleteMixin, Base):
             "user_id",
             "module_id",
             unique=True,
-            postgresql_where=text("is_active"),
+            postgresql_where=text("status::text IN ('in_progress', 'passed')"),
         ),
         Index("ix_module_task_session_user_id", "user_id"),
         Index("ix_module_task_session_module_id", "module_id"),

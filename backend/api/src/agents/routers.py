@@ -164,22 +164,33 @@ async def generate_assessment(
     # Ověření zápisu – platí pro všechny uživatele včetně vlastníka a superadmina
     check_enrollment(db, user, course)
 
-    # Nelze generovat, pokud už existuje aktivní session s otázkou
+    # Nelze generovat, pokud existuje session ve stavu passed nebo in_progress
     existing_session: models.ModuleTaskSession | None = (
         db.execute(
             select(models.ModuleTaskSession).where(
                 models.ModuleTaskSession.user_id == user.user_id,
                 models.ModuleTaskSession.module_id == body.module_id,
                 models.ModuleTaskSession.is_active.is_(True),
+                models.ModuleTaskSession.status.in_(
+                    [
+                        models.ModuleTaskSessionStatus.passed,
+                        models.ModuleTaskSessionStatus.in_progress,
+                    ]
+                ),
             )
         )
         .scalars()
         .first()
     )
     if existing_session is not None:
+        if existing_session.status == models.ModuleTaskSessionStatus.passed:
+            raise HTTPException(
+                status_code=409,
+                detail="Tento modul jste již úspěšně splnili",
+            )
         raise HTTPException(
             status_code=409,
-            detail="Pro tento modul již máte vygenerovanou otázku",
+            detail="Pro tento modul již máte aktivní assessment",
         )
 
     service = AssessmentService(db=db, module_id=body.module_id, user_id=user.user_id)

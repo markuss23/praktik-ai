@@ -182,18 +182,34 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
 
 
 def get_assessment_question(db: Session, module_id: int, user: models.User) -> ModuleAssessmentQuestion:
-    """Vrátí aktivní assessment otázku pro daný modul a uživatele."""
+    """Vrátí assessment otázku pro daný modul a uživatele. Priorita: in_progress > passed > nejnovější failed."""
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
+    # Priorita: in_progress nebo passed (max 1 díky unique indexu), pak nejnovější failed
     session = db.scalar(
         select(models.ModuleTaskSession).where(
             models.ModuleTaskSession.user_id == user.user_id,
             models.ModuleTaskSession.module_id == module_id,
-            models.ModuleTaskSession.is_active.is_(True),
+            models.ModuleTaskSession.status.in_([
+                enums.ModuleTaskSessionStatus.in_progress,
+                enums.ModuleTaskSessionStatus.passed,
+            ]),
         )
     )
+
     if session is None:
-        raise HTTPException(status_code=404, detail="Žádná aktivní assessment otázka pro tento modul")
+        session = db.scalar(
+            select(models.ModuleTaskSession)
+            .where(
+                models.ModuleTaskSession.user_id == user.user_id,
+                models.ModuleTaskSession.module_id == module_id,
+                models.ModuleTaskSession.status == enums.ModuleTaskSessionStatus.failed,
+            )
+            .order_by(models.ModuleTaskSession.session_id.desc())
+        )
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Žádná assessment otázka pro tento modul")
 
     return ModuleAssessmentQuestion(
         session_id=session.session_id,
@@ -211,14 +227,27 @@ def get_course_progress(db: Session, course_id: int, user: models.User) -> list[
         if not module.is_active:
             continue
 
-        # Najdi aktivní task session pro uživatele a modul
+        # Najdi relevantní task session: priorita passed > in_progress > nejnovější failed
         session = db.scalar(
             select(models.ModuleTaskSession).where(
                 models.ModuleTaskSession.user_id == user.user_id,
                 models.ModuleTaskSession.module_id == module.module_id,
-                models.ModuleTaskSession.is_active.is_(True),
+                models.ModuleTaskSession.status.in_([
+                    enums.ModuleTaskSessionStatus.passed,
+                    enums.ModuleTaskSessionStatus.in_progress,
+                ]),
             )
         )
+        if session is None:
+            session = db.scalar(
+                select(models.ModuleTaskSession)
+                .where(
+                    models.ModuleTaskSession.user_id == user.user_id,
+                    models.ModuleTaskSession.module_id == module.module_id,
+                    models.ModuleTaskSession.status == enums.ModuleTaskSessionStatus.failed,
+                )
+                .order_by(models.ModuleTaskSession.session_id.desc())
+            )
 
         task_session_status: str | None = None
         attempts_used = 0
