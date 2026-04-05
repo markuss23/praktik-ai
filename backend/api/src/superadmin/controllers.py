@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -6,6 +7,8 @@ from api.src.superadmin.schemas import (
     MentorInteractionLogItem,
     SystemSettingResponse,
     SystemSettingUpdate,
+    TaskSessionResponse,
+    TaskSessionStatusUpdate,
 )
 from api.src.common.utils import get_or_404
 
@@ -58,3 +61,52 @@ def update_system_setting(
     db.commit()
     db.refresh(setting)
     return SystemSettingResponse.model_validate(setting)
+
+
+# ---------- TaskSession ----------
+
+
+def list_task_sessions(
+    db: Session,
+    user_id: int | None = None,
+    module_id: int | None = None,
+) -> list[TaskSessionResponse]:
+    """Vrátí seznam assessment sessions, volitelně filtrovaný."""
+    stm = select(models.ModuleTaskSession)
+
+    if user_id is not None:
+        stm = stm.where(models.ModuleTaskSession.user_id == user_id)
+    if module_id is not None:
+        stm = stm.where(models.ModuleTaskSession.module_id == module_id)
+
+    stm = stm.order_by(models.ModuleTaskSession.created_at.desc())
+    rows = db.execute(stm).scalars().all()
+    return [TaskSessionResponse.model_validate(row) for row in rows]
+
+
+def update_task_session_status(
+    db: Session,
+    session_id: int,
+    payload: TaskSessionStatusUpdate,
+) -> TaskSessionResponse:
+    """Změní status assessment session."""
+    session = get_or_404(
+        db, models.ModuleTaskSession, session_id, detail="Session nenalezena"
+    )
+    session.status = payload.status
+    db.commit()
+    db.refresh(session)
+    return TaskSessionResponse.model_validate(session)
+
+
+def delete_task_session(db: Session, session_id: int) -> TaskSessionResponse:
+    """Soft-delete assessment session (is_active = False)."""
+    session = get_or_404(
+        db, models.ModuleTaskSession, session_id, detail="Session nenalezena"
+    )
+    if not session.is_active:
+        raise HTTPException(status_code=409, detail="Session je již neaktivní")
+    session.is_active = False
+    db.commit()
+    db.refresh(session)
+    return TaskSessionResponse.model_validate(session)

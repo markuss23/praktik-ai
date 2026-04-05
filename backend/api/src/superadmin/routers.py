@@ -6,11 +6,16 @@ from api.src.superadmin.schemas import (
     MentorInteractionLogItem,
     SystemSettingResponse,
     SystemSettingUpdate,
+    TaskSessionResponse,
+    TaskSessionStatusUpdate,
 )
 from api.src.superadmin.controllers import (
     get_mentor_interaction_logs,
     list_system_settings,
     update_system_setting,
+    list_task_sessions,
+    update_task_session_status,
+    delete_task_session,
 )
 
 router = APIRouter(
@@ -45,3 +50,35 @@ def endp_update_system_setting(
 ) -> SystemSettingResponse:
     """Aktualizuje systémové nastavení (model, prompt)."""
     return update_system_setting(db, setting_id, payload)
+
+
+# ---------- TaskSession ----------
+
+
+@router.get("/task-sessions", operation_id="list_task_sessions")
+def endp_list_task_sessions(
+    db: SessionSqlSessionDependency,
+    user_id: int | None = None,
+    module_id: int | None = None,
+) -> list[TaskSessionResponse]:
+    """Vrátí seznam assessment sessions. Filtrovat lze podle user_id a module_id."""
+    return list_task_sessions(db, user_id=user_id, module_id=module_id)
+
+
+@router.patch("/task-sessions/{session_id}/status", operation_id="update_task_session_status")
+def endp_update_task_session_status(
+    session_id: int,
+    payload: TaskSessionStatusUpdate,
+    db: SessionSqlSessionDependency,
+) -> TaskSessionResponse:
+    """Změní status assessment session (in_progress / passed / failed)."""
+    return update_task_session_status(db, session_id, payload)
+
+
+@router.delete("/task-sessions/{session_id}", operation_id="delete_task_session")
+def endp_delete_task_session(
+    session_id: int,
+    db: SessionSqlSessionDependency,
+) -> TaskSessionResponse:
+    """Soft-delete assessment session (is_active = False)."""
+    return delete_task_session(db, session_id)
