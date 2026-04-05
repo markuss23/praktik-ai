@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
 from api import models
@@ -71,8 +72,10 @@ def list_task_sessions(
     user_id: int | None = None,
     module_id: int | None = None,
 ) -> list[TaskSessionResponse]:
-    """Vrátí seznam assessment sessions, volitelně filtrovaný."""
-    stm = select(models.ModuleTaskSession)
+    """Vrátí seznam assessment sessions včetně pokusů, volitelně filtrovaný."""
+    stm = select(models.ModuleTaskSession).options(
+        selectinload(models.ModuleTaskSession.attempts)
+    )
 
     if user_id is not None:
         stm = stm.where(models.ModuleTaskSession.user_id == user_id)

@@ -39,6 +39,15 @@ class SystemSettingUpdate(BaseModel):
 # ---------- TaskSession ----------
 
 
+class TaskAttemptItem(ORMModel):
+    attempt_id: int
+    user_response: str
+    ai_feedback: str | None
+    ai_score: int | None
+    is_passed: bool
+    created_at: datetime
+
+
 class TaskSessionResponse(ORMModel):
     session_id: int
     user_id: int
@@ -48,6 +57,7 @@ class TaskSessionResponse(ORMModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    attempts: list[TaskAttemptItem]
 
 
 class TaskSessionStatusUpdate(BaseModel):
