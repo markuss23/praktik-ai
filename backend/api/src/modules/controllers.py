@@ -135,18 +135,17 @@ def complete_module(db: Session, module_id: int, user: models.User, score: int) 
             models.ModuleTaskSession.status == enums.ModuleTaskSessionStatus.passed,
         )
     )
-    if existing:
-        return ModuleCompletionStatus(module_id=module_id, passed=True, score=score)
 
-    # Create task session as passed
-    session = models.ModuleTaskSession(
-        user_id=user.user_id,
-        module_id=module_id,
-        status=enums.ModuleTaskSessionStatus.passed,
-        generated_task=f"Practice test score: {score}%",
-    )
-    db.add(session)
-    db.flush()
+    if not existing:
+        # Create task session as passed
+        session = models.ModuleTaskSession(
+            user_id=user.user_id,
+            module_id=module_id,
+            status=enums.ModuleTaskSessionStatus.passed,
+            generated_task=f"Practice test score: {score}%",
+        )
+        db.add(session)
+        db.flush()
 
     # Check if ALL active modules are now passed → mark enrollment as completed
     all_passed = True

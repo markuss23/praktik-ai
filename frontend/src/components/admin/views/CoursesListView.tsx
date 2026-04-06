@@ -465,9 +465,32 @@ export function CoursesListView() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1 text-sm flex-wrap">
-                            {course.isPublished ? (
+                            {statusStr === Status.Archived ? (
                               <>
-                                {/* Published: only archive (+ delete for superadmin) */}
+                                {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+                                {canPublishCourse(course) && (
+                                  <button
+                                    onClick={() => togglePublish(course)}
+                                    className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                  >
+                                    {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+                                  </button>
+                                )}
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            ) : course.isPublished ? (
+                              <>
+                                {/* Published (non-archived): archive (+ delete for superadmin) */}
                                 <button
                                   onClick={() => handleArchive(course)}
                                   disabled={statusLoading === course.courseId}
@@ -522,8 +545,8 @@ export function CoursesListView() {
                                   </>
                                 )}
 
-                                {/* Publish - only when approved or archived and not yet published */}
-                                {canPublishCourse(course) && (course.status === Status.Approved || course.status === Status.Archived) && (
+                                {/* Publish - only when approved and not yet published */}
+                                {canPublishCourse(course) && course.status === Status.Approved && (
                                   <>
                                     <span className="text-gray-400">|</span>
                                     <button
@@ -889,9 +912,19 @@ function MobileCourseCard({
           </div>
         </div>
         <CourseActionButtons className="flex-shrink-0">
-          {course.isPublished ? (
+          {statusStr === Status.Archived ? (
             <>
-              {/* Published: only archive (+ delete for superadmin) */}
+              {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+              {canPublish && (
+                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+              )}
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
+          ) : course.isPublished ? (
+            <>
+              {/* Published (non-archived): only archive (+ delete for superadmin) */}
               <button onClick={onArchive} disabled={statusLoading} className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50" title="Archivovat">
                 <Archive size={14} />
               </button>
@@ -908,7 +941,7 @@ function MobileCourseCard({
               {canSubmitReview && (
                 <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
               )}
-              {canPublish && (course.status === Status.Approved || course.status === Status.Archived) && (
+              {canPublish && course.status === Status.Approved && (
                 <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
               )}
               {canDelete && course.status === Status.Approved && (

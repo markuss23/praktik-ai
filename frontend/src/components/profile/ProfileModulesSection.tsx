@@ -36,7 +36,13 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
             </span>
           )}
         </div>
-        <h4 className="text-base font-semibold text-green-700 mb-0.5">
+        <h4
+          className="text-base font-semibold mb-0.5"
+          style={isCompleted
+            ? { color: '#16a34a' }
+            : { background: 'linear-gradient(90deg, #6366F1, #8B5BA8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+          }
+        >
           {enrollment.course.title}
         </h4>
         {enrollment.course.description && (
@@ -77,14 +83,14 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Rozpracované moduly */}
+      {/* Rozpracované kurzy */}
       {inProgress.length > 0 && (
         <div>
           <button
             onClick={() => setShowInProgress(!showInProgress)}
             className="flex items-center justify-between w-full mb-3"
           >
-            <h3 className="text-lg font-bold text-gray-900">Rozpracované moduly</h3>
+            <h3 className="text-lg font-bold text-gray-900">Rozpracované kurzy</h3>
             {showInProgress ? (
               <ChevronDown size={22} className="text-gray-400" />
             ) : (
@@ -111,14 +117,14 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
         </div>
       )}
 
-      {/* Dokončené moduly */}
+      {/* Dokončené kurzy */}
       {completed.length > 0 && (
         <div>
           <button
             onClick={() => setShowCompleted(!showCompleted)}
             className="flex items-center justify-between w-full mb-3"
           >
-            <h3 className="text-lg font-bold text-gray-900">Dokončené moduly</h3>
+            <h3 className="text-lg font-bold text-gray-900">Dokončené kurzy</h3>
             {showCompleted ? (
               <ChevronUp size={22} className="text-gray-400" />
             ) : (

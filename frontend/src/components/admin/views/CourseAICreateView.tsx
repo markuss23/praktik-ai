@@ -128,7 +128,7 @@ export function CourseAICreateView() {
           title: formData.title,
           description: formData.description || undefined,
           modulesCountAiGenerated: formData.moduleCount,
-          durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : undefined,
+          durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : formData.moduleCount * 20,
           courseBlockId: formData.courseBlockId,
           courseTargetId: formData.courseTargetId,
           courseSubjectId: formData.courseSubjectId,
@@ -340,8 +340,11 @@ export function CourseAICreateView() {
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
                   className="w-32 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
-                  placeholder="60"
+                  placeholder={String(formData.moduleCount * 20)}
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Výchozí: {formData.moduleCount} × 20 min = {formData.moduleCount * 20} min
+                </p>
               </div>
             </div>
 

@@ -19,6 +19,7 @@ import {
   PracticeOptionUpdate,
   QuestionKeywordUpdate,
   type Middleware,
+  type QuestionType,
 } from "@/api";
 import { API_BASE_URL } from "./constants";
 import { getValidAccessToken } from "./keycloak";
@@ -276,6 +277,44 @@ export async function completeModule(moduleId: number, score: number) {
 
 export async function getCourseProgress(courseId: number) {
   return modulesApi.getCourseProgress({ courseId });
+}
+
+//  Practice Questions (with attempts) API functions
+
+export async function listPracticeQuestions(moduleId: number) {
+  return modulesApi.listPracticeQuestions({ moduleId });
+}
+
+//  Assessment API functions
+
+export async function getModuleAssessment(moduleId: number) {
+  return modulesApi.getModuleAssessment({ moduleId });
+}
+
+export async function generateAssessment(moduleId: number) {
+  return agentsApi.generateAssessment({
+    generateAssessmentRequest: { moduleId },
+  });
+}
+
+export async function evaluateAssessment(sessionId: number, userResponse: string) {
+  return agentsApi.evaluateAssessment({
+    evaluateAssessmentRequest: { sessionId, userResponse },
+  });
+}
+
+//  AI Practice Question Generation & Evaluation
+
+export async function generatePracticeQuestion(moduleId: number, questionType: QuestionType) {
+  return agentsApi.generatePracticeQuestion({
+    generatePracticeQuestionRequest: { moduleId, questionType },
+  });
+}
+
+export async function evaluatePracticeAnswer(userQuestionId: number, userInput: string) {
+  return agentsApi.evaluatePracticeAnswer({
+    evaluatePracticeAnswerRequest: { userQuestionId, userInput },
+  });
 }
 
 //  Feedbacks API functions 
