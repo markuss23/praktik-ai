@@ -59,6 +59,12 @@ export async function getMe() {
   return authApi.endpMeApiV1AuthMeGet();
 }
 
+export async function updateProfile(aiTone: string, aiExpressionLevel: string) {
+  return authApi.endpUpdateProfileApiV1AuthProfilePut({
+    profileUpdate: { aiTone, aiExpressionLevel },
+  });
+}
+
 // Course API functions
 export async function getCourses(params?: {
   includeInactive?: boolean;

@@ -8,9 +8,11 @@ import { ProfileStatsGrid } from '@/components/profile/ProfileStatsGrid';
 import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard';
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
+import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
 import { NewBadgesModal } from '@/components/profile/NewBadgesModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
 import { ProfileSkeleton } from '@/components/ui';
@@ -86,9 +88,11 @@ function computeBadges(enrollments: MyEnrollment[]): Badge[] {
 export default function ProfilPage() {
   const { user, loading, login, isAuthenticated } = useAuth();
   const { roleLabel } = useRole();
+  const { currentUser, refetch: refetchUser } = useCurrentUser();
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [newBadges, setNewBadges] = useState<Badge[]>([]);
   const [showNewBadges, setShowNewBadges] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
@@ -241,6 +245,16 @@ export default function ProfilPage() {
             onEditClick={() => setEditModalOpen(true)}
           />
 
+          <button
+            onClick={() => setAiModalOpen(true)}
+            className="w-full bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
+          >
+            <div>
+              <p className="text-sm font-semibold text-gray-900">AI Nastavení</p>
+              <p className="text-xs text-gray-500">Tón a vyjadřování</p>
+            </div>
+          </button>
+
           <ProfileProgressCard items={progressItems} />
 
           <ProfileBadgesCard badges={badges} />
@@ -278,6 +292,15 @@ export default function ProfilPage() {
         onAvatarChange={handleAvatarChange}
         initialFirstName={user?.given_name ?? ''}
         initialLastName={user?.family_name ?? ''}
+      />
+
+      {/* AI preferences modal */}
+      <AiPreferencesModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        initialAiTone={currentUser?.aiTone ?? ''}
+        initialAiExpressionLevel={currentUser?.aiExpressionLevel ?? ''}
+        onSaved={refetchUser}
       />
 
       {/* New badges notification modal */}
