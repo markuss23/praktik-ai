@@ -30,7 +30,7 @@ export function LectorStatsView() {
     async function loadStats() {
       try {
         const courses = await getCourses({ includeInactive: true });
-        const myCourses = courses.filter(c => c.ownerId === currentUser!.userId);
+        const myCourses = courses.filter(c => c.ownerId === currentUser!.userId && c.isActive);
 
         const statsPromises = myCourses.map(async (course) => {
           try {
