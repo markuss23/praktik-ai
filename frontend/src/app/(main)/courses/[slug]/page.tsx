@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
 import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
-import { BookOpen, Lock, LogIn, CheckCircle, Search, Trophy } from "lucide-react";
+import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CourseDetailSkeleton } from "@/components/ui";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 export default function CoursePage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const courseId = Number(slug);
   const { isAuthenticated } = useAuth();
@@ -66,13 +67,18 @@ export default function CoursePage() {
     getMyEnrollments()
       .then(enrollments => {
         const found = enrollments.find(e => e.courseId === courseId);
+        if (found?.completedAt) {
+          // Course already completed — redirect to homepage
+          router.replace('/');
+          return;
+        }
         setEnrollment(found ?? null);
       })
       .catch(() => setEnrollment(null));
     getCourseProgress(courseId)
       .then(setModuleProgress)
       .catch(() => setModuleProgress([]));
-  }, [isAuthenticated, courseId]);
+  }, [isAuthenticated, courseId, router]);
 
   const handleEnroll = async () => {
     if (!currentUser) return;
@@ -201,29 +207,6 @@ export default function CoursePage() {
           <p className="text-gray-600 mt-3 max-w-3xl">{course.description}</p>
         )}
       </div>
-
-      {/* Course Completed Banner */}
-      {isEnrolled && modules.length > 0 && moduleProgress.length > 0 && modules.every(m => moduleProgress.find(p => p.moduleId === m.moduleId)?.passed) && (
-        <div className="px-4 sm:px-6 lg:px-[100px] pb-6" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex items-center gap-4 p-5 rounded-lg border-2"
-            style={{ backgroundColor: 'rgba(0, 200, 150, 0.05)', borderColor: '#00C896' }}
-          >
-            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(0, 200, 150, 0.15)' }}>
-              <Trophy className="w-6 h-6" style={{ color: '#00C896' }} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-800">Kurz dokončen!</h3>
-              <p className="text-sm text-gray-500">
-                Gratulujeme! Úspěšně jste dokončili všechny moduly tohoto kurzu.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Module Filter */}
       {modules.length > 3 && (

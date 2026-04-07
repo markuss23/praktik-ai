@@ -34,13 +34,35 @@ export default function ModulePage() {
   // Transition animation
   const [transitioning, setTransitioning] = useState(false);
 
+  // Restore tab progress from sessionStorage
+  const storageKey = `module-progress-${initialModuleId}`;
+  const savedProgress = (() => {
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+
   // Tab & handbook navigation
-  const [activeTab, setActiveTab] = useState<TabType>('prirucka');
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
-  const [handbookCompleted, setHandbookCompleted] = useState(false);
-  const [practiceCompleted, setPracticeCompleted] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>(savedProgress?.activeTab ?? 'prirucka');
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(savedProgress?.currentBlockIndex ?? 0);
+  const [handbookCompleted, setHandbookCompleted] = useState(savedProgress?.handbookCompleted ?? false);
+  const [practiceCompleted, setPracticeCompleted] = useState(savedProgress?.practiceCompleted ?? false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Persist tab progress to sessionStorage
+  useEffect(() => {
+    try {
+      const key = `module-progress-${activeModuleId}`;
+      sessionStorage.setItem(key, JSON.stringify({
+        activeTab,
+        currentBlockIndex,
+        handbookCompleted,
+        practiceCompleted,
+      }));
+    } catch { /* ignore */ }
+  }, [activeModuleId, activeTab, currentBlockIndex, handbookCompleted, practiceCompleted]);
 
   // Track tab transition direction for animation
   const tabOrder: TabType[] = ['prirucka', 'procvicovani', 'test'];
@@ -202,8 +224,9 @@ export default function ModulePage() {
     setAssessmentCompleted(true);
     if (nextModule) {
       navigateToModule(nextModule.moduleId);
-    } else if (course) {
-      router.push(`/courses/${course.courseId}`);
+    } else {
+      // Course finished — go to homepage
+      router.push('/');
     }
   };
 

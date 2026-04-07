@@ -185,84 +185,36 @@ export default function AssessmentTab({
     );
   }
 
-  // Module completed view
-  if (moduleCompleted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        {/* Score feedback */}
-        {lastAttempt && (
-          <div className="p-4 rounded-lg border bg-green-50 border-green-200 mb-6">
-            <div className="flex items-start gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-green-700">
-                    Skóre: {lastAttempt.aiScore}/100
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                    Splněno
-                  </span>
-                </div>
-                {lastAttempt.aiFeedback && (
-                  <p className="text-sm text-gray-600">{lastAttempt.aiFeedback}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="text-center py-8">
-          <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}>
-            <Trophy className="w-12 h-12" style={{ color: '#00C896' }} />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">
-            {courseCompleted ? 'Kurz dokončen!' : 'Modul dokončen!'}
-          </h3>
-          <p className="text-gray-500 mb-8">
-            {courseCompleted
-              ? 'Gratulujeme! Úspěšně jste dokončili všechny moduly kurzu.'
-              : 'Gratulujeme! Úspěšně jste prošli testem.'}
-          </p>
-          <button
-            onClick={onModuleComplete}
-            className="inline-flex items-center gap-2 text-white font-semibold py-3 px-8 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-            style={{ backgroundColor: '#00C896' }}
-          >
-            {courseCompleted ? 'Zpět na kurz' : nextModule ? 'Další modul' : 'Dokončit kurz'}
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
     <div>
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xl font-bold text-gray-800">Test</h3>
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{
-            backgroundColor: attemptsRemaining <= 1 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 91, 168, 0.1)',
-            color: attemptsRemaining <= 1 ? '#DC2626' : '#8B5BA8',
-          }}>
-            Zbývá pokusů: {attemptsRemaining} z {maxAttempts}
-          </span>
+          {!moduleCompleted && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{
+              backgroundColor: attemptsRemaining <= 1 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 91, 168, 0.1)',
+              color: attemptsRemaining <= 1 ? '#DC2626' : '#8B5BA8',
+            }}>
+              Zbývá pokusů: {attemptsRemaining} z {maxAttempts}
+            </span>
+          )}
         </div>
         {/* Progress bar */}
         <div className="h-1.5 w-full rounded-full bg-gray-200">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
-              width: `${(attemptsUsed / maxAttempts) * 100}%`,
+              width: moduleCompleted ? '100%' : `${(attemptsUsed / maxAttempts) * 100}%`,
               backgroundColor: passed ? '#00C896' : '#8B5BA8',
             }}
           />
         </div>
+      </div>
+
+      {/* Question text — always visible */}
+      <div className="mb-6">
+        <p className="text-gray-800 font-medium leading-relaxed">{question}</p>
       </div>
 
       {/* Error banner */}
@@ -273,6 +225,60 @@ export default function AssessmentTab({
       )}
 
       <AnimatePresence mode="wait">
+        {/* ── Module completed inline ── */}
+        {moduleCompleted && (
+          <motion.div
+            key="completed"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Score feedback */}
+            {lastAttempt && (
+              <div className="p-4 rounded-lg border bg-green-50 border-green-200 mb-6">
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-semibold text-green-700">
+                        Skóre: {lastAttempt.aiScore}/100
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                        Splněno
+                      </span>
+                    </div>
+                    {lastAttempt.aiFeedback && (
+                      <p className="text-sm text-gray-600">{lastAttempt.aiFeedback}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-center py-6">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}>
+                <Trophy className="w-10 h-10" style={{ color: '#00C896' }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-1">
+                {courseCompleted ? 'Kurz dokončen!' : 'Modul dokončen!'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {courseCompleted
+                  ? 'Gratulujeme! Úspěšně jste dokončili všechny moduly kurzu.'
+                  : 'Gratulujeme! Úspěšně jste prošli testem.'}
+              </p>
+              <button
+                onClick={onModuleComplete}
+                className="inline-flex items-center gap-2 text-white font-semibold py-3 px-8 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                style={{ backgroundColor: '#00C896' }}
+              >
+                {courseCompleted ? 'Zpět na kurz' : nextModule ? 'Další modul' : 'Dokončit kurz'}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Question view (not passed, not failed) ── */}
         {!passed && !failed && (
           <motion.div
@@ -282,11 +288,6 @@ export default function AssessmentTab({
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Question text */}
-            <div className="mb-6">
-              <p className="text-gray-800 font-medium leading-relaxed">{question}</p>
-            </div>
-
             {/* Answer textarea */}
             <textarea
               value={userAnswer}
