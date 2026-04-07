@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, Loader2, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, ChevronRight, Trophy } from 'lucide-react';
 import {
   generateAssessment,
   evaluateAssessment,
@@ -46,7 +46,7 @@ export default function AssessmentTab({
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+
   const [moduleCompleted, setModuleCompleted] = useState(false);
   const [courseCompleted, setCourseCompleted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -152,23 +152,6 @@ export default function AssessmentTab({
   const handleRetry = () => {
     setUserAnswer('');
     setErrorMsg(null);
-  };
-
-  // Regenerate question within the same session
-  const handleRegenerateQuestion = async () => {
-    setRegenerating(true);
-    setErrorMsg(null);
-    try {
-      const resp = await generateAssessment(moduleId);
-      setSessionId(resp.sessionId);
-      setQuestion(resp.generatedQuestion);
-      setUserAnswer('');
-    } catch (err) {
-      console.error('Failed to regenerate question:', err);
-      setErrorMsg('Nepodařilo se vygenerovat novou otázku.');
-    } finally {
-      setRegenerating(false);
-    }
   };
 
   // Last attempt feedback
@@ -327,27 +310,12 @@ export default function AssessmentTab({
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-3">
                 {lastAttempt && attemptsRemaining > 0 && (
-                  <>
-                    <button
-                      onClick={handleRetry}
-                      className="text-sm text-gray-500 hover:text-gray-700 font-medium"
-                    >
-                      Upravit odpověď
-                    </button>
-                    <button
-                      onClick={handleRegenerateQuestion}
-                      disabled={regenerating}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline disabled:opacity-50"
-                      style={{ color: '#8B5BA8' }}
-                    >
-                      {regenerating ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      )}
-                      Nová otázka
-                    </button>
-                  </>
+                  <button
+                    onClick={handleRetry}
+                    className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                  >
+                    Upravit odpověď
+                  </button>
                 )}
               </div>
               <button

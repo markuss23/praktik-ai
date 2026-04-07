@@ -18,6 +18,7 @@
     "@tiptap/extension-underline": "^3.15.3",
     "@tiptap/react": "^3.15.3",
     "@tiptap/starter-kit": "^3.15.3",
+    "@tremor/react": "^3.18.7",
     "axios": "^1.13.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",

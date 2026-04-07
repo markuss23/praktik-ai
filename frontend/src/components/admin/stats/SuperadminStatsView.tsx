@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { getCourses, listEnrollments } from '@/lib/api-client';
 import type { Course, Enrollment } from '@/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { BarChart, DonutChart } from '@tremor/react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ChevronDown, ChevronUp, Users, BookOpen, TrendingUp, GraduationCap, Loader2 } from 'lucide-react';
 
@@ -129,19 +129,18 @@ export function SuperadminStatsView() {
       .slice(0, 8)
       .map(cs => ({
         name: cs.course.title.length > 18 ? cs.course.title.slice(0, 18) + '…' : cs.course.title,
-        fullName: cs.course.title,
-        enrolled: cs.enrollments.length,
-        completed: cs.completedCount,
+        'Zapsaných': cs.enrollments.length,
+        'Dokončilo': cs.completedCount,
       }));
   }, [courseStats]);
 
-  // Completion pie chart data
-  const pieData = useMemo(() => {
+  // Completion donut chart data
+  const donutData = useMemo(() => {
     const total = globalStats.totalEnrolled;
     if (total === 0) return [];
     return [
-      { name: 'Dokončeno', value: globalStats.totalCompleted, fill: '#22c55e' },
-      { name: 'Rozpracováno', value: total - globalStats.totalCompleted, fill: '#e5e7eb' },
+      { name: 'Dokončeno', value: globalStats.totalCompleted },
+      { name: 'Rozpracováno', value: total - globalStats.totalCompleted },
     ];
   }, [globalStats]);
 
@@ -210,38 +209,20 @@ export function SuperadminStatsView() {
         >
           <h2 className="text-lg font-bold text-gray-900 mb-4">Top kurzy dle zápisů</h2>
           {topCoursesChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={topCoursesChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value, name) => [
-                    value,
-                    name === 'enrolled' ? 'Zapsaných' : 'Dokončilo',
-                  ]}
-                  labelFormatter={(_, payload) => {
-                    const item = payload?.[0]?.payload;
-                    return item?.fullName ?? '';
-                  }}
-                />
-                <Bar dataKey="enrolled" name="Zapsaných" radius={[4, 4, 0, 0]}>
-                  {topCoursesChartData.map((_, idx) => (
-                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} opacity={0.4} />
-                  ))}
-                </Bar>
-                <Bar dataKey="completed" name="Dokončilo" radius={[4, 4, 0, 0]}>
-                  {topCoursesChartData.map((_, idx) => (
-                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart
+              data={topCoursesChartData}
+              index="name"
+              categories={['Zapsaných', 'Dokončilo']}
+              colors={['indigo', 'emerald']}
+              yAxisWidth={48}
+              className="h-64"
+            />
           ) : (
             <p className="text-sm text-gray-500 text-center py-8">Žádná data k zobrazení</p>
           )}
         </motion.div>
 
-        {/* Pie chart */}
+        {/* Donut chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -249,33 +230,23 @@ export function SuperadminStatsView() {
           className="bg-white rounded-xl border border-gray-200 p-6"
         >
           <h2 className="text-lg font-bold text-gray-900 mb-4">Míra dokončení</h2>
-          {pieData.length > 0 ? (
+          {donutData.length > 0 ? (
             <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={180}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
-                    strokeWidth={0}
-                  >
-                    {pieData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [value, 'Studentů']} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex items-center gap-4 text-sm mt-2">
+              <DonutChart
+                data={donutData}
+                category="value"
+                index="name"
+                colors={['emerald', 'gray']}
+                className="h-44"
+                showAnimation
+              />
+              <div className="flex items-center gap-4 text-sm mt-4">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
                   Dokončeno
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-gray-200" />
+                  <span className="w-3 h-3 rounded-full bg-gray-300" />
                   Rozpracováno
                 </span>
               </div>

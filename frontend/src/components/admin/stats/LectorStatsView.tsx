@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getCourses, listEnrollments, getModules } from '@/lib/api-client';
 import type { Course, Enrollment, Module } from '@/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart } from '@tremor/react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronUp, Users, BookOpen, TrendingUp, Layers } from 'lucide-react';
 
@@ -76,10 +76,8 @@ export function LectorStatsView() {
   const overviewChartData = useMemo(() => {
     return courseStats.map(cs => ({
       name: cs.course.title.length > 20 ? cs.course.title.slice(0, 20) + '…' : cs.course.title,
-      fullName: cs.course.title,
-      enrolled: cs.enrollments.length,
-      completed: cs.enrollments.filter(e => e.completedAt !== null).length,
-      completionRate: cs.completionRate,
+      'Zapsaných': cs.enrollments.length,
+      'Dokončilo': cs.enrollments.filter(e => e.completedAt !== null).length,
     }));
   }, [courseStats]);
 
@@ -158,32 +156,14 @@ export function LectorStatsView() {
             className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
           >
             <h2 className="text-lg font-bold text-gray-900 mb-4">Přehled úspěšnosti kurzů</h2>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={overviewChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value, name) => [
-                    value,
-                    name === 'enrolled' ? 'Zapsaných' : 'Dokončilo',
-                  ]}
-                  labelFormatter={(label, payload) => {
-                    const item = payload?.[0]?.payload;
-                    return item?.fullName ?? label;
-                  }}
-                />
-                <Bar dataKey="enrolled" name="Zapsaných" radius={[4, 4, 0, 0]}>
-                  {overviewChartData.map((_, idx) => (
-                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} opacity={0.4} />
-                  ))}
-                </Bar>
-                <Bar dataKey="completed" name="Dokončilo" radius={[4, 4, 0, 0]}>
-                  {overviewChartData.map((_, idx) => (
-                    <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <BarChart
+              data={overviewChartData}
+              index="name"
+              categories={['Zapsaných', 'Dokončilo']}
+              colors={['indigo', 'emerald']}
+              yAxisWidth={48}
+              className="h-72"
+            />
           </motion.div>
 
           {/* Per-course details */}
@@ -275,7 +255,7 @@ export function LectorStatsView() {
                             </div>
                           </div>
 
-                          {/* Module list with chart */}
+                          {/* Module list */}
                           {cs.modules.length > 0 && (
                             <div>
                               <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
