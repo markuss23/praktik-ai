@@ -196,7 +196,7 @@ export default function ModulePage() {
   const handleContinue = () => {
     if (activeTab === 'prirucka') {
       if (currentBlockIndex < totalBlocks - 1) {
-        setCurrentBlockIndex(prev => prev + 1);
+        setCurrentBlockIndex((prev: number) => prev + 1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setHandbookCompleted(true);
@@ -207,7 +207,7 @@ export default function ModulePage() {
 
   const handlePrevBlock = () => {
     if (currentBlockIndex > 0) {
-      setCurrentBlockIndex(prev => prev - 1);
+      setCurrentBlockIndex((prev: number) => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };

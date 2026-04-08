@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getCourses, listEnrollments, getModules } from '@/lib/api-client';
 import type { Course, Enrollment, Module } from '@/api';
-import { BarChart } from '@tremor/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronUp, Users, BookOpen, TrendingUp, Layers } from 'lucide-react';
 
@@ -156,14 +156,17 @@ export function LectorStatsView() {
             className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
           >
             <h2 className="text-lg font-bold text-gray-900 mb-4">Přehled úspěšnosti kurzů</h2>
-            <BarChart
-              data={overviewChartData}
-              index="name"
-              categories={['Zapsaných', 'Dokončilo']}
-              colors={['indigo', 'emerald']}
-              yAxisWidth={48}
-              className="h-72"
-            />
+            <ResponsiveContainer width="100%" height={288}>
+              <BarChart data={overviewChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis width={48} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Zapsaných" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Dokončilo" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </motion.div>
 
           {/* Per-course details */}

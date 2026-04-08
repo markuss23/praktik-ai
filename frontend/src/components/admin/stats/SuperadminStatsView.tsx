@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { getCourses, listEnrollments } from '@/lib/api-client';
 import type { Course, Enrollment } from '@/api';
-import { BarChart, DonutChart } from '@tremor/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ChevronDown, ChevronUp, Users, BookOpen, TrendingUp, GraduationCap, Loader2 } from 'lucide-react';
 
@@ -209,14 +209,17 @@ export function SuperadminStatsView() {
         >
           <h2 className="text-lg font-bold text-gray-900 mb-4">Top kurzy dle zápisů</h2>
           {topCoursesChartData.length > 0 ? (
-            <BarChart
-              data={topCoursesChartData}
-              index="name"
-              categories={['Zapsaných', 'Dokončilo']}
-              colors={['indigo', 'emerald']}
-              yAxisWidth={48}
-              className="h-64"
-            />
+            <ResponsiveContainer width="100%" height={256}>
+              <BarChart data={topCoursesChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis width={48} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Zapsaných" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Dokončilo" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
             <p className="text-sm text-gray-500 text-center py-8">Žádná data k zobrazení</p>
           )}
@@ -232,14 +235,15 @@ export function SuperadminStatsView() {
           <h2 className="text-lg font-bold text-gray-900 mb-4">Míra dokončení</h2>
           {donutData.length > 0 ? (
             <div className="flex flex-col items-center">
-              <DonutChart
-                data={donutData}
-                category="value"
-                index="name"
-                colors={['emerald', 'gray']}
-                className="h-44"
-                showAnimation
-              />
+              <ResponsiveContainer width="100%" height={176}>
+                <PieChart>
+                  <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
+                    <Cell fill="#10b981" />
+                    <Cell fill="#d1d5db" />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
               <div className="flex items-center gap-4 text-sm mt-4">
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-emerald-500" />
