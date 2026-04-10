@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { updateProfile } from '@/lib/api-client';
@@ -22,6 +22,14 @@ export function AiPreferencesModal({
 }: AiPreferencesModalProps) {
   const [aiTone, setAiTone] = useState(initialAiTone);
   const [aiExpressionLevel, setAiExpressionLevel] = useState(initialAiExpressionLevel);
+
+  useEffect(() => {
+    if (isOpen) {
+      setAiTone(initialAiTone);
+      setAiExpressionLevel(initialAiExpressionLevel);
+    }
+  }, [isOpen, initialAiTone, initialAiExpressionLevel]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
