@@ -1,6 +1,7 @@
 // Admin views - lazy loaded for code splitting
 export { AdminViewRouter } from './AdminViewRouter';
 export { CoursesListView } from './CoursesListView';
+export { CategoriesListView } from './CategoriesListView';
 export { CourseContentView } from './CourseContentView';
 export { CourseTestsView } from './CourseTestsView';
 export { CourseSummaryView } from './CourseSummaryView';
@@ -8,3 +9,6 @@ export { CourseAICreateView } from './CourseAICreateView';
 export { CourseUploadView } from './CourseUploadView';
 export { CourseEditView } from './CourseEditView';
 export { ModuleEditView } from './ModuleEditView';
+export { ReviewListView } from './ReviewListView';
+export { ReviewCourseView } from './ReviewCourseView';
+export { AiMentorView } from './AiMentorView';

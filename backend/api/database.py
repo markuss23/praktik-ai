@@ -41,8 +41,6 @@ def init_db(create_extensions: bool = True) -> None:
                 conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
             except ProgrammingError as e:
                 print(e)
-                # Typicky nedostatečná práva — necháme projít dál, tabulky se stejně vytvoří.
-                # Můžeš sem dát logging.warning(...)
                 pass
 
         # Vytvoření všech tabulek a enum typů

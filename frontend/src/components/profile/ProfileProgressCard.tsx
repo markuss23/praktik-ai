@@ -1,9 +1,12 @@
+'use client';
+
 import { BarChart2 } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export interface ProgressItem {
   label: string;
   percentage: number;
-  color?: string; // tailwind bg color class, e.g. 'bg-green-500'
+  color?: string;
 }
 
 interface ProfileProgressCardProps {
@@ -36,10 +39,12 @@ export function ProfileProgressCard({ items }: ProfileProgressCardProps) {
                 <span className="text-sm font-semibold text-gray-800">{item.label}</span>
                 <span className="text-sm font-semibold text-gray-800">{item.percentage}%</span>
               </div>
-              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${barColor}`}
-                  style={{ width: `${item.percentage}%` }}
+              <div className="h-2.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${item.percentage}%` }}
+                  transition={{ duration: 0.8, delay: idx * 0.15, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${barColor}`}
                 />
               </div>
             </div>

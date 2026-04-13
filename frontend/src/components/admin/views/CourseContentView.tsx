@@ -1,129 +1,91 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Module, LearnBlock } from '@/api';
-import { getCourse, getCourses, updateModule, createModule, createLearnBlock, updateLearnBlock } from '@/lib/api-client';
-import { slugify } from '@/lib/utils';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
+import { useState, useEffect } from 'react';
+import { LearnBlock, FeedbackItem, Status } from '@/api';
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+  updateModule, createModule, createLearnBlock, updateLearnBlock,
+  getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
+} from '@/lib/api-client';
+import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { Modal } from '@/components/ui/Modal';
+import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { 
-  Plus, 
-  Bold, 
-  Italic, 
-  Underline as UnderlineIcon, 
-  List,
-  ListOrdered,
-  Link as LinkIcon,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  GripVertical,
-  Image as ImageIcon,
-  Strikethrough,
-  Undo,
-  Redo,
+import { useCourseData } from '@/hooks/useCourseData';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import {
+  Plus,
   Trash2,
-  X
+  ChevronDown,
+  ChevronUp,
+  Send,
+  CheckCircle,
+  CornerDownRight,
+  ArrowUpCircle,
 } from 'lucide-react';
 
 interface ModuleContent {
   content: string;
   learnId?: number;
-  position?: number;
 }
 
-interface LocalModule extends Partial<Module> {
+interface LocalModule {
   moduleId: number;
   title: string;
-  position: number;
-  isTemporary?: boolean;
+  isActive?: boolean;
+  courseId?: number;
   learnBlocks?: LearnBlock[];
+  isTemporary?: boolean;
 }
 
 interface CourseContentViewProps {
   courseId: number;
+  initialModuleId?: number;
 }
 
-// Položka modulu s podporou přetahování
-function SortableModuleItem({ 
-  module, 
-  index, 
-  isSelected, 
-  onSelect, 
+// Položka modulu v osnově
+function ModuleItem({
+  module,
+  isSelected,
+  isExpanded,
+  onSelect,
+  onToggle,
   onDelete,
-  isTemporary 
-}: { 
-  module: LocalModule; 
-  index: number; 
-  isSelected: boolean; 
+}: {
+  module: LocalModule;
+  isSelected: boolean;
+  isExpanded: boolean;
   onSelect: () => void;
+  onToggle: () => void;
   onDelete?: () => void;
-  isTemporary?: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: module.moduleId });
-
-  const style = {
-    transform: transform ? `translateY(${transform.y}px)` : undefined,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
-        isSelected 
-          ? 'bg-purple-50 border-l-4 border-l-purple-600' 
+      className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
+        isSelected
+          ? 'bg-purple-50 border-l-4 border-l-purple-600'
           : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-      } ${isTemporary ? 'bg-yellow-50' : ''}`}
+      } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
       onClick={onSelect}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing flex-shrink-0"
-        onClick={(e) => e.stopPropagation()}
+      <button
+        className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
       >
-        <GripVertical size={16} className="text-gray-400" />
-      </div>
-      <span className={`text-sm flex-1 min-w-0 truncate ${
-        isSelected ? 'text-purple-900 font-medium' : 'text-black'
-      } ${isTemporary ? 'italic' : ''}`}>
+        {isExpanded ? (
+          <ChevronDown size={14} className="text-gray-400" />
+        ) : (
+          <ChevronUp size={14} className="text-gray-400" />
+        )}
+      </button>
+      <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
         {module.title}
-        {isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+        {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
       </span>
-      {isTemporary && onDelete && (
+      {module.isTemporary && onDelete && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -139,109 +101,148 @@ function SortableModuleItem({
   );
 }
 
-// Tlačítko v panelu nástrojů
-function ToolbarButton({ 
-  onClick, 
-  isActive = false, 
-  disabled = false,
-  title,
-  children 
-}: { 
-  onClick: () => void; 
-  isActive?: boolean; 
-  disabled?: boolean;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`p-2 rounded transition-colors ${
-        isActive 
-          ? 'bg-purple-100 text-purple-700' 
-          : 'hover:bg-gray-100 text-black'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      {children}
-    </button>
-  );
-}
-
 // Editor obsahu kurzu s rich text editorem
-export function CourseContentView({ courseId }: CourseContentViewProps) {
+export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
   const { goToCourseTests, goBack } = useAdminNavigation();
-  
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [courseTitle, setCourseTitle] = useState('');
+  const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
+  const { isOwner } = useCurrentUser();
+
   const [modules, setModules] = useState<LocalModule[]>([]);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [showAddModuleModal, setShowAddModuleModal] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [nextTempId, setNextTempId] = useState(-1);
-
-  // Senzory pro drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-  
+  const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
 
-  // TipTap Editor
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-      }),
-      Underline,
-      TextAlign.configure({
-        types: ['heading', 'paragraph'],
-      }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-600 underline cursor-pointer',
-        },
-      }),
-      Image.configure({
-        HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg',
-        },
-      }),
-      Placeholder.configure({
-        placeholder: 'Napište obsah modulu...',
-      }),
-    ],
+  // Rich text editor
+  const { editor, EditorToolbar, EditorContent: EditorContentComponent, editorContentClass } = useRichTextEditor({
     content: '',
-    immediatelyRender: false,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4',
-      },
-    },
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
+    onChange: (html) => {
       setModuleContents(prev => ({
         ...prev,
         [selectedModuleIndex]: {
           ...prev[selectedModuleIndex],
-          content: html
-        }
+          content: html,
+        },
       }));
     },
   });
+
+  // Feedback state
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [replyTexts, setReplyTexts] = useState<Record<number, string>>({});
+  const [showReplyFor, setShowReplyFor] = useState<number | null>(null);
+  const [submittingReply, setSubmittingReply] = useState<number | null>(null);
+  const [resolvingFeedback, setResolvingFeedback] = useState<number | null>(null);
+  const [resubmitLoading, setResubmitLoading] = useState(false);
+
+  const courseStatus = courseData?.status as string | undefined;
+  const isEdited = courseStatus === Status.Edited;
+  const hasFeedbacks = feedbacks.length > 0;
+  const showCommentsPanel = isEdited && hasFeedbacks;
+  const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
+  const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
+
+  // Load feedbacks
+  useEffect(() => {
+    if (!courseId) return;
+    getFeedbackSection(courseId)
+      .then(section => setFeedbacks(section.feedbacks))
+      .catch(() => {}); // feedback may not exist
+  }, [courseId]);
+
+  const currentModuleFeedbacks = modules[selectedModuleIndex]
+    ? feedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
+    : [];
+
+  const feedbackCountByModule = (moduleId: number) =>
+    feedbacks.filter(fb => fb.moduleId === moduleId).length;
+
+  const feedbackContextLabel = (fb: FeedbackItem) => {
+    if (fb.contentType === 'learn_block' && fb.contentRef) return `Příručka – str. ${fb.contentRef}`;
+    if (fb.contentType === 'practice' && fb.contentRef) return `Procvičování – ot. ${fb.contentRef}`;
+    return null;
+  };
+
+  const handleReply = async (feedbackId: number) => {
+    const text = replyTexts[feedbackId]?.trim();
+    if (!text) return;
+    setSubmittingReply(feedbackId);
+    try {
+      const updated = await replyToFeedback(feedbackId, text);
+      setFeedbacks(prev => prev.map(fb => fb.feedbackId === feedbackId ? updated : fb));
+      setShowReplyFor(null);
+      setReplyTexts(prev => ({ ...prev, [feedbackId]: '' }));
+    } catch (err) {
+      console.error('Failed to reply:', err);
+    } finally {
+      setSubmittingReply(null);
+    }
+  };
+
+  const handleToggleResolve = async (fb: FeedbackItem) => {
+    setResolvingFeedback(fb.feedbackId);
+    try {
+      const updated = await resolveFeedback(fb.feedbackId, !fb.isResolved);
+      setFeedbacks(prev => prev.map(f => f.feedbackId === fb.feedbackId ? updated : f));
+    } catch (err) {
+      console.error('Failed to resolve:', err);
+    } finally {
+      setResolvingFeedback(null);
+    }
+  };
+
+  const handleResubmit = async () => {
+    setResubmitLoading(true);
+    try {
+      await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.InReview);
+    } catch (err) {
+      console.error('Failed to resubmit:', err);
+    } finally {
+      setResubmitLoading(false);
+    }
+  };
+
+  // Inicializace z courseData
+  useEffect(() => {
+    if (!courseData) return;
+
+    const localModules: LocalModule[] = (courseData.modules || []).map((m) => ({
+      moduleId: m.moduleId,
+      title: m.title,
+      isActive: m.isActive,
+      courseId: m.courseId,
+      learnBlocks: m.learnBlocks,
+      isTemporary: false,
+    }));
+    setModules(localModules);
+
+    if (initialModuleId) {
+      const idx = localModules.findIndex(m => m.moduleId === initialModuleId);
+      if (idx >= 0) {
+        setSelectedModuleIndex(idx);
+        setExpandedOutlineItems(new Set([idx]));
+      }
+    }
+
+    const initialContents: {[key: number]: ModuleContent} = {};
+    (courseData.modules || []).forEach((module, index) => {
+      const learnBlock = module.learnBlocks && module.learnBlocks.length > 0
+        ? module.learnBlocks[0]
+        : null;
+      const content = learnBlock ? learnBlock.content : (courseData.description || '');
+      initialContents[index] = {
+        content,
+        learnId: learnBlock?.learnId,
+      };
+    });
+    setModuleContents(initialContents);
+
+    if (editor && initialContents[0]) {
+      editor.commands.setContent(initialContents[0].content);
+    }
+  }, [courseData, editor, initialModuleId]);
 
   // Aktualizace obsahu editoru při změně modulu
   useEffect(() => {
@@ -254,98 +255,24 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
     }
   }, [selectedModuleIndex, editor, moduleContents]);
 
-  useEffect(() => {
-    async function loadCourse() {
-      try {
-        const course = await getCourse(courseId);
-        
-        setCourseTitle(course.title);
-        
-        const localModules: LocalModule[] = (course.modules || []).map((m, idx) => ({
-          moduleId: m.moduleId,
-          title: m.title,
-          position: m.position ?? idx + 1,
-          isActive: m.isActive,
-          courseId: m.courseId,
-          learnBlocks: m.learnBlocks,
-          practiceQuestions: m.practiceQuestions,
-          isTemporary: false,
-        }));
-        setModules(localModules);
-        
-        const initialContents: {[key: number]: ModuleContent} = {};
-        (course.modules || []).forEach((module, index) => {
-          const learnBlock = module.learnBlocks && module.learnBlocks.length > 0
-            ? module.learnBlocks[0]
-            : null;
-          const content = learnBlock ? learnBlock.content : (course.description || '');
-          initialContents[index] = {
-            content: content,
-            learnId: learnBlock?.learnId,
-            position: learnBlock?.position ?? 1,
-          };
-        });
-        setModuleContents(initialContents);
-        
-        if (editor && initialContents[0]) {
-          editor.commands.setContent(initialContents[0].content);
-        }
-      } catch (err) {
-        console.error('Failed to load course:', err);
-        setError('Nepodařilo se načíst kurz');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadCourse();
-  }, [courseId, editor]);
-
-  const selectModule = (index: number) => {
-    setSelectedModuleIndex(index);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setModules((items) => {
-        const oldIndex = items.findIndex((item) => item.moduleId === active.id);
-        const newIndex = items.findIndex((item) => item.moduleId === over.id);
-        
-        const newItems = arrayMove(items, oldIndex, newIndex);
-        return newItems.map((item, idx) => ({
-          ...item,
-          position: idx + 1,
-        }));
-      });
-
-      const oldIndex = modules.findIndex((item) => item.moduleId === active.id);
-      const newIndex = modules.findIndex((item) => item.moduleId === over.id);
-      if (selectedModuleIndex === oldIndex) {
-        setSelectedModuleIndex(newIndex);
-      } else if (selectedModuleIndex > oldIndex && selectedModuleIndex <= newIndex) {
-        setSelectedModuleIndex(selectedModuleIndex - 1);
-      } else if (selectedModuleIndex < oldIndex && selectedModuleIndex >= newIndex) {
-        setSelectedModuleIndex(selectedModuleIndex + 1);
-      }
-    }
+  const toggleOutlineItem = (index: number) => {
+    setExpandedOutlineItems(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   const handleAddModule = () => {
     if (!newModuleTitle.trim()) return;
-
     const newModule: LocalModule = {
       moduleId: nextTempId,
       title: newModuleTitle.trim(),
-      position: modules.length + 1,
       isTemporary: true,
     };
-
     setModules([...modules, newModule]);
-    setModuleContents(prev => ({
-      ...prev,
-      [modules.length]: { content: '' }
-    }));
+    setModuleContents(prev => ({ ...prev, [modules.length]: { content: '' } }));
     setNextTempId(nextTempId - 1);
     setNewModuleTitle('');
     setShowAddModuleModal(false);
@@ -356,18 +283,13 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
     const moduleToDelete = modules[index];
     if (!moduleToDelete.isTemporary) return;
 
-    const newModules = modules.filter((_, i) => i !== index).map((m, idx) => ({
-      ...m,
-      position: idx + 1,
-    }));
+    const newModules = modules.filter((_, i) => i !== index);
     setModules(newModules);
 
     const newContents: {[key: number]: ModuleContent} = {};
     newModules.forEach((_, idx) => {
       const oldIdx = idx >= index ? idx + 1 : idx;
-      if (moduleContents[oldIdx]) {
-        newContents[idx] = moduleContents[oldIdx];
-      }
+      if (moduleContents[oldIdx]) newContents[idx] = moduleContents[oldIdx];
     });
     setModuleContents(newContents);
 
@@ -378,104 +300,53 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
     }
   };
 
-  const setLink = useCallback(() => {
-    if (!editor) return;
-    
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
-
-    if (url === null) return;
-
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  }, [editor]);
-
-  const addImage = useCallback(() => {
-    if (!editor) return;
-    
-    const url = window.prompt('URL obrázku');
-
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
-
   const saveContent = async () => {
     if (!courseId) return;
-    
     try {
       const updatedModules = [...modules];
       const updatedContents = { ...moduleContents };
-      
+
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
         const content = updatedContents[i];
-        
+
         if (module.isTemporary) {
-          const createdModule = await createModule({
-            courseId,
-            title: module.title,
-            position: module.position,
-          });
-          
-          updatedModules[i] = {
-            ...module,
-            moduleId: createdModule.moduleId,
-            isTemporary: false,
-          };
-          
+          const createdModule = await createModule({ courseId, title: module.title });
+          updatedModules[i] = { ...module, moduleId: createdModule.moduleId, isTemporary: false };
+
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
-            position: 1,
+            title: module.title || `Blok ${i + 1}`,
             content: content?.content || '',
           });
-          
-          updatedContents[i] = {
-            ...content,
-            content: content?.content || '',
-            learnId: createdLearnBlock.learnId,
-            position: 1,
-          };
+          updatedContents[i] = { ...content, content: content?.content || '', learnId: createdLearnBlock.learnId };
         }
       }
-      
+
       setModules(updatedModules);
       setModuleContents(updatedContents);
-      
+
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
-        
         if (module.isTemporary) continue;
-        
-        await updateModule(module.moduleId, {
-          title: module.title,
-          position: module.position,
-        });
+        await updateModule(module.moduleId, { title: module.title });
       }
-      
+
       const learnBlockPromises: Promise<unknown>[] = [];
       for (let i = 0; i < updatedModules.length; i++) {
         const module = updatedModules[i];
         const content = updatedContents[i];
-        
         if (module.isTemporary) continue;
-        
         if (content?.learnId) {
           learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
-              position: content.position ?? 1,
+              title: module.title || `Blok`,
               content: content.content,
             })
           );
         }
       }
-      
       await Promise.all(learnBlockPromises);
-      console.log('Content saved successfully');
     } catch (err) {
       console.error('Failed to save content:', err);
       alert('Nepodařilo se uložit obsah');
@@ -485,8 +356,8 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
 
   const handleContinue = async () => {
     await saveContent();
-    // Přechod na editor testů
-    goToCourseTests(courseId);
+    const selectedModule = modules[selectedModuleIndex];
+    goToCourseTests(courseId, selectedModule?.moduleId);
   };
 
   const handleBack = async () => {
@@ -499,13 +370,8 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
     handleContinue();
   };
 
-  if (loading) {
-    return <LoadingState />;
-  }
-
-  if (error) {
-    return <ErrorState message={error} />;
-  }
+  if (courseLoading) return <LoadingState />;
+  if (courseError) return <ErrorState message={courseError} />;
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
@@ -516,248 +382,110 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
         showButtons={false}
       />
 
+      {/* Resubmit banner */}
+      {/* {isEdited && hasFeedbacks && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+          <p className="text-sm text-amber-800">
+            Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
+          </p>
+          {canResubmit && (
+            <button
+              onClick={handleResubmit}
+              disabled={resubmitLoading}
+              className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              <ArrowUpCircle size={14} />
+              {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
+            </button>
+          )}
+        </div>
+      )} */}
+
       <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
         {/* Left Sidebar - Course Outline */}
-        <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <div className="w-56 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-black">Osnova kurzu</h2>
-              <button 
+              <button
                 className="p-1 hover:bg-gray-100 rounded"
                 onClick={() => setShowAddModuleModal(true)}
                 title="Přidat modul"
               >
-                <Plus size={18} className="text-gray-600" />
+                <Plus size={16} className="text-gray-600" />
               </button>
             </div>
           </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={modules.map(m => m.moduleId)}
-                strategy={verticalListSortingStrategy}
-              >
-                {modules.map((module, index) => (
-                  <SortableModuleItem
-                    key={module.moduleId}
-                    module={module}
-                    index={index}
-                    isSelected={selectedModuleIndex === index}
-                    onSelect={() => selectModule(index)}
-                    onDelete={module.isTemporary ? () => handleDeleteModule(index) : undefined}
-                    isTemporary={module.isTemporary}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-            
-            {modules.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                Žádné moduly
+          <div className="flex-1 overflow-y-auto">
+            {modules.map((module, index) => (
+              <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+                <div
+                  className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
+                    selectedModuleIndex === index
+                      ? 'bg-purple-50 border-l-4 border-l-purple-600'
+                      : 'hover:bg-gray-50 border-l-4 border-l-transparent'
+                  } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
+                  onClick={() => setSelectedModuleIndex(index)}
+                >
+                  <button
+                    className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+                    onClick={(e) => { e.stopPropagation(); toggleOutlineItem(index); }}
+                  >
+                    {expandedOutlineItems.has(index) ? (
+                      <ChevronDown size={14} className="text-gray-400" />
+                    ) : (
+                      <ChevronUp size={14} className="text-gray-400" />
+                    )}
+                  </button>
+                  <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
+                    {module.title}
+                    {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+                  </span>
+                  {feedbackCountByModule(module.moduleId) > 0 && (
+                    <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                      {feedbackCountByModule(module.moduleId)}
+                    </span>
+                  )}
+                  {module.isTemporary && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteModule(index); }}
+                      className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
+                      title="Odstranit modul"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+                {expandedOutlineItems.has(index) && moduleContents[index] && (
+                  <div
+                    className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+                    onClick={() => setSelectedModuleIndex(index)}
+                  >
+                    {moduleContents[index].content
+                      ? moduleContents[index].content.replace(/<[^>]*>/g, '').substring(0, 40) + '...'
+                      : 'Prázdný obsah'}
+                  </div>
+                )}
               </div>
+            ))}
+
+            {modules.length === 0 && (
+              <div className="p-4 text-center text-gray-500 text-sm">Žádné moduly</div>
             )}
           </div>
-
-          {/* Add Module Modal */}
-          {showAddModuleModal && (
-            <div className="fixed inset-0 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl border border-gray-300">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-black">Přidat nový modul</h3>
-                  <button
-                    onClick={() => {
-                      setShowAddModuleModal(false);
-                      setNewModuleTitle('');
-                    }}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    <X size={20} className="text-gray-500" />
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={newModuleTitle}
-                  onChange={(e) => setNewModuleTitle(e.target.value)}
-                  placeholder="Název modulu"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black mb-4"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddModule();
-                    }
-                  }}
-                />
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setShowAddModuleModal(false);
-                      setNewModuleTitle('');
-                    }}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                  >
-                    Zrušit
-                  </button>
-                  <button
-                    onClick={handleAddModule}
-                    disabled={!newModuleTitle.trim()}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  >
-                    Přidat
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right Content - Editor */}
+        {/* Center - Editor */}
         <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Úpravy podkladů ke kurzu</h2>
           </div>
-          
-          {/* Editor Toolbar */}
-          <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-gray-200 bg-white">
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().undo().run()}
-              disabled={!editor?.can().undo()}
-              title="Zpět (Ctrl+Z)"
-            >
-              <Undo size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().redo().run()}
-              disabled={!editor?.can().redo()}
-              title="Vpřed (Ctrl+Y)"
-            >
-              <Redo size={16} />
-            </ToolbarButton>
-            
-            <div className="w-px h-6 bg-gray-300 mx-1" />
-            
-            <select 
-              className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-black min-w-[100px]"
-              value={
-                editor?.isActive('heading', { level: 1 }) ? 'h1' :
-                editor?.isActive('heading', { level: 2 }) ? 'h2' :
-                editor?.isActive('heading', { level: 3 }) ? 'h3' : 'p'
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === 'p') {
-                  editor?.chain().focus().setParagraph().run();
-                } else if (value === 'h1') {
-                  editor?.chain().focus().toggleHeading({ level: 1 }).run();
-                } else if (value === 'h2') {
-                  editor?.chain().focus().toggleHeading({ level: 2 }).run();
-                } else if (value === 'h3') {
-                  editor?.chain().focus().toggleHeading({ level: 3 }).run();
-                }
-              }}
-            >
-              <option value="p">Odstavec</option>
-              <option value="h1">Nadpis 1</option>
-              <option value="h2">Nadpis 2</option>
-              <option value="h3">Nadpis 3</option>
-            </select>
-            
-            <div className="w-px h-6 bg-gray-300 mx-1" />
-            
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleBold().run()}
-              isActive={editor?.isActive('bold') ?? false}
-              title="Tučné (Ctrl+B)"
-            >
-              <Bold size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
-              isActive={editor?.isActive('italic') ?? false}
-              title="Kurzíva (Ctrl+I)"
-            >
-              <Italic size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleUnderline().run()}
-              isActive={editor?.isActive('underline') ?? false}
-              title="Podtržené (Ctrl+U)"
-            >
-              <UnderlineIcon size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleStrike().run()}
-              isActive={editor?.isActive('strike') ?? false}
-              title="Přeškrtnuté"
-            >
-              <Strikethrough size={16} />
-            </ToolbarButton>
-            
-            <div className="w-px h-6 bg-gray-300 mx-1" />
-            
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().setTextAlign('left').run()}
-              isActive={editor?.isActive({ textAlign: 'left' }) ?? false}
-              title="Zarovnat vlevo"
-            >
-              <AlignLeft size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().setTextAlign('center').run()}
-              isActive={editor?.isActive({ textAlign: 'center' }) ?? false}
-              title="Zarovnat na střed"
-            >
-              <AlignCenter size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().setTextAlign('right').run()}
-              isActive={editor?.isActive({ textAlign: 'right' }) ?? false}
-              title="Zarovnat vpravo"
-            >
-              <AlignRight size={16} />
-            </ToolbarButton>
-            
-            <div className="w-px h-6 bg-gray-300 mx-1" />
-            
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
-              isActive={editor?.isActive('bulletList') ?? false}
-              title="Odrážkový seznam"
-            >
-              <List size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-              isActive={editor?.isActive('orderedList') ?? false}
-              title="Číslovaný seznam"
-            >
-              <ListOrdered size={16} />
-            </ToolbarButton>
-            
-            <div className="w-px h-6 bg-gray-300 mx-1" />
-            
-            <ToolbarButton onClick={addImage} title="Vložit obrázek">
-              <ImageIcon size={16} />
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={setLink}
-              isActive={editor?.isActive('link') ?? false}
-              title="Vložit odkaz"
-            >
-              <LinkIcon size={16} />
-            </ToolbarButton>
-          </div>
 
-          {/* Editor Content */}
+          <EditorToolbar editor={editor} />
+
           <div className="flex-1 overflow-y-auto">
             {modules.length > 0 ? (
-              <EditorContent 
-                editor={editor} 
-                className="min-h-[300px] [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:p-6 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-4 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none text-black"
-              />
+              <EditorContentComponent editor={editor} className={editorContentClass} />
             ) : (
               <div className="text-center text-gray-500 py-12">
                 Nejsou k dispozici žádné moduly k úpravě
@@ -765,11 +493,160 @@ export function CourseContentView({ courseId }: CourseContentViewProps) {
             )}
           </div>
 
-          <PageFooterActions
-            onBack={handleBack}
-            onContinue={handleContinue}
-          />
+          <PageFooterActions onBack={handleBack} onContinue={handleContinue} />
         </div>
+
+        {/* Right - Comments panel (only when course has feedbacks from review) */}
+        {showCommentsPanel && (
+          <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex flex-col">
+            <div className="p-3 border-b border-gray-200">
+              <h2 className="text-sm font-semibold text-black">
+                Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
+              </h2>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {currentModuleFeedbacks.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+              ) : (
+                currentModuleFeedbacks.map(fb => (
+                  <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+                    <div className="px-3.5 py-2.5">
+                      {/* Header: author + resolve checkbox */}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-semibold text-gray-800 text-xs">
+                          {fb.author.displayName ?? 'Uživatel'}
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => handleToggleResolve(fb)}
+                            disabled={resolvingFeedback === fb.feedbackId}
+                            className={`p-0.5 rounded transition-colors ${
+                              fb.isResolved
+                                ? 'text-green-600 hover:text-green-700'
+                                : 'text-gray-300 hover:text-green-500'
+                            }`}
+                            title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Context label */}
+                      {feedbackContextLabel(fb) && (
+                        <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                      )}
+
+                      {/* Feedback text */}
+                      <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                    </div>
+
+                    {/* Existing reply */}
+                    {fb.reply && (
+                      <div className="px-3.5 pb-2.5">
+                        <div className="ml-3 bg-purple-50 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <CornerDownRight size={10} className="text-purple-400" />
+                            <span className="text-[10px] text-purple-500 font-medium">Vaše odpověď</span>
+                          </div>
+                          <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reply input (only if no reply yet) */}
+                    {!fb.reply && (
+                      <div className="px-3.5 pb-2.5">
+                        {showReplyFor === fb.feedbackId ? (
+                          <div>
+                            <textarea
+                              value={replyTexts[fb.feedbackId] ?? ''}
+                              onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
+                              rows={2}
+                              placeholder="Napište odpověď..."
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                            />
+                            <div className="flex gap-1 mt-1">
+                              <button
+                                onClick={() => handleReply(fb.feedbackId)}
+                                disabled={submittingReply === fb.feedbackId}
+                                className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
+                              >
+                                Odeslat
+                              </button>
+                              <button
+                                onClick={() => setShowReplyFor(null)}
+                                className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                              >
+                                Zrušit
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowReplyFor(fb.feedbackId)}
+                            className="text-xs text-purple-600 hover:underline flex items-center gap-0.5"
+                          >
+                            <CornerDownRight size={11} /> Odpovědět
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Resolve summary */}
+            <div className="p-3 border-t border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">
+                  Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
+                </span>
+                {allResolved && (
+                  <span className="text-green-600 font-medium flex items-center gap-1">
+                    <CheckCircle size={12} /> Vše vyřešeno
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Module Modal */}
+        <Modal
+          isOpen={showAddModuleModal}
+          onClose={() => { setShowAddModuleModal(false); setNewModuleTitle(''); }}
+          title="Přidat nový modul"
+          footer={
+            <>
+              <button
+                onClick={() => { setShowAddModuleModal(false); setNewModuleTitle(''); }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={handleAddModule}
+                disabled={!newModuleTitle.trim()}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Přidat
+              </button>
+            </>
+          }
+        >
+          <input
+            type="text"
+            value={newModuleTitle}
+            onChange={(e) => setNewModuleTitle(e.target.value)}
+            placeholder="Název modulu"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddModule(); }}
+          />
+        </Modal>
       </div>
     </div>
   );

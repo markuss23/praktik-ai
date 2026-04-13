@@ -2,7 +2,7 @@
 
 import { Suspense, lazy } from 'react';
 import { useAdminNavigation, AdminView } from '@/hooks/useAdminNavigation';
-import { LoadingState } from '../StateDisplays';
+import { PageSpinner } from '@/components/ui';
 
 // Lazy loading - komponenty se načtou až když jsou potřeba
 const CoursesListView = lazy(() => import('./CoursesListView'));
@@ -14,18 +14,6 @@ const CourseUploadView = lazy(() => import('./CourseUploadView'));
 const CourseEditView = lazy(() => import('./CourseEditView'));
 const ModuleEditView = lazy(() => import('./ModuleEditView'));
 
-// Loading stav při načítání lazy komponent
-function ViewLoadingFallback() {
-  return (
-    <div className="flex-1 flex items-center justify-center min-h-[400px]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-gray-500 text-sm">Načítání...</span>
-      </div>
-    </div>
-  );
-}
-
 // Router používá query params + shallow routing (bez reload stránky)
 export function AdminViewRouter() {
   const { currentView, courseId, moduleId } = useAdminNavigation();
@@ -36,13 +24,13 @@ export function AdminViewRouter() {
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseContentView courseId={courseId} />;
+        return <CourseContentView courseId={courseId} initialModuleId={moduleId} />;
 
       case 'course-tests':
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseTestsView courseId={courseId} />;
+        return <CourseTestsView courseId={courseId} initialModuleId={moduleId} />;
 
       case 'course-summary':
         if (!courseId) {
@@ -75,7 +63,7 @@ export function AdminViewRouter() {
   };
 
   return (
-    <Suspense fallback={<ViewLoadingFallback />}>
+    <Suspense fallback={<PageSpinner />}>
       {renderView()}
     </Suspense>
   );

@@ -14,3 +14,19 @@ TEXT_SEARCH_ANNOTATION = Annotated[
 IS_PUBLISHED_ANNOTATION = Annotated[
     bool, Query(description="Filter by published status")
 ]
+
+COURSE_BLOCK_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course block ID")
+]
+
+COURSE_TARGET_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course target ID")
+]
+
+COURSE_SUBJECT_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course subject ID")
+]
+
+COURSE_STATUS_ANNOTATION = Annotated[
+    str | None, Query(description="Filter by course status")
+]

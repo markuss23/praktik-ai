@@ -56,8 +56,12 @@ import api.database as _db_module  # noqa: E402
 
 _db_module.init_db = lambda *_args, **_kwargs: None  # no-op patch
 
+import api.seed as _seed_module  # noqa: E402
+
+_seed_module.seed_db = lambda *_args, **_kwargs: None  # no-op patch
+
 # ---------------------------------------------------------------------------
-# 3. Import the FastAPI application — the patched init_db is now live.
+# 3. Import the FastAPI application — the patched init_db and seed_db are now live.
 # ---------------------------------------------------------------------------
 from api.main import app  # noqa: E402
 

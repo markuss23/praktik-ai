@@ -84,8 +84,8 @@ export function useAdminNavigation() {
   /**
    * Navigate to course content editor
    */
-  const goToCourseContent = useCallback((courseId: number) => {
-    navigate({ view: 'course-content', courseId, moduleId: undefined });
+  const goToCourseContent = useCallback((courseId: number, moduleId?: number) => {
+    navigate({ view: 'course-content', courseId, moduleId });
   }, [navigate]);
 
   /**
@@ -117,10 +117,10 @@ export function useAdminNavigation() {
   }, [navigate]);
 
   /**
-   * Navigate to course tests editor
+   * Navigate to course tests editor, optionally pre-selecting a module
    */
-  const goToCourseTests = useCallback((courseId: number) => {
-    navigate({ view: 'course-tests', courseId, moduleId: undefined });
+  const goToCourseTests = useCallback((courseId: number, moduleId?: number) => {
+    navigate({ view: 'course-tests', courseId, moduleId });
   }, [navigate]);
 
   /**

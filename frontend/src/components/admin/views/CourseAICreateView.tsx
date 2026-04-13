@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { ArrowRight, Loader2 } from 'lucide-react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCategories } from '@/lib/api-client';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowRight, Loader2, Upload, X, FileText } from 'lucide-react';
+import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
-import { Category } from '@/api';
+import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
 // Tvorba kurzu pomocí AI generování
@@ -16,41 +16,92 @@ export function CourseAICreateView() {
   const [error, setError] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  
+  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
+  const [targets, setTargets] = useState<CourseTarget[]>([]);
+  const [subjects, setSubjects] = useState<CourseSubject[]>([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(true);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     moduleCount: 3,
-    categoryId: 0,
+    durationMinutes: '',
+    courseBlockId: 0,
+    courseTargetId: 0,
+    courseSubjectId: 0,
   });
 
-  // Načtení kategorií při mountu
+  // Načtení katalogů při mountu
   useEffect(() => {
-    async function loadCategories() {
+    async function loadCatalogs() {
       try {
-        const cats = await getCategories();
-        setCategories(cats);
-        if (cats.length > 0) {
-          setFormData(prev => ({ ...prev, categoryId: cats[0].categoryId }));
-        }
+        const [b, t, s] = await Promise.all([
+          getCourseBlocks(),
+          getCourseTargets(),
+          getCourseSubjects(),
+        ]);
+        setBlocks(b);
+        setTargets(t);
+        setSubjects(s);
+        setFormData(prev => ({
+          ...prev,
+          courseBlockId: b.length > 0 ? b[0].blockId : 0,
+          courseTargetId: t.length > 0 ? t[0].targetId : 0,
+          courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
+        }));
       } catch (err) {
-        console.error('Failed to load categories:', err);
-        setError('Nepodařilo se načíst kategorie');
+        console.error('Failed to load catalogs:', err);
+        setError('Nepodařilo se načíst katalogy');
       } finally {
-        setCategoriesLoading(false);
+        setCatalogsLoading(false);
       }
     }
-    loadCategories();
+    loadCatalogs();
   }, []);
 
+  const ACCEPTED_TYPES = '.md,.docx';
+  const ACCEPTED_EXTENSIONS = ['md', 'docx'];
+  const [dragActive, setDragActive] = useState(false);
+
+  const addFiles = useCallback((incoming: FileList | File[]) => {
+    const valid = Array.from(incoming).filter((f) => {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      return ACCEPTED_EXTENSIONS.includes(ext);
+    });
+    if (valid.length === 0) return;
+    setFiles((prev) => {
+      const names = new Set(prev.map((f) => f.name));
+      return [...prev, ...valid.filter((f) => !names.has(f.name))];
+    });
+    setError('');
+  }, []);
+
+  const removeFile = (name: string) => {
+    setFiles((prev) => prev.filter((f) => f.name !== name));
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (selectedFiles && selectedFiles.length > 0) {
-      setFiles(Array.from(selectedFiles));
-      setError('');
-    }
+    if (e.target.files) addFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragActive(false);
+      if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    },
+    [addFiles],
+  );
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,17 +118,20 @@ export function CourseAICreateView() {
     try {
       setStep('uploading');
       
-      if (formData.categoryId === 0) {
-        throw new Error('Prosím vyberte kategorii kurzu');
+      if (formData.courseBlockId === 0 || formData.courseTargetId === 0 || formData.courseSubjectId === 0) {
+        throw new Error('Prosím vyplňte všechny katalogové údaje');
       }
-      
+
       let course;
       try {
         course = await createCourse({
           title: formData.title,
           description: formData.description || undefined,
-          modulesCount: formData.moduleCount,
-          categoryId: formData.categoryId,
+          modulesCountAiGenerated: formData.moduleCount,
+          durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : formData.moduleCount * 20,
+          courseBlockId: formData.courseBlockId,
+          courseTargetId: formData.courseTargetId,
+          courseSubjectId: formData.courseSubjectId,
         });
       } catch (createErr: unknown) {
         if (createErr && typeof createErr === 'object' && 'response' in createErr) {
@@ -170,34 +224,64 @@ export function CourseAICreateView() {
               />
             </div>
 
-            {/* Kategorie kurzu */}
-            <div>
-              <label className="block text-sm font-semibold text-black mb-2">
-                Kategorie kurzu
-              </label>
-              {categoriesLoading ? (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Načítám kategorie...</span>
+            {/* Katalogové údaje */}
+            {catalogsLoading ? (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Načítám katalogy...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-2">
+                    Tematický blok
+                  </label>
+                  <select
+                    required
+                    value={formData.courseBlockId}
+                    onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                  >
+                    <option value={0} disabled>Vyberte blok...</option>
+                    {blocks.map((b) => (
+                      <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                    ))}
+                  </select>
                 </div>
-              ) : categories.length === 0 ? (
-                <p className="text-red-500">Žádné kategorie nejsou k dispozici. Nejprve vytvořte kategorii.</p>
-              ) : (
-                <select
-                  required
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
-                >
-                  <option value={0} disabled>Vyberte kategorii...</option>
-                  {categories.map((cat) => (
-                    <option key={cat.categoryId} value={cat.categoryId}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-2">
+                    Cílová skupina
+                  </label>
+                  <select
+                    required
+                    value={formData.courseTargetId}
+                    onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                  >
+                    <option value={0} disabled>Vyberte skupinu...</option>
+                    {targets.map((t) => (
+                      <option key={t.targetId} value={t.targetId}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-black mb-2">
+                    Obor
+                  </label>
+                  <select
+                    required
+                    value={formData.courseSubjectId}
+                    onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                  >
+                    <option value={0} disabled>Vyberte obor...</option>
+                    {subjects.map((s) => (
+                      <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Popis kurzu */}
             <div>
@@ -214,62 +298,116 @@ export function CourseAICreateView() {
               />
             </div>
 
-            {/* Počet modulů */}
-            <div>
-              <label className="block text-sm font-semibold text-black mb-2">
-                Počet modulů
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
-                >
-                  -
-                </button>
+            {/* Počet modulů + Délka kurzu */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-black mb-2">
+                  Počet modulů
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={formData.moduleCount}
+                    onChange={(e) => setFormData({ ...formData, moduleCount: parseInt(e.target.value) || 1 })}
+                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, moduleCount: Math.min(20, formData.moduleCount + 1) })}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-2">
+                  Délka kurzu (minuty)
+                </label>
                 <input
                   type="number"
                   min="1"
-                  max="20"
-                  value={formData.moduleCount}
-                  onChange={(e) => setFormData({ ...formData, moduleCount: parseInt(e.target.value) || 1 })}
-                  className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  value={formData.durationMinutes}
+                  onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
+                  className="w-32 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  placeholder={String(formData.moduleCount * 20)}
                 />
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, moduleCount: Math.min(20, formData.moduleCount + 1) })}
-                  className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
-                >
-                  +
-                </button>
               </div>
             </div>
+
 
             {/* Nahrát podklady */}
             <div>
               <label className="block text-sm font-semibold text-black mb-2">
                 Nahrát podklady
               </label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors text-sm"
-                >
-                  Nahrát podklady
-                </button>
-                <span className="text-sm text-gray-500">
-                  {files.length > 0 ? `${files.length} soubor(ů) vybráno: ${files.map(f => f.name).join(', ')}` : 'Žádné soubory vybrány'}
-                </span>
+
+              {/* Drop zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors ${
+                  dragActive
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-purple-500' : 'text-gray-400'}`} size={32} />
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Přetáhněte soubory sem nebo klikněte pro výběr
+                </p>
+                <p className="text-xs text-gray-500">
+                  Markdown (.md) a Word (.docx) — lze vybrat více souborů najednou
+                </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".md"
+                  accept={ACCEPTED_TYPES}
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
               </div>
+
+              {/* File list */}
+              {files.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {files.map((f) => (
+                    <li
+                      key={f.name}
+                      className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-gray-700 truncate">{f.name}</span>
+                        <span className="text-gray-400 flex-shrink-0">
+                          ({(f.size / 1024).toFixed(0)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(f.name)}
+                        className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        title="Odebrat soubor"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Tlačítka */}

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { ArrowLeft, Upload, X } from 'lucide-react';
-import { createCourse, uploadCourseFile } from '@/lib/api-client';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
+import { createCourse, uploadCourseFile, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
+import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
 // Nahrání souboru pro vytvoření kurzu
@@ -13,11 +14,44 @@ export function CourseUploadView() {
   const [error, setError] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
+  const [targets, setTargets] = useState<CourseTarget[]>([]);
+  const [subjects, setSubjects] = useState<CourseSubject[]>([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(true);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    courseBlockId: 0,
+    courseTargetId: 0,
+    courseSubjectId: 0,
   });
+
+  useEffect(() => {
+    async function loadCatalogs() {
+      try {
+        const [b, t, s] = await Promise.all([
+          getCourseBlocks(),
+          getCourseTargets(),
+          getCourseSubjects(),
+        ]);
+        setBlocks(b);
+        setTargets(t);
+        setSubjects(s);
+        setFormData(prev => ({
+          ...prev,
+          courseBlockId: b.length > 0 ? b[0].blockId : 0,
+          courseTargetId: t.length > 0 ? t[0].targetId : 0,
+          courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
+        }));
+      } catch (err) {
+        console.error('Failed to load catalogs:', err);
+      } finally {
+        setCatalogsLoading(false);
+      }
+    }
+    loadCatalogs();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -67,6 +101,9 @@ export function CourseUploadView() {
       const course = await createCourse({
         title: formData.title,
         description: formData.description || undefined,
+        courseBlockId: formData.courseBlockId,
+        courseTargetId: formData.courseTargetId,
+        courseSubjectId: formData.courseSubjectId,
       });
       
       await uploadCourseFile(course.courseId, file);
@@ -155,6 +192,59 @@ export function CourseUploadView() {
               className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black resize-none text-sm sm:text-base"
               placeholder="Stručný popis kurzu..."
             />
+          </div>
+
+          {/* Katalogové údaje */}
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-black mb-3 sm:mb-4">Zařazení kurzu</h2>
+            {catalogsLoading ? (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Načítám katalogy...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tematický blok</label>
+                  <select
+                    required
+                    value={formData.courseBlockId}
+                    onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-sm"
+                  >
+                    {blocks.map((b) => (
+                      <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cílová skupina</label>
+                  <select
+                    required
+                    value={formData.courseTargetId}
+                    onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-sm"
+                  >
+                    {targets.map((t) => (
+                      <option key={t.targetId} value={t.targetId}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Obor</label>
+                  <select
+                    required
+                    value={formData.courseSubjectId}
+                    onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-white text-sm"
+                  >
+                    {subjects.map((s) => (
+                      <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Upload souboru */}

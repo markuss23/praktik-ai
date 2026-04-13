@@ -25,6 +25,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Nav link: reserve bold-text width so active ↔ inactive doesn't shift layout */
+.nav-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.nav-link::after {
+  content: attr(data-text);
+  font-weight: 700;
+  height: 0;
+  visibility: hidden;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Module content styles for rendered learn blocks */
 .module-content {
   color: #000000;

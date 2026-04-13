@@ -1,0 +1,355 @@
+/* Základní reset a layout */
+body {
+    margin: 0;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    background-color: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Hlavní kontejner (vycentrování karty) */
+.login-content-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+/* Bílá karta (Formulář) */
+.praktik-card {
+    background: white;
+    padding: 3rem 4rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+/* Reset heslo - popis */
+.reset-description {
+    font-size: 0.9rem;
+    color: #666;
+    margin: -1rem 0 1.5rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+/* Alerty / chybové hlášky */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    margin-bottom: 0;
+    text-align: left;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+}
+
+.alert-success {
+    background-color: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.alert-warning {
+    background-color: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+}
+
+.alert-info {
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+/* Chybové pole a zpráva pod inputem */
+.form-control.field-error {
+    border-color: #ef4444;
+    background-color: #fff8f8;
+}
+
+.form-control.field-error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.field-error-msg {
+    display: block;
+    color: #b91c1c;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+}
+
+.praktik-logo-header {
+    margin-bottom: 1.5rem;
+}
+
+.praktik-logo-header img {
+    height: 50px;
+}
+
+h1.praktik-title {
+    font-size: 1.6rem;
+    color: #1a1a1a;
+    margin-bottom: 2rem;
+    font-weight: 700;
+}
+
+/* Formuláře */
+.form-group {
+    margin-bottom: 1.2rem;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    border-color: #5bb770;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(91, 183, 112, 0.15);
+}
+
+/* Tlačítka */
+.btn-primary {
+    background-color: #5bb770;
+    color: white;
+    border: none;
+    padding: 0.85rem;
+    width: 100%;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.btn-primary:hover {
+    background-color: #4aa961;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #555;
+    border: 1px solid #ccc;
+    padding: 0.85rem;
+    width: 100%;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 0.75rem;
+    transition: border-color 0.2s, color 0.2s;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.btn-secondary:hover {
+    border-color: #5bb770;
+    color: #5bb770;
+}
+
+/* Logout stránka */
+.logout-text {
+    color: #555;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+/* Odkazy pod tlačítkem */
+.form-links {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.form-links p {
+    margin: 0.4rem 0;
+}
+
+.form-links a {
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.form-links a.link-subtle {
+    color: #777;
+    font-weight: normal;
+}
+
+.form-links a.link-subtle:hover {
+    color: #333;
+    text-decoration: underline;
+}
+
+.form-links a.link-bold {
+    color: #333;
+    font-weight: 700;
+}
+
+.form-links a:hover {
+    text-decoration: underline;
+}
+
+/* GDPR Checkbox */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+    gap: 0.5rem;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    font-weight: normal;
+    color: #555;
+    cursor: pointer;
+}
+
+/* Patička */
+.praktik-footer {
+    background-color: white;
+    padding: 3rem 2rem 1.5rem;
+    border-top: 5px solid transparent;
+    border-image: linear-gradient(to right, #7c5cbf, #c0436a, #e87d3e, #f5c842, #5bb770, #3b9dd8) 1;
+}
+
+.footer-grid {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-col {
+    flex: 1;
+    min-width: 180px;
+    font-size: 0.88rem;
+    color: #555;
+    line-height: 1.7;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.footer-logo img {
+    height: 40px;
+}
+
+.footer-logo span {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1a1a1a;
+    letter-spacing: 0.02em;
+}
+
+.footer-col h4 {
+    color: #1a1a1a;
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+}
+
+.footer-col ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-col ul li {
+    margin-bottom: 0.4rem;
+    color: #555;
+}
+
+.footer-col.logos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.footer-col.logos img {
+    max-width: 180px;
+    display: block;
+}
+
+/* Social media ikony */
+.social-icons {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+}
+
+.social-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    color: #555;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.social-icon:hover {
+    border-color: #5bb770;
+    color: #5bb770;
+}
+
+.footer-bottom {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    font-size: 0.83rem;
+    color: #aaa;
+}

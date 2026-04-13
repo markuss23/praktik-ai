@@ -1,21 +1,26 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus } from "@/lib/api-client";
-import { Course, CoursesApi, ModulesApi, Configuration, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
-import { API_BASE_URL } from "@/lib/constants";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
-import { GripVertical, X, BicepsFlexed, Upload } from "lucide-react";
+import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
-import { GenerateEmbeddingsButton } from "@/components/admin/GenerateEmbeddingsButton";
+import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
+import { useRole } from "@/hooks/useRole";
+import { useCatalogData } from "@/hooks/useCatalogData";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
-  
+  const { can, isSuperAdmin } = useRole();
+  const { blocks, targets, subjects } = useCatalogData();
+  const { isOwner } = useCurrentUser();
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
@@ -31,11 +36,19 @@ export function CoursesListView() {
   // Approval state
   const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
 
+  // Status change loading
+  const [statusLoading, setStatusLoading] = useState<number | null>(null);
+
+  // Quick edit state (inline accordion)
+  const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
+  const [quickEditData, setQuickEditData] = useState<{ title: string; courseBlockId: number; courseTargetId: number; courseSubjectId: number }>({ title: '', courseBlockId: 0, courseTargetId: 0, courseSubjectId: 0 });
+  const [quickEditLoading, setQuickEditLoading] = useState(false);
+
   // Stavy modálních oken
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
-  
+
   // Data formuláře kurzu
   const [courseFormData, setCourseFormData] = useState({
     courseId: null as number | null,
@@ -49,8 +62,23 @@ export function CoursesListView() {
     moduleId: null as number | null,
     title: '',
     courseId: 0,
-    position: 1,
   });
+
+  // ─── Permissions helpers ─────────────────────────────────────────────────────
+
+  /** Can the current user edit this course? (owner or superadmin) */
+  const canEditCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
+
+  /** Can the current user publish this course? (owner or superadmin) */
+  const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
+
+  /** Can the current user approve/reject? (guarantor or superadmin, but NOT the owner unless superadmin) */
+  const canApproveCourse = (course: Course) => {
+    if (isSuperAdmin) return true;
+    return can('guarantor') && !isOwner(course.ownerId);
+  };
+
+  // ─── Data loading ────────────────────────────────────────────────────────────
 
   // Načtení rozbalené kurzu z localStorage při mountu
   useEffect(() => {
@@ -89,6 +117,8 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
+  // ─── Course actions ──────────────────────────────────────────────────────────
+
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
     setShowDeleteConfirm(true);
@@ -96,13 +126,10 @@ export function CoursesListView() {
 
   const handleDelete = async () => {
     if (!courseToDelete) return;
-    
+
     setDeleting(true);
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      await coursesApi.deleteCourse({ courseId: courseToDelete });
-      
+      await sharedCoursesApi.deleteCourse({ courseId: courseToDelete });
       await loadCoursesList();
       setShowDeleteConfirm(false);
       setCourseToDelete(null);
@@ -116,21 +143,20 @@ export function CoursesListView() {
 
   const handleDeleteModule = async () => {
     if (!moduleToDelete) return;
-    
     alert('Mazání modulů není momentálně podporováno');
     setShowDeleteConfirm(false);
     setModuleToDelete(null);
   };
 
   const toggleCourseExpand = async (courseId: number) => {
+    setQuickEditCourseId(null);
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
       localStorage.removeItem('expandedCourse');
     } else {
       setExpandedCourse(courseId);
       localStorage.setItem('expandedCourse', courseId.toString());
-      
-      // Načtení modulů pokud ještě nejsou
+
       if (!courseModules[courseId]) {
         try {
           const modules = await getModules({ courseId });
@@ -143,6 +169,7 @@ export function CoursesListView() {
   };
 
   const togglePublish = async (course: Course) => {
+    if (!canPublishCourse(course)) return;
     try {
       const newPublishState = !course.isPublished;
       await updateCoursePublished(course.courseId, newPublishState);
@@ -159,42 +186,104 @@ export function CoursesListView() {
   };
 
   const getModuleCount = (course: Course) => {
-    return course.modules?.length || 0;
+    return course.modulesCount || 0;
   };
 
-  // Handlery modálních oken
+  // ─── Status flow ─────────────────────────────────────────────────────────────
+
+  /** Owner submits course for review: edited/draft/generated → in_review */
+  const handleSubmitForReview = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.InReview);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to submit for review:', error);
+      alert('Nepodařilo se odeslat ke schválení.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
+  /** Guarantor approves course: in_review → approved (+ auto-generate embeddings) */
+  const handleApprove = async (course: Course) => {
+    setApprovalLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
+      try {
+        await generateCourseEmbeddings(course.courseId);
+        setEmbeddingDone(prev => new Set(prev).add(course.courseId));
+      } catch (embErr) {
+        console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
+        alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
+      }
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to approve course:', error);
+      alert('Nepodařilo se schválit kurz.');
+    } finally {
+      setApprovalLoading(null);
+    }
+  };
+
+  /** Guarantor rejects course: in_review → edited */
+  const handleReject = async (course: Course) => {
+    setApprovalLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to reject course:', error);
+      alert('Nepodařilo se vrátit kurz k úpravám.');
+    } finally {
+      setApprovalLoading(null);
+    }
+  };
+
+  /** Superadmin reverts approved course back to editing (unpublishes too) */
+  const handleRevertToEditing = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to revert course:', error);
+      alert('Nepodařilo se vrátit kurz do úprav.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
+  /** Archive a published course */
+  const handleArchive = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Archived);
+      await loadCoursesList();
+    } catch (error) {
+      console.error('Failed to archive course:', error);
+      alert('Nepodařilo se archivovat kurz.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
+  // ─── Modal handlers ──────────────────────────────────────────────────────────
+
   const openCreateCourseModal = () => {
-    setCourseFormData({
-      courseId: null,
-      title: '',
-      description: '',
-      isPublished: false,
-    });
+    setCourseFormData({ courseId: null, title: '', description: '', isPublished: false });
     setModalError('');
     setActiveModal('course-create');
   };
 
   const openCreateModuleModal = (courseId: number) => {
-    const modules = courseModules[courseId] || [];
-    const maxPosition = modules.length > 0 ? Math.max(...modules.map((m: Module) => m.position || 1)) : 0;
-    
-    setModuleFormData({
-      moduleId: null,
-      title: '',
-      courseId: courseId,
-      position: maxPosition + 1,
-    });
+    setModuleFormData({ moduleId: null, title: '', courseId: courseId });
     setModalError('');
     setActiveModal('module-create');
   };
 
   const openEditModuleModal = (module: Module) => {
-    setModuleFormData({
-      moduleId: module.moduleId,
-      title: module.title,
-      courseId: module.courseId,
-      position: module.position || 1,
-    });
+    setModuleFormData({ moduleId: module.moduleId, title: module.title, courseId: module.courseId });
     setModalError('');
     setActiveModal('module-edit');
   };
@@ -210,29 +299,19 @@ export function CoursesListView() {
     setModalError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const coursesApi = new CoursesApi(config);
-      
       if (courseFormData.courseId) {
         const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
-        await coursesApi.updateCourse({
+        await sharedCoursesApi.updateCourse({
           courseId: courseFormData.courseId,
           courseUpdate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            categoryId: existingCourse?.categoryId ?? 1,
-          }
-        });
-      } else {
-        await coursesApi.createCourse({
-          courseCreate: {
-            title: courseFormData.title,
-            description: courseFormData.description,
-            categoryId: 1,
+            courseBlockId: existingCourse?.courseBlockId ?? 1,
+            courseTargetId: existingCourse?.courseTargetId ?? 1,
+            courseSubjectId: existingCourse?.courseSubjectId ?? 1,
           }
         });
       }
-      
       await loadCoursesList();
       closeModal();
     } catch (err) {
@@ -248,23 +327,15 @@ export function CoursesListView() {
     setModalError('');
 
     try {
-      const config = new Configuration({ basePath: API_BASE_URL });
-      const modulesApi = new ModulesApi(config);
-      
       if (moduleFormData.moduleId) {
-        await modulesApi.updateModule({
+        await sharedModulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
-          moduleUpdate: {
-            title: moduleFormData.title,
-            position: moduleFormData.position,
-          }
+          moduleUpdate: { title: moduleFormData.title }
         });
-        
         if (moduleFormData.courseId) {
           const modules = await getModules({ courseId: moduleFormData.courseId });
           setCourseModules(prev => ({ ...prev, [moduleFormData.courseId]: modules }));
         }
-        
         closeModal();
       } else {
         setModalError('Vytváření modulů není momentálně podporováno');
@@ -294,32 +365,58 @@ export function CoursesListView() {
     }
   };
 
-  const handleApproveToggle = async (course: Course) => {
-    const isApproved = course.status === Status.Approved;
-    setApprovalLoading(course.courseId);
+  // ─── Quick edit ──────────────────────────────────────────────────────────────
+
+  const openQuickEdit = (course: Course) => {
+    if (quickEditCourseId === course.courseId) {
+      setQuickEditCourseId(null);
+      return;
+    }
+    setExpandedCourse(null);
+    localStorage.removeItem('expandedCourse');
+    setQuickEditCourseId(course.courseId);
+    setQuickEditData({
+      title: course.title,
+      courseBlockId: course.courseBlockId ?? 0,
+      courseTargetId: course.courseTargetId ?? 0,
+      courseSubjectId: course.courseSubjectId ?? 0,
+    });
+  };
+
+  const closeQuickEdit = () => { setQuickEditCourseId(null); };
+
+  const saveQuickEdit = async () => {
+    if (!quickEditCourseId) return;
+    setQuickEditLoading(true);
     try {
-      if (isApproved) {
-        // Revert approved → generated (for editing)
-        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Generated);
-      } else {
-        // Approve: generated → approved, then auto-generate embeddings
-        await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
-        try {
-          await generateCourseEmbeddings(course.courseId);
-          setEmbeddingDone(prev => new Set(prev).add(course.courseId));
-        } catch (embErr) {
-          console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
-          alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
-        }
-      }
+      const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
+      await sharedCoursesApi.updateCourse({
+        courseId: quickEditCourseId,
+        courseUpdate: {
+          title: quickEditData.title,
+          description: existingCourse?.description ?? undefined,
+          courseBlockId: quickEditData.courseBlockId,
+          courseTargetId: quickEditData.courseTargetId,
+          courseSubjectId: quickEditData.courseSubjectId,
+        },
+      });
       await loadCoursesList();
     } catch (error) {
-      console.error('Failed to toggle approval:', error);
-      alert(isApproved ? 'Nepodařilo se zrušit schválení kurzu.' : 'Nepodařilo se schválit kurz.');
+      console.error('Failed to quick save course:', error);
+      alert('Nepodařilo se uložit rychlé úpravy');
     } finally {
-      setApprovalLoading(null);
+      setQuickEditLoading(false);
     }
   };
+
+  // ─── Helper: can course status be submitted for review? ──────────────────────
+
+  const canSubmitForReview = (course: Course) => {
+    const editableStatuses: string[] = [Status.Draft, Status.Generated, Status.Edited];
+    return canEditCourse(course) && editableStatuses.includes(course.status as string);
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -331,22 +428,9 @@ export function CoursesListView() {
             <Dropdown
               trigger={<span>Přidat kurz</span>}
               items={[
-                {
-                  label: 'Manuální zadání',
-                  icon: <BicepsFlexed size={18} />,
-                  onClick: openCreateCourseModal,
-                },
-                {
-                  label: 'Náhrát soubor',
-                  icon: <Upload size={18} />,
-                  onClick: goToCourseUpload,
-                },
-                {
-                  label: 'Pomocí AI',
-                  icon: <SimpleBotIcon size={18} />,
-                  gradient: true,
-                  onClick: goToAICreate,
-                },
+                { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
+                { label: 'Náhrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
+                { label: 'Pomocí AI', icon: <SimpleBotIcon size={18} />, gradient: true, onClick: goToAICreate },
               ]}
             />
           </div>
@@ -364,65 +448,234 @@ export function CoursesListView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {courses.map((course) => (
-                  <React.Fragment key={course.courseId}>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={course.status} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <PublishBadge status={course.status} isPublished={course.isPublished} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <CourseActionButtons>
-                          <EditActionButton
-                            onClick={() => toggleCourseExpand(course.courseId)}
-                            title="Zobrazit moduly"
-                          />
-                          {(course.status === Status.Generated || course.status === Status.Approved) && (
-                            <ApproveActionButton
-                              onClick={() => handleApproveToggle(course)}
-                              isApproved={course.status === Status.Approved}
-                              isLoading={approvalLoading === course.courseId}
-                            />
-                          )}
-                          {(course.status === Status.Approved || course.status === Status.Archived) && (
-                            <PublishActionButton
-                              onClick={() => togglePublish(course)}
-                              isPublished={!!course.isPublished}
-                            />
-                          )}
-                          <DeleteActionButton
-                            onClick={() => handleDeleteClick(course.courseId)}
-                          />
-                        </CourseActionButtons>
-                      </td>
-                    </tr>
-                    
-                    {/* Expanded Module List */}
-                    {expandedCourse === course.courseId && (
-                      <tr>
-                        <td colSpan={5} className="bg-gray-50 p-0">
-                          <ExpandedModuleList
-                            course={course}
-                            modules={courseModules[course.courseId] || []}
-                            onEditCourse={() => goToCourseContent(course.courseId)}
-                            onClose={closeCourseExpand}
-                            onEditModule={openEditModuleModal}
-                            onToggleModuleActive={toggleModuleActive}
-                            onDeleteModule={(moduleId) => {
-                              setModuleToDelete(moduleId);
-                              setShowDeleteConfirm(true);
-                            }}
-                            onAddModule={() => openCreateModuleModal(course.courseId)}
-                          />
+                {courses.map((course) => {
+                  const editable = canEditCourse(course);
+                  const statusStr = course.status as string;
+
+                  return (
+                    <React.Fragment key={course.courseId}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={course.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <PublishBadge status={course.status} isPublished={course.isPublished} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1 text-sm flex-wrap">
+                            {statusStr === Status.Archived ? (
+                              <>
+                                {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+                                {canPublishCourse(course) && (
+                                  <button
+                                    onClick={() => togglePublish(course)}
+                                    className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                  >
+                                    {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
+                                  </button>
+                                )}
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            ) : course.isPublished ? (
+                              <>
+                                {/* Published (non-archived): archive (+ delete for superadmin) */}
+                                <button
+                                  onClick={() => handleArchive(course)}
+                                  disabled={statusLoading === course.courseId}
+                                  className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                >
+                                  {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
+                                </button>
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {/* Edit actions - only in editable statuses (draft/generated/edited) */}
+                                {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+                                  <>
+                                    <button
+                                      onClick={() => toggleCourseExpand(course.courseId)}
+                                      className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Úpravy
+                                    </button>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => openQuickEdit(course)}
+                                      className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Rychlé úpravy
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Submit for review - owner can submit when in editable status */}
+                                {canSubmitForReview(course) && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleSubmitForReview(course)}
+                                      disabled={statusLoading === course.courseId}
+                                      className="text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Publish - only when approved and not yet published */}
+                                {canPublishCourse(course) && course.status === Status.Approved && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => togglePublish(course)}
+                                      className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Publikovat
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Revert to editing - superadmin only, when approved */}
+                                {isSuperAdmin && course.status === Status.Approved && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleRevertToEditing(course)}
+                                      disabled={statusLoading === course.courseId}
+                                      className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Delete - superadmin only */}
+                                {isSuperAdmin && (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+                                    <button
+                                      onClick={() => handleDeleteClick(course.courseId)}
+                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
+                                    >
+                                      Smazat
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))}
+
+                      {/* Quick Edit Accordion */}
+                      {quickEditCourseId === course.courseId && (
+                        <tr>
+                          <td colSpan={5} className="bg-purple-50 p-0 border-b border-purple-200">
+                            <div className="px-4 py-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-purple-800 whitespace-nowrap">Rychlé úpravy:</span>
+                                <input
+                                  type="text"
+                                  value={quickEditData.title}
+                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, title: e.target.value }))}
+                                  placeholder="Název kurzu"
+                                  className="w-48 px-2 py-1.5 border border-purple-300 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <select
+                                  value={quickEditData.courseBlockId}
+                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseBlockId: Number(e.target.value) }))}
+                                  className="px-2 py-1.5 border border-purple-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  {blocks.map((b) => (
+                                    <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={quickEditData.courseTargetId}
+                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseTargetId: Number(e.target.value) }))}
+                                  className="px-2 py-1.5 border border-purple-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  {targets.map((t) => (
+                                    <option key={t.targetId} value={t.targetId}>{t.name}</option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={quickEditData.courseSubjectId}
+                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseSubjectId: Number(e.target.value) }))}
+                                  className="px-2 py-1.5 border border-purple-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  {subjects.map((s) => (
+                                    <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
+                                  ))}
+                                </select>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={saveQuickEdit}
+                                    disabled={quickEditLoading}
+                                    className="px-3 py-1.5 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
+                                  >
+                                    {quickEditLoading ? 'Ukládání...' : 'Uložit'}
+                                  </button>
+                                  <button
+                                    onClick={closeQuickEdit}
+                                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                                  >
+                                    Zrušit
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {/* Expanded Module List */}
+                      {expandedCourse === course.courseId && (
+                        <tr>
+                          <td colSpan={5} className="bg-gray-50 p-0">
+                            <ExpandedModuleList
+                              course={course}
+                              modules={courseModules[course.courseId] || []}
+                              onEditCourse={() => goToCourseContent(course.courseId)}
+                              onClose={closeCourseExpand}
+                              onEditModuleContent={(module) => goToCourseContent(course.courseId, module.moduleId)}
+                              onEditModuleName={openEditModuleModal}
+                              onToggleModuleActive={toggleModuleActive}
+                              onDeleteModule={(moduleId) => {
+                                setModuleToDelete(moduleId);
+                                setShowDeleteConfirm(true);
+                              }}
+                              onAddModule={() => openCreateModuleModal(course.courseId)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -450,8 +703,14 @@ export function CoursesListView() {
                 onGenerateEmbeddings={() => handleGenerateEmbeddings(course.courseId)}
                 embeddingGenerating={embeddingLoading === course.courseId}
                 embeddingGenerated={embeddingDone.has(course.courseId)}
-                onApproveToggle={() => handleApproveToggle(course)}
-                approvalLoading={approvalLoading === course.courseId}
+                canEdit={canEditCourse(course)}
+                canPublish={canPublishCourse(course)}
+                canDelete={isSuperAdmin}
+                onSubmitForReview={() => handleSubmitForReview(course)}
+                canSubmitReview={canSubmitForReview(course)}
+                onRevertToEditing={() => handleRevertToEditing(course)}
+                onArchive={() => handleArchive(course)}
+                statusLoading={statusLoading === course.courseId}
               />
             ))}
           </div>
@@ -498,57 +757,16 @@ export function CoursesListView() {
 }
 
 // =============================================================================
-// Pomocné komponenty pro lepší organizaci
+// Pomocné komponenty
 // =============================================================================
-
-function StatusBadge({ status }: { status?: Status }) {
-  const getStyles = () => {
-    switch (status) {
-      case Status.Draft: return 'bg-gray-100 text-gray-800';
-      case Status.Generated: return 'bg-blue-100 text-blue-800';
-      case Status.Approved: return 'bg-purple-100 text-purple-800';
-      case Status.Archived: return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getLabel = () => {
-    switch (status) {
-      case Status.Draft: return 'Draft';
-      case Status.Generated: return 'Vygenerováno';
-      case Status.Approved: return 'Schváleno';
-      case Status.Archived: return 'Archivováno';
-      default: return status;
-    }
-  };
-
-  return (
-    <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getStyles()}`}>
-      {getLabel()}
-    </span>
-  );
-}
-
-function PublishBadge({ status, isPublished }: { status?: Status; isPublished?: boolean }) {
-  if (status !== Status.Approved && status !== Status.Archived) {
-    return <span className="text-gray-400 text-xs">—</span>;
-  }
-
-  return (
-    <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-      isPublished ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-    }`}>
-      {isPublished ? 'ANO' : 'NE'}
-    </span>
-  );
-}
 
 interface ExpandedModuleListProps {
   course: Course;
   modules: Module[];
   onEditCourse: () => void;
   onClose: () => void;
-  onEditModule: (module: Module) => void;
+  onEditModuleContent: (module: Module) => void;
+  onEditModuleName: (module: Module) => void;
   onToggleModuleActive: (module: Module) => void;
   onDeleteModule: (moduleId: number) => void;
   onAddModule: () => void;
@@ -558,7 +776,8 @@ function ExpandedModuleList({
   modules,
   onEditCourse,
   onClose,
-  onEditModule,
+  onEditModuleContent,
+  onEditModuleName,
   onToggleModuleActive,
   onDeleteModule,
   onAddModule,
@@ -580,47 +799,34 @@ function ExpandedModuleList({
             </button>
           </div>
         </div>
-        
+
         <div className="divide-y">
           {modules.map((module, index) => (
             <div key={module.moduleId} className="p-4 flex items-center gap-4 hover:bg-gray-50">
-              <GripVertical size={20} className="text-gray-400 flex-shrink-0" />
-              
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-gray-900">{module.title}</div>
               </div>
-              
               <div className="text-sm text-gray-600 w-24 text-center flex-shrink-0">
-                Modul {module.position || index + 1}
+                Modul {index + 1}
               </div>
-              
               <div className="w-32 flex-shrink-0">
-                <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
-                  module.isActive ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                }`}>
-                  {module.isActive ? 'Aktivní' : 'Neaktivní'}
-                </span>
+                <ModuleActiveBadge isActive={module.isActive} />
               </div>
-              
-              <CourseActionButtons className="flex-shrink-0">
-                <EditActionButton
-                  onClick={() => onEditModule(module)}
-                  title="Editovat modul"
-                />
-                <PublishActionButton
-                  onClick={() => onToggleModuleActive(module)}
-                  isPublished={!!module.isActive}
-                  title={module.isActive ? 'Deaktivovat modul' : 'Aktivovat modul'}
-                />
-                <DeleteActionButton
-                  onClick={() => onDeleteModule(module.moduleId)}
-                  title="Smazat modul"
-                />
-              </CourseActionButtons>
+              <div className="flex items-center gap-1 text-sm flex-shrink-0">
+                <button onClick={() => onEditModuleContent(module)} className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">Upravit</button>
+                <span className="text-gray-400">|</span>
+                <button onClick={() => onEditModuleName(module)} className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap">Upravit název</button>
+                <span className="text-gray-400">|</span>
+                <button onClick={() => onToggleModuleActive(module)} className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap">
+                  {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
+                </button>
+                <span className="text-gray-400">|</span>
+                <button onClick={() => onDeleteModule(module.moduleId)} className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap">Smazat</button>
+              </div>
             </div>
           ))}
         </div>
-        
+
         <div className="p-4 border-t">
           <button
             onClick={onAddModule}
@@ -653,8 +859,14 @@ interface MobileCourseCardProps {
   onGenerateEmbeddings: () => void;
   embeddingGenerating: boolean;
   embeddingGenerated: boolean;
-  onApproveToggle: () => void;
-  approvalLoading: boolean;
+  canEdit: boolean;
+  canPublish: boolean;
+  canDelete: boolean;
+  onSubmitForReview: () => void;
+  canSubmitReview: boolean;
+  onRevertToEditing: () => void;
+  onArchive: () => void;
+  statusLoading: boolean;
 }
 
 function MobileCourseCard({
@@ -670,13 +882,17 @@ function MobileCourseCard({
   onToggleModuleActive,
   onDeleteModule,
   onAddModule,
-  onGenerateEmbeddings,
-  embeddingGenerating,
-  embeddingGenerated,
-  onApproveToggle,
-  approvalLoading,
+  canEdit,
+  canPublish,
+  canDelete,
+  onSubmitForReview,
+  canSubmitReview,
+  onRevertToEditing,
+  onArchive,
+  statusLoading,
 }: MobileCourseCardProps) {
-  const moduleCount = course.modules?.length || 0;
+  const moduleCount = course.modulesCount || 0;
+  const statusStr = course.status as string;
 
   return (
     <div className="p-4">
@@ -684,42 +900,63 @@ function MobileCourseCard({
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
           <p className="text-sm text-gray-500 mt-1">{moduleCount} moduly</p>
-          {(course.status === Status.Approved || course.status === Status.Archived) && (
-            <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-2 ${
-              course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-            }`}>
-              {course.isPublished ? 'Publikováno' : 'Neaktivní'}
-            </span>
-          )}
+          <div className="mt-2 flex flex-wrap gap-1">
+            <StatusBadge status={course.status} />
+            {(course.status === Status.Approved || course.status === Status.Archived) && (
+              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+              }`}>
+                {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+              </span>
+            )}
+          </div>
         </div>
         <CourseActionButtons className="flex-shrink-0">
-          <EditActionButton
-            onClick={onToggleExpand}
-            title="Zobrazit moduly"
-            iconSize={14}
-          />
-          {(course.status === Status.Generated || course.status === Status.Approved) && (
-            <ApproveActionButton
-              onClick={onApproveToggle}
-              isApproved={course.status === Status.Approved}
-              isLoading={approvalLoading}
-              iconSize={14}
-            />
+          {statusStr === Status.Archived ? (
+            <>
+              {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+              {canPublish && (
+                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+              )}
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
+          ) : course.isPublished ? (
+            <>
+              {/* Published (non-archived): only archive (+ delete for superadmin) */}
+              <button onClick={onArchive} disabled={statusLoading} className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50" title="Archivovat">
+                <Archive size={14} />
+              </button>
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
+          ) : (
+            <>
+              {/* Edit - only in editable statuses */}
+              {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+                <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
+              )}
+              {canSubmitReview && (
+                <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
+              )}
+              {canPublish && course.status === Status.Approved && (
+                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+              )}
+              {canDelete && course.status === Status.Approved && (
+                <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
+                  <RotateCcw size={14} />
+                </button>
+              )}
+              {canDelete && (
+                <DeleteActionButton onClick={onDelete} iconSize={14} />
+              )}
+            </>
           )}
-          {(course.status === Status.Approved || course.status === Status.Archived) && (
-            <PublishActionButton
-              onClick={onTogglePublish}
-              isPublished={!!course.isPublished}
-              iconSize={14}
-            />
-          )}
-          <DeleteActionButton
-            onClick={onDelete}
-            iconSize={14}
-          />
         </CourseActionButtons>
       </div>
-      
+
       {/* Expanded Module List - Mobile */}
       {isExpanded && (
         <div className="mt-4 bg-gray-50 rounded-lg p-3">
@@ -735,30 +972,13 @@ function MobileCourseCard({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-900 truncate">{module.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Modul {module.position || index + 1}</p>
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${
-                      module.isActive ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {module.isActive ? 'Aktivní' : 'Neaktivní'}
-                    </span>
+                    <p className="text-xs text-gray-500 mt-0.5">Modul {index + 1}</p>
+                    <ModuleActiveBadge isActive={module.isActive} size="sm" />
                   </div>
                   <CourseActionButtons className="flex-shrink-0">
-                    <EditActionButton
-                      onClick={() => onEditModule(module)}
-                      title="Editovat"
-                      iconSize={12}
-                    />
-                    <PublishActionButton
-                      onClick={() => onToggleModuleActive(module)}
-                      isPublished={!!module.isActive}
-                      title={module.isActive ? 'Deaktivovat' : 'Aktivovat'}
-                      iconSize={12}
-                    />
-                    <DeleteActionButton
-                      onClick={() => onDeleteModule(module.moduleId)}
-                      title="Smazat"
-                      iconSize={12}
-                    />
+                    <EditActionButton onClick={() => onEditModule(module)} title="Editovat" iconSize={12} />
+                    <PublishActionButton onClick={() => onToggleModuleActive(module)} isPublished={!!module.isActive} title={module.isActive ? 'Deaktivovat' : 'Aktivovat'} iconSize={12} />
+                    <DeleteActionButton onClick={() => onDeleteModule(module.moduleId)} title="Smazat" iconSize={12} />
                   </CourseActionButtons>
                 </div>
               </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { PageSpinner } from '@/components/ui';
+
 interface LoadingStateProps {
   message?: string;
 }
@@ -8,11 +10,7 @@ interface LoadingStateProps {
  * Reusable loading state component
  */
 export function LoadingState({ message = 'Načítání...' }: LoadingStateProps) {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-gray-500">{message}</div>
-    </div>
-  );
+  return <PageSpinner message={message} />;
 }
 
 interface ErrorStateProps {

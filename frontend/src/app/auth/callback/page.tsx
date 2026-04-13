@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { exchangeCodeForTokens, parseJwt, storeTokens } from "@/lib/keycloak";
+import { API_BASE_URL } from "@/lib/constants";
+import { AuthSkeleton } from "@/components/ui";
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -25,8 +27,17 @@ function AuthCallbackContent() {
     }
 
     exchangeCodeForTokens(code)
-      .then((tokens) => {
+      .then(async (tokens) => {
         storeTokens(tokens);
+        // Sync user role from Keycloak to backend DB
+        try {
+          await fetch(`${API_BASE_URL}/api/v1/auth/sync`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
+          });
+        } catch (e) {
+          console.warn("Role sync failed:", e);
+        }
         const user = parseJwt(tokens.access_token);
         console.log("Přihlášen:", user?.preferred_username ?? user?.email);
         router.replace("/");
@@ -56,28 +67,12 @@ function AuthCallbackContent() {
     );
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-600 font-medium">Přihlašování…</p>
-      </div>
-    </div>
-  );
+  return <AuthSkeleton />;
 }
-
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-    <div className="text-center">
-      <div className="w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-gray-600 font-medium">Přihlašování…</p>
-    </div>
-  </div>
-);
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
+    <Suspense fallback={<AuthSkeleton />}>
       <AuthCallbackContent />
     </Suspense>
   );

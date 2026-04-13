@@ -5,18 +5,18 @@ from api.enums import QuestionType
 
 
 class LearnBlockBase(ORMModel):
-    position: int
+    title: str = Field(min_length=1, max_length=200)
     content: str
 
 
 class LearnBlockUpdate(ORMModel):
-    position: int
+    title: str = Field(min_length=1, max_length=200)
     content: str
 
 
 class LearnBlockCreate(ORMModel):
     module_id: int
-    position: int = 1
+    title: str = Field(min_length=1, max_length=200)
     content: str = ""
 
 
@@ -26,18 +26,15 @@ class LearnBlock(LearnBlockBase):
 
 
 class PracticeOptionBase(ORMModel):
-    position: int
     text: str
 
 
 class PracticeOptionCreate(ORMModel):
     question_id: int
-    position: int
     text: str
 
 
 class PracticeOptionUpdate(ORMModel):
-    position: int
     text: str
 
 
@@ -47,6 +44,11 @@ class PracticeOption(PracticeOptionBase):
 
 
 class QuestionKeywordBase(ORMModel):
+    keyword: str
+
+
+class QuestionKeywordCreate(ORMModel):
+    question_id: int
     keyword: str
 
 
@@ -60,7 +62,6 @@ class QuestionKeyword(QuestionKeywordBase):
 
 
 class PracticeQuestionBase(ORMModel):
-    position: int
     question_type: QuestionType
     question: str
 
@@ -73,7 +74,6 @@ class PracticeQuestionBase(ORMModel):
 
 class PracticeQuestionCreate(ORMModel):
     module_id: int
-    position: int
     question_type: QuestionType
     question: str
 
@@ -82,7 +82,6 @@ class PracticeQuestionCreate(ORMModel):
 
 
 class PracticeQuestionUpdate(ORMModel):
-    position: int
     question_type: QuestionType
     question: str
 
@@ -93,4 +92,3 @@ class PracticeQuestionUpdate(ORMModel):
 class PracticeQuestion(PracticeQuestionBase):
     question_id: int
     module_id: int
-

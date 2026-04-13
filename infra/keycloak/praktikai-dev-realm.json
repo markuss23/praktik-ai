@@ -1,0 +1,86 @@
+{
+  "realm": "praktikai-dev",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "loginTheme": "praktik-ai",
+  "defaultRoles": ["user"],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Základní uživatel / student"
+      },
+      {
+        "name": "lector",
+        "description": "Tvůrce kurzů"
+      },
+      {
+        "name": "guarantor",
+        "description": "Schvalovatel kurzů"
+      },
+      {
+        "name": "superadmin",
+        "description": "Systémový administrátor"
+      }
+    ]
+  },
+  "defaultDefaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "email",
+    "roles"
+  ],
+  "clients": [
+    {
+      "clientId": "app",
+      "name": "Backend API + Role Sync",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "pkTutTOhZcK8w15Oy3EiPtBW6vYxsFWa",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "praktik-ai-app",
+      "name": "Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "scopeMappings": [
+    {
+      "clientScope": "roles",
+      "roles": ["user", "lector", "guarantor", "superadmin"]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-app",
+      "enabled": true,
+      "serviceAccountClientId": "app",
+      "clientRoles": {
+        "realm-management": ["view-users", "view-realm"]
+      }
+    }
+  ]
+}

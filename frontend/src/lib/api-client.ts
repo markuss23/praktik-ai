@@ -1,10 +1,13 @@
-import { 
-  Configuration, 
-  CoursesApi, 
-  ModulesApi, 
-  ActivitiesApi, 
-  AgentsApi, 
-  CategoriesApi,
+import {
+  Configuration,
+  CoursesApi,
+  ModulesApi,
+  ActivitiesApi,
+  AgentsApi,
+  CatalogsApi,
+  AuthenticationApi,
+  EnrollmentsApi,
+  FeedbacksApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -16,15 +19,13 @@ import {
   PracticeOptionUpdate,
   QuestionKeywordUpdate,
   type Middleware,
+  type QuestionType,
 } from "@/api";
 import { API_BASE_URL } from "./constants";
 import { getValidAccessToken } from "./keycloak";
 
 
-// Request middleware — injects `Authorization: Bearer <token>` when the user
-//is authenticated. For unauthenticated (public) requests the header is
-// omitted entirely so the backend doesn't reject them.
- 
+// Request middleware — injects `Authorization: Bearer <token>` when the user is authenticated. For unauthenticated (public) requests the header is comitted entirely so the backend doesn't reject them.
 const authMiddleware: Middleware = {
   pre: async (context) => {
     const token = await getValidAccessToken();
@@ -38,7 +39,6 @@ const authMiddleware: Middleware = {
   },
 };
 
-// Create a configured API client instance
 const configuration = new Configuration({
   basePath: API_BASE_URL,
   middleware: [authMiddleware],
@@ -48,18 +48,37 @@ export const coursesApi = new CoursesApi(configuration);
 export const modulesApi = new ModulesApi(configuration);
 export const activitiesApi = new ActivitiesApi(configuration);
 export const agentsApi = new AgentsApi(configuration);
-export const categoriesApi = new CategoriesApi(configuration);
+export const catalogsApi = new CatalogsApi(configuration);
+export const authApi = new AuthenticationApi(configuration);
+export const enrollmentsApi = new EnrollmentsApi(configuration);
+export const feedbacksApi = new FeedbacksApi(configuration);
+
+// ============ Auth / Current User ============
+
+export async function getMe() {
+  return authApi.endpMeApiV1AuthMeGet();
+}
+
+export async function updateProfile(aiTone: string, aiExpressionLevel: string) {
+  return authApi.endpUpdateProfileApiV1AuthProfilePut({
+    profileUpdate: { aiTone, aiExpressionLevel },
+  });
+}
 
 // Course API functions
 export async function getCourses(params?: {
   includeInactive?: boolean;
   isPublished?: boolean;
   textSearch?: string;
+  courseBlockId?: number;
+  courseSubjectId?: number;
 }) {
   return coursesApi.listCourses({
     includeInactive: params?.includeInactive,
     isPublished: params?.isPublished,
     textSearch: params?.textSearch,
+    courseBlockId: params?.courseBlockId,
+    courseSubjectId: params?.courseSubjectId,
   });
 }
 
@@ -70,13 +89,21 @@ export async function getCourse(courseId: number) {
 export async function createCourse(data: {
   title: string;
   description?: string;
-  modulesCount?: number;
-  categoryId?: number;
+  modulesCountAiGenerated?: number;
+  durationMinutes?: number;
+  courseBlockId: number;
+  courseTargetId: number;
+  courseSubjectId: number;
 }) {
   return coursesApi.createCourse({
     courseCreate: {
-      ...data,
-      categoryId: data.categoryId ?? 1, // Default category
+      title: data.title,
+      description: data.description,
+      modulesCountAiGenerated: data.modulesCountAiGenerated ?? 3,
+      durationMinutes: data.durationMinutes,
+      courseBlockId: data.courseBlockId,
+      courseTargetId: data.courseTargetId,
+      courseSubjectId: data.courseSubjectId,
     },
   });
 }
@@ -111,8 +138,6 @@ export async function createModule(data: ModuleCreate) {
 
 export async function updateModule(moduleId: number, data: {
   title: string;
-  position?: number;
-  isActive?: boolean;
 }) {
   return modulesApi.updateModule({
     moduleId,
@@ -151,7 +176,7 @@ export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }
 
-// ============ Course Status & Published API functions ============
+//  Course Status & Published API functions 
 
 export async function updateCoursePublished(courseId: number, isPublished: boolean) {
   return coursesApi.updateCoursePublished({ courseId, isPublished });
@@ -161,7 +186,7 @@ export async function updateCourseStatus(courseId: number, status: UpdateCourseS
   return coursesApi.updateCourseStatus({ courseId, status });
 }
 
-// ============ Course Links API functions ============
+//  Course Links API functions 
 
 export async function createCourseLink(courseId: number, url: string) {
   return coursesApi.createCourseLink({ courseId, url });
@@ -175,21 +200,21 @@ export async function deleteCourseLink(courseId: number, linkId: number) {
   return coursesApi.deleteCourseLink({ courseId, linkId });
 }
 
-// ============ Categories API functions ============
+//  Catalogs API functions 
 
-export async function getCategories(includeInactive = false) {
-  return categoriesApi.listCategories({ includeInactive });
+export async function getCourseBlocks() {
+  return catalogsApi.listCourseBlocks();
 }
 
-export async function createCategory(name: string) {
-  return categoriesApi.createCategory({ categoryCreate: { name } });
+export async function getCourseTargets() {
+  return catalogsApi.listCourseTargets();
 }
 
-export async function deleteCategory(categoryId: number) {
-  return categoriesApi.deleteCategory({ categoryId });
+export async function getCourseSubjects() {
+  return catalogsApi.listCourseSubjects();
 }
 
-// ============ Activities API functions ============
+//  Activities API functions 
 
 export async function createLearnBlock(data: LearnBlockCreate) {
   return activitiesApi.createLearnBlock({ learnBlockCreate: data });
@@ -217,4 +242,177 @@ export async function updatePracticeOption(optionId: number, data: PracticeOptio
 
 export async function updateQuestionKeyword(keywordId: number, data: QuestionKeywordUpdate) {
   return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
+}
+
+//  Enrollments API functions 
+
+export async function getMyEnrollments() {
+  return enrollmentsApi.myEnrollments();
+}
+
+export async function listEnrollments(params?: {
+  courseId?: number;
+  userId?: number;
+  includeInactive?: boolean;
+}) {
+  return enrollmentsApi.listEnrollments({
+    courseId: params?.courseId,
+    userId: params?.userId,
+    includeInactive: params?.includeInactive,
+  });
+}
+
+export async function createEnrollment(userId: number, courseId: number) {
+  return enrollmentsApi.createEnrollment({
+    enrollmentCreate: { userId, courseId },
+  });
+}
+
+export async function leaveEnrollment(enrollmentId: number) {
+  return enrollmentsApi.leaveEnrollment({ enrollmentId });
+}
+
+//  Module Progress API functions 
+
+export async function completeModule(moduleId: number, score: number) {
+  return modulesApi.completeModule({
+    moduleId,
+    completeModuleRequest: { score },
+  });
+}
+
+export async function getCourseProgress(courseId: number) {
+  return modulesApi.getCourseProgress({ courseId });
+}
+
+//  Practice Questions (with attempts) API functions
+
+export async function listPracticeQuestions(moduleId: number) {
+  return modulesApi.listPracticeQuestions({ moduleId });
+}
+
+//  Assessment API functions
+
+export async function getModuleAssessment(moduleId: number) {
+  return modulesApi.getModuleAssessment({ moduleId });
+}
+
+export async function generateAssessment(moduleId: number) {
+  return agentsApi.generateAssessment({
+    generateAssessmentRequest: { moduleId },
+  });
+}
+
+export async function evaluateAssessment(sessionId: number, userResponse: string) {
+  return agentsApi.evaluateAssessment({
+    evaluateAssessmentRequest: { sessionId, userResponse },
+  });
+}
+
+//  AI Practice Question Generation & Evaluation
+
+export async function generatePracticeQuestion(moduleId: number, questionType: QuestionType) {
+  return agentsApi.generatePracticeQuestion({
+    generatePracticeQuestionRequest: { moduleId, questionType },
+  });
+}
+
+export async function evaluatePracticeAnswer(userQuestionId: number, userInput: string) {
+  return agentsApi.evaluatePracticeAnswer({
+    evaluatePracticeAnswerRequest: { userQuestionId, userInput },
+  });
+}
+
+//  Feedbacks API functions 
+
+export async function getFeedbackSection(courseId: number) {
+  return feedbacksApi.getFeedbackSection({ courseId });
+}
+
+export async function createFeedback(
+  moduleId: number,
+  feedback: string,
+  opts?: { contentType?: string; contentRef?: string },
+) {
+  return feedbacksApi.createFeedback({
+    feedbackCreate: {
+      moduleId,
+      feedback,
+      contentType: opts?.contentType,
+      contentRef: opts?.contentRef,
+    },
+  });
+}
+
+export async function replyToFeedback(feedbackId: number, reply: string) {
+  return feedbacksApi.replyToFeedback({ feedbackId, feedbackReply: { reply } });
+}
+
+export async function resolveFeedback(feedbackId: number, isResolved: boolean) {
+  return feedbacksApi.resolveFeedback({ feedbackId, feedbackResolve: { isResolved } });
+}
+
+export async function deleteFeedback(feedbackId: number) {
+  return feedbacksApi.deleteFeedback({ feedbackId });
+}
+
+//  System Settings (Superadmin) API functions 
+
+export interface SystemSettingResponse {
+  settingId: number;
+  name: string;
+  key: string;
+  model: string;
+  prompt: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SystemSettingUpdate {
+  name?: string;
+  model?: string;
+  prompt?: string;
+  description?: string;
+}
+
+async function fetchWithAuth(path: string, options: RequestInit = {}) {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+function mapSettingFromApi(raw: Record<string, unknown>): SystemSettingResponse {
+  return {
+    settingId: raw['setting_id'] as number,
+    name: raw['name'] as string,
+    key: raw['key'] as string,
+    model: raw['model'] as string,
+    prompt: raw['prompt'] as string,
+    description: (raw['description'] as string) ?? null,
+    createdAt: raw['created_at'] as string,
+    updatedAt: raw['updated_at'] as string,
+  };
+}
+
+export async function listSystemSettings(): Promise<SystemSettingResponse[]> {
+  const data = await fetchWithAuth('/api/v1/superadmin/settings');
+  return (data as Record<string, unknown>[]).map(mapSettingFromApi);
+}
+
+export async function updateSystemSetting(
+  settingId: number,
+  update: SystemSettingUpdate,
+): Promise<SystemSettingResponse> {
+  const data = await fetchWithAuth(`/api/v1/superadmin/settings/${settingId}`, {
+    method: 'PUT',
+    body: JSON.stringify(update),
+  });
+  return mapSettingFromApi(data as Record<string, unknown>);
 }

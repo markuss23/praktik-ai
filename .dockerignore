@@ -5,6 +5,7 @@
 # Frontend build artefacts
 frontend/node_modules
 frontend/.next
+frontend/next-env.d.ts
 
 # Backend – local virtual environments and byte-code caches
 backend/.venv
