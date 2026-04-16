@@ -464,28 +464,25 @@ export function CoursesListView() {
                           <PublishBadge status={course.status} isPublished={course.isPublished} />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-1 text-sm flex-wrap">
+                          <div className="flex items-center gap-1.5 text-xs flex-wrap">
                             {statusStr === Status.Archived ? (
                               <>
                                 {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
                                 {canPublishCourse(course) && (
                                   <button
                                     onClick={() => togglePublish(course)}
-                                    className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
+                                    className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
                                   >
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
                                   </button>
                                 )}
                                 {isSuperAdmin && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => handleDeleteClick(course.courseId)}
-                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
-                                    >
-                                      Smazat
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleDeleteClick(course.courseId)}
+                                    className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
+                                  >
+                                    Smazat
+                                  </button>
                                 )}
                               </>
                             ) : course.isPublished ? (
@@ -494,20 +491,17 @@ export function CoursesListView() {
                                 <button
                                   onClick={() => handleArchive(course)}
                                   disabled={statusLoading === course.courseId}
-                                  className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap disabled:opacity-50"
+                                  className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                 >
                                   {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
                                 </button>
                                 {isSuperAdmin && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => handleDeleteClick(course.courseId)}
-                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
-                                    >
-                                      Smazat
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleDeleteClick(course.courseId)}
+                                    className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
+                                  >
+                                    Smazat
+                                  </button>
                                 )}
                               </>
                             ) : (
@@ -517,14 +511,13 @@ export function CoursesListView() {
                                   <>
                                     <button
                                       onClick={() => toggleCourseExpand(course.courseId)}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+                                      className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium whitespace-nowrap transition-colors"
                                     >
                                       Úpravy
                                     </button>
-                                    <span className="text-gray-400">|</span>
                                     <button
                                       onClick={() => openQuickEdit(course)}
-                                      className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap"
+                                      className="px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 font-medium whitespace-nowrap transition-colors"
                                     >
                                       Rychlé úpravy
                                     </button>
@@ -533,56 +526,44 @@ export function CoursesListView() {
 
                                 {/* Submit for review - owner can submit when in editable status */}
                                 {canSubmitForReview(course) && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => handleSubmitForReview(course)}
-                                      disabled={statusLoading === course.courseId}
-                                      className="text-indigo-600 hover:text-indigo-800 hover:underline whitespace-nowrap disabled:opacity-50"
-                                    >
-                                      {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleSubmitForReview(course)}
+                                    disabled={statusLoading === course.courseId}
+                                    className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
+                                  >
+                                    {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
+                                  </button>
                                 )}
 
                                 {/* Publish - only when approved and not yet published */}
                                 {canPublishCourse(course) && course.status === Status.Approved && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => togglePublish(course)}
-                                      className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap"
-                                    >
-                                      Publikovat
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => togglePublish(course)}
+                                    className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
+                                  >
+                                    Publikovat
+                                  </button>
                                 )}
 
                                 {/* Revert to editing - superadmin only, when approved */}
                                 {isSuperAdmin && course.status === Status.Approved && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => handleRevertToEditing(course)}
-                                      disabled={statusLoading === course.courseId}
-                                      className="text-amber-600 hover:text-amber-800 hover:underline whitespace-nowrap disabled:opacity-50"
-                                    >
-                                      {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleRevertToEditing(course)}
+                                    disabled={statusLoading === course.courseId}
+                                    className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
+                                  >
+                                    {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
+                                  </button>
                                 )}
 
                                 {/* Delete - superadmin only */}
                                 {isSuperAdmin && (
-                                  <>
-                                    <span className="text-gray-400">|</span>
-                                    <button
-                                      onClick={() => handleDeleteClick(course.courseId)}
-                                      className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap"
-                                    >
-                                      Smazat
-                                    </button>
-                                  </>
+                                  <button
+                                    onClick={() => handleDeleteClick(course.courseId)}
+                                    className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
+                                  >
+                                    Smazat
+                                  </button>
                                 )}
                               </>
                             )}
@@ -812,16 +793,13 @@ function ExpandedModuleList({
               <div className="w-32 flex-shrink-0">
                 <ModuleActiveBadge isActive={module.isActive} />
               </div>
-              <div className="flex items-center gap-1 text-sm flex-shrink-0">
-                <button onClick={() => onEditModuleContent(module)} className="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">Upravit</button>
-                <span className="text-gray-400">|</span>
-                <button onClick={() => onEditModuleName(module)} className="text-green-600 hover:text-green-800 hover:underline whitespace-nowrap">Upravit název</button>
-                <span className="text-gray-400">|</span>
-                <button onClick={() => onToggleModuleActive(module)} className="text-orange-600 hover:text-orange-800 hover:underline whitespace-nowrap">
+              <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
+                <button onClick={() => onEditModuleContent(module)} className="px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium whitespace-nowrap transition-colors">Upravit</button>
+                <button onClick={() => onEditModuleName(module)} className="px-2.5 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 font-medium whitespace-nowrap transition-colors">Upravit název</button>
+                <button onClick={() => onToggleModuleActive(module)} className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors">
                   {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
                 </button>
-                <span className="text-gray-400">|</span>
-                <button onClick={() => onDeleteModule(module.moduleId)} className="text-red-600 hover:text-red-800 hover:underline whitespace-nowrap">Smazat</button>
+                <button onClick={() => onDeleteModule(module.moduleId)} className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors">Smazat</button>
               </div>
             </div>
           ))}
