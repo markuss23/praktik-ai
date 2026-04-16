@@ -44,7 +44,17 @@ class CompleteModuleRequest(ORMModel):
     score: int = Field(ge=0, le=100, description="Test score percentage")
 
 
+class AssessmentAttemptDetail(ORMModel):
+    attempt_id: int
+    ai_score: int
+    is_passed: bool
+    ai_feedback: str | None = None
+
+
 class ModuleAssessmentQuestion(ORMModel):
     session_id: int
     generated_task: str
     status: str
+    attempts_used: int = 0
+    max_attempts: int = 3
+    attempts: list[AssessmentAttemptDetail] = []

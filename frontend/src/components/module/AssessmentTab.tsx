@@ -46,6 +46,7 @@ export default function AssessmentTab({
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState('');
 
   const [moduleCompleted, setModuleCompleted] = useState(false);
   const [courseCompleted, setCourseCompleted] = useState(false);
@@ -59,6 +60,12 @@ export default function AssessmentTab({
     try {
       setLoading(true);
       setErrorMsg(null);
+      setQuestion('');
+      setUserAnswer('');
+      setLastSubmittedAnswer('');
+      setAttempts([]);
+      setPassed(false);
+      setFailed(false);
 
       // Check for an existing session first
       try {
@@ -67,6 +74,16 @@ export default function AssessmentTab({
           setSessionId(existing.sessionId);
           setQuestion(existing.generatedTask);
 
+          // Restore attempt history from backend
+          if (existing.attempts && existing.attempts.length > 0) {
+            setAttempts(existing.attempts.map((a) => ({
+              attemptId: a.attemptId,
+              aiScore: a.aiScore,
+              isPassed: a.isPassed,
+              aiFeedback: a.aiFeedback ?? '',
+            })));
+          }
+
           if (existing.status === 'passed') {
             // Module already passed — go straight to completion
             setPassed(true);
@@ -74,7 +91,12 @@ export default function AssessmentTab({
             return;
           }
           if (existing.status === 'in_progress') {
-            // Active session exists, use it
+            // Check if all attempts exhausted
+            const used = existing.attemptsUsed ?? 0;
+            const max = existing.maxAttempts ?? maxAttempts;
+            if (used >= max) {
+              setFailed(true);
+            }
             return;
           }
           // status === 'failed' — fall through to generate a new one
@@ -105,6 +127,7 @@ export default function AssessmentTab({
 
     setSubmitting(true);
     setErrorMsg(null);
+    setLastSubmittedAnswer(userAnswer.trim());
     try {
       const resp = await evaluateAssessment(sessionId, userAnswer);
       const attempt: AttemptResult = {
@@ -146,12 +169,6 @@ export default function AssessmentTab({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  // Clear answer to retry (same question, same session)
-  const handleRetry = () => {
-    setUserAnswer('');
-    setErrorMsg(null);
   };
 
   // Last attempt feedback
@@ -307,20 +324,10 @@ export default function AssessmentTab({
             )}
 
             {/* Action buttons */}
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-3">
-                {lastAttempt && attemptsRemaining > 0 && (
-                  <button
-                    onClick={handleRetry}
-                    className="text-sm text-gray-500 hover:text-gray-700 font-medium"
-                  >
-                    Upravit odpověď
-                  </button>
-                )}
-              </div>
+            <div className="flex items-center justify-end mt-4">
               <button
                 onClick={handleSubmitAnswer}
-                disabled={!userAnswer.trim() || submitting}
+                disabled={!userAnswer.trim() || submitting || userAnswer.trim() === lastSubmittedAnswer}
                 className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: '#8B5BA8' }}
               >
