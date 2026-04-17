@@ -4,7 +4,7 @@ from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
 from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment
-from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion
+from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion, AssessmentAttemptDetail
 from api import enums, models
 from api.authorization import validate_owner_or_superadmin
 
@@ -210,10 +210,26 @@ def get_assessment_question(db: Session, module_id: int, user: models.User) -> M
     if session is None:
         raise HTTPException(status_code=404, detail="Žádná assessment otázka pro tento modul")
 
+    evaluated_attempts = [
+        a for a in session.attempts
+        if a.status == enums.AttemptStatus.evaluated
+    ]
+
     return ModuleAssessmentQuestion(
         session_id=session.session_id,
         generated_task=session.generated_task,
         status=session.status.value,
+        attempts_used=len(evaluated_attempts),
+        max_attempts=module.max_task_attempts,
+        attempts=[
+            AssessmentAttemptDetail(
+                attempt_id=a.attempt_id,
+                ai_score=a.ai_score or 0,
+                is_passed=a.is_passed,
+                ai_feedback=a.ai_feedback,
+            )
+            for a in evaluated_attempts
+        ],
     )
 
 

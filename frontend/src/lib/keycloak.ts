@@ -41,7 +41,7 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 
 export function getCallbackUrl(): string {
   if (typeof window === "undefined") return "";
-  return `${window.location.origin}/callback`;
+  return `${window.location.origin}/auth/callback`;
 }
 
 export async function buildLoginUrl(state?: string): Promise<string> {
