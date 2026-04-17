@@ -88,7 +88,7 @@ services:
       - "8080:8080"
       - "9000:9000"
     volumes:
-      - ./infra/keycloak-themes/praktik-ai:/opt/keycloak/themes/praktik-ai
+      - ./infra/keycloak-themes/praktikai:/opt/keycloak/themes/praktikai
       - ./infra/keycloak/praktikai-dev-realm.json:/opt/keycloak/data/import/praktikai-dev-realm.json:ro
     networks:
       - praktikai
