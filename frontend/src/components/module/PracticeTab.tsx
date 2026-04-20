@@ -43,16 +43,36 @@ interface AIQuestion {
 export default function PracticeTab({ moduleId, practiceQuestions, onComplete }: PracticeTabProps) {
   const hasPracticeQuestions = practiceQuestions.length > 0;
 
+  // Restore practice state from sessionStorage
+  const storageKey = `practice-state-${moduleId}`;
+  const savedState = (() => {
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+
   // ── Phase 1 – static course questions ──
-  const [phase, setPhase] = useState<Phase>(hasPracticeQuestions ? 'static' : 'ai');
-  const [staticAnswers, setStaticAnswers] = useState<Record<number, number | string>>({});
-  const [staticSubmitted, setStaticSubmitted] = useState(false);
+  const [phase, setPhase] = useState<Phase>(savedState?.phase ?? (hasPracticeQuestions ? 'static' : 'ai'));
+  const [staticAnswers, setStaticAnswers] = useState<Record<number, number | string>>(savedState?.staticAnswers ?? {});
+  const [staticSubmitted, setStaticSubmitted] = useState(savedState?.staticSubmitted ?? false);
 
   // ── Phase 2 – AI-generated questions ──
   const [aiQuestions, setAiQuestions] = useState<AIQuestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+
+  // Persist practice state to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        phase,
+        staticAnswers,
+        staticSubmitted,
+      }));
+    } catch { /* ignore */ }
+  }, [storageKey, phase, staticAnswers, staticSubmitted]);
 
   // ── Static question helpers ──
 

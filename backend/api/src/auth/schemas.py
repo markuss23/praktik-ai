@@ -18,3 +18,7 @@ class UserResponse(ORMModel):
 class ProfileUpdate(BaseModel):
     ai_tone: str = Field(..., max_length=100)
     ai_expression_level: str = Field(..., max_length=100)
+
+
+class ProfileNameUpdate(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=255)

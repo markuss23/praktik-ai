@@ -48,9 +48,9 @@ export function Hero() {
             <div className="flex flex-wrap gap-4">
               <button 
                 className="text-white font-semibold rounded-md shadow-lg transition-colors px-6 py-2.5 sm:px-8 sm:py-3 text-sm sm:text-base"
-                style={{ backgroundColor: '#00C896' }}
+                style={{ backgroundColor: '#252323' }}
               >
-                Začít kurz
+                Pokud máte nějaké připomínky, napište prosím na email: praktikai@ujep.cz
               </button>
             </div>
           </div>

@@ -153,7 +153,7 @@ export default function CoursePage() {
       {/* Course Header */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-black">{course.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-black break-words">{course.title}</h1>
           {isAuthenticated && (
             <div>
               <AnimatePresence mode="wait">
@@ -204,7 +204,7 @@ export default function CoursePage() {
           )}
         </div>
         {course.description && (
-          <p className="text-gray-600 mt-3 max-w-3xl">{course.description}</p>
+          <p className="text-gray-600 mt-3 max-w-3xl break-words">{course.description}</p>
         )}
       </div>
 
@@ -279,7 +279,7 @@ export default function CoursePage() {
 
                   const cardContent = (
                     <div
-                      className={`bg-white rounded-lg flex flex-col transition-all duration-300 ${
+                      className={`bg-white rounded-lg flex flex-col transition-all duration-300 overflow-hidden ${
                         isAccessible ? 'hover:shadow-lg' : ''
                       } ${isLocked ? 'opacity-60' : ''}`}
                       style={{
@@ -316,7 +316,7 @@ export default function CoursePage() {
 
                       {/* Title with gradient */}
                       <h3
-                        className="text-xl font-bold mb-3"
+                        className="text-xl font-bold mb-3 break-words"
                         style={{
                           background: isLocked && !isPassed
                             ? '#9CA3AF'

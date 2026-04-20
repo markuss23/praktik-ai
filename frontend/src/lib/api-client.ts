@@ -65,6 +65,19 @@ export async function updateProfile(aiTone: string, aiExpressionLevel: string) {
   });
 }
 
+export async function updateProfileName(displayName: string) {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/profile/name`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ display_name: displayName }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 // Course API functions
 export async function getCourses(params?: {
   includeInactive?: boolean;

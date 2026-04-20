@@ -9,7 +9,6 @@ import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
-import { NewBadgesModal } from '@/components/profile/NewBadgesModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -17,27 +16,6 @@ import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
 import { ProfileSkeleton } from '@/components/ui';
 import { motion } from 'motion/react';
-
-const SEEN_BADGES_KEY = 'praktik-ai-seen-badges';
-
-function getSeenBadgeIds(): string[] {
-  try {
-    const raw = localStorage.getItem(SEEN_BADGES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function markBadgesAsSeen(badgeIds: string[]) {
-  try {
-    const existing = getSeenBadgeIds();
-    const merged = [...new Set([...existing, ...badgeIds])];
-    localStorage.setItem(SEEN_BADGES_KEY, JSON.stringify(merged));
-  } catch {
-    // localStorage unavailable
-  }
-}
 
 function computeBadges(enrollments: MyEnrollment[]): Badge[] {
   const badges: Badge[] = [];
@@ -93,9 +71,8 @@ export default function ProfilPage() {
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [newBadges, setNewBadges] = useState<Badge[]>([]);
-  const [showNewBadges, setShowNewBadges] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -122,24 +99,6 @@ export default function ProfilPage() {
       .finally(() => setEnrollmentsLoading(false));
   }, [isAuthenticated]);
 
-  // Check for new badges once enrollments are loaded
-  useEffect(() => {
-    if (enrollmentsLoading || enrollments.length === 0) return;
-
-    const allBadges = computeBadges(enrollments);
-    const seenIds = getSeenBadgeIds();
-    const unseen = allBadges.filter(b => !seenIds.includes(b.id));
-
-    if (unseen.length > 0) {
-      setNewBadges(unseen);
-      setShowNewBadges(true);
-    }
-  }, [enrollments, enrollmentsLoading]);
-
-  const handleDismissNewBadges = useCallback(() => {
-    markBadgesAsSeen(newBadges.map(b => b.id));
-    setShowNewBadges(false);
-  }, [newBadges]);
 
   const handleAvatarChange = useCallback((url: string) => {
     setAvatarSrc(url);
@@ -216,7 +175,7 @@ export default function ProfilPage() {
 
   return (
     <div
-      className="px-4 sm:px-8 lg:px-16 py-6"
+      className="px-6 sm:px-10 lg:px-20 py-6"
       style={{ maxWidth: '1440px', width: '100%', margin: '0 auto' }}
     >
       {/* Breadcrumb */}
@@ -238,7 +197,7 @@ export default function ProfilPage() {
           className="flex flex-col gap-5 w-full lg:w-[320px] flex-shrink-0"
         >
           <ProfileCard
-            name={user?.name ?? user?.preferred_username ?? 'Uživatel'}
+            name={displayName ?? currentUser?.displayName ?? user?.name ?? user?.preferred_username ?? 'Uživatel'}
             role={roleLabel}
             avatarSrc={avatarSrc ?? '/logo.svg'}
             level={level}
@@ -292,6 +251,7 @@ export default function ProfilPage() {
         onAvatarChange={handleAvatarChange}
         initialFirstName={user?.given_name ?? ''}
         initialLastName={user?.family_name ?? ''}
+        onNameSaved={(name) => setDisplayName(name)}
       />
 
       {/* AI preferences modal */}
@@ -303,12 +263,6 @@ export default function ProfilPage() {
         onSaved={refetchUser}
       />
 
-      {/* New badges notification modal */}
-      <NewBadgesModal
-        isOpen={showNewBadges}
-        badges={newBadges}
-        onConfirm={handleDismissNewBadges}
-      />
     </div>
   );
 }

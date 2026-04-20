@@ -106,7 +106,28 @@ export function CourseAICreateView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Validation
+    const title = formData.title.trim();
+    if (title.length < 3 || title.length > 120) {
+      setError('Název kurzu musí mít 3 až 120 znaků.');
+      return;
+    }
+    const desc = formData.description.trim();
+    if (desc.length < 3 || desc.length > 500) {
+      setError('Popis kurzu musí mít 3 až 500 znaků.');
+      return;
+    }
+    if (formData.moduleCount < 1 || formData.moduleCount > 12) {
+      setError('Počet modulů musí být mezi 1 a 12.');
+      return;
+    }
+    const duration = formData.durationMinutes ? parseInt(formData.durationMinutes) : 0;
+    if (formData.durationMinutes && (duration < 15 || duration > 300)) {
+      setError('Délka kurzu musí být mezi 15 a 300 minutami.');
+      return;
+    }
+
     if (files.length === 0) {
       setError('Prosím nahrajte alespoň jeden soubor s podklady');
       return;
@@ -217,11 +238,14 @@ export function CourseAICreateView() {
               <input
                 type="text"
                 required
+                minLength={3}
+                maxLength={120}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
                 placeholder="Výběr zrn kávy"
               />
+              <span className="text-xs text-gray-400 mt-1">{formData.title.length}/120</span>
             </div>
 
             {/* Katalogové údaje */}
@@ -291,11 +315,14 @@ export function CourseAICreateView() {
               <textarea
                 required
                 rows={6}
+                minLength={3}
+                maxLength={500}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black resize-none"
                 placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn..."
               />
+              <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
             </div>
 
             {/* Počet modulů + Délka kurzu */}
@@ -315,14 +342,17 @@ export function CourseAICreateView() {
                   <input
                     type="number"
                     min="1"
-                    max="20"
+                    max="12"
                     value={formData.moduleCount}
-                    onChange={(e) => setFormData({ ...formData, moduleCount: parseInt(e.target.value) || 1 })}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setFormData({ ...formData, moduleCount: Math.min(12, Math.max(1, val)) });
+                    }}
                     className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
                   />
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, moduleCount: Math.min(20, formData.moduleCount + 1) })}
+                    onClick={() => setFormData({ ...formData, moduleCount: Math.min(12, formData.moduleCount + 1) })}
                     className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
                   >
                     +
@@ -336,7 +366,8 @@ export function CourseAICreateView() {
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min="15"
+                  max="300"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
                   className="w-32 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
@@ -423,7 +454,7 @@ export function CourseAICreateView() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || !formData.title}
+                disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
                 className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}

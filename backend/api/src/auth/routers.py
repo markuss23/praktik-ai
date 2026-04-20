@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, auth, oauth2_bearer
-from api.src.auth.schemas import ProfileUpdate, UserResponse
+from api.src.auth.schemas import ProfileUpdate, ProfileNameUpdate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -46,6 +46,19 @@ def endp_update_profile(
     """Aktualizuje AI preference profilu přihlášeného uživatele."""
     current_user.ai_tone = data.ai_tone
     current_user.ai_expression_level = data.ai_expression_level
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+
+@router.put("/profile/name")
+def endp_update_profile_name(
+    data: ProfileNameUpdate,
+    current_user: CurrentUser,
+    db: SessionSqlSessionDependency,
+) -> UserResponse:
+    """Aktualizuje zobrazované jméno profilu přihlášeného uživatele."""
+    current_user.display_name = data.display_name
     db.commit()
     db.refresh(current_user)
     return UserResponse.model_validate(current_user)

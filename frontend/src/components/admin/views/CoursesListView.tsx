@@ -1,6 +1,6 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
@@ -55,6 +55,7 @@ export function CoursesListView() {
     title: '',
     description: '',
     isPublished: false,
+    courseBlockId: 0,
   });
 
   // Data formuláře modulu
@@ -271,7 +272,7 @@ export function CoursesListView() {
   // ─── Modal handlers ──────────────────────────────────────────────────────────
 
   const openCreateCourseModal = () => {
-    setCourseFormData({ courseId: null, title: '', description: '', isPublished: false });
+    setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
     setModalError('');
     setActiveModal('course-create');
   };
@@ -300,16 +301,34 @@ export function CoursesListView() {
 
     try {
       if (courseFormData.courseId) {
+        // Update existing course
         const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
         await sharedCoursesApi.updateCourse({
           courseId: courseFormData.courseId,
           courseUpdate: {
             title: courseFormData.title,
             description: courseFormData.description,
-            courseBlockId: existingCourse?.courseBlockId ?? 1,
+            courseBlockId: courseFormData.courseBlockId || (existingCourse?.courseBlockId ?? 1),
             courseTargetId: existingCourse?.courseTargetId ?? 1,
             courseSubjectId: existingCourse?.courseSubjectId ?? 1,
           }
+        });
+      } else {
+        // Create new course
+        if (!courseFormData.courseBlockId) {
+          setModalError('Vyberte tematický blok.');
+          setModalLoading(false);
+          return;
+        }
+        // Use first available target and subject as defaults
+        const defaultTargetId = targets.length > 0 ? targets[0].targetId : 1;
+        const defaultSubjectId = subjects.length > 0 ? subjects[0].subjectId : 1;
+        await createCourse({
+          title: courseFormData.title,
+          description: courseFormData.description || undefined,
+          courseBlockId: courseFormData.courseBlockId,
+          courseTargetId: defaultTargetId,
+          courseSubjectId: defaultSubjectId,
         });
       }
       await loadCoursesList();
@@ -703,6 +722,7 @@ export function CoursesListView() {
         isOpen={activeModal === 'course-create' || activeModal === 'course-edit'}
         mode={activeModal === 'course-create' ? 'create' : 'edit'}
         formData={courseFormData}
+        blocks={blocks}
         loading={modalLoading}
         error={modalError}
         onClose={closeModal}
