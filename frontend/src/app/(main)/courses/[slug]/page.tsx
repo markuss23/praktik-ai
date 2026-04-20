@@ -41,16 +41,21 @@ export default function CoursePage() {
           return;
         }
 
-        // Fetch course and modules in parallel
-        const [courseData, modulesData] = await Promise.all([
-          getCourse(courseId),
-          getModules({ courseId }),
-        ]);
+        // Fetch course first — its response already includes modules
+        const courseData = await getCourse(courseId);
         setCourse(courseData);
-        setModules(
-          (courseData.modules?.length ? courseData.modules : modulesData)
-            .filter(m => m.isActive)
-        );
+
+        let modulesList = courseData.modules ?? [];
+        // Fallback: fetch modules separately only if course didn't include them
+        if (modulesList.length === 0) {
+          try {
+            modulesList = await getModules({ courseId });
+          } catch {
+            // getModules may require auth — ignore for unauthenticated users
+            modulesList = [];
+          }
+        }
+        setModules(modulesList.filter(m => m.isActive));
       } catch (err) {
         console.error('Failed to fetch course data:', err);
         setError('Nepodařilo se načíst data kurzu.');
