@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Loader2, Upload, X, FileText } from 'lucide-react';
+import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
 import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
@@ -14,6 +15,7 @@ export function CourseAICreateView() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
@@ -172,7 +174,26 @@ export function CourseAICreateView() {
 
       // Generování kurzu pomocí AI
       setStep('generating');
-      await generateCourseWithAI(course.courseId);
+      try {
+        await generateCourseWithAI(course.courseId);
+      } catch (genErr: unknown) {
+        let message = 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.';
+        if (genErr && typeof genErr === 'object' && 'response' in genErr) {
+          const response = (genErr as { response: Response }).response;
+          try {
+            const data = await response.json();
+            message = data.detail || `Chyba serveru: ${response.status}`;
+          } catch {
+            message = `Chyba serveru: ${response.status}`;
+          }
+        } else if (genErr instanceof Error && genErr.message) {
+          message = genErr.message;
+        }
+        setGenerationError(message);
+        setStep('form');
+        setLoading(false);
+        return;
+      }
 
       // Přechod na editor obsahu kurzu
       goToCourseContent(course.courseId);
@@ -464,6 +485,50 @@ export function CourseAICreateView() {
           </form>
         </div>
       </div>
+
+      <AnimatePresence>
+        {generationError && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/40"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+              role="alertdialog"
+              aria-modal="true"
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
+                  <AlertTriangle size={20} className="text-red-500" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-lg font-bold text-gray-900">Generování kurzu selhalo</h3>
+                  <p className="text-sm text-gray-600 mt-1 break-words">{generationError}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={() => {
+                    setGenerationError(null);
+                    goToCourses();
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors"
+                >
+                  Přejít na kurzy
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
