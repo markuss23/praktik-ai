@@ -7,4 +7,6 @@ compose.dev.yml
 compose.test.yml
 compose.prod.yml
 .github/workflows/deploy.yml
+.github/workflows/deploy-test.yml
+
 Caddyfile
