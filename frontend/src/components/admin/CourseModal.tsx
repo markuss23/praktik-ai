@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from "react";
 import { X } from "lucide-react";
-import { Course } from "@/api";
+import type { CourseBlock } from "@/api";
 
 interface CourseModalProps {
   isOpen: boolean;
@@ -10,7 +11,9 @@ interface CourseModalProps {
     courseId: number | null;
     title: string;
     description: string;
+    courseBlockId?: number;
   };
+  blocks?: CourseBlock[];
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -22,13 +25,40 @@ export function CourseModal({
   isOpen,
   mode,
   formData,
+  blocks = [],
   loading,
   error,
   onClose,
   onSubmit,
   onChange,
 }: CourseModalProps) {
+  const [validationError, setValidationError] = useState('');
+
   if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = formData.title.trim();
+    const desc = formData.description.trim();
+
+    if (title.length < 3 || title.length > 120) {
+      setValidationError('Název kurzu musí mít 3 až 120 znaků.');
+      return;
+    }
+    if (desc.length < 3 || desc.length > 500) {
+      setValidationError('Popis kurzu musí mít 3 až 500 znaků.');
+      return;
+    }
+    if (mode === 'create' && blocks.length > 0 && !formData.courseBlockId) {
+      setValidationError('Vyberte tematický blok.');
+      return;
+    }
+
+    setValidationError('');
+    onSubmit(e);
+  };
+
+  const displayError = validationError || error;
 
   return (
     <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
@@ -41,14 +71,14 @@ export function CourseModal({
             <X size={24} />
           </button>
         </div>
-        
-        {error && (
+
+        {displayError && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-            {error}
+            {displayError}
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="course-title" className="block text-sm font-medium text-gray-700 mb-2">
               Název kurzu *
@@ -57,31 +87,59 @@ export function CourseModal({
               type="text"
               id="course-title"
               required
+              minLength={3}
+              maxLength={120}
               value={formData.title}
               onChange={(e) => onChange({ ...formData, title: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
               placeholder="např. Jak komunikovat s AI?"
             />
+            <span className="text-xs text-gray-400 mt-1">{formData.title.length}/120</span>
           </div>
 
           <div>
             <label htmlFor="course-description" className="block text-sm font-medium text-gray-700 mb-2">
-              Popis kurzu
+              Popis kurzu *
             </label>
             <textarea
               id="course-description"
+              required
               rows={4}
+              minLength={3}
+              maxLength={500}
               value={formData.description}
               onChange={(e) => onChange({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
               placeholder="Stručný popis kurzu..."
             />
+            <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
           </div>
+
+          {/* Block selection */}
+          {blocks.length > 0 && (
+            <div>
+              <label htmlFor="course-block" className="block text-sm font-medium text-gray-700 mb-2">
+                Tematický blok *
+              </label>
+              <select
+                id="course-block"
+                required
+                value={formData.courseBlockId ?? 0}
+                onChange={(e) => onChange({ ...formData, courseBlockId: Number(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black bg-white"
+              >
+                <option value={0} disabled>Vyberte blok...</option>
+                {blocks.map((b) => (
+                  <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? 'Ukládání...' : (mode === 'create' ? 'Vytvořit kurz' : 'Uložit změny')}

@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { AccountSettingsCard } from './AccountSettingsCard';
 import { motion, AnimatePresence } from 'motion/react';
+import { updateProfileName } from '@/lib/api-client';
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -11,9 +13,32 @@ interface ProfileEditModalProps {
   onAvatarChange?: (url: string) => void;
   initialFirstName?: string;
   initialLastName?: string;
+  onNameSaved?: (displayName: string) => void;
 }
 
-export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, initialFirstName, initialLastName }: ProfileEditModalProps) {
+export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, initialFirstName, initialLastName, onNameSaved }: ProfileEditModalProps) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async (values: { firstName: string; lastName: string }) => {
+    const displayName = `${values.firstName} ${values.lastName}`.trim();
+    if (!displayName) {
+      setError('Jméno nesmí být prázdné.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      await updateProfileName(displayName);
+      onNameSaved?.(displayName);
+      onClose();
+    } catch {
+      setError('Nepodařilo se uložit změny.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -47,6 +72,12 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, i
               </button>
             </div>
 
+            {error && (
+              <div className="mx-6 mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Body */}
             <div className="px-2 pb-2">
               <AccountSettingsCard
@@ -54,12 +85,10 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, i
                 initialLastName={initialLastName}
                 avatarSrc={avatarSrc}
                 onAvatarChange={onAvatarChange}
-                onSave={(values) => {
-                  console.log('Saved:', values);
-                  onClose();
-                }}
+                saving={saving}
+                onSave={handleSave}
                 onChangePassword={() => {
-                  console.log('Change password clicked');
+                  // Keycloak manages passwords
                 }}
               />
             </div>

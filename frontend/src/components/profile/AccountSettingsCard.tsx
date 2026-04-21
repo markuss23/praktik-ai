@@ -13,6 +13,7 @@ interface AccountSettingsCardProps {
   initialFirstName?: string;
   initialLastName?: string;
   avatarSrc?: string;
+  saving?: boolean;
   onSave?: (values: AccountFormValues) => void;
   onChangePassword?: () => void;
   onAvatarChange?: (url: string) => void;
@@ -22,6 +23,7 @@ export function AccountSettingsCard({
   initialFirstName = '',
   initialLastName = '',
   avatarSrc,
+  saving = false,
   onSave,
   onChangePassword,
   onAvatarChange,
@@ -158,9 +160,10 @@ export function AccountSettingsCard({
           </button>
           <button
             type="submit"
-            className="px-5 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition shadow-sm"
+            disabled={saving || uploading}
+            className="px-5 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Uložit změny
+            {saving ? 'Ukládání...' : 'Uložit změny'}
           </button>
         </div>
       </form>

@@ -20,7 +20,7 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.25 }}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between min-w-[260px] max-w-[340px] w-full"
+      className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between w-full"
     >
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -37,7 +37,7 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
           )}
         </div>
         <h4
-          className="text-base font-semibold mb-0.5"
+          className="text-base font-semibold mb-0.5 break-words"
           style={isCompleted
             ? { color: '#16a34a' }
             : { background: 'linear-gradient(90deg, #6366F1, #8B5BA8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
@@ -46,7 +46,7 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
           {enrollment.course.title}
         </h4>
         {enrollment.course.description && (
-          <p className="text-sm text-gray-500 line-clamp-1">{enrollment.course.description}</p>
+          <p className="text-sm text-gray-500 line-clamp-2 break-words">{enrollment.course.description}</p>
         )}
       </div>
       <div className="flex items-center justify-between mt-4">
@@ -106,7 +106,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
-                <div className="flex gap-4 overflow-x-auto pb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {inProgress.map(e => (
                     <ModuleCard key={e.enrollmentId} enrollment={e} onRepeatClick={setRepeatConfirm} />
                   ))}
@@ -140,7 +140,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="overflow-hidden"
               >
-                <div className="flex gap-4 overflow-x-auto pb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {completed.map(e => (
                     <ModuleCard key={e.enrollmentId} enrollment={e} onRepeatClick={setRepeatConfirm} />
                   ))}
