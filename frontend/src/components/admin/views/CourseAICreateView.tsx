@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
+import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
 import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -16,6 +16,8 @@ export function CourseAICreateView() {
   const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<CourseGenerationProgress | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
@@ -32,6 +34,40 @@ export function CourseAICreateView() {
     courseTargetId: 0,
     courseSubjectId: 0,
   });
+
+  // Zastavení polling timeru při unmountu
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  const startProgressPolling = useCallback((courseId: number) => {
+    stopPolling();
+    // Počáteční stav než přijde první odpověď
+    setProgress({ step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null });
+    pollTimerRef.current = setInterval(async () => {
+      try {
+        const p = await getCourseGenerationProgress(courseId);
+        setProgress(p);
+        if (p.status === 'completed' || p.status === 'failed') {
+          stopPolling();
+        }
+      } catch {
+        // Ignoruj jednotlivé chyby pollingu — koncový stav přijde z POST /generate-course
+      }
+    }, 1500);
+  }, [stopPolling]);
 
   // Načtení katalogů při mountu
   useEffect(() => {
@@ -174,9 +210,11 @@ export function CourseAICreateView() {
 
       // Generování kurzu pomocí AI
       setStep('generating');
+      startProgressPolling(course.courseId);
       try {
         await generateCourseWithAI(course.courseId);
       } catch (genErr: unknown) {
+        stopPolling();
         let message = 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.';
         if (genErr && typeof genErr === 'object' && 'response' in genErr) {
           const response = (genErr as { response: Response }).response;
@@ -190,14 +228,20 @@ export function CourseAICreateView() {
           message = genErr.message;
         }
         setGenerationError(message);
+        setProgress(null);
         setStep('form');
         setLoading(false);
         return;
       }
 
+      stopPolling();
+      setProgress({ step: 5, total: 5, label: 'Dokončeno', status: 'completed', error: null });
+
       // Přechod na editor obsahu kurzu
       goToCourseContent(course.courseId);
     } catch (err: unknown) {
+      stopPolling();
+      setProgress(null);
       if (err instanceof Error) {
         setError(err.message);
       } else if (err && typeof err === 'object' && 'response' in err) {
@@ -487,6 +531,116 @@ export function CourseAICreateView() {
       </div>
 
       <AnimatePresence>
+        {step === 'uploading' && (
+          <motion.div
+            key="progress-upload"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/40" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+            >
+              <div className="flex items-center gap-3">
+                <Loader2 size={20} className="text-purple-600 animate-spin" />
+                <h3 className="text-lg font-bold text-gray-900">Nahrávání podkladů</h3>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">Soubory se nahrávají na server...</p>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {step === 'generating' && progress && progress.status !== 'failed' && (
+          <motion.div
+            key="progress-generate"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/40" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Průběh generování kurzu"
+            >
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-gray-900">AI generuje váš kurz</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Toto může trvat několik minut. Prosím neopouštějte stránku.
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-xs text-gray-600 mb-1.5">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Loader2 size={12} className="animate-spin text-purple-600" />
+                    {progress.label}
+                  </span>
+                  <span className="tabular-nums">
+                    {Math.min(progress.step, progress.total)} / {progress.total}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-purple-500 to-green-500 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${Math.round((Math.min(progress.step, progress.total) / progress.total) * 100)}%`,
+                    }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                  />
+                </div>
+              </div>
+
+              {/* Steps list */}
+              <ul className="space-y-2 text-sm">
+                {[
+                  { n: 1, label: 'Načítání kurzu z databáze' },
+                  { n: 2, label: 'Načítání podkladů' },
+                  { n: 3, label: 'Zpracování podkladů (AI)' },
+                  { n: 4, label: 'Plánování modulů (AI)' },
+                  { n: 5, label: 'Ukládání kurzu' },
+                ].map(({ n, label }) => {
+                  const done = progress.step > n || progress.status === 'completed';
+                  const active = progress.step === n && progress.status === 'running';
+                  return (
+                    <li
+                      key={n}
+                      className={`flex items-center gap-2 ${
+                        done ? 'text-gray-500' : active ? 'text-gray-900 font-medium' : 'text-gray-400'
+                      }`}
+                    >
+                      <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        {done ? (
+                          <Check size={14} className="text-green-600" />
+                        ) : active ? (
+                          <Loader2 size={14} className="animate-spin text-purple-600" />
+                        ) : (
+                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                        )}
+                      </span>
+                      <span>{label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </motion.div>
+          </motion.div>
+        )}
+
         {generationError && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <motion.div

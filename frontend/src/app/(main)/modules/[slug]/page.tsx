@@ -333,7 +333,10 @@ export default function ModulePage() {
                 </div>
               </div>
 
-              <AiTutorChat learnBlockId={currentBlock?.learnId} />
+              {/* AI tutor skrytý v assessment tabu*/}
+              {activeTab !== 'test' && (
+                <AiTutorChat learnBlockId={currentBlock?.learnId} />
+              )}
             </div>
           </div>
 

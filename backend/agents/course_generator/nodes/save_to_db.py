@@ -3,6 +3,7 @@ from sqlalchemy.orm.session import Session
 
 from agents.course_generator.state import AgentState, CourseGenerated
 from api import models
+from api.src.agents.progress import set_progress
 
 
 def save_to_db_node(state: AgentState) -> AgentState:
@@ -10,6 +11,8 @@ def save_to_db_node(state: AgentState) -> AgentState:
     print("Ukládání kurzu do databáze...")
 
     course_id: int = state.get("course_id")
+    if course_id is not None:
+        set_progress(course_id, step=5, label="Ukládání kurzu")
     db: Session = state.get("db")
     generated_course: CourseGenerated | None = state.get("course")
     summary: str = state.get("summarize_content")

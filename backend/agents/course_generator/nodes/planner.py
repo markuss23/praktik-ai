@@ -1,5 +1,6 @@
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
+from api.src.agents.progress import set_progress
 
 DEFAULT_MODEL = "gpt-5.4"
 
@@ -37,6 +38,10 @@ DEFAULT_PROMPT = (
 def plan_content_node(state: AgentState) -> AgentState:
     """Node pro vytvoření modulů kurzu."""
     print("Generání modulů kurzu...")
+
+    course_id = state.get("course_id")
+    if course_id is not None:
+        set_progress(course_id, step=4, label="Plánování modulů (AI)")
 
     course_input: CourseInput | None = state.get("course_input")
     summarize_content: str = state.get("summarize_content", "")

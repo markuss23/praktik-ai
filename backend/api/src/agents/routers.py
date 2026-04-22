@@ -5,6 +5,7 @@ from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import get_or_404, check_enrollment
 from api.src.agents.schemas import (
+    CourseGenerationProgressResponse,
     EvaluateAssessmentRequest,
     EvaluateAssessmentResponse,
     EvaluatePracticeAnswerRequest,
@@ -17,6 +18,12 @@ from api.src.agents.schemas import (
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
+)
+from api.src.agents.progress import (
+    get_progress,
+    mark_completed,
+    mark_failed,
+    set_progress,
 )
 from api.src.agents.practice_controllers import (
     generate_practice_question,
@@ -50,10 +57,12 @@ async def generate_course(
         )
 
     service = CourseGeneratorService(db=db, course_id=course_id)
+    set_progress(course_id, step=0, label="Spouštění generování")
 
     try:
         result = await service.generate()
     except Exception as e:
+        mark_failed(course_id, str(e))
         db.execute(
             update(models.Course)
             .where(models.Course.course_id == course_id)
@@ -62,9 +71,39 @@ async def generate_course(
         db.commit()
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+    mark_completed(course_id)
+
     return GenerateCourseResponse(
         title=result.title,
         modules=result.modules,
+    )
+
+
+@router.get(
+    "/course-progress/{course_id}",
+    operation_id="get_course_generation_progress",
+    dependencies=[require_role("lector")],
+)
+async def get_course_generation_progress(
+    course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> CourseGenerationProgressResponse:
+    """Vrátí průběh AI generování kurzu."""
+
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    validate_owner_or_superadmin(course, user, "kurz")
+
+    progress = get_progress(course_id)
+    if progress is None:
+        return CourseGenerationProgressResponse(
+            step=0, total=5, label="Čekání", status="pending", error=None
+        )
+
+    return CourseGenerationProgressResponse(
+        step=progress.step,
+        total=progress.total,
+        label=progress.label,
+        status=progress.status,
+        error=progress.error,
     )
 
 

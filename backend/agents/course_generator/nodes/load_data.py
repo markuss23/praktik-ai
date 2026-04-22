@@ -4,12 +4,15 @@ from pathlib import Path
 from agents.base.loaders.base import DataLoader
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
+from api.src.agents.progress import set_progress
 from api.storage import seaweedfs
 
 
 def load_data_node(state: AgentState) -> AgentState:
     """Node pro načtení obsahu souborů ze SeaweedFS."""
     print("Načítám obsah souborů ze SeaweedFS...")
+
+    set_progress(state["course_id"], step=2, label="Načítání podkladů")
 
     course_input: CourseInput | None = state.get("course_input")
     if course_input is None:
