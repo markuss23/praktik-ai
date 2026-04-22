@@ -460,6 +460,7 @@ export function CoursesListView() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Název kurzu</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Vlastník</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Počet modulů</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Publikováno</th>
@@ -475,6 +476,7 @@ export function CoursesListView() {
                     <React.Fragment key={course.courseId}>
                       <tr className="hover:bg-gray-50">
                         <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{course.ownerDisplayName ?? '—'}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
                         <td className="px-6 py-4">
                           <StatusBadge status={course.status} />
@@ -593,7 +595,7 @@ export function CoursesListView() {
                       {/* Quick Edit Accordion */}
                       {quickEditCourseId === course.courseId && (
                         <tr>
-                          <td colSpan={5} className="bg-purple-50 p-0 border-b border-purple-200">
+                          <td colSpan={6} className="bg-purple-50 p-0 border-b border-purple-200">
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-purple-800 whitespace-nowrap">Rychlé úpravy:</span>
@@ -655,7 +657,7 @@ export function CoursesListView() {
                       {/* Expanded Module List */}
                       {expandedCourse === course.courseId && (
                         <tr>
-                          <td colSpan={5} className="bg-gray-50 p-0">
+                          <td colSpan={6} className="bg-gray-50 p-0">
                             <ExpandedModuleList
                               course={course}
                               modules={courseModules[course.courseId] || []}
@@ -897,7 +899,9 @@ function MobileCourseCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">{moduleCount} moduly</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {moduleCount} moduly · Vlastník: {course.ownerDisplayName ?? '—'}
+          </p>
           <div className="mt-2 flex flex-wrap gap-1">
             <StatusBadge status={course.status} />
             {(course.status === Status.Approved || course.status === Status.Archived) && (

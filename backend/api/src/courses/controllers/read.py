@@ -5,7 +5,7 @@ Controllery pro čtení zdrojů kurzu.
 from collections.abc import Sequence
 
 from sqlalchemy import Select, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -23,8 +23,10 @@ def get_courses(
     status: str | None = None,
 ) -> list[Course]:
     """Vrátí seznam kurzů"""
-    stm: Select[tuple[models.Course]] = select(models.Course).order_by(
-        models.Course.course_id
+    stm: Select[tuple[models.Course]] = (
+        select(models.Course)
+        .options(joinedload(models.Course.owner))
+        .order_by(models.Course.course_id)
     )
 
     if not include_inactive:
