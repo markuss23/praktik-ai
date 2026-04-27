@@ -137,11 +137,11 @@ export function CourseUploadView() {
   };
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b flex-shrink-0">
         <div className="px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4">
-          <button 
+          <button
             onClick={goToCourses}
             className="p-2 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
           >
@@ -160,7 +160,7 @@ export function CourseUploadView() {
       </div>
 
       {/* Main Content */}
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         {error && (
           <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
             {error}

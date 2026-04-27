@@ -5,6 +5,7 @@ import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
+import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
@@ -197,6 +198,7 @@ export function CoursesListView() {
     setStatusLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.InReview);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to submit for review:', error);
@@ -211,6 +213,7 @@ export function CoursesListView() {
     setApprovalLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       try {
         await generateCourseEmbeddings(course.courseId);
         setEmbeddingDone(prev => new Set(prev).add(course.courseId));
@@ -232,6 +235,7 @@ export function CoursesListView() {
     setApprovalLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to reject course:', error);
@@ -246,6 +250,7 @@ export function CoursesListView() {
     setStatusLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to revert course:', error);
@@ -439,7 +444,7 @@ export function CoursesListView() {
 
   return (
     <>
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">
@@ -460,6 +465,7 @@ export function CoursesListView() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Název kurzu</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Vlastník</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Počet modulů</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Publikováno</th>
@@ -475,6 +481,7 @@ export function CoursesListView() {
                     <React.Fragment key={course.courseId}>
                       <tr className="hover:bg-gray-50">
                         <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{course.ownerDisplayName ?? '—'}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
                         <td className="px-6 py-4">
                           <StatusBadge status={course.status} />
@@ -593,7 +600,7 @@ export function CoursesListView() {
                       {/* Quick Edit Accordion */}
                       {quickEditCourseId === course.courseId && (
                         <tr>
-                          <td colSpan={5} className="bg-purple-50 p-0 border-b border-purple-200">
+                          <td colSpan={6} className="bg-purple-50 p-0 border-b border-purple-200">
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-purple-800 whitespace-nowrap">Rychlé úpravy:</span>
@@ -655,7 +662,7 @@ export function CoursesListView() {
                       {/* Expanded Module List */}
                       {expandedCourse === course.courseId && (
                         <tr>
-                          <td colSpan={5} className="bg-gray-50 p-0">
+                          <td colSpan={6} className="bg-gray-50 p-0">
                             <ExpandedModuleList
                               course={course}
                               modules={courseModules[course.courseId] || []}
@@ -897,7 +904,9 @@ function MobileCourseCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">{moduleCount} moduly</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {moduleCount} moduly · Vlastník: {course.ownerDisplayName ?? '—'}
+          </p>
           <div className="mt-2 flex flex-wrap gap-1">
             <StatusBadge status={course.status} />
             {(course.status === Status.Approved || course.status === Status.Archived) && (

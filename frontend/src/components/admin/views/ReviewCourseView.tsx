@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'motion/react';
 import { Course, Module, FeedbackItem, Status } from '@/api';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { REVIEW_COUNT_EVENT } from '@/components/admin/AdminSidebar';
 import {
   CheckCircle,
   XCircle,
@@ -80,11 +82,17 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
 
   // Course-level approval state
   const [approvalLoading, setApprovalLoading] = useState(false);
+  // Po schválení ukážeme krátkou přechodovou animaci a teprve pak naviguju
+  // zpět na seznam — bez tohoto skoku by se UI změnilo skokem.
+  const [approvedTransition, setApprovedTransition] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const canApprove = isGuarantor;
-  const canAddFeedback = isGuarantor;
+  // Reviewers can't approve courses they own — back-end enforces this too,
+  // but the UI must hide approve/reject controls regardless.
+  const isOwnCourse = !!course && course.ownerId === currentUser?.userId;
+  const canApprove = isGuarantor && !isOwnCourse;
+  const canAddFeedback = isGuarantor && !isOwnCourse;
   const canDeleteFeedback = (authorId: number) =>
     isSuperAdmin || (isGuarantor && authorId === currentUser?.userId);
 
@@ -264,9 +272,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.Approved);
       await generateCourseEmbeddings(courseId).catch(() => {});
       setCourse(prev => prev ? { ...prev, status: Status.Approved } : prev);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
+      // Krátká success animace, pak skok zpět na výchozí stránku schvalování.
+      setApprovedTransition(true);
+      setTimeout(() => router.push('/admin/review'), 1400);
     } catch (err) {
       console.error('Failed to approve:', err);
-    } finally {
       setApprovalLoading(false);
     }
   };
@@ -276,6 +287,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     setApprovalLoading(true);
     try {
       await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.Edited);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       router.push('/admin/review');
     } catch (err) {
       console.error('Failed to reject:', err);
@@ -696,6 +708,48 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           )}
         </div>
       </div>
+
+      {/* Přechodová animace po schválení kurzu — překryje obsah a po krátké
+          chvíli se naviguje zpět na seznam ke schválení. */}
+      <AnimatePresence>
+        {approvedTransition && (
+          <motion.div
+            key="approved-transition"
+            className="fixed inset-0 z-[60] flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-white/80 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              className="relative flex flex-col items-center gap-4 px-10 py-8 rounded-2xl bg-white shadow-xl border border-green-100"
+              initial={{ scale: 0.85, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: -8 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 14, delay: 0.1 }}
+                className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center"
+              >
+                <CheckCircle size={36} className="text-green-600" />
+              </motion.div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900">Kurz schválen</p>
+                <p className="text-sm text-gray-500 mt-1">Vracím vás na přehled…</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -4,8 +4,8 @@ Controllery pro čtení zdrojů kurzu.
 
 from collections.abc import Sequence
 
-from sqlalchemy import Select, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Select, func, or_, select
+from sqlalchemy.orm import Session, joinedload
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -22,9 +22,30 @@ def get_courses(
     course_subject_id: int | None = None,
     status: str | None = None,
 ) -> list[Course]:
-    """Vrátí seznam kurzů"""
-    stm: Select[tuple[models.Course]] = select(models.Course).order_by(
-        models.Course.course_id
+    """Vrátí seznam kurzů. Doplňuje agregovaný počet aktivních zápisů a třídí
+    od nejvíce zapsaného (pomáhá frontendu řadit „nejoblíbenější první")."""
+
+    enrollment_count_subq = (
+        select(
+            models.Enrollment.course_id.label("course_id"),
+            func.count(models.Enrollment.enrollment_id).label("cnt"),
+        )
+        .where(models.Enrollment.is_active.is_(True))
+        .group_by(models.Enrollment.course_id)
+        .subquery()
+    )
+    enrollments_count_col = func.coalesce(enrollment_count_subq.c.cnt, 0).label(
+        "enrollments_count"
+    )
+
+    stm: Select[tuple[models.Course, int]] = (
+        select(models.Course, enrollments_count_col)
+        .outerjoin(
+            enrollment_count_subq,
+            models.Course.course_id == enrollment_count_subq.c.course_id,
+        )
+        .options(joinedload(models.Course.owner))
+        .order_by(enrollments_count_col.desc(), models.Course.course_id.asc())
     )
 
     if not include_inactive:
@@ -53,8 +74,12 @@ def get_courses(
     if status is not None:
         stm = stm.where(models.Course.status == status)
 
-    rows: Sequence[Course] = db.execute(stm).scalars().all()
-    return [Course.model_validate(c) for c in rows]
+    rows: Sequence[tuple[models.Course, int]] = db.execute(stm).all()
+    result: list[Course] = []
+    for course, cnt in rows:
+        course.__dict__["enrollments_count"] = int(cnt or 0)
+        result.append(Course.model_validate(course))
+    return result
 
 
 def get_course(db: Session, course_id: int) -> CourseDetail:

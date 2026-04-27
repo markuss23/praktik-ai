@@ -70,10 +70,12 @@ class CourseCreated(ORMModel):
 class Course(CourseBase):
     course_id: int
     owner_id: int
+    owner_display_name: str | None = None
     is_active: bool
     is_published: bool = False
     status: Status
     modules_count: int = 0
+    enrollments_count: int = 0
 
     # modules: list[Module] = []
     files: list[CourseFile] = []
@@ -84,12 +86,21 @@ class Course(CourseBase):
 
     @model_validator(mode="before")
     @classmethod
-    def populate_modules_count(cls, obj):
-        if hasattr(obj, "modules") and hasattr(obj, "__dict__"):
-            try:
-                obj.__dict__["modules_count"] = len(obj.modules)
-            except Exception:
-                pass
+    def populate_computed_fields(cls, obj):
+        if hasattr(obj, "__dict__"):
+            if hasattr(obj, "modules"):
+                try:
+                    obj.__dict__["modules_count"] = len(obj.modules)
+                except Exception:
+                    pass
+            # enrollments_count se plní v `read.py` přes agregační dotaz, aby
+            # nedocházelo k N+1; tady zachováme případně už předvyplněnou hodnotu.
+            owner = getattr(obj, "owner", None)
+            if owner is not None:
+                try:
+                    obj.__dict__["owner_display_name"] = owner.display_name
+                except Exception:
+                    pass
         return obj
 
 

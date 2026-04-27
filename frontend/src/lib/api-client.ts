@@ -189,6 +189,41 @@ export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }
 
+export interface CourseGenerationProgress {
+  step: number;
+  total: number;
+  label: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  error: string | null;
+}
+
+export async function getCourseGenerationProgress(courseId: number): Promise<CourseGenerationProgress> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { 'Accept': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}/api/v1/agents/course-progress/${courseId}`, {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+/** Backend lookup for a currently-running course generation owned by the user.
+ * Used to resume the progress UI after a page refresh. Returns null if none. */
+export async function getActiveCourseGeneration(): Promise<number | null> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { 'Accept': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}/api/v1/agents/active-course-generation`, {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return typeof data === 'number' ? data : null;
+}
+
 //  Course Status & Published API functions 
 
 export async function updateCoursePublished(courseId: number, isPublished: boolean) {

@@ -18,6 +18,16 @@ class GenerateCourseResponse(BaseModel):
     modules: list[dict]
 
 
+class CourseGenerationProgressResponse(BaseModel):
+    """Response s průběhem AI generování kurzu."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+
+
 class GenerateEmbeddingsResponse(BaseModel):
     """Response s výsledky generování embeddingů"""
 

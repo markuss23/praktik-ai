@@ -16,12 +16,17 @@ export default function CoursePage() {
   const router = useRouter();
   const slug = params.slug as string;
   const courseId = Number(slug);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useCurrentUser();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Tři nezávislé loadery: kurz (s moduly), autentizace, uživatelská data
+  // (zápis + progress modulů). UI se zobrazí, až jsou všechny vyřízené —
+  // jinak by uživatel viděl problesknout „Zapsat se" stav, než se načte
+  // skutečný zápis.
+  const [courseLoading, setCourseLoading] = useState(true);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<MyEnrollment | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
@@ -33,7 +38,7 @@ export default function CoursePage() {
   useEffect(() => {
     async function load() {
       try {
-        setLoading(true);
+        setCourseLoading(true);
         setError(null);
 
         if (isNaN(courseId)) {
@@ -60,30 +65,55 @@ export default function CoursePage() {
         console.error('Failed to fetch course data:', err);
         setError('Nepodařilo se načíst data kurzu.');
       } finally {
-        setLoading(false);
+        setCourseLoading(false);
       }
     }
     load();
   }, [courseId]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    // These are already parallel (fire-and-forget promises)
-    getMyEnrollments()
-      .then(enrollments => {
-        const found = enrollments.find(e => e.courseId === courseId);
-        if (found?.completedAt) {
-          // Course already completed — redirect to homepage
-          router.replace('/');
-          return;
-        }
-        setEnrollment(found ?? null);
-      })
-      .catch(() => setEnrollment(null));
-    getCourseProgress(courseId)
-      .then(setModuleProgress)
-      .catch(() => setModuleProgress([]));
-  }, [isAuthenticated, courseId, router]);
+    // Počkej, než useAuth vyřeší stav přihlášení.
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      // Nepřihlášený uživatel — nečekáme na žádné další API volání,
+      // ale nastavíme prázdný stav, aby render nezůstal v loadingu.
+      setEnrollment(null);
+      setModuleProgress([]);
+      setEnrollmentLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setEnrollmentLoading(true);
+    Promise.all([
+      getMyEnrollments()
+        .then(enrollments => {
+          if (cancelled) return;
+          const found = enrollments.find(e => e.courseId === courseId);
+          if (found?.completedAt) {
+            // Course already completed — redirect to homepage
+            router.replace('/');
+            return;
+          }
+          setEnrollment(found ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setEnrollment(null);
+        }),
+      getCourseProgress(courseId)
+        .then(p => { if (!cancelled) setModuleProgress(p); })
+        .catch(() => { if (!cancelled) setModuleProgress([]); }),
+    ]).finally(() => {
+      if (!cancelled) setEnrollmentLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [authLoading, isAuthenticated, courseId, router]);
+
+  // Hlavní loading flag — dokud jeden ze zdrojů nebyl vyřešen, UI se nerenderuje.
+  // Tím se eliminuje flicker mezi „Zapsat se" stavem a skutečným zápisem.
+  const loading = authLoading || courseLoading || enrollmentLoading;
 
   const handleEnroll = async () => {
     if (!currentUser) return;
@@ -233,7 +263,37 @@ export default function CoursePage() {
       {/* Modules Grid */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-16" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <AnimatePresence mode="wait">
-          {filteredModules.length === 0 && moduleSearch ? (
+          {modules.length === 0 ? (
+            // Lazy fallback: pokud kurz vrátil prázdný seznam modulů (nebo se
+            // ještě nezvládl dotáhnout vedlejší fetch), ukážeme placeholdery.
+            <motion.div
+              key="modules-skeleton"
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {[1, 2, 3, 4].map(i => (
+                <div
+                  key={i}
+                  className="bg-white rounded-lg overflow-hidden animate-pulse border border-gray-200"
+                  style={{ padding: '24px', minHeight: '260px' }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="h-4 w-16 bg-gray-200 rounded" />
+                    <div className="h-4 w-24 bg-gray-200 rounded" />
+                  </div>
+                  <div className="h-7 w-3/4 bg-gray-200 rounded mb-2" />
+                  <div className="h-7 w-2/3 bg-gray-200 rounded mb-3" />
+                  <div className="flex items-center justify-between mt-auto pt-6">
+                    <div className="h-5 w-20 bg-gray-200 rounded" />
+                    <div className="h-10 w-32 bg-gray-200 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          ) : filteredModules.length === 0 && moduleSearch ? (
             <motion.p
               key="no-results"
               className="text-center text-gray-500 py-12"

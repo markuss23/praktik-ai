@@ -88,7 +88,7 @@ export function AiMentorView() {
   }
 
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-gray-100 min-h-full">
+    <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-gray-100 min-h-full">
       <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">AI Mentor</h1>
 
       <div className="space-y-6">

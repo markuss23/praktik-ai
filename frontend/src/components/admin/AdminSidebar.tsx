@@ -2,18 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Users, BarChart3, Settings, Menu, X, Boxes, ClipboardCheck, Bot } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getCourses } from '@/lib/api-client';
 import { Status } from '@/api';
 
+// Custom DOM event, kterým komponenty hlásí změnu stavu kurzu (schválení,
+// zamítnutí, odeslání ke kontrole apod.). Sidebar si na něj sedne, aby badge
+// počtu kurzů ke schválení reflektoval realitu okamžitě, bez čekání na refresh.
+export const REVIEW_COUNT_EVENT = 'praktik-ai:review-count-changed';
+
 const BASE_NAV_ITEMS = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/admin', label: 'Kurzy', icon: BookOpen },
-  { href: '/admin/users', label: 'Uživatelé', icon: Users },
-  { href: '/admin/settings', label: 'Nastavení', icon: Settings },
+  // { href: '/admin/users', label: 'Uživatelé', icon: Users },
+  // { href: '/admin/settings', label: 'Nastavení', icon: Settings },
 ];
 
 const LECTOR_ITEMS = [
@@ -31,23 +36,36 @@ export function AdminSidebar() {
   const { currentUser } = useCurrentUser();
   const [reviewCount, setReviewCount] = useState(0);
 
-  // Fetch in_review count for badge (guarantors and superadmins only)
+  // Fetch in_review count for badge (guarantors and superadmins only).
+  // Reviewers can't approve their own courses, so exclude them from the badge.
+  const loadReviewCount = useCallback(async () => {
+    if (!isGuarantor) return;
+    try {
+      const courses = await getCourses({ includeInactive: false });
+      const inReview = courses.filter(c =>
+        c.status === Status.InReview && c.ownerId !== currentUser?.userId
+      );
+      setReviewCount(inReview.length);
+    } catch {
+      // ignore
+    }
+  }, [isGuarantor, currentUser?.userId]);
+
+  // Initial fetch + refetch on route change (po schválení/zamítnutí se naviguje
+  // zpět na /admin/review, takže pathname change badge spolehlivě obnoví).
+  useEffect(() => {
+    void loadReviewCount();
+  }, [loadReviewCount, pathname]);
+
+  // Refetch on cross-page status changes (např. odeslání kurzu ke schválení
+  // z přehledu kurzů — uživatel zůstává na stejné cestě, ale badge se musí
+  // překreslit).
   useEffect(() => {
     if (!isGuarantor) return;
-    let cancelled = false;
-    async function loadCount() {
-      try {
-        const courses = await getCourses({ includeInactive: false });
-        const inReview = courses.filter(c => c.status === Status.InReview);
-        if (cancelled) return;
-        setReviewCount(inReview.length);
-      } catch {
-        // ignore
-      }
-    }
-    loadCount();
-    return () => { cancelled = true; };
-  }, [isGuarantor]);
+    const handler = () => { void loadReviewCount(); };
+    window.addEventListener(REVIEW_COUNT_EVENT, handler);
+    return () => window.removeEventListener(REVIEW_COUNT_EVENT, handler);
+  }, [isGuarantor, loadReviewCount]);
 
   // Build nav items
   const navItems = [

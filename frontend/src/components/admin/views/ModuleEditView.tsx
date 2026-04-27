@@ -85,7 +85,7 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat modul</h1>
         

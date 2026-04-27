@@ -3,6 +3,7 @@ from langchain_core.messages.ai import AIMessage
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
+from api.src.agents.progress import set_progress
 
 DEFAULT_MODEL = "gpt-5.2"
 
@@ -37,6 +38,9 @@ def summarize_content_node(state: AgentState) -> AgentState:
     source_content = state.get("source_content", "")
     course_id = state.get("course_id")
     db = state["db"]
+
+    if course_id is not None:
+        set_progress(course_id, step=3, label="Zpracování podkladů (AI)")
 
     if course_input is None:
         raise ValueError("course_input is not available in state")
