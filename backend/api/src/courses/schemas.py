@@ -75,6 +75,7 @@ class Course(CourseBase):
     is_published: bool = False
     status: Status
     modules_count: int = 0
+    enrollments_count: int = 0
 
     # modules: list[Module] = []
     files: list[CourseFile] = []
@@ -92,6 +93,8 @@ class Course(CourseBase):
                     obj.__dict__["modules_count"] = len(obj.modules)
                 except Exception:
                     pass
+            # enrollments_count se plní v `read.py` přes agregační dotaz, aby
+            # nedocházelo k N+1; tady zachováme případně už předvyplněnou hodnotu.
             owner = getattr(obj, "owner", None)
             if owner is not None:
                 try:

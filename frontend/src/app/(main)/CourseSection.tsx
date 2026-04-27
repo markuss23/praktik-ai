@@ -6,6 +6,9 @@ import { MyEnrollment, CourseBlock, CourseSubject } from "@/api";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+
+const PAGE_SIZE = 6; // 2 řádky × 3 karty na řádek
 
 type ErrorKind = 'backend-down' | 'unauthorized' | 'server-error';
 
@@ -22,7 +25,7 @@ function CourseCardSkeleton() {
   return (
     <div
       className="bg-white overflow-hidden flex flex-col animate-pulse"
-      style={{ width: '100%', maxWidth: '590px', height: '510px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+      style={{ width: '100%', maxWidth: '590px', height: '560px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
     >
       <div style={{ width: '100%', height: '226px' }} className="bg-gray-200" />
       <div className="flex flex-col p-6 flex-grow">
@@ -55,6 +58,12 @@ export default function CourseSection() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>(undefined);
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
+
+  // Stránkování — uživatel vidí vždy max PAGE_SIZE karet. Klik na šipku
+  // *přepne* na další stránku (předchozí karty zmizí), takže na obrazovce
+  // zůstává konstantní počet kurzů. Filtry resetují na první stránku.
+  const [pageIndex, setPageIndex] = useState(0);
+  const [paging, setPaging] = useState(false);
 
   const loadCourses = useCallback(async (params?: {
     textSearch?: string;
@@ -101,6 +110,8 @@ export default function CourseSection() {
         courseBlockId: selectedBlockId,
         courseSubjectId: selectedSubjectId,
       });
+      // Po každé změně filtrů se vracíme na první stránku.
+      setPageIndex(0);
     }, 500);
     return () => clearTimeout(timeout);
   }, [search, selectedBlockId, selectedSubjectId, loadCourses]);
@@ -110,6 +121,27 @@ export default function CourseSection() {
     setSelectedBlockId(undefined);
     setSelectedSubjectId(undefined);
   };
+
+  // Krátké "fake" zpoždění aby přepínač působil jako akce, ne skok;
+  // AnimatePresence postará o fade-out starých karet a fade-in nových.
+  const goToPage = (next: number) => {
+    if (paging) return;
+    setPaging(true);
+    setTimeout(() => {
+      setPageIndex(next);
+      setPaging(false);
+    }, 220);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(courses.length / PAGE_SIZE));
+  // Bezpečný clamp — kdyby se filtrem počet stránek snížil pod aktuální index.
+  const safePageIndex = Math.min(pageIndex, totalPages - 1);
+  const visibleCourses = courses.slice(
+    safePageIndex * PAGE_SIZE,
+    (safePageIndex + 1) * PAGE_SIZE,
+  );
+  const canPrev = safePageIndex > 0;
+  const canNext = safePageIndex < totalPages - 1;
 
   return (
     <div className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#F0F0F0' }}>
@@ -182,7 +214,7 @@ export default function CourseSection() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                {[1, 2, 3].map((i) => (
+                {Array.from({ length: PAGE_SIZE }, (_, i) => (
                   <CourseCardSkeleton key={i} />
                 ))}
               </motion.div>
@@ -244,7 +276,7 @@ export default function CourseSection() {
               </motion.div>
             ) : (
               <motion.div
-                key={`courses-${courses.map(c => c.courseId || c.id).join('-')}`}
+                key={`courses-page-${safePageIndex}-${courses.length}`}
                 className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6"
                 initial="hidden"
                 animate="visible"
@@ -257,7 +289,7 @@ export default function CourseSection() {
                   },
                 }}
               >
-                {courses.map((course: any) => {
+                {visibleCourses.map((course: any) => {
                   const enrollment = enrollments.find(e => e.courseId === (course.courseId || course.id));
                   return (
                     <motion.div
@@ -286,6 +318,55 @@ export default function CourseSection() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Stránkovací ovládání — nahrazuje předchozí karty novými, takže
+            na obrazovce zůstává vždy max PAGE_SIZE karet. Šipky se schovají,
+            když není kam jít, vlastní AnimatePresence ošetří fade-in/out. */}
+        <AnimatePresence>
+          {!loading && !errorKind && totalPages > 1 && (
+            <motion.div
+              key="pagination"
+              className="flex items-center justify-center gap-3 mt-8 sm:mt-10"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.25 }}
+            >
+              <motion.button
+                type="button"
+                onClick={() => goToPage(safePageIndex - 1)}
+                disabled={!canPrev || paging}
+                whileHover={canPrev && !paging ? { scale: 1.05 } : undefined}
+                whileTap={canPrev && !paging ? { scale: 0.95 } : undefined}
+                aria-label="Předchozí stránka kurzů"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-gray-700 hover:shadow-md hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
+              >
+                <ChevronLeft size={18} />
+              </motion.button>
+
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-gray-800 min-w-[120px] justify-center">
+                {paging ? (
+                  <Loader2 size={14} className="animate-spin text-purple-600" />
+                ) : null}
+                <span>
+                  Strana <span className="text-purple-600">{safePageIndex + 1}</span> / {totalPages}
+                </span>
+              </span>
+
+              <motion.button
+                type="button"
+                onClick={() => goToPage(safePageIndex + 1)}
+                disabled={!canNext || paging}
+                whileHover={canNext && !paging ? { scale: 1.05 } : undefined}
+                whileTap={canNext && !paging ? { scale: 0.95 } : undefined}
+                aria-label="Další stránka kurzů"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-gray-700 hover:shadow-md hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
+              >
+                <ChevronRight size={18} />
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
