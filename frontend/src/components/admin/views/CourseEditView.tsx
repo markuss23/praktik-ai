@@ -145,7 +145,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   // Show guard message if user cannot edit
   if (courseData && !canEdit) {
     return (
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
           Nemáte oprávnění editovat tento kurz. Editovat může pouze vlastník kurzu nebo superadmin.
         </div>
@@ -157,7 +157,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat kurz</h1>
 
       {error && (

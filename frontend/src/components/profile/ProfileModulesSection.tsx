@@ -4,14 +4,43 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ConfirmModal } from './ConfirmModal';
+import { getModules, getCourseProgress } from '@/lib/api-client';
 import type { MyEnrollment } from '@/api';
 
 interface ProfileModulesSectionProps {
   enrollments: MyEnrollment[];
 }
 
-function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; onRepeatClick: (e: MyEnrollment) => void }) {
+async function resumeInProgress(enrollment: MyEnrollment) {
+  try {
+    const [modules, progress] = await Promise.all([
+      getModules({ courseId: enrollment.courseId, includeInactive: false }),
+      getCourseProgress(enrollment.courseId).catch(() => []),
+    ]);
+    const activeModules = modules.filter(m => m.isActive);
+    // First module that hasn't been passed yet — resumes at the in-progress
+    // or next-up module rather than dropping the user on the course landing.
+    const next = activeModules.find(m => {
+      const p = progress.find(pp => pp.moduleId === m.moduleId);
+      return !(p?.passed);
+    });
+    if (next) {
+      window.location.href = `/modules/${next.moduleId}`;
+      return;
+    }
+  } catch {
+    // fall through to course page
+  }
+  window.location.href = `/courses/${enrollment.courseId}`;
+}
+
+function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
   const isCompleted = !!enrollment.completedAt;
+
+  const handleClick = () => {
+    if (isCompleted) return;
+    void resumeInProgress(enrollment);
+  };
 
   return (
     <motion.div
@@ -20,7 +49,18 @@ function ModuleCard({ enrollment, onRepeatClick }: { enrollment: MyEnrollment; o
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.25 }}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between w-full"
+      onClick={handleClick}
+      role={isCompleted ? undefined : 'button'}
+      tabIndex={isCompleted ? undefined : 0}
+      onKeyDown={isCompleted ? undefined : (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between w-full ${
+        isCompleted ? '' : 'cursor-pointer hover:shadow-md transition-shadow'
+      }`}
     >
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -108,7 +148,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {inProgress.map(e => (
-                    <ModuleCard key={e.enrollmentId} enrollment={e} onRepeatClick={setRepeatConfirm} />
+                    <ModuleCard key={e.enrollmentId} enrollment={e} />
                   ))}
                 </div>
               </motion.div>
@@ -142,7 +182,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {completed.map(e => (
-                    <ModuleCard key={e.enrollmentId} enrollment={e} onRepeatClick={setRepeatConfirm} />
+                    <ModuleCard key={e.enrollmentId} enrollment={e} />
                   ))}
                 </div>
               </motion.div>

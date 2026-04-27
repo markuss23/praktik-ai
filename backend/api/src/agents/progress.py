@@ -3,8 +3,13 @@
 Stav je procesově-lokální (vhodné pro single-instance deployment).
 Při restartu služby se průběh ztrácí — to je v pořádku, protože
 samotná generace také neběží dál.
+
+Sleduje také odkazy na běžící asyncio tasky, aby je sběrač paměti
+nezahodil a aby šlo zjistit, jestli pro daný kurz už generace běží
+(důležité při refreshi stránky uprostřed generování).
 """
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from threading import Lock
@@ -21,6 +26,7 @@ class GenerationProgress:
 
 
 _progress: dict[int, GenerationProgress] = {}
+_running_tasks: dict[int, asyncio.Task] = {}
 _lock = Lock()
 
 
@@ -71,3 +77,27 @@ def get_progress(course_id: int) -> GenerationProgress | None:
 def clear_progress(course_id: int) -> None:
     with _lock:
         _progress.pop(course_id, None)
+
+
+def register_task(course_id: int, task: asyncio.Task) -> None:
+    """Uloží referenci na běžící asyncio task, aby ho GC nezahodil."""
+    with _lock:
+        _running_tasks[course_id] = task
+
+
+def unregister_task(course_id: int) -> None:
+    with _lock:
+        _running_tasks.pop(course_id, None)
+
+
+def is_running(course_id: int) -> bool:
+    """Vrátí True, pokud pro daný kurz aktuálně běží generační task."""
+    with _lock:
+        task = _running_tasks.get(course_id)
+        return task is not None and not task.done()
+
+
+def list_running_course_ids() -> list[int]:
+    """Vrátí seznam course_id, pro které právě běží generační task."""
+    with _lock:
+        return [cid for cid, task in _running_tasks.items() if not task.done()]

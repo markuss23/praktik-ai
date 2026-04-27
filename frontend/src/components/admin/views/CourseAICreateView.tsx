@@ -3,10 +3,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, type CourseGenerationProgress } from '@/lib/api-client';
+import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
 import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
+
+// Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
+// Slouží k tomu, aby refresh stránky uprostřed generování nezahodil UI —
+// na mountu si přečteme courseId a obnovíme polling progresu.
+const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
 
 // Tvorba kurzu pomocí AI generování
 export function CourseAICreateView() {
@@ -18,6 +23,7 @@ export function CourseAICreateView() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [progress, setProgress] = useState<CourseGenerationProgress | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeCourseIdRef = useRef<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
@@ -52,22 +58,112 @@ export function CourseAICreateView() {
     }
   }, []);
 
-  const startProgressPolling = useCallback((courseId: number) => {
+  const clearActiveGeneration = useCallback(() => {
+    activeCourseIdRef.current = null;
+    try {
+      localStorage.removeItem(ACTIVE_GENERATION_KEY);
+    } catch {
+      // localStorage může být nedostupný (private mode) — ignorujeme
+    }
+  }, []);
+
+  const rememberActiveGeneration = useCallback((courseId: number) => {
+    activeCourseIdRef.current = courseId;
+    try {
+      localStorage.setItem(ACTIVE_GENERATION_KEY, String(courseId));
+    } catch {
+      // localStorage může být nedostupný — bez persistencí jen ztratíme možnost
+      // resume po refreshi, ale generace na backendu beží dál
+    }
+  }, []);
+
+  const startProgressPolling = useCallback((courseId: number, initialProgress?: CourseGenerationProgress) => {
     stopPolling();
-    // Počáteční stav než přijde první odpověď
-    setProgress({ step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null });
+    rememberActiveGeneration(courseId);
+    setProgress(initialProgress ?? { step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null });
     pollTimerRef.current = setInterval(async () => {
       try {
         const p = await getCourseGenerationProgress(courseId);
         setProgress(p);
-        if (p.status === 'completed' || p.status === 'failed') {
+        if (p.status === 'completed') {
           stopPolling();
+          clearActiveGeneration();
+          goToCourseContent(courseId);
+        } else if (p.status === 'failed') {
+          stopPolling();
+          clearActiveGeneration();
+          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
+          setProgress(null);
+          setStep('form');
+          setLoading(false);
         }
       } catch {
-        // Ignoruj jednotlivé chyby pollingu — koncový stav přijde z POST /generate-course
+        // Ignoruj jednotlivé chyby pollingu — zkusíme to znovu příští tick
       }
     }, 1500);
-  }, [stopPolling]);
+  }, [stopPolling, rememberActiveGeneration, clearActiveGeneration, goToCourseContent]);
+
+  // Resume po refreshi: na mountu zjistíme, jestli pro nás backend vede
+  // běžící generaci kurzu, a pokud ano, znovu se na ni napojíme.
+  useEffect(() => {
+    let cancelled = false;
+    async function resume() {
+      let savedId: number | null = null;
+      try {
+        const raw = localStorage.getItem(ACTIVE_GENERATION_KEY);
+        if (raw) {
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed) && parsed > 0) savedId = parsed;
+        }
+      } catch {
+        // ignore
+      }
+
+      // Backend lookup je primárním zdrojem pravdy o tom, co aktuálně běží.
+      // localStorage používáme jen jako fallback (offline backend) a k zachycení
+      // situace, kdy generace stihla doběhnout dříve, než se uživatel vrátil.
+      let backendActive: number | null = null;
+      let backendOk = true;
+      try {
+        backendActive = await getActiveCourseGeneration();
+      } catch {
+        backendOk = false;
+      }
+
+      const activeId = backendActive ?? (backendOk ? savedId : savedId);
+      if (cancelled || activeId === null) return;
+
+      try {
+        const p = await getCourseGenerationProgress(activeId);
+        if (cancelled) return;
+        if (p.status === 'completed') {
+          clearActiveGeneration();
+          goToCourseContent(activeId);
+          return;
+        }
+        if (p.status === 'failed') {
+          clearActiveGeneration();
+          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
+          return;
+        }
+        if (backendActive === null && backendOk && p.status === 'pending') {
+          // Backend potvrdil, že nic neběží, a o uloženém kurzu nic neví —
+          // localStorage je zastaralý (např. po restartu serveru). Vyčisti.
+          clearActiveGeneration();
+          return;
+        }
+        // running (nebo pending s tím, že backend potvrdil běh) — připoj polling
+        setStep('generating');
+        setLoading(true);
+        startProgressPolling(activeId, p);
+      } catch {
+        // Pokud kurz neexistuje nebo na něj nemáme práva, zapomeň ho
+        clearActiveGeneration();
+      }
+    }
+    resume();
+    return () => { cancelled = true; };
+  }, [startProgressPolling, clearActiveGeneration, goToCourseContent]);
 
   // Načtení katalogů při mountu
   useEffect(() => {
@@ -208,13 +304,15 @@ export function CourseAICreateView() {
         await uploadCourseFile(course.courseId, file);
       }
 
-      // Generování kurzu pomocí AI
+      // Generování kurzu pomocí AI — backend ho spustí na pozadí a vrátí se ihned;
+      // polling progresu se postará o navigaci po dokončení i o chybové stavy.
       setStep('generating');
       startProgressPolling(course.courseId);
       try {
         await generateCourseWithAI(course.courseId);
       } catch (genErr: unknown) {
         stopPolling();
+        clearActiveGeneration();
         let message = 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.';
         if (genErr && typeof genErr === 'object' && 'response' in genErr) {
           const response = (genErr as { response: Response }).response;
@@ -231,16 +329,10 @@ export function CourseAICreateView() {
         setProgress(null);
         setStep('form');
         setLoading(false);
-        return;
       }
-
-      stopPolling();
-      setProgress({ step: 5, total: 5, label: 'Dokončeno', status: 'completed', error: null });
-
-      // Přechod na editor obsahu kurzu
-      goToCourseContent(course.courseId);
     } catch (err: unknown) {
       stopPolling();
+      clearActiveGeneration();
       setProgress(null);
       if (err instanceof Error) {
         setError(err.message);
@@ -256,7 +348,6 @@ export function CourseAICreateView() {
         setError('Nepodařilo se vytvořit kurz');
       }
       setStep('form');
-    } finally {
       setLoading(false);
     }
   };
@@ -278,15 +369,17 @@ export function CourseAICreateView() {
   };
 
   return (
-    <div className="flex-1">
-      <CoursePageHeader
-        breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
-        title="Popis kurzu"
-        onSave={handleSave}
-        showButtons={false}
-      />
+    <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
+      <div className="flex-shrink-0">
+        <CoursePageHeader
+          breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
+          title="Popis kurzu"
+          onSave={handleSave}
+          showButtons={false}
+        />
+      </div>
 
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         {error && (
           <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
             {error}

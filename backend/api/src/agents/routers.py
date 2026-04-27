@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select, update
 
@@ -21,10 +23,15 @@ from api.src.agents.schemas import (
 )
 from api.src.agents.progress import (
     get_progress,
+    is_running,
+    list_running_course_ids,
     mark_completed,
     mark_failed,
+    register_task,
     set_progress,
+    unregister_task,
 )
+from api.database import SessionLocal
 from api.src.agents.practice_controllers import (
     generate_practice_question,
     evaluate_practice_answer,
@@ -40,11 +47,46 @@ from api import models
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
+async def _run_course_generation(course_id: int) -> None:
+    """Background task: spustí CourseGeneratorService s vlastní DB session.
+
+    Běží nezávisle na původním HTTP requestu, takže refresh stránky
+    klienta generování nepřeruší. Stav je dostupný přes
+    ``/agents/course-progress/{course_id}``.
+    """
+    db = SessionLocal()
+    try:
+        service = CourseGeneratorService(db=db, course_id=course_id)
+        try:
+            await service.generate()
+        except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
+            mark_failed(course_id, str(e))
+            try:
+                db.rollback()
+                db.execute(
+                    update(models.Course)
+                    .where(models.Course.course_id == course_id)
+                    .values(status=models.Status.failed)
+                )
+                db.commit()
+            except Exception:  # noqa: BLE001
+                db.rollback()
+            return
+        mark_completed(course_id)
+    finally:
+        db.close()
+        unregister_task(course_id)
+
+
 @router.post("/generate-course", operation_id="generate_course", dependencies=[require_role("lector")])
 async def generate_course(
     course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> GenerateCourseResponse:
-    """Endpoint pro generování kurzu z obsahu."""
+    """Spustí AI generování kurzu jako background task a vrátí se ihned.
+
+    Klient si průběh sleduje pollingem ``/agents/course-progress/{course_id}``.
+    Díky odpojení od HTTP requestu generování pokračuje i po refreshi stránky.
+    """
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -56,27 +98,16 @@ async def generate_course(
             status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
         )
 
-    service = CourseGeneratorService(db=db, course_id=course_id)
+    # Idempotence: pokud už pro tento kurz běží task, vrať se s prázdným výsledkem
+    # (klient se připojí přes progress endpoint).
+    if is_running(course_id):
+        return GenerateCourseResponse(title=course.title, modules=[])
+
     set_progress(course_id, step=0, label="Spouštění generování")
+    task = asyncio.create_task(_run_course_generation(course_id))
+    register_task(course_id, task)
 
-    try:
-        result = await service.generate()
-    except Exception as e:
-        mark_failed(course_id, str(e))
-        db.execute(
-            update(models.Course)
-            .where(models.Course.course_id == course_id)
-            .values(status=models.Status.failed)
-        )
-        db.commit()
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-    mark_completed(course_id)
-
-    return GenerateCourseResponse(
-        title=result.title,
-        modules=result.modules,
-    )
+    return GenerateCourseResponse(title=course.title, modules=[])
 
 
 @router.get(
@@ -105,6 +136,34 @@ async def get_course_generation_progress(
         status=progress.status,
         error=progress.error,
     )
+
+
+@router.get(
+    "/active-course-generation",
+    operation_id="get_active_course_generation",
+    dependencies=[require_role("lector")],
+)
+async def get_active_course_generation(
+    db: SessionSqlSessionDependency, user: CurrentUser
+) -> int | None:
+    """Vrátí course_id právě běžící generace pro přihlášeného uživatele,
+    nebo ``null`` pokud žádná neběží.
+
+    Slouží frontendu k obnovení UI po refreshi stránky uprostřed generování.
+    Superadmin vidí i cizí běžící generace, ostatní jen svoje vlastní.
+    """
+    candidates = list_running_course_ids()
+    if not candidates:
+        return None
+
+    is_super = user.role == "superadmin"
+    for course_id in candidates:
+        course = db.get(models.Course, course_id)
+        if course is None:
+            continue
+        if is_super or course.owner_id == user.user_id:
+            return course_id
+    return None
 
 
 @router.post("/generate-course-embeddings", operation_id="generate_course_embeddings", dependencies=[require_role("lector")])

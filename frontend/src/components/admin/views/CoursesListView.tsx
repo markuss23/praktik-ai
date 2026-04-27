@@ -5,6 +5,7 @@ import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
+import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
@@ -197,6 +198,7 @@ export function CoursesListView() {
     setStatusLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.InReview);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to submit for review:', error);
@@ -211,6 +213,7 @@ export function CoursesListView() {
     setApprovalLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       try {
         await generateCourseEmbeddings(course.courseId);
         setEmbeddingDone(prev => new Set(prev).add(course.courseId));
@@ -232,6 +235,7 @@ export function CoursesListView() {
     setApprovalLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to reject course:', error);
@@ -246,6 +250,7 @@ export function CoursesListView() {
     setStatusLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
+      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to revert course:', error);
@@ -439,7 +444,7 @@ export function CoursesListView() {
 
   return (
     <>
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-lg shadow-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">

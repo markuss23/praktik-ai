@@ -146,7 +146,7 @@ export function SuperadminStatsView() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-6 lg:p-8 bg-gray-100 min-h-full">
+      <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-gray-100 min-h-full">
         <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Statistiky</h1>
         <div className="flex flex-col gap-4">
           {[1, 2, 3].map(i => (
@@ -161,7 +161,7 @@ export function SuperadminStatsView() {
   }
 
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-gray-100 min-h-full">
+    <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-gray-100 min-h-full">
       <motion.h1
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
