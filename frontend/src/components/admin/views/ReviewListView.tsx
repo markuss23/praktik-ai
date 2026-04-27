@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, Status } from '@/api';
@@ -10,8 +10,11 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReviewCardsSkeleton } from '@/components/ui';
 
-// Pevná šířka jedné karty + mezery; používá se pro výpočet kroku posunu šipek.
-const CARD_WIDTH = 280;
+// Carousel je stránkovaný: max 5 karet na stránku, šipka posune o celou stránku
+// (nikoli po jedné kartě). Na užších viewportech se počet karet na stránku
+// automaticky zmenší, aby každá karta zůstala čitelně široká.
+const PAGE_SIZE = 5;
+const MIN_CARD_WIDTH = 220;
 const CARD_GAP = 16;
 
 function StatusBadge({ status }: { status: Status }) {
@@ -69,8 +72,11 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
   );
 }
 
-/** Jednorřádkový carousel kurzů. Pokud se karty nevejdou, ukáže šipky doleva/doprava
- *  a posun mezi nimi animuje pružinou z motion knihovny. */
+/** Stránkovaný carousel kurzů. Na stránce je maximálně {@link PAGE_SIZE} karet
+ *  rovnoměrně rozložených přes celou šířku viewportu. Šipky posouvají vždy
+ *  o celou stránku — tedy o {@link PAGE_SIZE} karet najednou. Posun je
+ *  animovaný pružinou z motion knihovny.
+ */
 function CourseCarousel<T extends { courseId: number }>({
   items,
   renderItem,
@@ -79,36 +85,54 @@ function CourseCarousel<T extends { courseId: number }>({
   renderItem: (item: T) => React.ReactNode;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState(0);
-  const [maxOffset, setMaxOffset] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0);
 
-  const recalcMax = useCallback(() => {
-    const viewport = viewportRef.current;
-    const track = trackRef.current;
-    if (!viewport || !track) return;
-    const max = Math.max(0, track.scrollWidth - viewport.clientWidth);
-    setMaxOffset(max);
-    setOffset(o => Math.min(o, max));
+  // Sleduj reálnou šířku viewportu — počítáme z ní šířku karty a posun.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const w = viewportRef.current?.clientWidth ?? 0;
+      setViewportWidth(w);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, []);
 
-  // Počítáme po mountu i při změně počtu položek/šířky okna.
-  useLayoutEffect(() => {
-    recalcMax();
-  }, [recalcMax, items.length]);
+  // Počet karet na stránku: max PAGE_SIZE, ale pokud by tím karta klesla pod
+  // MIN_CARD_WIDTH, snížíme na nižší rozumný počet (responsivní fallback).
+  const cardsPerPage = (() => {
+    if (viewportWidth <= 0) return PAGE_SIZE;
+    let n = PAGE_SIZE;
+    while (n > 1) {
+      const cw = (viewportWidth - (n - 1) * CARD_GAP) / n;
+      if (cw >= MIN_CARD_WIDTH) break;
+      n--;
+    }
+    return n;
+  })();
 
+  const totalPages = Math.max(1, Math.ceil(items.length / cardsPerPage));
+
+  // Při změně počtu položek nebo cardsPerPage clampuj index, ať nezůstaneme
+  // viset za posledním platným stránkem.
   useEffect(() => {
-    const onResize = () => recalcMax();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [recalcMax]);
+    setPageIndex(p => Math.min(p, totalPages - 1));
+  }, [totalPages]);
 
-  const step = CARD_WIDTH + CARD_GAP;
-  const canPrev = offset > 0;
-  const canNext = offset < maxOffset - 0.5;
+  const cardWidth = cardsPerPage > 0 && viewportWidth > 0
+    ? (viewportWidth - (cardsPerPage - 1) * CARD_GAP) / cardsPerPage
+    : 0;
 
-  const handlePrev = () => setOffset(o => Math.max(0, o - step));
-  const handleNext = () => setOffset(o => Math.min(maxOffset, o + step));
+  const canPrev = pageIndex > 0;
+  const canNext = pageIndex < totalPages - 1;
+
+  const handlePrev = () => setPageIndex(p => Math.max(0, p - 1));
+  const handleNext = () => setPageIndex(p => Math.min(totalPages - 1, p + 1));
+
+  // Posun o jednu stránku = posun o (cardsPerPage * cardWidth) + (cardsPerPage * gap).
+  // Tím se další stránka kompletně schová pod viewport.
+  const offset = pageIndex * (cardsPerPage * cardWidth + cardsPerPage * CARD_GAP);
 
   return (
     <div className="relative">
@@ -118,7 +142,6 @@ function CourseCarousel<T extends { courseId: number }>({
         style={{ paddingBottom: 4 }}
       >
         <motion.div
-          ref={trackRef}
           className="flex"
           style={{ gap: CARD_GAP }}
           animate={{ x: -offset }}
@@ -127,7 +150,7 @@ function CourseCarousel<T extends { courseId: number }>({
           {items.map(item => (
             <div
               key={item.courseId}
-              style={{ width: CARD_WIDTH, minWidth: CARD_WIDTH }}
+              style={{ width: cardWidth || undefined, minWidth: cardWidth || undefined }}
               className="flex-shrink-0"
             >
               {renderItem(item)}
@@ -146,8 +169,8 @@ function CourseCarousel<T extends { courseId: number }>({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-            aria-label="Předchozí kurzy"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 z-10"
+            aria-label="Předchozích pět kurzů"
           >
             <ChevronLeft size={18} />
           </motion.button>
@@ -161,8 +184,8 @@ function CourseCarousel<T extends { courseId: number }>({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 8 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-            aria-label="Další kurzy"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 z-10"
+            aria-label="Dalších pět kurzů"
           >
             <ChevronRight size={18} />
           </motion.button>
