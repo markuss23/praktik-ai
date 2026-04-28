@@ -173,12 +173,17 @@ body {
   display: none !important;
 }
 
-/* Cross-browser utilita pro skrytí scrollbaru, zatímco scroll funguje dál.
-   Používá se např. v AI Tutor modalu, kde chceme tichý scroll konverzace. */
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / starší Edge */
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Chromium, Safari */
+}
+
+body.module-fullscreen {
+  overflow: hidden;
+}
+body.module-fullscreen footer {
+  display: none;
 }

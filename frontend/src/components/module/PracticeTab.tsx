@@ -227,9 +227,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
       </div>
 
       <AnimatePresence mode="wait">
-        {/* ═══════════════════════════════════════════
-            PHASE 1 – Static course questions
-            ═══════════════════════════════════════════ */}
+        {/* 
+            PHASE 1 – Static course questions */}
         {phase === 'static' && !staticSubmitted && (
           <motion.div
             key="static-questions"
@@ -303,9 +302,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           </motion.div>
         )}
 
-        {/* ═══════════════════════════════════════════
-            PHASE 1 – Evaluation results
-            ═══════════════════════════════════════════ */}
+        {/*
+            PHASE 1 – Evaluation results */}
         {phase === 'static' && staticSubmitted && staticScore && (
           <motion.div
             key="static-results"
@@ -384,7 +382,6 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
               <div className="flex items-center gap-3">
                 {staticPassed && (
                   <>
-                    {/* "Procvičovat dál" (AI fáze) dočasně vypnuto
                     <button
                       onClick={() => setPhase('ai')}
                       className="inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 border"
@@ -395,7 +392,6 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
                     </button>
-                    */}
                     <button
                       onClick={onComplete}
                       className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
@@ -413,9 +409,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           </motion.div>
         )}
 
-        {/* ═══════════════════════════════════════════
-            PHASE 2 – AI-generated questions
-            ═══════════════════════════════════════════ */}
+        {/* 
+            PHASE 2 – AI-generated questions */}
         {phase === 'ai' && (
           <motion.div
             key="ai-questions"
