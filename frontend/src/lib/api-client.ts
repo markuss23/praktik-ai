@@ -107,6 +107,7 @@ export async function createCourse(data: {
   courseBlockId: number;
   courseTargetId: number;
   courseSubjectId: number;
+  difficulty?: import('@/api').Difficulty;
 }) {
   return coursesApi.createCourse({
     courseCreate: {
@@ -117,6 +118,7 @@ export async function createCourse(data: {
       courseBlockId: data.courseBlockId,
       courseTargetId: data.courseTargetId,
       courseSubjectId: data.courseSubjectId,
+      difficulty: data.difficulty,
     },
   });
 }

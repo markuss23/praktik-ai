@@ -40,7 +40,7 @@ export default function CoursesContent() {
           title={course.title}
           description={course.description || ''}
           duration={course.modulesCount ? course.modulesCount * 20 : 60}
-          difficulty="Začátečník"
+          difficulty={course.difficulty}
           completedModules={0}
           totalModules={course.modulesCount || 0}
         />

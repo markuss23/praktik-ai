@@ -2,7 +2,7 @@ from pydantic import Field, model_validator
 
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
-from api.enums import Status
+from api.enums import Difficulty, Status
 from api.src.catalogs.schemas import CourseBlock, CourseTarget, CourseSubject
 
 
@@ -15,6 +15,8 @@ class CourseBase(ORMModel):
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     min_modules_to_open_final_exam: int = Field(default=1, ge=1)
     duration_minutes: int | None = Field(default=None, ge=1)
+    # Doporučená obtížnost — default mírně pokročilý.
+    difficulty: Difficulty = Field(default=Difficulty.slightly_advanced)
 
     @model_validator(mode="after")
     def validate_min_modules(self) -> "CourseBase":
@@ -58,6 +60,7 @@ class CourseCreated(ORMModel):
     modules_count_ai_generated: int
     min_modules_to_open_final_exam: int
     duration_minutes: int | None = None
+    difficulty: Difficulty
     course_id: int
     owner_id: int
     is_published: bool
