@@ -8,6 +8,8 @@ import { learnBlocksChat } from '@/lib/api-client';
 interface AiTutorChatProps {
   /** The current learn block ID to chat about */
   learnBlockId?: number;
+  /** Module ID — used to scope chat history persistence in sessionStorage. */
+  moduleId?: number;
 }
 
 type ChatMessage = { role: 'user' | 'ai'; text: string };
@@ -17,16 +19,54 @@ const INITIAL_MESSAGE: ChatMessage = {
   text: 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?',
 };
 
-export function AiTutorChat({ learnBlockId }: AiTutorChatProps) {
+const readStoredMessages = (key: string | null): ChatMessage[] => {
+  if (typeof window === 'undefined' || !key) return [INITIAL_MESSAGE];
+  try {
+    const raw = sessionStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed as ChatMessage[];
+  } catch { /* ignore */ }
+  return [INITIAL_MESSAGE];
+};
+
+export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
+  const storageKey = moduleId !== undefined ? `ai-tutor-chat-${moduleId}` : null;
+
   const [chatOpen, setChatOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => readStoredMessages(storageKey));
   const inlineEndRef = useRef<HTMLDivElement>(null);
   const modalEndRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+
+  // Track which storage key the current chatMessages belong to, so module
+  // switches don't write stale chat into the new module's slot before reload.
+  const loadedKeyRef = useRef<string | null>(storageKey);
+  const skipNextPersistRef = useRef(false);
+
+  // When moduleId changes (user navigates to another module without unmounting
+  // this component), swap to that module's saved chat history.
+  useEffect(() => {
+    if (loadedKeyRef.current === storageKey) return;
+    loadedKeyRef.current = storageKey;
+    skipNextPersistRef.current = true;
+    setChatMessages(readStoredMessages(storageKey));
+  }, [storageKey]);
+
+  // Persist chat history across page refreshes.
+  useEffect(() => {
+    if (!storageKey) return;
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(chatMessages));
+    } catch { /* ignore */ }
+  }, [storageKey, chatMessages]);
 
   useEffect(() => {
     for (const ref of [inlineEndRef, modalEndRef]) {

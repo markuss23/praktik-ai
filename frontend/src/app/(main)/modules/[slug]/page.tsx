@@ -346,7 +346,7 @@ export default function ModulePage() {
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat learnBlockId={currentBlock?.learnId} />
+                <AiTutorChat learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
               )}
             </div>
           </div>

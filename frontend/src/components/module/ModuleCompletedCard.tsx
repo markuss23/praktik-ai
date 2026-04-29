@@ -5,53 +5,67 @@ import { PartyPopper } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface ModuleCompletedCardProps {
-  /** 1-based pořadí dokončeného modulu v kurzu. */
   moduleNumber: number;
-  /** Název dokončeného modulu — zobrazuje se v uvozovkách v textu. */
   moduleTitle: string;
-  /** Text tlačítka — liší se podle toho, jestli je další modul, nebo končí kurz. */
   ctaLabel: string;
-  /** Akce po kliknutí na CTA. */
   onContinue: () => void;
 }
 
-/** Náhodně rozesetý konfeti dekorativní prvek nad ikonou. Pozice jsou
- *  generovány deterministicky z indexu, aby SSR ↔ klient nebyly out-of-sync. */
-function ConfettiSprinkle({ count = 22 }: { count?: number }) {
+function rng(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+/** Konfety padající shora dolů s rotací. */
+function ConfettiSprinkle({ count = 30 }: { count?: number }) {
   const palette = ['#85C8A1', '#857AD2', '#B1475C', '#F4B860', '#7BAEE0'];
   const items = useMemo(() => {
     return Array.from({ length: count }).map((_, i) => {
-      // Deterministický pseudonáhodný generátor (sin-hash) — stejné výsledky
-      // při SSR i v klientu, žádný hydration mismatch.
-      const seed = (i + 1) * 9301 + 49297;
-      const r1 = ((seed * 233280) % 100) / 100;
-      const r2 = ((seed * 6481) % 100) / 100;
-      const r3 = ((seed * 1234) % 100) / 100;
-      const left = `${5 + r1 * 90}%`;
-      const top = `${r2 * 60}%`;
+      const b = i * 11 + 3;
+      const left = `${3 + rng(b) * 94}%`;
       const color = palette[i % palette.length];
-      const isDot = r3 > 0.45;
-      const size = isDot ? 6 + Math.round(r3 * 6) : 14 + Math.round(r3 * 8);
-      return { left, top, color, isDot, size, key: i };
+      const isDot = rng(b + 1) > 0.4;
+      const w = isDot ? 5 + Math.round(rng(b + 2) * 7) : 12 + Math.round(rng(b + 3) * 10);
+      const h = isDot ? w : 4;
+      const delay = rng(b + 4) * 0.7;
+      const duration = 1.4 + rng(b + 5) * 1.2;
+      const rotate = Math.round(rng(b + 6) * 720) - 360;
+      const drift = Math.round(rng(b + 7) * 60) - 30;
+      return { left, color, isDot, w, h, delay, duration, rotate, drift, key: i };
     });
   }, [count]);
 
   return (
-    <div className="absolute inset-x-0 top-0 h-32 pointer-events-none overflow-hidden">
-      {items.map((it, idx) => (
+    <div className="absolute inset-x-0 top-0 h-44 pointer-events-none overflow-hidden">
+      {items.map((it) => (
         <motion.span
           key={it.key}
-          initial={{ opacity: 0, y: -8, scale: 0.6 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, delay: 0.04 * idx, ease: 'easeOut' }}
           className="absolute"
           style={{
             left: it.left,
-            top: it.top,
-            width: it.isDot ? it.size : it.size,
-            height: it.isDot ? it.size : 4,
+            top: 0,
+            width: it.w,
+            height: it.h,
             backgroundColor: it.color,
             borderRadius: it.isDot ? '9999px' : '2px',
+          }}
+          initial={{ y: -20, x: 0, rotate: 0, opacity: 0 }}
+          animate={{
+            y: 200,
+            x: it.drift,
+            rotate: it.rotate,
+            opacity: [0, 1, 1, 0],
+          }}
+          transition={{
+            y: { duration: it.duration, delay: it.delay, ease: 'easeIn' },
+            x: { duration: it.duration, delay: it.delay, ease: 'easeIn' },
+            rotate: { duration: it.duration, delay: it.delay, ease: 'linear' },
+            opacity: {
+              duration: it.duration,
+              delay: it.delay,
+              ease: 'linear',
+              times: [0, 0.15, 0.8, 1],
+            },
           }}
         />
       ))}
@@ -75,7 +89,7 @@ export function ModuleCompletedCard({
       <ConfettiSprinkle />
 
       <div className="relative px-6 sm:px-10 pt-12 pb-8 flex flex-col items-center text-center">
-        {/* Animovaný kruh s ikonou — pružinový pop-in + jemný "puls" rámu */}
+        {/* Animovaný kruh s ikonou */}
         <div className="relative w-32 h-32 flex items-center justify-center mb-5">
           <motion.span
             aria-hidden
