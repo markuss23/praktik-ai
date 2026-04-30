@@ -68,15 +68,19 @@ export default function ModulePage() {
   const tabOrder: TabType[] = ['prirucka', 'procvicovani', 'test'];
   const [tabDirection, setTabDirection] = useState(1);
 
-  // Sync URL slug → activeModuleId only on initial load
+  // Sync URL slug -> activeModuleId only on initial load
   useEffect(() => {
     const id = Number(slug);
     if (!isNaN(id) && id !== activeModuleId) {
       setActiveModuleId(id);
     }
-    // Only react to slug changes from URL (e.g. direct navigation)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only react to slug changes from URL
   }, [slug]);
+
+  useEffect(() => {
+    document.body.classList.add('module-fullscreen');
+    return () => document.body.classList.remove('module-fullscreen');
+  }, []);
 
   // Load module data
   const loadModuleData = useCallback(async (modId: number) => {
@@ -268,10 +272,15 @@ export default function ModulePage() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F0F0F0' }}>
-      {/* Breadcrumb */}
-      <div className="px-4 sm:px-6 lg:px-[100px] py-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <p className="text-sm text-gray-500">
+    /* Celé okno modulu je fixed na viewport (mínus globální Header). Žádné
+       vnější scrollování — to obstará jen vnitřní content area. */
+    <div
+      className="flex flex-col"
+      style={{ backgroundColor: '#F0F0F0', height: 'calc(100dvh - 70px)' }}
+    >
+      {/* Breadcrumb — pevná hlavička, nescrolluje. */}
+      <div className="px-4 sm:px-6 lg:px-[100px] py-4 flex-shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+        <p className="text-sm text-gray-500 truncate">
           <Link href="/" className="hover:text-gray-700">Home</Link>
           {' / '}
           <Link href={`/courses/${course?.courseId}`} className="hover:text-gray-700">{course?.title}</Link>
@@ -280,13 +289,15 @@ export default function ModulePage() {
         </p>
       </div>
 
-      {/* Main Layout */}
-      <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <div className="flex flex-col lg:flex-row gap-8">
+      {/* Main Layout — flex-1 + min-h-0 dovolí dětem rozhodnout o vlastním
+          scrollu (jinak by min-content sloupců způsobil overflow ven). */}
+      <div className="flex-1 min-h-0 px-4 sm:px-6 lg:px-[100px] pb-4 sm:pb-6" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+        <div className="flex flex-col lg:flex-row gap-8 h-full min-h-0">
 
-          {/* Left Sidebar */}
-          <div className="lg:w-72 flex-shrink-0">
-            <div className="sticky top-8 space-y-4">
+          {/* Left Sidebar — uvnitř fixní kolony se může vlastním overflow-auto
+              scrollovat, aby AI tutor a karty modulu nepřetékaly mimo viewport. */}
+          <div className="lg:w-72 flex-shrink-0 lg:overflow-y-auto no-scrollbar">
+            <div className="space-y-4">
               {/* Module tabs card */}
               <div className="bg-white rounded-lg p-5" style={{ border: '1px solid #e5e7eb' }}>
                 <div className="mb-4">
@@ -335,13 +346,14 @@ export default function ModulePage() {
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat learnBlockId={currentBlock?.learnId} />
+                <AiTutorChat learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
               )}
             </div>
           </div>
 
-          {/* Main Content — with transition animation */}
-          <div className="flex-grow min-w-0">
+          {/* Main Content — vlastní scroll na úrovni karty obsahu, aby
+              breadcrumb a sidebar zůstaly fixní a posouvalo se jen pole lekce. */}
+          <div className="flex-grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeModuleId}
@@ -446,6 +458,8 @@ export default function ModulePage() {
                     moduleId={activeModuleId}
                     courseId={module.courseId}
                     maxAttempts={module.maxTaskAttempts ?? 3}
+                    moduleNumber={currentIndex + 1}
+                    moduleTitle={module.title}
                     nextModule={nextModule ? { moduleId: nextModule.moduleId, title: nextModule.title } : null}
                     onModuleComplete={handleModuleComplete}
                     onRestartModule={handleRestartModule}

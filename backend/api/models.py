@@ -22,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
 from api.enums import (
     AuditAction,
+    Difficulty,
     QuestionType,
     Status,
     TicketType,
@@ -377,6 +378,15 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         Enum(Status, name="course_status"), nullable=False, default=Status.draft
     )
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Doporučená obtížnost kurzu — zobrazuje se na kartě v katalogu.
+    # Default = mírně pokročilý dle požadavku produktu.
+    difficulty: Mapped[Difficulty] = mapped_column(
+        Enum(Difficulty, name="course_difficulty"),
+        nullable=False,
+        default=Difficulty.slightly_advanced,
+        server_default=Difficulty.slightly_advanced.value,
+    )
 
     course_block_id: Mapped[int] = mapped_column(
         ForeignKey("course_block.block_id"), nullable=False

@@ -17,7 +17,7 @@ import type {
 } from '@/api';
 import { QuestionType } from '@/api';
 
-// ---------- types ----------
+// types 
 
 interface PracticeTabProps {
   moduleId: number;
@@ -38,7 +38,7 @@ interface AIQuestion {
   submitting: boolean;
 }
 
-// ---------- component ----------
+//  component
 
 export default function PracticeTab({ moduleId, practiceQuestions, onComplete }: PracticeTabProps) {
   const hasPracticeQuestions = practiceQuestions.length > 0;
@@ -52,29 +52,36 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
     } catch { return null; }
   })();
 
-  // ── Phase 1 – static course questions ──
+  // static course questions
   const [phase, setPhase] = useState<Phase>(savedState?.phase ?? (hasPracticeQuestions ? 'static' : 'ai'));
   const [staticAnswers, setStaticAnswers] = useState<Record<number, number | string>>(savedState?.staticAnswers ?? {});
   const [staticSubmitted, setStaticSubmitted] = useState(savedState?.staticSubmitted ?? false);
 
-  // ── Phase 2 – AI-generated questions ──
+  // AI-generated questions 
   const [aiQuestions, setAiQuestions] = useState<AIQuestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [savedAiInputs] = useState<Record<number, string>>(() => savedState?.aiUserInputs ?? {});
+  const [aiLoaded, setAiLoaded] = useState(false);
 
   // Persist practice state to sessionStorage
   useEffect(() => {
     try {
+      const aiUserInputs: Record<number, string> = aiLoaded
+        ? aiQuestions.reduce<Record<number, string>>((acc, q) => {
+            if (!q.evaluation && q.userInput) acc[q.userQuestionId] = q.userInput;
+            return acc;
+          }, {})
+        : savedAiInputs;
       sessionStorage.setItem(storageKey, JSON.stringify({
         phase,
         staticAnswers,
         staticSubmitted,
+        aiUserInputs,
       }));
     } catch { /* ignore */ }
-  }, [storageKey, phase, staticAnswers, staticSubmitted]);
-
-  // ── Static question helpers ──
+  }, [storageKey, phase, staticAnswers, staticSubmitted, aiQuestions, aiLoaded, savedAiInputs]);
 
   const handleStaticAnswerChange = (questionId: number, value: number | string) => {
     setStaticAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -132,7 +139,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
   const staticPercentage = staticScore ? (staticScore.total > 0 ? Math.round((staticScore.correct / staticScore.total) * 100) : 0) : 0;
   const staticPassed = staticPercentage >= 75;
 
-  // ── AI question helpers ──
+  // AI question helpers 
 
   const loadAiQuestions = useCallback(async () => {
     try {
@@ -145,7 +152,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           questionType: q.questionType as 'open' | 'closed',
           generatedQuestion: q.generatedQuestion,
           options: q.options,
-          userInput: lastAttempt?.userInput ?? '',
+          userInput: lastAttempt?.userInput ?? (savedAiInputs[q.userQuestionId] ?? ''),
           evaluation: lastAttempt
             ? { attemptId: lastAttempt.attemptId, isCorrect: lastAttempt.isCorrect ?? false, aiResponse: lastAttempt.aiResponse }
             : null,
@@ -153,12 +160,13 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
         };
       });
       setAiQuestions(mapped);
+      setAiLoaded(true);
     } catch (err) {
       console.error('Failed to load AI practice questions:', err);
     } finally {
       setAiLoading(false);
     }
-  }, [moduleId]);
+  }, [moduleId, savedAiInputs]);
 
   // When switching to AI phase, load existing AI questions
   useEffect(() => {
@@ -227,9 +235,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
       </div>
 
       <AnimatePresence mode="wait">
-        {/* ═══════════════════════════════════════════
-            PHASE 1 – Static course questions
-            ═══════════════════════════════════════════ */}
+        {/* 
+            PHASE 1 – Static course questions */}
         {phase === 'static' && !staticSubmitted && (
           <motion.div
             key="static-questions"
@@ -303,9 +310,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           </motion.div>
         )}
 
-        {/* ═══════════════════════════════════════════
-            PHASE 1 – Evaluation results
-            ═══════════════════════════════════════════ */}
+        {/*
+            PHASE 1 – Evaluation results */}
         {phase === 'static' && staticSubmitted && staticScore && (
           <motion.div
             key="static-results"
@@ -384,7 +390,6 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
               <div className="flex items-center gap-3">
                 {staticPassed && (
                   <>
-                    {/* "Procvičovat dál" (AI fáze) dočasně vypnuto
                     <button
                       onClick={() => setPhase('ai')}
                       className="inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 border"
@@ -395,7 +400,6 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
                     </button>
-                    */}
                     <button
                       onClick={onComplete}
                       className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
@@ -413,9 +417,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           </motion.div>
         )}
 
-        {/* ═══════════════════════════════════════════
-            PHASE 2 – AI-generated questions
-            ═══════════════════════════════════════════ */}
+        {/* 
+            PHASE 2 – AI-generated questions */}
         {phase === 'ai' && (
           <motion.div
             key="ai-questions"

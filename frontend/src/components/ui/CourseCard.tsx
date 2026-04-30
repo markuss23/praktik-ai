@@ -3,13 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle } from "lucide-react";
+import { type Difficulty } from "@/api";
+import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 
 interface CourseCardProps {
   id: string;
   title: string;
   description: string;
   duration: number;
-  difficulty: string;
+  /** Doporučená obtížnost. Pokud není uvedena, fallback na „Začátečník". */
+  difficulty?: Difficulty | null;
   completedModules?: number;
   totalModules?: number;
   imageUrl?: string;
@@ -40,7 +43,7 @@ export function CourseCard({
       style={{
         width: '100%',
         maxWidth: '590px',
-        height: '560px',
+        height: '530px',
         borderRadius: '8px',
         border: isCompleted ? '2px solid #22c55e' : '1px solid #e5e7eb',
       }}
@@ -67,10 +70,6 @@ export function CourseCard({
         )}
       </div>
 
-      {/* Card body. Titul a popis mají rezervovanou minimální výšku, takže
-          krátké texty nezatáhnou meta zónu nahoru. mt-auto na meta zóně ji
-          fixuje k dolnímu okraji body. CTA tlačítko je separátní footer
-          přilnutý na spodní hranu karty (bez postranního paddingu). */}
       <div className="flex flex-col flex-grow px-6 pt-6 pb-4 min-h-0">
         <div>
           <h3
@@ -85,10 +84,6 @@ export function CourseCard({
           </p>
         </div>
 
-        {/* Meta zóna: trvanlivost + obtížnost + (vždy renderovaný) progress
-            blok. Pro nezapsaný kurz zobrazujeme prázdný bar v 0 %, aby výška
-            byla stejná jako pro zapsaný — tlačítko pod tím tak začíná na
-            stejné Y souřadnici. */}
         <div className="mt-auto">
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
             <div className="flex items-center gap-1">
@@ -98,7 +93,7 @@ export function CourseCard({
               <span>{duration} minut</span>
             </div>
             <div className="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium">
-              {difficulty}
+              {difficulty ? DIFFICULTY_LABELS[difficulty] : 'Začátečník'}
             </div>
           </div>
 

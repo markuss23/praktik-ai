@@ -5,7 +5,8 @@ import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from '
 import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
-import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
+import { CourseBlock, CourseTarget, CourseSubject, Difficulty } from '@/api';
+import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
 // Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
@@ -31,7 +32,16 @@ export function CourseAICreateView() {
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(true);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    moduleCount: number;
+    durationMinutes: string;
+    courseBlockId: number;
+    courseTargetId: number;
+    courseSubjectId: number;
+    difficulty: Difficulty;
+  }>({
     title: '',
     description: '',
     moduleCount: 3,
@@ -39,6 +49,8 @@ export function CourseAICreateView() {
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    // Default obtížnosti dle požadavku — mírně pokročilý.
+    difficulty: Difficulty.SlightlyAdvanced,
   });
 
   // Zastavení polling timeru při unmountu
@@ -287,6 +299,7 @@ export function CourseAICreateView() {
           courseBlockId: formData.courseBlockId,
           courseTargetId: formData.courseTargetId,
           courseSubjectId: formData.courseSubjectId,
+          difficulty: formData.difficulty,
         });
       } catch (createErr: unknown) {
         if (createErr && typeof createErr === 'object' && 'response' in createErr) {
@@ -483,8 +496,8 @@ export function CourseAICreateView() {
               <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
             </div>
 
-            {/* Počet modulů + Délka kurzu */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Počet modulů + Doporučená obtížnost + Délka kurzu */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-black mb-2">
                   Počet modulů
@@ -520,6 +533,25 @@ export function CourseAICreateView() {
 
               <div>
                 <label className="block text-sm font-semibold text-black mb-2">
+                  Doporučená obtížnost
+                </label>
+                <select
+                  value={formData.difficulty}
+                  onChange={(e) =>
+                    setFormData({ ...formData, difficulty: e.target.value as Difficulty })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                >
+                  {DIFFICULTY_ORDER.map((d: Difficulty) => (
+                    <option key={d} value={d}>
+                      {DIFFICULTY_LABELS[d]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-black mb-2">
                   Délka kurzu (minuty)
                 </label>
                 <input
@@ -528,7 +560,7 @@ export function CourseAICreateView() {
                   max="300"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                  className="w-32 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
                   placeholder={String(formData.moduleCount * 20)}
                 />
               </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, Loader2, ChevronRight, Trophy } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import {
   generateAssessment,
   evaluateAssessment,
@@ -10,6 +10,7 @@ import {
   completeModule,
   getCourseProgress,
 } from '@/lib/api-client';
+import { ModuleCompletedCard } from './ModuleCompletedCard';
 
 const PASSING_SCORE = 75;
 
@@ -17,6 +18,10 @@ interface AssessmentTabProps {
   moduleId: number;
   courseId: number;
   maxAttempts: number;
+  /** 1-based pořadí modulu v kurzu — pro nadpis „Modul N dokončen!". */
+  moduleNumber: number;
+  /** Název aktuálního modulu — zobrazuje se v textu o dokončení. */
+  moduleTitle: string;
   nextModule: { moduleId: number; title: string } | null;
   onModuleComplete: () => void;
   onRestartModule: () => void;
@@ -33,6 +38,8 @@ export default function AssessmentTab({
   moduleId,
   courseId,
   maxAttempts,
+  moduleNumber,
+  moduleTitle,
   nextModule,
   onModuleComplete,
   onRestartModule,
@@ -233,7 +240,7 @@ export default function AssessmentTab({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            {/* Score feedback */}
+            {/* Drobné skóre feedback nad celebration kartou */}
             {lastAttempt && (
               <div className="p-4 rounded-lg border bg-green-50 border-green-200 mb-6">
                 <div className="flex items-start gap-2">
@@ -255,27 +262,18 @@ export default function AssessmentTab({
               </div>
             )}
 
-            <div className="text-center py-6">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(0, 200, 150, 0.1)' }}>
-                <Trophy className="w-10 h-10" style={{ color: '#00C896' }} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-1">
-                {courseCompleted ? 'Kurz dokončen!' : 'Modul dokončen!'}
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                {courseCompleted
-                  ? 'Gratulujeme! Úspěšně jste dokončili všechny moduly kurzu.'
-                  : 'Gratulujeme! Úspěšně jste prošli testem.'}
-              </p>
-              <button
-                onClick={onModuleComplete}
-                className="inline-flex items-center gap-2 text-white font-semibold py-3 px-8 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-                style={{ backgroundColor: '#00C896' }}
-              >
-                {courseCompleted ? 'Zpět na kurz' : nextModule ? 'Další modul' : 'Dokončit kurz'}
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            <ModuleCompletedCard
+              moduleNumber={moduleNumber}
+              moduleTitle={moduleTitle}
+              ctaLabel={
+                courseCompleted
+                  ? 'Zpět na kurz'
+                  : nextModule
+                    ? 'Pokračovat na další modul'
+                    : 'Dokončit kurz'
+              }
+              onContinue={onModuleComplete}
+            />
           </motion.div>
         )}
 
@@ -288,14 +286,16 @@ export default function AssessmentTab({
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Answer textarea */}
+            {/* Answer textarea — větší výchozí velikost; uživatel si může
+                ručně rozšířit (vertikálně) přes resize handle v rohu. */}
             <textarea
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="Napište svou odpověď..."
-              rows={4}
+              rows={8}
               disabled={submitting}
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 resize-none mb-3"
+              style={{ minHeight: 200, resize: 'vertical' }}
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 mb-3"
             />
 
             {/* Last attempt feedback */}

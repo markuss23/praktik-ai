@@ -25,7 +25,7 @@ function CourseCardSkeleton() {
   return (
     <div
       className="bg-white overflow-hidden flex flex-col animate-pulse"
-      style={{ width: '100%', maxWidth: '590px', height: '560px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+      style={{ width: '100%', maxWidth: '590px', height: '530px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
     >
       <div style={{ width: '100%', height: '226px' }} className="bg-gray-200" />
       <div className="flex flex-col p-6 flex-grow">
@@ -305,7 +305,7 @@ export default function CourseSection() {
                         title={course.title || course.name}
                         description={course.description || ''}
                         duration={course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60)}
-                        difficulty="Začátečník"
+                        difficulty={course.difficulty}
                         completedModules={enrollment?.completedModules ?? 0}
                         totalModules={course.modulesCount || 0}
                         isEnrolled={!!enrollment}

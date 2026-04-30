@@ -16,6 +16,17 @@ class Status(enum.StrEnum):
     failed: str = "failed"
 
 
+class Difficulty(enum.StrEnum):
+    """Doporučená obtížnost kurzu — zobrazuje se na kartě v katalogu."""
+
+    complete_beginner: str = "complete_beginner"
+    beginner: str = "beginner"
+    slightly_advanced: str = "slightly_advanced"
+    intermediate: str = "intermediate"
+    advanced: str = "advanced"
+    expert: str = "expert"
+
+
 class AuditAction(enum.StrEnum):
     insert = "insert"
     update = "update"

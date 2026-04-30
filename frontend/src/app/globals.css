@@ -172,3 +172,18 @@ body {
 .module-content [data-type="key-concepts"] {
   display: none !important;
 }
+
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / starší Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chromium, Safari */
+}
+
+body.module-fullscreen {
+  overflow: hidden;
+}
+body.module-fullscreen footer {
+  display: none;
+}
