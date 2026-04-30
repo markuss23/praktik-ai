@@ -10,8 +10,6 @@ import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 
 // Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
-// Slouží k tomu, aby refresh stránky uprostřed generování nezahodil UI —
-// na mountu si přečteme courseId a obnovíme polling progresu.
 const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
 
 // Tvorba kurzu pomocí AI generování
@@ -25,6 +23,7 @@ export function CourseAICreateView() {
   const [progress, setProgress] = useState<CourseGenerationProgress | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeCourseIdRef = useRef<number | null>(null);
+  const didResumeRef = useRef(false);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
@@ -84,8 +83,7 @@ export function CourseAICreateView() {
     try {
       localStorage.setItem(ACTIVE_GENERATION_KEY, String(courseId));
     } catch {
-      // localStorage může být nedostupný — bez persistencí jen ztratíme možnost
-      // resume po refreshi, ale generace na backendu beží dál
+      // localStorage může být nedostupný — bez persistencí jen ztratíme možnost resume po refreshi, ale generace na backendu beží dál
     }
   }, []);
 
@@ -96,7 +94,13 @@ export function CourseAICreateView() {
     pollTimerRef.current = setInterval(async () => {
       try {
         const p = await getCourseGenerationProgress(courseId);
-        setProgress(p);
+        setProgress(prev => {
+          if (!prev) return p;
+          if (prev.status === 'running' && p.status === 'running' && p.step < prev.step) {
+            return prev;
+          }
+          return p;
+        });
         if (p.status === 'completed') {
           stopPolling();
           clearActiveGeneration();
@@ -110,14 +114,15 @@ export function CourseAICreateView() {
           setLoading(false);
         }
       } catch {
-        // Ignoruj jednotlivé chyby pollingu — zkusíme to znovu příští tick
+        // Ignoruj jednotlivé chyby pollingu zkusí znovu příští tick
       }
     }, 1500);
   }, [stopPolling, rememberActiveGeneration, clearActiveGeneration, goToCourseContent]);
 
-  // Resume po refreshi: na mountu zjistíme, jestli pro nás backend vede
-  // běžící generaci kurzu, a pokud ano, znovu se na ni napojíme.
+  // Resume po refreshi
   useEffect(() => {
+    if (didResumeRef.current) return;
+    didResumeRef.current = true;
     let cancelled = false;
     async function resume() {
       let savedId: number | null = null;
@@ -159,17 +164,15 @@ export function CourseAICreateView() {
           return;
         }
         if (backendActive === null && backendOk && p.status === 'pending') {
-          // Backend potvrdil, že nic neběží, a o uloženém kurzu nic neví —
-          // localStorage je zastaralý (např. po restartu serveru). Vyčisti.
+          // Backend potvrdil, že nic neběží, a o uloženém kurzu nic neví 
           clearActiveGeneration();
           return;
         }
-        // running (nebo pending s tím, že backend potvrdil běh) — připoj polling
         setStep('generating');
         setLoading(true);
         startProgressPolling(activeId, p);
       } catch {
-        // Pokud kurz neexistuje nebo na něj nemáme práva, zapomeň ho
+        // Pokud kurz neexistuje nebo na něj nemáme práva
         clearActiveGeneration();
       }
     }
