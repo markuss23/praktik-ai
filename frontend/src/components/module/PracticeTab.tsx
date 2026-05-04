@@ -379,20 +379,20 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-gray-100">
               <button
                 onClick={() => { setStaticSubmitted(false); setStaticAnswers({}); }}
-                className="text-gray-600 hover:text-gray-800 font-medium text-sm"
+                className="text-gray-600 hover:text-gray-800 font-medium text-sm self-center sm:self-auto"
               >
                 Zkusit znovu
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 {staticPassed && (
                   <>
                     <button
                       onClick={() => setPhase('ai')}
-                      className="inline-flex items-center gap-2 font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 border"
+                      className="inline-flex items-center justify-center gap-2 font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 border w-full sm:w-auto text-sm sm:text-base"
                       style={{ color: '#8B5BA8', borderColor: '#8B5BA8' }}
                     >
                       Procvičovat dál
@@ -402,7 +402,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                     </button>
                     <button
                       onClick={onComplete}
-                      className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                      className="inline-flex items-center justify-center gap-2 text-white font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base"
                       style={{ backgroundColor: '#00C896' }}
                     >
                       Dokončit

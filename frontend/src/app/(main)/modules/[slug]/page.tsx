@@ -275,8 +275,8 @@ export default function ModulePage() {
     /* Celé okno modulu je fixed na viewport (mínus globální Header). Žádné
        vnější scrollování — to obstará jen vnitřní content area. */
     <div
-      className="flex flex-col"
-      style={{ backgroundColor: '#F0F0F0', height: 'calc(100dvh - 70px)' }}
+      className="flex flex-col lg:h-[calc(100dvh-70px)]"
+      style={{ backgroundColor: '#F0F0F0' }}
     >
       {/* Breadcrumb — pevná hlavička, nescrolluje. */}
       <div className="px-4 sm:px-6 lg:px-[100px] py-4 flex-shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>

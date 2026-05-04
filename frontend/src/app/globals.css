@@ -181,9 +181,38 @@ body {
   display: none; /* Chromium, Safari */
 }
 
-body.module-fullscreen {
-  overflow: hidden;
+/* Fixed-viewport modul layout jen na desktopu — na mobilu chceme,
+   aby šla stránka přirozeně scrollovat. */
+@media (min-width: 1024px) {
+  body.module-fullscreen {
+    overflow: hidden;
+  }
 }
 body.module-fullscreen footer {
   display: none;
+}
+
+/*    přetečení rendrovaného HTML na mobilu. */
+.module-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+.module-content img,
+.module-content video,
+.module-content iframe {
+  max-width: 100%;
+  height: auto;
+}
+.module-content pre,
+.module-content code {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.module-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
 }
