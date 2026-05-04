@@ -444,11 +444,11 @@ export function CoursesListView() {
 
   return (
     <>
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-white rounded-lg shadow-sm">
+      <div className="flex-1 lg:overflow-y-auto p-3 sm:p-6 lg:p-8 min-w-0">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">
-            <h2 className="text-xl sm:text-2xl font-bold text-black">Přehled kurzů</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-6 border-b">
+            <h2 className="text-lg sm:text-2xl font-bold text-black">Přehled kurzů</h2>
             <Dropdown
               trigger={<span>Přidat kurz</span>}
               items={[
@@ -900,68 +900,67 @@ function MobileCourseCard({
   const statusStr = course.status as string;
 
   return (
-    <div className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            {moduleCount} moduly · Vlastník: {course.ownerDisplayName ?? '—'}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            <StatusBadge status={course.status} />
-            {(course.status === Status.Approved || course.status === Status.Archived) && (
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-              }`}>
-                {course.isPublished ? 'Publikováno' : 'Neaktivní'}
-              </span>
-            )}
-          </div>
-        </div>
-        <CourseActionButtons className="flex-shrink-0">
-          {statusStr === Status.Archived ? (
-            <>
-              {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
-              {canPublish && (
-                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
-              )}
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
-          ) : course.isPublished ? (
-            <>
-              {/* Published (non-archived): only archive (+ delete for superadmin) */}
-              <button onClick={onArchive} disabled={statusLoading} className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50" title="Archivovat">
-                <Archive size={14} />
-              </button>
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
-          ) : (
-            <>
-              {/* Edit - only in editable statuses */}
-              {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
-                <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
-              )}
-              {canSubmitReview && (
-                <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
-              )}
-              {canPublish && course.status === Status.Approved && (
-                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
-              )}
-              {canDelete && course.status === Status.Approved && (
-                <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
-                  <RotateCcw size={14} />
-                </button>
-              )}
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
+    <div className="p-3 min-w-0">
+      <div className="min-w-0">
+        <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
+        <p className="text-xs text-gray-500 mt-1 truncate">
+          {moduleCount} moduly · {course.ownerDisplayName ?? '—'}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1">
+          <StatusBadge status={course.status} />
+          {(course.status === Status.Approved || course.status === Status.Archived) && (
+            <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+              course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+            }`}>
+              {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+            </span>
           )}
-        </CourseActionButtons>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {statusStr === Status.Archived ? (
+          <>
+            {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+            {canPublish && (
+              <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+            )}
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        ) : course.isPublished ? (
+          <>
+            {/* Published (non-archived): only archive (+ delete for superadmin) */}
+            <button onClick={onArchive} disabled={statusLoading} className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors disabled:opacity-50" title="Archivovat">
+              <Archive size={14} />
+            </button>
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Edit - only in editable statuses */}
+            {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+              <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
+            )}
+            {canSubmitReview && (
+              <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
+            )}
+            {canPublish && course.status === Status.Approved && (
+              <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+            )}
+            {canDelete && course.status === Status.Approved && (
+              <button onClick={onRevertToEditing} disabled={statusLoading} className="p-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors disabled:opacity-50" title="Vrátit do úprav">
+                <RotateCcw size={14} />
+              </button>
+            )}
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        )}
       </div>
 
       {/* Expanded Module List - Mobile */}
