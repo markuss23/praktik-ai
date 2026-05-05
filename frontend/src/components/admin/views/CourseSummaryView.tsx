@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { czechPlural } from '@/lib/utils';
 import {
@@ -20,6 +20,7 @@ interface CourseSummaryViewProps {
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const { goToCourseTests, goToCourses } = useAdminNavigation();
   
+  const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -155,6 +156,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         showButtons={false}
         onMenuClick={() => setMobileOutlineOpen(true)}
       />
+      <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0">
         {/* Left Content - Summary */}
@@ -220,6 +222,12 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                 )}
               </div>
             </div>
+
+            {activeTab === 'rubric' && (
+              <div className="pt-2">
+                <CourseRubric />
+              </div>
+            )}
 
           </div>
 

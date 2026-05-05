@@ -9,6 +9,8 @@ export { AiTutorChat } from './AiTutorChat';
 export { GenerateEmbeddingsButton } from './GenerateEmbeddingsButton';
 export { CourseActionButtons, EditActionButton, PublishActionButton, DeleteActionButton, ApproveActionButton } from './CourseActionButtons';
 export { CourseOutlineSidebar } from './CourseOutlineSidebar';
+export { CourseCreationTabs, type CreationTab } from './CourseCreationTabs';
+export { CourseRubric } from './CourseRubric';
 
 // Views - exported separately for lazy loading
 export * from './views';

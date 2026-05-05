@@ -7,7 +7,7 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
 import { Modal } from '@/components/ui/Modal';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -217,6 +217,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
 
+  const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [modules, setModules] = useState<LocalModule[]>([]);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [showAddModuleModal, setShowAddModuleModal] = useState(false);
@@ -620,7 +621,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
+      <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
+      {activeTab === 'rubric' ? (
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+          <CourseRubric />
+        </div>
+      ) : (
+      <>
       {/* Resubmit banner */}
       {/* {isEdited && hasFeedbacks && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
@@ -753,6 +761,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           />
         </Modal>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
@@ -62,6 +62,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     courseData,
   } = useCourseData({ courseId, initialModuleId });
 
+  const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
@@ -576,7 +577,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
+      <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
+      {activeTab === 'rubric' ? (
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+          <CourseRubric />
+        </div>
+      ) : (
+      <>
       {/* Resubmit banner */}
       {/* {isEdited && hasFeedbacks && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
@@ -817,6 +825,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

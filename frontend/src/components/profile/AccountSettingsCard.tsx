@@ -151,6 +151,7 @@ export function AccountSettingsCard({
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3 mt-1">
+          {/* 
           <button
             type="button"
             onClick={onChangePassword}
@@ -158,6 +159,7 @@ export function AccountSettingsCard({
           >
             Změnit heslo
           </button>
+          */}
           <button
             type="submit"
             disabled={saving || uploading}
@@ -165,6 +167,7 @@ export function AccountSettingsCard({
           >
             {saving ? 'Ukládání...' : 'Uložit změny'}
           </button>
+          
         </div>
       </form>
     </div>
