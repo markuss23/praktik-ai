@@ -36,11 +36,6 @@ _KC_ROLE_MAP: dict[str, UserRole] = {
 # Priority order (index = weight, higher wins)
 _ROLE_PRIORITY: list[str] = ["user", "lector", "guarantor", "superadmin"]
 
-# Role re-sync TTL — beyond this we hit the Keycloak Admin API to refresh the
-# user's role on the next request. This fixes the case where a tester is
-# granted "lector" in Keycloak after their first login but the DB still has
-# "user", causing every protected endpoint to return 403 even though the JWT
-# already contains the new role. (See Lektor report N1/P0-1.)
 _ROLE_SYNC_TTL = timedelta(minutes=5)
 
 
@@ -176,10 +171,6 @@ class Auth:
             db.add(user)
             db.commit()
         else:
-            # Re-sync the role when the cached value is older than _ROLE_SYNC_TTL.
-            # Without this, role changes in Keycloak (e.g. granting "lector"
-            # to an existing user) never propagate to the DB and every
-            # require_role-gated endpoint keeps returning 403.
             last_synced = user.last_synced_at
             if last_synced is not None and last_synced.tzinfo is None:
                 # Older rows may have been stored as naive UTC; treat them as UTC.

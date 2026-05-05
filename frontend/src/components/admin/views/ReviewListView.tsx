@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, Status } from '@/api';
 import { getCourses } from '@/lib/api-client';
+import { czechPlural } from '@/lib/utils';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -37,8 +38,20 @@ function StatusBadge({ status }: { status: Status }) {
 
 function CourseCard({ course, onStart }: { course: Course; onStart?: () => void }) {
   const isApproved = course.status === Status.Approved;
+  const clickable = !!onStart;
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4 min-w-0 h-full ${isApproved ? '' : 'hover:shadow-md transition-shadow'}`}>
+    <div
+      className={`bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4 min-w-0 h-full ${clickable ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
+      onClick={clickable ? onStart : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onStart?.();
+        }
+      } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <StatusBadge status={course.status} />
       </div>
@@ -53,14 +66,19 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
         {course.modulesCount !== undefined && (
           <p className="text-sm text-gray-500 flex items-center gap-1">
             <BookOpen size={13} />
-            {course.modulesCount} {course.modulesCount === 1 ? 'modul' : course.modulesCount < 5 ? 'moduly' : 'modulů'}
+            {course.modulesCount} {czechPlural(course.modulesCount, 'modul', 'moduly', 'modulů')}
+          </p>
+        )}
+        {course.ownerDisplayName && (
+          <p className="text-xs text-gray-400 mt-1 truncate" title={course.ownerDisplayName}>
+            Autor: {course.ownerDisplayName}
           </p>
         )}
       </div>
 
       {!isApproved && onStart && (
         <button
-          onClick={onStart}
+          onClick={(e) => { e.stopPropagation(); onStart(); }}
           className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-white text-sm font-semibold transition-all hover:opacity-90"
           style={{ backgroundColor: '#00C896' }}
         >
@@ -72,11 +90,7 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
   );
 }
 
-/** Stránkovaný carousel kurzů. Na stránce je maximálně {@link PAGE_SIZE} karet
- *  rovnoměrně rozložených přes celou šířku viewportu. Šipky posouvají vždy
- *  o celou stránku — tedy o {@link PAGE_SIZE} karet najednou. Posun je
- *  animovaný pružinou z motion knihovny.
- */
+
 function CourseCarousel<T extends { courseId: number }>({
   items,
   renderItem,
@@ -99,8 +113,6 @@ function CourseCarousel<T extends { courseId: number }>({
     return () => window.removeEventListener('resize', measure);
   }, []);
 
-  // Počet karet na stránku: max PAGE_SIZE, ale pokud by tím karta klesla pod
-  // MIN_CARD_WIDTH, snížíme na nižší rozumný počet (responsivní fallback).
   const cardsPerPage = (() => {
     if (viewportWidth <= 0) return PAGE_SIZE;
     let n = PAGE_SIZE;
@@ -114,8 +126,6 @@ function CourseCarousel<T extends { courseId: number }>({
 
   const totalPages = Math.max(1, Math.ceil(items.length / cardsPerPage));
 
-  // Při změně počtu položek nebo cardsPerPage clampuj index, ať nezůstaneme
-  // viset za posledním platným stránkem.
   useEffect(() => {
     setPageIndex(p => Math.min(p, totalPages - 1));
   }, [totalPages]);
@@ -130,8 +140,6 @@ function CourseCarousel<T extends { courseId: number }>({
   const handlePrev = () => setPageIndex(p => Math.max(0, p - 1));
   const handleNext = () => setPageIndex(p => Math.min(totalPages - 1, p + 1));
 
-  // Posun o jednu stránku = posun o (cardsPerPage * cardWidth) + (cardsPerPage * gap).
-  // Tím se další stránka kompletně schová pod viewport.
   const offset = pageIndex * (cardsPerPage * cardWidth + cardsPerPage * CARD_GAP);
 
   return (
@@ -224,9 +232,12 @@ export function ReviewListView() {
     router.push(`/admin/review/${courseId}`);
   };
 
-  // A user cannot review courses they own. Hide own in_review courses entirely;
-  // own approved courses still show informationally.
-  const inReview = courses.filter(c =>
+  const handleOpenApproved = (courseId: number) => {
+    router.push(`/admin?view=course-content&courseId=${courseId}`);
+  };
+
+  // A user cannot review courses they own. in_review courses are hidden
+  const reviewable = courses.filter(c =>
     c.status === Status.InReview && c.ownerId !== currentUser?.userId
   );
   const approved = courses.filter(c => c.status === Status.Approved);
@@ -237,7 +248,7 @@ export function ReviewListView() {
 
       {loading ? (
         <ReviewCardsSkeleton />
-      ) : inReview.length === 0 && approved.length === 0 ? (
+      ) : reviewable.length === 0 && approved.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <BookOpen size={48} className="text-gray-300 mb-4" />
           <p className="text-gray-500 text-lg font-medium">Žádné kurzy ke schválení</p>
@@ -247,13 +258,13 @@ export function ReviewListView() {
         </div>
       ) : (
         <div className="space-y-8">
-          {inReview.length > 0 && (
+          {reviewable.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Ke kontrole ({inReview.length})
+                Ke kontrole ({reviewable.length})
               </h2>
               <CourseCarousel
-                items={inReview}
+                items={reviewable}
                 renderItem={(course) => (
                   <CourseCard
                     course={course}
@@ -271,7 +282,12 @@ export function ReviewListView() {
               </h2>
               <CourseCarousel
                 items={approved}
-                renderItem={(course) => <CourseCard course={course} />}
+                renderItem={(course) => (
+                  <CourseCard
+                    course={course}
+                    onStart={() => handleOpenApproved(course.courseId)}
+                  />
+                )}
               />
             </section>
           )}

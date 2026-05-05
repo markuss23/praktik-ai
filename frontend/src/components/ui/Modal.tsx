@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useModalDismiss } from '@/hooks/useModalDismiss';
 
 interface ModalProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-md' }: ModalProps) {
+  useModalDismiss(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (

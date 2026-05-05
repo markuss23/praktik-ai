@@ -418,7 +418,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   };
 
   const saveContent = async () => {
-    if (!courseId) return;
+    if (!courseId) return modules;
     try {
       const updatedModules = [...modules];
       const updatedContents = { ...moduleContents };
@@ -464,6 +464,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         }
       }
       await Promise.all(learnBlockPromises);
+      return updatedModules;
     } catch (err) {
       console.error('Failed to save content:', err);
       alert('Nepodařilo se uložit obsah');
@@ -472,8 +473,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   };
 
   const handleContinue = async () => {
-    await saveContent();
-    const selectedModule = modules[selectedModuleIndex];
+    const savedModules = await saveContent();
+    const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
     goToCourseTests(courseId, selectedModule?.moduleId);
   };
 

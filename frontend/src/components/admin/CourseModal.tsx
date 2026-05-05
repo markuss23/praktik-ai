@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { CourseBlock } from "@/api";
+import { useModalDismiss } from "@/hooks/useModalDismiss";
 
 interface CourseModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export function CourseModal({
 }: CourseModalProps) {
   const [validationError, setValidationError] = useState('');
 
+  useModalDismiss(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {

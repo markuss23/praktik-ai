@@ -7,6 +7,7 @@ import type { Course, Enrollment, Module } from '@/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronUp, Users, BookOpen, TrendingUp, Layers } from 'lucide-react';
+import { czechPlural } from '@/lib/utils';
 
 interface CourseStats {
   course: Course;
@@ -197,7 +198,7 @@ export function LectorStatsView() {
                       <div>
                         <h3 className="text-base font-semibold text-gray-900">{cs.course.title}</h3>
                         <p className="text-sm text-gray-500">
-                          {enrolledCount} zapsaných · {completedCount} dokončilo · {moduleCount} modulů · {cs.completionRate}%
+                          {enrolledCount} zapsaných · {completedCount} dokončilo · {moduleCount} {czechPlural(moduleCount, 'modul', 'moduly', 'modulů')} · {cs.completionRate}%
                         </p>
                       </div>
                     </div>

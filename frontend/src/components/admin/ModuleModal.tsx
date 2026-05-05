@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { Course } from "@/api";
+import { useModalDismiss } from "@/hooks/useModalDismiss";
 
 interface ModuleModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function ModuleModal({
   onSubmit,
   onChange,
 }: ModuleModalProps) {
+  useModalDismiss(isOpen, onClose);
   if (!isOpen) return null;
 
   return (
@@ -54,22 +56,21 @@ export function ModuleModal({
           {mode === 'create' && (
             <div>
               <label htmlFor="module-course" className="block text-sm font-medium text-gray-700 mb-2">
-                Kurz *
+                Kurz
               </label>
               <select
                 id="module-course"
-                required
                 value={formData.courseId}
-                onChange={(e) => onChange({ ...formData, courseId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-gray-50 cursor-not-allowed"
                 disabled
               >
-                <option value={0}>Vyberte kurz</option>
-                {courses.map((course) => (
-                  <option key={course.courseId} value={course.courseId}>
-                    {course.title}
-                  </option>
-                ))}
+                {courses
+                  .filter((course) => course.courseId === formData.courseId)
+                  .map((course) => (
+                    <option key={course.courseId} value={course.courseId}>
+                      {course.title}
+                    </option>
+                  ))}
               </select>
             </div>
           )}

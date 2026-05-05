@@ -50,6 +50,16 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Czech pluralization: pick the right form for 1 / few (2-4) / many (0, 5+).
+ * Example: czechPlural(n, 'modul', 'moduly', 'modulů')
+ */
+export function czechPlural(n: number, one: string, few: string, many: string): string {
+  if (n === 1) return one;
+  if (n >= 2 && n <= 4) return few;
+  return many;
+}
+
+/**
  * Convert a string to a URL-friendly slug
  */
 export function slugify(text: string): string {

@@ -3,9 +3,7 @@
 import { useCallback } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
@@ -188,13 +186,12 @@ export function RichTextEditor({ content, onChange, placeholder = 'Napište obsa
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        link: {
+          openOnClick: false,
+          HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
+        },
       }),
-      Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
-      }),
       Image.configure({
         HTMLAttributes: { class: 'max-w-full h-auto rounded-lg' },
       }),
@@ -227,13 +224,12 @@ export function useRichTextEditor({ content, onChange, placeholder = 'Napište o
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
+        link: {
+          openOnClick: false,
+          HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
+        },
       }),
-      Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
-      }),
       Image.configure({
         HTMLAttributes: { class: 'max-w-full h-auto rounded-lg' },
       }),

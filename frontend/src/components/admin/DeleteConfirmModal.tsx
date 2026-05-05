@@ -1,5 +1,7 @@
 'use client';
 
+import { useModalDismiss } from '@/hooks/useModalDismiss';
+
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   isModule: boolean;
@@ -15,6 +17,7 @@ export function DeleteConfirmModal({
   onConfirm,
   onCancel,
 }: DeleteConfirmModalProps) {
+  useModalDismiss(isOpen, onCancel);
   if (!isOpen) return null;
 
   return (

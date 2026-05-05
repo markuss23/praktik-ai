@@ -726,14 +726,15 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   <div className="space-y-2 ml-4">
                     {question.options.map((option) => (
                       <div key={option.id} className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name={`question-${question.id}`}
-                          checked={option.isCorrect}
-                          onChange={() => setCorrectOption(question.id, option.id)}
-                          className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={option.isCorrect}
+                          aria-label={option.isCorrect ? 'Správná odpověď' : 'Označit jako správnou odpověď'}
+                          title="Označit jako správnou odpověď"
+                          onClick={() => setCorrectOption(question.id, option.id)}
+                          className={`w-4 h-4 rounded-full flex-shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-purple-600 border-2 border-purple-600' : 'border-2 border-gray-300 hover:border-purple-400'}`}
                         />
-                        <span className={`w-4 h-4 rounded-full flex-shrink-0 ${option.isCorrect ? 'bg-purple-600' : 'border-2 border-gray-300'}`} />
                         <input
                           type="text"
                           value={option.text}

@@ -86,9 +86,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) {
-    // Non-throwing fallback so that components can call `useToast` even when
-    // rendered outside the provider during testing — they just get no-op
-    // implementations rather than crashing the whole tree.
     if (process.env.NODE_ENV !== 'production') {
       console.warn('useToast() called outside ToastProvider — falling back to console.');
     }
@@ -167,12 +164,6 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
     </motion.div>
   );
 }
-
-// Error parsing
-//
-// The OpenAPI client throws `ResponseError` with a `.response` and the manual
-// fetch wrappers throw plain Error('API error: 403'). We try a few shapes and
-// translate well-known HTTP statuses into Czech.
 
 interface ResponseLike {
   status?: number;

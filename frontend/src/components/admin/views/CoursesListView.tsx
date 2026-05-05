@@ -1,6 +1,6 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
@@ -13,13 +13,14 @@ import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useToast } from "@/components/ui";
+import { czechPlural } from "@/lib/utils";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
-  const { can, isSuperAdmin } = useRole();
+  const { isSuperAdmin } = useRole();
   const { blocks, targets, subjects } = useCatalogData();
   const { isOwner } = useCurrentUser();
   const toast = useToast();
@@ -37,9 +38,6 @@ export function CoursesListView() {
   // Embedding generation state
   const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
   const [embeddingDone, setEmbeddingDone] = useState<Set<number>>(new Set());
-
-  // Approval state
-  const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
 
   // Status change loading
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
@@ -70,7 +68,7 @@ export function CoursesListView() {
     courseId: 0,
   });
 
-  // ─── Permissions helpers ─────────────────────────────────────────────────────
+  //  Permissions helpers 
 
   /** Can the current user edit this course? (owner or superadmin) */
   const canEditCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
@@ -78,13 +76,7 @@ export function CoursesListView() {
   /** Can the current user publish this course? (owner or superadmin) */
   const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
-  /** Can the current user approve/reject? (guarantor or superadmin, but NOT the owner unless superadmin) */
-  const canApproveCourse = (course: Course) => {
-    if (isSuperAdmin) return true;
-    return can('guarantor') && !isOwner(course.ownerId);
-  };
-
-  // ─── Data loading ────────────────────────────────────────────────────────────
+  // Data loading
 
   // Načtení rozbalené kurzu z localStorage při mountu
   useEffect(() => {
@@ -129,7 +121,7 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
-  // ─── Course actions ──────────────────────────────────────────────────────────
+  //  Course actions 
 
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
@@ -220,48 +212,6 @@ export function CoursesListView() {
     }
   };
 
-  /** Guarantor approves course: in_review → approved (+ auto-generate embeddings) */
-  const handleApprove = async (course: Course) => {
-    setApprovalLoading(course.courseId);
-    try {
-      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
-      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
-      try {
-        await generateCourseEmbeddings(course.courseId);
-        setEmbeddingDone(prev => new Set(prev).add(course.courseId));
-      } catch (embErr) {
-        console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
-        toast.error(
-          embErr,
-          'Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.',
-        );
-      }
-      await loadCoursesList();
-      toast.success('Kurz byl schválen.');
-    } catch (error) {
-      console.error('Failed to approve course:', error);
-      toast.error(error, 'Nepodařilo se schválit kurz.');
-    } finally {
-      setApprovalLoading(null);
-    }
-  };
-
-  /** Guarantor rejects course: in_review edited */
-  const handleReject = async (course: Course) => {
-    setApprovalLoading(course.courseId);
-    try {
-      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
-      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
-      await loadCoursesList();
-      toast.info('Kurz byl vrácen k úpravám.');
-    } catch (error) {
-      console.error('Failed to reject course:', error);
-      toast.error(error, 'Nepodařilo se vrátit kurz k úpravám.');
-    } finally {
-      setApprovalLoading(null);
-    }
-  };
-
   /** Superadmin reverts approved course back to editing (unpublishes too) */
   const handleRevertToEditing = async (course: Course) => {
     setStatusLoading(course.courseId);
@@ -293,7 +243,7 @@ export function CoursesListView() {
     }
   };
 
-  // ─── Modal handlers ──────────────────────────────────────────────────────────
+  // Modal handlers 
 
   const openCreateCourseModal = () => {
     setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
@@ -381,7 +331,16 @@ export function CoursesListView() {
         }
         closeModal();
       } else {
-        setModalError('Vytváření modulů není momentálně podporováno');
+        if (!moduleFormData.courseId) {
+          setModalError('Chybí kurz pro nový modul.');
+          return;
+        }
+        await createModule({ courseId: moduleFormData.courseId, title: moduleFormData.title });
+        const modules = await getModules({ courseId: moduleFormData.courseId });
+        setCourseModules(prev => ({ ...prev, [moduleFormData.courseId]: modules }));
+        await loadCoursesList();
+        toast.success('Modul byl vytvořen.');
+        closeModal();
       }
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to save module');
@@ -412,7 +371,7 @@ export function CoursesListView() {
     }
   };
 
-  // ─── Quick edit ──────────────────────────────────────────────────────────────
+  // Quick edit
 
   const openQuickEdit = (course: Course) => {
     if (quickEditCourseId === course.courseId) {
@@ -457,14 +416,12 @@ export function CoursesListView() {
     }
   };
 
-  // ─── Helper: can course status be submitted for review? ──────────────────────
-
   const canSubmitForReview = (course: Course) => {
     const editableStatuses: string[] = [Status.Draft, Status.Generated, Status.Edited];
     return canEditCourse(course) && editableStatuses.includes(course.status as string);
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  //  Render
 
   return (
     <>
@@ -498,9 +455,6 @@ export function CoursesListView() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {coursesLoading && courses.length === 0 ? (
-                  // Loading skeleton — without this the table appeared blank on
-                  // first paint until another interaction triggered a re-fetch.
-                  // (Lektor report P1-4)
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
                       {Array.from({ length: 6 }).map((_, j) => (
@@ -519,11 +473,6 @@ export function CoursesListView() {
                 ) : courses.map((course) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
-
-                  // Lektor report P0-4: clicking a row should open the
-                  // course (expand modules for editors, open the detail view
-                  // for everyone else). Action cells stop propagation so
-                  // their buttons don't accidentally trigger row clicks.
                   const handleRowClick = () => {
                     if (editable) {
                       toggleCourseExpand(course.courseId);
@@ -547,7 +496,7 @@ export function CoursesListView() {
                       >
                         <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{course.ownerDisplayName ?? '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} {czechPlural(getModuleCount(course), 'modul', 'moduly', 'modulů')}</td>
                         <td className="px-6 py-4">
                           <StatusBadge status={course.status} />
                         </td>
@@ -829,9 +778,7 @@ export function CoursesListView() {
   );
 }
 
-// =============================================================================
 // Pomocné komponenty
-// =============================================================================
 
 interface ExpandedModuleListProps {
   course: Course;
@@ -969,7 +916,7 @@ function MobileCourseCard({
       <div className="min-w-0">
         <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
         <p className="text-xs text-gray-500 mt-1 truncate">
-          {moduleCount} moduly · {course.ownerDisplayName ?? '—'}
+          {moduleCount} {czechPlural(moduleCount, 'modul', 'moduly', 'modulů')} · {course.ownerDisplayName ?? '—'}
         </p>
         <div className="mt-2 flex flex-wrap gap-1">
           <StatusBadge status={course.status} />

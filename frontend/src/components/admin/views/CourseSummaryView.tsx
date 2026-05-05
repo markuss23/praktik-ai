@@ -5,6 +5,7 @@ import { Module, Course } from '@/api';
 import { getCourse, updateCourse } from '@/lib/api-client';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
+import { czechPlural } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
@@ -129,7 +130,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
             {expandedOutlineItems.has(index) && (
               <div className="pb-2 pl-10 pr-4">
                 <span className="text-xs text-gray-500">
-                  {module.practiceQuestions?.length || 0} otázek
+                  {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
                 </span>
               </div>
             )}
@@ -189,7 +190,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
             {/* Statistics - compact inline */}
             <div className="text-sm text-gray-500">
-              {modules.length} modulů • {getTotalQuestions()} otázek
+              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')} • {getTotalQuestions()} {czechPlural(getTotalQuestions(), 'otázka', 'otázky', 'otázek')}
             </div>
 
             {/* Modules List */}
@@ -206,7 +207,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-black truncate">{module.title}</p>
                       <p className="text-xs text-gray-500">
-                        {module.practiceQuestions?.length || 0} otázek
+                        {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
                       </p>
                     </div>
                   </div>
