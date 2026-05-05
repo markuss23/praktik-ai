@@ -70,27 +70,29 @@ export function Header() {
                 )}
               </Link>
             </li>
-            <li>
-              <Link
-                href="/moje-kurzy"
-                data-text="Moje kurzy"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/moje-kurzy')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Moje kurzy
-                {isActive('/moje-kurzy') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
+            {isAuthenticated && (
+              <li>
+                <Link
+                  href="/moje-kurzy"
+                  data-text="Moje kurzy"
+                  className={`nav-link relative pb-1 transition-colors ${
+                    isActive('/moje-kurzy')
+                      ? 'text-black font-bold'
+                      : 'text-gray-700 hover:text-black font-medium'
+                  }`}
+                >
+                  Moje kurzy
+                  {isActive('/moje-kurzy') && (
+                    <span
+                      className="absolute bottom-0 left-0 right-0 h-0.5"
+                      style={{
+                        background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
+                      }}
+                    />
+                  )}
+                </Link>
+              </li>
+            )}
             <li>
               <Link
                 href="/odmeny"
@@ -265,7 +267,9 @@ export function Header() {
 
             <nav className="flex-1 overflow-y-auto py-2">
               <MobileNavLink href={ROUTES.HOME} active={isActive(ROUTES.HOME)}>Home</MobileNavLink>
-              <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
+              {isAuthenticated && (
+                <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
+              )}
               <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
               <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
               {can('lector') && (
