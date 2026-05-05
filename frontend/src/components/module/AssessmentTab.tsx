@@ -148,11 +148,14 @@ export default function AssessmentTab({
 
       if (resp.isPassed || resp.aiScore >= PASSING_SCORE) {
         setPassed(true);
-        // Auto-complete the module immediately (skip intermediate screen)
+        // Auto-complete the module immediately
         try {
           const bestScore = Math.max(...newAttempts.map((a) => a.aiScore));
           const completionResult = await completeModule(moduleId, bestScore);
           setModuleCompleted(true);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('praktik:enrollments-changed'));
+          }
           if (completionResult.courseCompleted) {
             setCourseCompleted(true);
           } else {

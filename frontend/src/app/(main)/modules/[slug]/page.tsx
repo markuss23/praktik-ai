@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules } from "@/lib/api-client";
+import { getModule, getCourse, getModules, getCourseProgress } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
@@ -101,6 +101,19 @@ export default function ModulePage() {
         (courseData.modules?.length ? courseData.modules : modulesData)
           .filter(m => m.isActive)
       );
+
+      // If the user already passed this module, unlock all sections
+      try {
+        const progress = await getCourseProgress(moduleData.courseId);
+        const moduleProgress = progress.find((p) => p.moduleId === modId);
+        if (moduleProgress?.passed) {
+          setHandbookCompleted(true);
+          setPracticeCompleted(true);
+          setAssessmentCompleted(true);
+        }
+      } catch {
+        // fall back to session state
+      }
     } catch (err) {
       console.error('Failed to fetch module data:', err);
       setError('Nepodařilo se načíst data modulu.');

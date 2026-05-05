@@ -3,6 +3,15 @@ export const APP_DESCRIPTION = "AI-powered learning platform";
 
 export const API_BASE_URL = "/api/backend";
 
+export function backendUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const url = `${API_BASE_URL}${normalized}`;
+  if (process.env.NODE_ENV !== "production" && url.includes("/api/api/")) {
+    console.warn(`[backendUrl] Suspicious /api/api/ duplicate in URL: ${url}`);
+  }
+  return url;
+}
+
 export const ROUTES = {
   HOME: "/",
   ABOUT: "/about",

@@ -178,7 +178,10 @@ export interface UserInfo {
 export function parseJwt(token: string): UserInfo | null {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(atob(base64)) as UserInfo & { realm_access?: { roles: string[] } };
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    const json = new TextDecoder("utf-8").decode(bytes);
+    const payload = JSON.parse(json) as UserInfo & { realm_access?: { roles: string[] } };
     const roles: string[] = payload.realm_access?.roles ?? [];
     return { ...payload, role: resolveRole(roles) };
   } catch {

@@ -32,7 +32,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="bg-white sticky top-0 z-50" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
+    <header className="bg-white sticky top-0 z-[1000]" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
       <div className="mx-auto px-3 sm:px-6 lg:px-[100px] py-2 lg:py-[7px]" style={{ maxWidth: '1440px', width: '100%', minHeight: '56px', height: 'auto' }}>
         <nav className="flex items-center justify-between h-full gap-2">
           {/* Logo and Brand */}
@@ -161,9 +161,16 @@ export function Header() {
           {/* User Actions */}
           <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
             {isAuthenticated && (
-              <button className="hidden sm:inline-flex p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <Link
+                href="/tutor"
+                aria-label="AI tutor"
+                title="AI tutor"
+                className={`hidden sm:inline-flex p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
+                  isActive('/tutor') ? 'bg-gray-100' : ''
+                }`}
+              >
                 <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-              </button>
+              </Link>
             )}
 
             {/* Admin shortcut on mobile (md:hidden, only for lectors+) */}
@@ -237,7 +244,7 @@ export function Header() {
 
       {/* Mobile menu drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex justify-end">
+        <div className="md:hidden fixed inset-0 z-[2000] flex justify-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileMenuOpen(false)}

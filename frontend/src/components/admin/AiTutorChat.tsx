@@ -6,9 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { learnBlocksChat } from '@/lib/api-client';
 
 interface AiTutorChatProps {
-  /** The current learn block ID to chat about */
   learnBlockId?: number;
-  /** Module ID — used to scope chat history persistence in sessionStorage. */
   moduleId?: number;
 }
 
@@ -42,13 +40,9 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
 
-  // Track which storage key the current chatMessages belong to, so module
-  // switches don't write stale chat into the new module's slot before reload.
   const loadedKeyRef = useRef<string | null>(storageKey);
   const skipNextPersistRef = useRef(false);
 
-  // When moduleId changes (user navigates to another module without unmounting
-  // this component), swap to that module's saved chat history.
   useEffect(() => {
     if (loadedKeyRef.current === storageKey) return;
     loadedKeyRef.current = storageKey;
@@ -262,7 +256,11 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
 
   return (
     <>
-      <div className="bg-white rounded-lg overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
+      <div
+        className={`bg-white rounded-lg overflow-hidden ${expanded ? 'invisible' : ''}`}
+        aria-hidden={expanded}
+        style={{ border: '1px solid #e5e7eb' }}
+      >
         {/* Tutor Header */}
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
@@ -316,14 +314,14 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
         {expanded && (
           <motion.div
             key="ai-tutor-modal"
-            className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
             <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setExpanded(false)}
             />
             <motion.div

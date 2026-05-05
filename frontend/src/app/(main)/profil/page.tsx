@@ -90,14 +90,44 @@ export default function ProfilPage() {
     }
   }, []);
 
-  useEffect(() => {
+  const loadEnrollments = useCallback((showLoading = true) => {
     if (!isAuthenticated) return;
-    setEnrollmentsLoading(true);
+    if (showLoading) setEnrollmentsLoading(true);
     getMyEnrollments()
       .then(setEnrollments)
       .catch(() => setEnrollments([]))
-      .finally(() => setEnrollmentsLoading(false));
+      .finally(() => {
+        if (showLoading) setEnrollmentsLoading(false);
+      });
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    loadEnrollments(true);
+  }, [loadEnrollments]);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const refresh = () => loadEnrollments(false);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      // bfcache restore — values may be stale
+      if (e.persisted) refresh();
+    };
+
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('praktik:enrollments-changed', refresh);
+
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('praktik:enrollments-changed', refresh);
+    };
+  }, [isAuthenticated, loadEnrollments]);
 
 
   const handleAvatarChange = useCallback((url: string) => {

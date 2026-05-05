@@ -264,34 +264,33 @@ export default function CoursePage() {
       <div className="px-4 sm:px-6 lg:px-[100px] pb-16" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <AnimatePresence mode="wait">
           {modules.length === 0 ? (
-            // Lazy fallback: pokud kurz vrátil prázdný seznam modulů (nebo se
-            // ještě nezvládl dotáhnout vedlejší fetch), ukážeme placeholdery.
             <motion.div
-              key="modules-skeleton"
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              key="modules-empty"
+              className="bg-white rounded-lg border border-gray-200 p-8 sm:p-10 text-center"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.25 }}
             >
-              {[1, 2, 3, 4].map(i => (
-                <div
-                  key={i}
-                  className="bg-white rounded-lg overflow-hidden animate-pulse border border-gray-200"
-                  style={{ padding: '24px', minHeight: '260px' }}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="h-4 w-16 bg-gray-200 rounded" />
-                    <div className="h-4 w-24 bg-gray-200 rounded" />
-                  </div>
-                  <div className="h-7 w-3/4 bg-gray-200 rounded mb-2" />
-                  <div className="h-7 w-2/3 bg-gray-200 rounded mb-3" />
-                  <div className="flex items-center justify-between mt-auto pt-6">
-                    <div className="h-5 w-20 bg-gray-200 rounded" />
-                    <div className="h-10 w-32 bg-gray-200 rounded-md" />
-                  </div>
-                </div>
-              ))}
+              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <BookOpen className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                V tomto kurzu zatím nejsou moduly
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">
+                Obsah ještě nebyl vygenerován nebo publikován. Zkuste se vrátit později — nebo se
+                podívejte na další kurzy.
+              </p>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-purple-600 hover:text-purple-700"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+                Zpět na přehled kurzů
+              </Link>
             </motion.div>
           ) : filteredModules.length === 0 && moduleSearch ? (
             <motion.p

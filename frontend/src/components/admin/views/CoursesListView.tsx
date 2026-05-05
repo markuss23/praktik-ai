@@ -12,6 +12,7 @@ import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useToast } from "@/components/ui";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
@@ -21,8 +22,11 @@ export function CoursesListView() {
   const { can, isSuperAdmin } = useRole();
   const { blocks, targets, subjects } = useCatalogData();
   const { isOwner } = useCurrentUser();
+  const toast = useToast();
 
   const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<number | null>(null);
@@ -107,13 +111,19 @@ export function CoursesListView() {
   }, [expandedCourse, courseModules]);
 
   const loadCoursesList = useCallback(async () => {
+    setCoursesLoading(true);
+    setCoursesError(null);
     try {
       const data = await getCourses();
       setCourses(data);
     } catch (error) {
       console.error('Failed to fetch courses:', error);
+      setCoursesError('Nepodařilo se načíst seznam kurzů.');
+      toast.error(error, 'Nepodařilo se načíst seznam kurzů.');
+    } finally {
+      setCoursesLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadCoursesList();
@@ -133,11 +143,12 @@ export function CoursesListView() {
     try {
       await sharedCoursesApi.deleteCourse({ courseId: courseToDelete });
       await loadCoursesList();
+      toast.success('Kurz byl smazán.');
       setShowDeleteConfirm(false);
       setCourseToDelete(null);
     } catch (error) {
       console.error('Failed to delete course:', error);
-      alert('Failed to delete course');
+      toast.error(error, 'Nepodařilo se smazat kurz.');
     } finally {
       setDeleting(false);
     }
@@ -145,7 +156,7 @@ export function CoursesListView() {
 
   const handleDeleteModule = async () => {
     if (!moduleToDelete) return;
-    alert('Mazání modulů není momentálně podporováno');
+    toast.info('Mazání modulů není momentálně podporováno.');
     setShowDeleteConfirm(false);
     setModuleToDelete(null);
   };
@@ -178,20 +189,20 @@ export function CoursesListView() {
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to update publish status:', error);
-      alert('Nepodařilo se změnit stav publikování');
+      toast.error(error, 'Nepodařilo se změnit stav publikování.');
     }
   };
 
   const toggleModuleActive = async (_module: Module) => {
     console.warn('Module activation toggle not supported by current API');
-    alert('Změna stavu modulu není momentálně podporována');
+    toast.info('Změna stavu modulu není momentálně podporována.');
   };
 
   const getModuleCount = (course: Course) => {
     return course.modulesCount || 0;
   };
 
-  // ─── Status flow ─────────────────────────────────────────────────────────────
+  // Status flow
 
   /** Owner submits course for review: edited/draft/generated → in_review */
   const handleSubmitForReview = async (course: Course) => {
@@ -200,9 +211,10 @@ export function CoursesListView() {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.InReview);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
+      toast.success('Kurz byl odeslán ke schválení.');
     } catch (error) {
       console.error('Failed to submit for review:', error);
-      alert('Nepodařilo se odeslat ke schválení.');
+      toast.error(error, 'Nepodařilo se odeslat ke schválení.');
     } finally {
       setStatusLoading(null);
     }
@@ -219,27 +231,32 @@ export function CoursesListView() {
         setEmbeddingDone(prev => new Set(prev).add(course.courseId));
       } catch (embErr) {
         console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
-        alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
+        toast.error(
+          embErr,
+          'Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.',
+        );
       }
       await loadCoursesList();
+      toast.success('Kurz byl schválen.');
     } catch (error) {
       console.error('Failed to approve course:', error);
-      alert('Nepodařilo se schválit kurz.');
+      toast.error(error, 'Nepodařilo se schválit kurz.');
     } finally {
       setApprovalLoading(null);
     }
   };
 
-  /** Guarantor rejects course: in_review → edited */
+  /** Guarantor rejects course: in_review edited */
   const handleReject = async (course: Course) => {
     setApprovalLoading(course.courseId);
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
+      toast.info('Kurz byl vrácen k úpravám.');
     } catch (error) {
       console.error('Failed to reject course:', error);
-      alert('Nepodařilo se vrátit kurz k úpravám.');
+      toast.error(error, 'Nepodařilo se vrátit kurz k úpravám.');
     } finally {
       setApprovalLoading(null);
     }
@@ -252,9 +269,10 @@ export function CoursesListView() {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
+      toast.info('Kurz byl vrácen do úprav.');
     } catch (error) {
       console.error('Failed to revert course:', error);
-      alert('Nepodařilo se vrátit kurz do úprav.');
+      toast.error(error, 'Nepodařilo se vrátit kurz do úprav.');
     } finally {
       setStatusLoading(null);
     }
@@ -266,9 +284,10 @@ export function CoursesListView() {
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Archived);
       await loadCoursesList();
+      toast.success('Kurz byl archivován.');
     } catch (error) {
       console.error('Failed to archive course:', error);
-      alert('Nepodařilo se archivovat kurz.');
+      toast.error(error, 'Nepodařilo se archivovat kurz.');
     } finally {
       setStatusLoading(null);
     }
@@ -381,9 +400,13 @@ export function CoursesListView() {
     try {
       await generateCourseEmbeddings(courseId);
       setEmbeddingDone(prev => new Set(prev).add(courseId));
+      toast.success('Embeddingy byly vygenerovány.');
     } catch (error) {
       console.error('Failed to generate embeddings:', error);
-      alert('Nepodařilo se vygenerovat embeddingy. Zkontrolujte, zda je kurz ve stavu "Schváleno".');
+      toast.error(
+        error,
+        'Nepodařilo se vygenerovat embeddingy. Zkontrolujte, zda je kurz ve stavu „Schváleno".',
+      );
     } finally {
       setEmbeddingLoading(null);
     }
@@ -425,9 +448,10 @@ export function CoursesListView() {
         },
       });
       await loadCoursesList();
+      toast.success('Rychlé úpravy uloženy.');
     } catch (error) {
       console.error('Failed to quick save course:', error);
-      alert('Nepodařilo se uložit rychlé úpravy');
+      toast.error(error, 'Nepodařilo se uložit rychlé úpravy.');
     } finally {
       setQuickEditLoading(false);
     }
@@ -453,7 +477,7 @@ export function CoursesListView() {
               trigger={<span>Přidat kurz</span>}
               items={[
                 { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
-                { label: 'Náhrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
+                { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
                 { label: 'Pomocí AI', icon: <SimpleBotIcon size={18} />, gradient: true, onClick: goToAICreate },
               ]}
             />
@@ -473,13 +497,54 @@ export function CoursesListView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {courses.map((course) => {
+                {coursesLoading && courses.length === 0 ? (
+                  // Loading skeleton — without this the table appeared blank on
+                  // first paint until another interaction triggered a re-fetch.
+                  // (Lektor report P1-4)
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <td key={j} className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : !coursesLoading && courses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                      {coursesError ?? 'Zatím nejsou žádné kurzy. Vytvořte první přes „Přidat kurz".'}
+                    </td>
+                  </tr>
+                ) : courses.map((course) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
 
+                  // Lektor report P0-4: clicking a row should open the
+                  // course (expand modules for editors, open the detail view
+                  // for everyone else). Action cells stop propagation so
+                  // their buttons don't accidentally trigger row clicks.
+                  const handleRowClick = () => {
+                    if (editable) {
+                      toggleCourseExpand(course.courseId);
+                    } else {
+                      goToCourseContent(course.courseId);
+                    }
+                  };
                   return (
                     <React.Fragment key={course.courseId}>
-                      <tr className="hover:bg-gray-50">
+                      <tr
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={handleRowClick}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleRowClick();
+                          }
+                        }}
+                      >
                         <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{course.ownerDisplayName ?? '—'}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
@@ -489,7 +554,7 @@ export function CoursesListView() {
                         <td className="px-6 py-4">
                           <PublishBadge status={course.status} isPublished={course.isPublished} />
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 text-xs flex-wrap">
                             {statusStr === Status.Archived ? (
                               <>

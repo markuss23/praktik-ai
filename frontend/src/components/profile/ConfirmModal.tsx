@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle } from 'lucide-react';
+import { useModalDismiss } from '@/hooks';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -22,16 +23,23 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  useModalDismiss(isOpen, onCancel);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="confirm-modal-title"
+        >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onCancel}
           />
 
@@ -47,7 +55,7 @@ export function ConfirmModal({
                 <AlertTriangle size={20} className="text-orange-500" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                <h3 id="confirm-modal-title" className="text-lg font-bold text-gray-900">{title}</h3>
                 <p className="text-sm text-gray-600 mt-1">{message}</p>
               </div>
             </div>

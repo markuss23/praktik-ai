@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Unified z-index scale (BUG-013).
+   * Use these via Tailwind arbitrary values: z-[var(--z-modal)] etc.
+   * Lower numbers = further back. Keep gaps so we can insert layers later. */
+  --z-base: 0;
+  --z-dropdown: 500;
+  --z-header: 1000;
+  --z-overlay: 1500;
+  --z-modal: 2000;
+  --z-toast: 2500;
 }
 
 @theme inline {
