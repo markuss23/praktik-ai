@@ -76,6 +76,15 @@ export function CoursesListView() {
   /** Can the current user publish this course? (owner or superadmin) */
   const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
+  /** Can the current user delete this course?
+   *  Superadmin: always. Owner: only when course hasn't been submitted to review yet (draft/generated). */
+  const canDeleteCourse = (course: Course) => {
+    if (isSuperAdmin) return true;
+    if (!isOwner(course.ownerId)) return false;
+    const status = course.status as string;
+    return status === Status.Draft || status === Status.Generated;
+  };
+
   // Data loading
 
   // Načtení rozbalené kurzu z localStorage při mountu
@@ -516,7 +525,7 @@ export function CoursesListView() {
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
                                   </button>
                                 )}
-                                {isSuperAdmin && (
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -535,7 +544,7 @@ export function CoursesListView() {
                                 >
                                   {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
                                 </button>
-                                {isSuperAdmin && (
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -596,8 +605,8 @@ export function CoursesListView() {
                                   </button>
                                 )}
 
-                                {/* Delete - superadmin only */}
-                                {isSuperAdmin && (
+                                {/* Delete - superadmin always; owner only when draft/generated */}
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -726,7 +735,7 @@ export function CoursesListView() {
                 embeddingGenerated={embeddingDone.has(course.courseId)}
                 canEdit={canEditCourse(course)}
                 canPublish={canPublishCourse(course)}
-                canDelete={isSuperAdmin}
+                canDelete={canDeleteCourse(course)}
                 onSubmitForReview={() => handleSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
                 onRevertToEditing={() => handleRevertToEditing(course)}
