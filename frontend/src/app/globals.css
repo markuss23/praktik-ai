@@ -223,3 +223,73 @@ body.module-fullscreen footer {
   overflow-x: auto;
   max-width: 100%;
 }
+
+/* notes panel  */
+.notes-paper {
+  background-color: #ffffff;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    #e5e7eb 27px,
+    #e5e7eb 28px
+  );
+  background-position: 0 16px;
+  background-attachment: local;
+}
+.notes-paper-content {
+  min-height: 100%;
+}
+.notes-paper-content .ProseMirror {
+  min-height: 100%;
+  padding: 16px 24px 32px;
+  outline: none;
+  font-size: 14px;
+  line-height: 28px;
+  color: #1f2937;
+  caret-color: #8B5BA8;
+}
+.notes-paper-content .ProseMirror p {
+  margin: 0;
+  min-height: 28px;
+}
+.notes-paper-content .ProseMirror h2 {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #111827;
+  margin: 0;
+}
+.notes-paper-content .ProseMirror ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 24px;
+}
+.notes-paper-content .ProseMirror ol {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 24px;
+}
+.notes-paper-content .ProseMirror li {
+  margin: 0;
+}
+.notes-paper-content .ProseMirror li > p {
+  margin: 0;
+}
+.notes-paper-content .ProseMirror strong {
+  font-weight: 700;
+  color: #111827;
+}
+.notes-paper-content .ProseMirror em {
+  font-style: italic;
+}
+.notes-paper-content .ProseMirror s {
+  text-decoration: line-through;
+}
+.notes-paper-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

@@ -11,6 +11,7 @@ import { Alert, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
+import NotesPanel from "@/components/module/NotesPanel";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -302,7 +303,7 @@ export default function ModulePage() {
         </p>
       </div>
 
-      {/* Main Layout — flex-1 + min-h-0 dovolí dětem rozhodnout o vlastním
+      {/* Main Layout — flex-1 + min-h-0 dovolí dětem(childs) rozhodnout o vlastním
           scrollu (jinak by min-content sloupců způsobil overflow ven). */}
       <div className="flex-1 min-h-0 px-4 sm:px-6 lg:px-[100px] pb-4 sm:pb-6" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
         <div className="flex flex-col lg:flex-row gap-8 h-full min-h-0">
@@ -487,6 +488,8 @@ export default function ModulePage() {
           </div>
         </div>
       </div>
+      {/* Vysouvací poznámkový blok */}
+      <NotesPanel />
     </div>
   );
 }

@@ -282,6 +282,7 @@ export default function CoursePage() {
                 Obsah ještě nebyl vygenerován nebo publikován. Zkuste se vrátit později — nebo se
                 podívejte na další kurzy.
               </p>
+              {/* 
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-purple-600 hover:text-purple-700"
@@ -291,6 +292,7 @@ export default function CoursePage() {
                 </svg>
                 Zpět na přehled kurzů
               </Link>
+              */}
             </motion.div>
           ) : filteredModules.length === 0 && moduleSearch ? (
             <motion.p
@@ -461,7 +463,7 @@ export default function CoursePage() {
         </AnimatePresence>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation 
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,6 +472,7 @@ export default function CoursePage() {
           Zpět na přehled kurzů
         </Link>
       </div>
+      */}
     </div>
   );
 }
