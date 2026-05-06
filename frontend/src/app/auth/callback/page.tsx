@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { exchangeCodeForTokens, parseJwt, storeTokens } from "@/lib/keycloak";
-import { API_BASE_URL } from "@/lib/constants";
+import { backendUrl } from "@/lib/constants";
 import { AuthSkeleton } from "@/components/ui";
 
 function AuthCallbackContent() {
@@ -31,7 +31,7 @@ function AuthCallbackContent() {
         storeTokens(tokens);
         // Sync user role from Keycloak to backend DB
         try {
-          await fetch(`${API_BASE_URL}/api/v1/auth/sync`, {
+          await fetch(backendUrl(`/api/v1/auth/sync`), {
             method: "POST",
             headers: { Authorization: `Bearer ${tokens.access_token}` },
           });

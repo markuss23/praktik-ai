@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { AccountSettingsCard } from './AccountSettingsCard';
 import { motion, AnimatePresence } from 'motion/react';
 import { updateProfileName } from '@/lib/api-client';
+import { useModalDismiss } from '@/hooks';
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ interface ProfileEditModalProps {
 export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, initialFirstName, initialLastName, onNameSaved }: ProfileEditModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useModalDismiss(isOpen, onClose);
 
   const handleSave = async (values: { firstName: string; lastName: string }) => {
     const displayName = `${values.firstName} ${values.lastName}`.trim();
@@ -42,14 +45,19 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, i
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-edit-modal-title"
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -63,9 +71,11 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, i
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-2">
-              <h2 className="text-xl font-bold text-gray-900">Upravit profil</h2>
+              <h2 id="profile-edit-modal-title" className="text-xl font-bold text-gray-900">Upravit profil</h2>
               <button
                 onClick={onClose}
+                aria-label="Zavřít"
+                type="button"
                 className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X size={20} className="text-gray-500" />

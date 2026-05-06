@@ -1,5 +1,3 @@
-'use client';
-
 import { Status } from '@/api';
 
 // ─── Status Badge ────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { Hero } from "@/components/layout";
 import CourseSection from "./CourseSection";
 import ProjectAboutSection from "./ProjectAboutSection";
+import ContactSection from "./ContactSection";
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
       <Hero />
       <CourseSection />
       <ProjectAboutSection />
+      <ContactSection />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 
 export interface OutlineSubItem {
   id: string;
@@ -23,7 +23,9 @@ interface CourseOutlineSidebarProps {
   onToggle: (index: number) => void;
   onSelect: (index: number) => void;
   onAddClick?: () => void;
+  onClose?: () => void;
   renderSubItems?: (item: OutlineItem, index: number) => React.ReactNode;
+  className?: string;
 }
 
 export function CourseOutlineSidebar({
@@ -31,25 +33,40 @@ export function CourseOutlineSidebar({
   onToggle,
   onSelect,
   onAddClick,
+  onClose,
   renderSubItems,
+  className,
 }: CourseOutlineSidebarProps) {
+  const containerClass = className ?? 'hidden lg:flex w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col';
   return (
-    <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-      <div className="p-4 border-b border-gray-200">
+    <div className={containerClass}>
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-black">Osnova kurzu</h2>
-          {onAddClick && (
-            <button
-              className="p-1 hover:bg-gray-100 rounded"
-              onClick={onAddClick}
-              title="Přidat modul"
-            >
-              <Plus size={16} className="text-gray-600" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {onAddClick && (
+              <button
+                className="p-1 hover:bg-gray-100 rounded"
+                onClick={onAddClick}
+                title="Přidat modul"
+              >
+                <Plus size={16} className="text-gray-600" />
+              </button>
+            )}
+            {onClose && (
+              <button
+                className="p-1 hover:bg-gray-100 rounded"
+                onClick={onClose}
+                title="Zavřít"
+                aria-label="Zavřít osnovu"
+              >
+                <X size={16} className="text-gray-600" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-      <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+      <div className="flex-1 overflow-y-auto">
         {items.map((item, index) => (
           <div key={item.id} className="border-b border-gray-100 last:border-b-0">
             <div

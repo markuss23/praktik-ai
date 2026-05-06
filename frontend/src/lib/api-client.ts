@@ -21,11 +21,10 @@ import {
   type Middleware,
   type QuestionType,
 } from "@/api";
-import { API_BASE_URL } from "./constants";
+import { API_BASE_URL, backendUrl } from "./constants";
 import { getValidAccessToken } from "./keycloak";
 
 
-// Request middleware — injects `Authorization: Bearer <token>` when the user is authenticated. For unauthenticated (public) requests the header is comitted entirely so the backend doesn't reject them.
 const authMiddleware: Middleware = {
   pre: async (context) => {
     const token = await getValidAccessToken();
@@ -69,7 +68,7 @@ export async function updateProfileName(displayName: string) {
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/v1/auth/profile/name`, {
+  const res = await fetch(backendUrl(`/api/v1/auth/profile/name`), {
     method: 'PUT',
     headers,
     body: JSON.stringify({ display_name: displayName }),
@@ -203,7 +202,7 @@ export async function getCourseGenerationProgress(courseId: number): Promise<Cou
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/v1/agents/course-progress/${courseId}`, {
+  const res = await fetch(backendUrl(`/api/v1/agents/course-progress/${courseId}`), {
     method: 'GET',
     headers,
   });
@@ -211,16 +210,15 @@ export async function getCourseGenerationProgress(courseId: number): Promise<Cou
   return res.json();
 }
 
-/** Backend lookup for a currently-running course generation owned by the user.
- * Used to resume the progress UI after a page refresh. Returns null if none. */
 export async function getActiveCourseGeneration(): Promise<number | null> {
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}/api/v1/agents/active-course-generation`, {
+  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generation`), {
     method: 'GET',
     headers,
   });
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
   return typeof data === 'number' ? data : null;
@@ -433,7 +431,7 @@ async function fetchWithAuth(path: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string> | undefined),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(backendUrl(path), { ...options, headers });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }

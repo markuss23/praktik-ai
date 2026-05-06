@@ -1,6 +1,6 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
@@ -12,17 +12,22 @@ import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useToast } from "@/components/ui";
+import { czechPlural } from "@/lib/utils";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
-  const { can, isSuperAdmin } = useRole();
+  const { isSuperAdmin } = useRole();
   const { blocks, targets, subjects } = useCatalogData();
   const { isOwner } = useCurrentUser();
+  const toast = useToast();
 
   const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<number | null>(null);
@@ -33,9 +38,6 @@ export function CoursesListView() {
   // Embedding generation state
   const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
   const [embeddingDone, setEmbeddingDone] = useState<Set<number>>(new Set());
-
-  // Approval state
-  const [approvalLoading, setApprovalLoading] = useState<number | null>(null);
 
   // Status change loading
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
@@ -66,7 +68,7 @@ export function CoursesListView() {
     courseId: 0,
   });
 
-  // ─── Permissions helpers ─────────────────────────────────────────────────────
+  //  Permissions helpers 
 
   /** Can the current user edit this course? (owner or superadmin) */
   const canEditCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
@@ -74,13 +76,16 @@ export function CoursesListView() {
   /** Can the current user publish this course? (owner or superadmin) */
   const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
-  /** Can the current user approve/reject? (guarantor or superadmin, but NOT the owner unless superadmin) */
-  const canApproveCourse = (course: Course) => {
+  /** Can the current user delete this course?
+   *  Superadmin: always. Owner: only when course hasn't been submitted to review yet (draft/generated). */
+  const canDeleteCourse = (course: Course) => {
     if (isSuperAdmin) return true;
-    return can('guarantor') && !isOwner(course.ownerId);
+    if (!isOwner(course.ownerId)) return false;
+    const status = course.status as string;
+    return status === Status.Draft || status === Status.Generated;
   };
 
-  // ─── Data loading ────────────────────────────────────────────────────────────
+  // Data loading
 
   // Načtení rozbalené kurzu z localStorage při mountu
   useEffect(() => {
@@ -107,19 +112,25 @@ export function CoursesListView() {
   }, [expandedCourse, courseModules]);
 
   const loadCoursesList = useCallback(async () => {
+    setCoursesLoading(true);
+    setCoursesError(null);
     try {
       const data = await getCourses();
       setCourses(data);
     } catch (error) {
       console.error('Failed to fetch courses:', error);
+      setCoursesError('Nepodařilo se načíst seznam kurzů.');
+      toast.error(error, 'Nepodařilo se načíst seznam kurzů.');
+    } finally {
+      setCoursesLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadCoursesList();
   }, [loadCoursesList]);
 
-  // ─── Course actions ──────────────────────────────────────────────────────────
+  //  Course actions 
 
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
@@ -133,11 +144,12 @@ export function CoursesListView() {
     try {
       await sharedCoursesApi.deleteCourse({ courseId: courseToDelete });
       await loadCoursesList();
+      toast.success('Kurz byl smazán.');
       setShowDeleteConfirm(false);
       setCourseToDelete(null);
     } catch (error) {
       console.error('Failed to delete course:', error);
-      alert('Failed to delete course');
+      toast.error(error, 'Nepodařilo se smazat kurz.');
     } finally {
       setDeleting(false);
     }
@@ -145,7 +157,7 @@ export function CoursesListView() {
 
   const handleDeleteModule = async () => {
     if (!moduleToDelete) return;
-    alert('Mazání modulů není momentálně podporováno');
+    toast.info('Mazání modulů není momentálně podporováno.');
     setShowDeleteConfirm(false);
     setModuleToDelete(null);
   };
@@ -178,20 +190,20 @@ export function CoursesListView() {
       await loadCoursesList();
     } catch (error) {
       console.error('Failed to update publish status:', error);
-      alert('Nepodařilo se změnit stav publikování');
+      toast.error(error, 'Nepodařilo se změnit stav publikování.');
     }
   };
 
   const toggleModuleActive = async (_module: Module) => {
     console.warn('Module activation toggle not supported by current API');
-    alert('Změna stavu modulu není momentálně podporována');
+    toast.info('Změna stavu modulu není momentálně podporována.');
   };
 
   const getModuleCount = (course: Course) => {
     return course.modulesCount || 0;
   };
 
-  // ─── Status flow ─────────────────────────────────────────────────────────────
+  // Status flow
 
   /** Owner submits course for review: edited/draft/generated → in_review */
   const handleSubmitForReview = async (course: Course) => {
@@ -200,48 +212,12 @@ export function CoursesListView() {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.InReview);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
+      toast.success('Kurz byl odeslán ke schválení.');
     } catch (error) {
       console.error('Failed to submit for review:', error);
-      alert('Nepodařilo se odeslat ke schválení.');
+      toast.error(error, 'Nepodařilo se odeslat ke schválení.');
     } finally {
       setStatusLoading(null);
-    }
-  };
-
-  /** Guarantor approves course: in_review → approved (+ auto-generate embeddings) */
-  const handleApprove = async (course: Course) => {
-    setApprovalLoading(course.courseId);
-    try {
-      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Approved);
-      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
-      try {
-        await generateCourseEmbeddings(course.courseId);
-        setEmbeddingDone(prev => new Set(prev).add(course.courseId));
-      } catch (embErr) {
-        console.error('Embeddingy se nepodařilo vygenerovat automaticky:', embErr);
-        alert('Kurz byl schválen, ale generování embeddingů selhalo. Zkuste je vygenerovat ručně.');
-      }
-      await loadCoursesList();
-    } catch (error) {
-      console.error('Failed to approve course:', error);
-      alert('Nepodařilo se schválit kurz.');
-    } finally {
-      setApprovalLoading(null);
-    }
-  };
-
-  /** Guarantor rejects course: in_review → edited */
-  const handleReject = async (course: Course) => {
-    setApprovalLoading(course.courseId);
-    try {
-      await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
-      window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
-      await loadCoursesList();
-    } catch (error) {
-      console.error('Failed to reject course:', error);
-      alert('Nepodařilo se vrátit kurz k úpravám.');
-    } finally {
-      setApprovalLoading(null);
     }
   };
 
@@ -252,9 +228,10 @@ export function CoursesListView() {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Edited);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       await loadCoursesList();
+      toast.info('Kurz byl vrácen do úprav.');
     } catch (error) {
       console.error('Failed to revert course:', error);
-      alert('Nepodařilo se vrátit kurz do úprav.');
+      toast.error(error, 'Nepodařilo se vrátit kurz do úprav.');
     } finally {
       setStatusLoading(null);
     }
@@ -266,15 +243,16 @@ export function CoursesListView() {
     try {
       await updateCourseStatus(course.courseId, UpdateCourseStatusStatusEnum.Archived);
       await loadCoursesList();
+      toast.success('Kurz byl archivován.');
     } catch (error) {
       console.error('Failed to archive course:', error);
-      alert('Nepodařilo se archivovat kurz.');
+      toast.error(error, 'Nepodařilo se archivovat kurz.');
     } finally {
       setStatusLoading(null);
     }
   };
 
-  // ─── Modal handlers ──────────────────────────────────────────────────────────
+  // Modal handlers 
 
   const openCreateCourseModal = () => {
     setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
@@ -362,7 +340,16 @@ export function CoursesListView() {
         }
         closeModal();
       } else {
-        setModalError('Vytváření modulů není momentálně podporováno');
+        if (!moduleFormData.courseId) {
+          setModalError('Chybí kurz pro nový modul.');
+          return;
+        }
+        await createModule({ courseId: moduleFormData.courseId, title: moduleFormData.title });
+        const modules = await getModules({ courseId: moduleFormData.courseId });
+        setCourseModules(prev => ({ ...prev, [moduleFormData.courseId]: modules }));
+        await loadCoursesList();
+        toast.success('Modul byl vytvořen.');
+        closeModal();
       }
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to save module');
@@ -381,15 +368,19 @@ export function CoursesListView() {
     try {
       await generateCourseEmbeddings(courseId);
       setEmbeddingDone(prev => new Set(prev).add(courseId));
+      toast.success('Embeddingy byly vygenerovány.');
     } catch (error) {
       console.error('Failed to generate embeddings:', error);
-      alert('Nepodařilo se vygenerovat embeddingy. Zkontrolujte, zda je kurz ve stavu "Schváleno".');
+      toast.error(
+        error,
+        'Nepodařilo se vygenerovat embeddingy. Zkontrolujte, zda je kurz ve stavu „Schváleno".',
+      );
     } finally {
       setEmbeddingLoading(null);
     }
   };
 
-  // ─── Quick edit ──────────────────────────────────────────────────────────────
+  // Quick edit
 
   const openQuickEdit = (course: Course) => {
     if (quickEditCourseId === course.courseId) {
@@ -425,35 +416,34 @@ export function CoursesListView() {
         },
       });
       await loadCoursesList();
+      toast.success('Rychlé úpravy uloženy.');
     } catch (error) {
       console.error('Failed to quick save course:', error);
-      alert('Nepodařilo se uložit rychlé úpravy');
+      toast.error(error, 'Nepodařilo se uložit rychlé úpravy.');
     } finally {
       setQuickEditLoading(false);
     }
   };
-
-  // ─── Helper: can course status be submitted for review? ──────────────────────
 
   const canSubmitForReview = (course: Course) => {
     const editableStatuses: string[] = [Status.Draft, Status.Generated, Status.Edited];
     return canEditCourse(course) && editableStatuses.includes(course.status as string);
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  //  Render
 
   return (
     <>
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="bg-white rounded-lg shadow-sm">
+      <div className="flex-1 lg:overflow-y-auto p-3 sm:p-6 lg:p-8 min-w-0">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6 border-b">
-            <h2 className="text-xl sm:text-2xl font-bold text-black">Přehled kurzů</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-6 border-b">
+            <h2 className="text-lg sm:text-2xl font-bold text-black">Přehled kurzů</h2>
             <Dropdown
               trigger={<span>Přidat kurz</span>}
               items={[
                 { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
-                { label: 'Náhrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
+                { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
                 { label: 'Pomocí AI', icon: <SimpleBotIcon size={18} />, gradient: true, onClick: goToAICreate },
               ]}
             />
@@ -473,23 +463,56 @@ export function CoursesListView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {courses.map((course) => {
+                {coursesLoading && courses.length === 0 ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <td key={j} className="px-6 py-4">
+                          <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : !coursesLoading && courses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                      {coursesError ?? 'Zatím nejsou žádné kurzy. Vytvořte první přes „Přidat kurz".'}
+                    </td>
+                  </tr>
+                ) : courses.map((course) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
-
+                  const handleRowClick = () => {
+                    if (editable) {
+                      toggleCourseExpand(course.courseId);
+                    } else {
+                      goToCourseContent(course.courseId);
+                    }
+                  };
                   return (
                     <React.Fragment key={course.courseId}>
-                      <tr className="hover:bg-gray-50">
+                      <tr
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={handleRowClick}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleRowClick();
+                          }
+                        }}
+                      >
                         <td className="px-6 py-4 text-sm text-gray-900">{course.title}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{course.ownerDisplayName ?? '—'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} moduly</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{getModuleCount(course)} {czechPlural(getModuleCount(course), 'modul', 'moduly', 'modulů')}</td>
                         <td className="px-6 py-4">
                           <StatusBadge status={course.status} />
                         </td>
                         <td className="px-6 py-4">
                           <PublishBadge status={course.status} isPublished={course.isPublished} />
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 text-xs flex-wrap">
                             {statusStr === Status.Archived ? (
                               <>
@@ -502,7 +525,7 @@ export function CoursesListView() {
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
                                   </button>
                                 )}
-                                {isSuperAdmin && (
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -521,7 +544,7 @@ export function CoursesListView() {
                                 >
                                   {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
                                 </button>
-                                {isSuperAdmin && (
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -582,8 +605,8 @@ export function CoursesListView() {
                                   </button>
                                 )}
 
-                                {/* Delete - superadmin only */}
-                                {isSuperAdmin && (
+                                {/* Delete - superadmin always; owner only when draft/generated */}
+                                {canDeleteCourse(course) && (
                                   <button
                                     onClick={() => handleDeleteClick(course.courseId)}
                                     className="px-2.5 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 font-medium whitespace-nowrap transition-colors"
@@ -712,7 +735,7 @@ export function CoursesListView() {
                 embeddingGenerated={embeddingDone.has(course.courseId)}
                 canEdit={canEditCourse(course)}
                 canPublish={canPublishCourse(course)}
-                canDelete={isSuperAdmin}
+                canDelete={canDeleteCourse(course)}
                 onSubmitForReview={() => handleSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
                 onRevertToEditing={() => handleRevertToEditing(course)}
@@ -764,9 +787,7 @@ export function CoursesListView() {
   );
 }
 
-// =============================================================================
 // Pomocné komponenty
-// =============================================================================
 
 interface ExpandedModuleListProps {
   course: Course;
@@ -900,68 +921,67 @@ function MobileCourseCard({
   const statusStr = course.status as string;
 
   return (
-    <div className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            {moduleCount} moduly · Vlastník: {course.ownerDisplayName ?? '—'}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            <StatusBadge status={course.status} />
-            {(course.status === Status.Approved || course.status === Status.Archived) && (
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-              }`}>
-                {course.isPublished ? 'Publikováno' : 'Neaktivní'}
-              </span>
-            )}
-          </div>
-        </div>
-        <CourseActionButtons className="flex-shrink-0">
-          {statusStr === Status.Archived ? (
-            <>
-              {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
-              {canPublish && (
-                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
-              )}
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
-          ) : course.isPublished ? (
-            <>
-              {/* Published (non-archived): only archive (+ delete for superadmin) */}
-              <button onClick={onArchive} disabled={statusLoading} className="p-1 text-orange-600 hover:bg-orange-50 rounded disabled:opacity-50" title="Archivovat">
-                <Archive size={14} />
-              </button>
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
-          ) : (
-            <>
-              {/* Edit - only in editable statuses */}
-              {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
-                <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
-              )}
-              {canSubmitReview && (
-                <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
-              )}
-              {canPublish && course.status === Status.Approved && (
-                <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
-              )}
-              {canDelete && course.status === Status.Approved && (
-                <button onClick={onRevertToEditing} disabled={statusLoading} className="p-1 text-amber-600 hover:bg-amber-50 rounded disabled:opacity-50" title="Vrátit do úprav">
-                  <RotateCcw size={14} />
-                </button>
-              )}
-              {canDelete && (
-                <DeleteActionButton onClick={onDelete} iconSize={14} />
-              )}
-            </>
+    <div className="p-3 min-w-0">
+      <div className="min-w-0">
+        <h3 className="font-medium text-gray-900 truncate">{course.title}</h3>
+        <p className="text-xs text-gray-500 mt-1 truncate">
+          {moduleCount} {czechPlural(moduleCount, 'modul', 'moduly', 'modulů')} · {course.ownerDisplayName ?? '—'}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1">
+          <StatusBadge status={course.status} />
+          {(course.status === Status.Approved || course.status === Status.Archived) && (
+            <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+              course.isPublished ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+            }`}>
+              {course.isPublished ? 'Publikováno' : 'Neaktivní'}
+            </span>
           )}
-        </CourseActionButtons>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {statusStr === Status.Archived ? (
+          <>
+            {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
+            {canPublish && (
+              <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+            )}
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        ) : course.isPublished ? (
+          <>
+            {/* Published (non-archived): only archive (+ delete for superadmin) */}
+            <button onClick={onArchive} disabled={statusLoading} className="p-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors disabled:opacity-50" title="Archivovat">
+              <Archive size={14} />
+            </button>
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        ) : (
+          <>
+            {/* Edit - only in editable statuses */}
+            {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+              <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
+            )}
+            {canSubmitReview && (
+              <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
+            )}
+            {canPublish && course.status === Status.Approved && (
+              <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
+            )}
+            {canDelete && course.status === Status.Approved && (
+              <button onClick={onRevertToEditing} disabled={statusLoading} className="p-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors disabled:opacity-50" title="Vrátit do úprav">
+                <RotateCcw size={14} />
+              </button>
+            )}
+            {canDelete && (
+              <DeleteActionButton onClick={onDelete} iconSize={14} />
+            )}
+          </>
+        )}
       </div>
 
       {/* Expanded Module List - Mobile */}

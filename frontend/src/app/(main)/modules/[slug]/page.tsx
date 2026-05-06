@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules } from "@/lib/api-client";
+import { getModule, getCourse, getModules, getCourseProgress } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
@@ -11,6 +11,7 @@ import { Alert, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
+import NotesPanel from "@/components/module/NotesPanel";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -101,6 +102,19 @@ export default function ModulePage() {
         (courseData.modules?.length ? courseData.modules : modulesData)
           .filter(m => m.isActive)
       );
+
+      // If the user already passed this module, unlock all sections
+      try {
+        const progress = await getCourseProgress(moduleData.courseId);
+        const moduleProgress = progress.find((p) => p.moduleId === modId);
+        if (moduleProgress?.passed) {
+          setHandbookCompleted(true);
+          setPracticeCompleted(true);
+          setAssessmentCompleted(true);
+        }
+      } catch {
+        // fall back to session state
+      }
     } catch (err) {
       console.error('Failed to fetch module data:', err);
       setError('Nepodařilo se načíst data modulu.');
@@ -275,8 +289,8 @@ export default function ModulePage() {
     /* Celé okno modulu je fixed na viewport (mínus globální Header). Žádné
        vnější scrollování — to obstará jen vnitřní content area. */
     <div
-      className="flex flex-col"
-      style={{ backgroundColor: '#F0F0F0', height: 'calc(100dvh - 70px)' }}
+      className="flex flex-col lg:h-[calc(100dvh-70px)]"
+      style={{ backgroundColor: '#F0F0F0' }}
     >
       {/* Breadcrumb — pevná hlavička, nescrolluje. */}
       <div className="px-4 sm:px-6 lg:px-[100px] py-4 flex-shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
@@ -289,7 +303,7 @@ export default function ModulePage() {
         </p>
       </div>
 
-      {/* Main Layout — flex-1 + min-h-0 dovolí dětem rozhodnout o vlastním
+      {/* Main Layout — flex-1 + min-h-0 dovolí dětem(childs) rozhodnout o vlastním
           scrollu (jinak by min-content sloupců způsobil overflow ven). */}
       <div className="flex-1 min-h-0 px-4 sm:px-6 lg:px-[100px] pb-4 sm:pb-6" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
         <div className="flex flex-col lg:flex-row gap-8 h-full min-h-0">
@@ -474,6 +488,8 @@ export default function ModulePage() {
           </div>
         </div>
       </div>
+      {/* Vysouvací poznámkový blok */}
+      <NotesPanel />
     </div>
   );
 }

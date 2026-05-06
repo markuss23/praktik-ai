@@ -508,8 +508,10 @@ export function CourseAICreateView() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    aria-label="Snížit počet modulů"
+                    disabled={formData.moduleCount <= 1}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     -
                   </button>
@@ -526,11 +528,16 @@ export function CourseAICreateView() {
                   />
                   <button
                     type="button"
+                    aria-label="Zvýšit počet modulů"
+                    disabled={formData.moduleCount >= 12}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.min(12, formData.moduleCount + 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black"
+                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     +
                   </button>
+                  <span className="text-xs text-gray-500 ml-1">
+                    max 12
+                  </span>
                 </div>
               </div>
 

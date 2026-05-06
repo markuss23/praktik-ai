@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from keycloak import (
@@ -35,6 +35,8 @@ _KC_ROLE_MAP: dict[str, UserRole] = {
 
 # Priority order (index = weight, higher wins)
 _ROLE_PRIORITY: list[str] = ["user", "lector", "guarantor", "superadmin"]
+
+_ROLE_SYNC_TTL = timedelta(minutes=5)
 
 
 def _resolve_highest_role(role_names: list[str]) -> UserRole:
@@ -154,6 +156,8 @@ class Auth:
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
+        now = datetime.now(timezone.utc)
+
         if user is None:
             # First request — sync role from Admin API
             resolved_role = _fetch_roles_from_admin_api(sub)
@@ -162,10 +166,27 @@ class Auth:
                 email=email,
                 display_name=name,
                 role=resolved_role,
-                last_synced_at=datetime.now(timezone.utc),
+                last_synced_at=now,
             )
             db.add(user)
             db.commit()
+        else:
+            last_synced = user.last_synced_at
+            if last_synced is not None and last_synced.tzinfo is None:
+                # Older rows may have been stored as naive UTC; treat them as UTC.
+                last_synced = last_synced.replace(tzinfo=timezone.utc)
+            if last_synced is None or now - last_synced > _ROLE_SYNC_TTL:
+                resolved_role = _fetch_roles_from_admin_api(sub)
+                if resolved_role != user.role:
+                    log.info(
+                        "Refreshing user role: %s %s -> %s",
+                        sub,
+                        user.role,
+                        resolved_role,
+                    )
+                    user.role = resolved_role
+                user.last_synced_at = now
+                db.commit()
 
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account deactivated")

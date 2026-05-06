@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { updateProfile } from '@/lib/api-client';
+import { useModalDismiss } from '@/hooks';
 
 interface AiPreferencesModalProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ export function AiPreferencesModal({
     }
   }, [isOpen, initialAiTone, initialAiExpressionLevel]);
 
+  useModalDismiss(isOpen, onClose);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,14 +54,19 @@ export function AiPreferencesModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ai-preferences-modal-title"
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -72,9 +80,11 @@ export function AiPreferencesModal({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-2">
-              <h2 className="text-xl font-bold text-gray-900">AI Nastavení</h2>
+              <h2 id="ai-preferences-modal-title" className="text-xl font-bold text-gray-900">AI Nastavení</h2>
               <button
                 onClick={onClose}
+                aria-label="Zavřít"
+                type="button"
                 className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X size={20} className="text-gray-500" />

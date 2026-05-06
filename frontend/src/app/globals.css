@@ -3,6 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --z-base: 0;
+  --z-dropdown: 500;
+  --z-header: 1000;
+  --z-overlay: 1500;
+  --z-modal: 2000;
+  --z-toast: 2500;
 }
 
 @theme inline {
@@ -181,9 +188,108 @@ body {
   display: none; /* Chromium, Safari */
 }
 
-body.module-fullscreen {
-  overflow: hidden;
+/* Fixed-viewport modul layout jen na desktopu — na mobilu chceme,
+   aby šla stránka přirozeně scrollovat. */
+@media (min-width: 1024px) {
+  body.module-fullscreen {
+    overflow: hidden;
+  }
 }
 body.module-fullscreen footer {
   display: none;
+}
+
+/*    přetečení rendrovaného HTML na mobilu. */
+.module-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+.module-content img,
+.module-content video,
+.module-content iframe {
+  max-width: 100%;
+  height: auto;
+}
+.module-content pre,
+.module-content code {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.module-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* notes panel  */
+.notes-paper {
+  background-color: #ffffff;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    #e5e7eb 27px,
+    #e5e7eb 28px
+  );
+  background-position: 0 16px;
+  background-attachment: local;
+}
+.notes-paper-content {
+  min-height: 100%;
+}
+.notes-paper-content .ProseMirror {
+  min-height: 100%;
+  padding: 16px 24px 32px;
+  outline: none;
+  font-size: 14px;
+  line-height: 28px;
+  color: #1f2937;
+  caret-color: #8B5BA8;
+}
+.notes-paper-content .ProseMirror p {
+  margin: 0;
+  min-height: 28px;
+}
+.notes-paper-content .ProseMirror h2 {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+  color: #111827;
+  margin: 0;
+}
+.notes-paper-content .ProseMirror ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 24px;
+}
+.notes-paper-content .ProseMirror ol {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 24px;
+}
+.notes-paper-content .ProseMirror li {
+  margin: 0;
+}
+.notes-paper-content .ProseMirror li > p {
+  margin: 0;
+}
+.notes-paper-content .ProseMirror strong {
+  font-weight: 700;
+  color: #111827;
+}
+.notes-paper-content .ProseMirror em {
+  font-style: italic;
+}
+.notes-paper-content .ProseMirror s {
+  text-decoration: line-through;
+}
+.notes-paper-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

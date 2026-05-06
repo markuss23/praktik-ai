@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { 
+import { czechPlural } from '@/lib/utils';
+import {
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  X,
 } from 'lucide-react';
 
 interface CourseSummaryViewProps {
@@ -18,6 +20,7 @@ interface CourseSummaryViewProps {
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const { goToCourseTests, goToCourses } = useAdminNavigation();
   
+  const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -26,6 +29,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set());
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
 
   useEffect(() => {
     async function loadCourse() {
@@ -98,6 +102,51 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     return <ErrorState message={error || 'Kurz nenalezen'} />;
   }
 
+  const outlinePanelInner = (
+    <>
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <h2 className="font-semibold text-black">Osnova kurzu</h2>
+        <button
+          className="lg:hidden p-1 hover:bg-gray-100 rounded"
+          onClick={() => setMobileOutlineOpen(false)}
+          aria-label="Zavřít osnovu"
+        >
+          <X size={16} className="text-gray-600" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {modules.map((module, index) => (
+          <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+            <div
+              className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 border-l-4 border-l-transparent"
+              onClick={() => toggleOutlineItem(index)}
+            >
+              {expandedOutlineItems.has(index) ? (
+                <ChevronDown size={16} className="text-gray-400" />
+              ) : (
+                <ChevronUp size={16} className="text-gray-400" />
+              )}
+              <span className="text-sm text-black font-medium truncate">{module.title}</span>
+            </div>
+            {expandedOutlineItems.has(index) && (
+              <div className="pb-2 pl-10 pr-4">
+                <span className="text-xs text-gray-500">
+                  {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {modules.length === 0 && (
+          <div className="p-4 text-center text-gray-500 text-sm">
+            Žádné moduly
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-100">
       <CoursePageHeader
@@ -105,11 +154,13 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         title="Souhrn kurzu"
         onSave={handleFinish}
         showButtons={false}
+        onMenuClick={() => setMobileOutlineOpen(true)}
       />
+      <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      <div className="flex-1 flex overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0">
         {/* Left Content - Summary */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
+        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Přehled kurzu</h2>
           </div>
@@ -141,7 +192,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
             {/* Statistics - compact inline */}
             <div className="text-sm text-gray-500">
-              {modules.length} modulů • {getTotalQuestions()} otázek
+              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')} • {getTotalQuestions()} {czechPlural(getTotalQuestions(), 'otázka', 'otázky', 'otázek')}
             </div>
 
             {/* Modules List */}
@@ -158,7 +209,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-black truncate">{module.title}</p>
                       <p className="text-xs text-gray-500">
-                        {module.practiceQuestions?.length || 0} otázek
+                        {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
                       </p>
                     </div>
                   </div>
@@ -172,6 +223,12 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
               </div>
             </div>
 
+            {activeTab === 'rubric' && (
+              <div className="pt-2">
+                <CourseRubric />
+              </div>
+            )}
+
           </div>
 
           <PageFooterActions
@@ -183,42 +240,20 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           />
         </div>
 
-        {/* Right Sidebar - Course Outline */}
-        <div className="w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-black">Osnova kurzu</h2>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
-            {modules.map((module, index) => (
-              <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
-                <div
-                  className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 border-l-4 border-l-transparent"
-                  onClick={() => toggleOutlineItem(index)}
-                >
-                  {expandedOutlineItems.has(index) ? (
-                    <ChevronDown size={16} className="text-gray-400" />
-                  ) : (
-                    <ChevronUp size={16} className="text-gray-400" />
-                  )}
-                  <span className="text-sm text-black font-medium truncate">{module.title}</span>
-                </div>
-                {expandedOutlineItems.has(index) && (
-                  <div className="pb-2 pl-10 pr-4">
-                    <span className="text-xs text-gray-500">
-                      {module.practiceQuestions?.length || 0} otázek
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {modules.length === 0 && (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                Žádné moduly
-              </div>
-            )}
-          </div>
+        {/* Right Sidebar - Course Outline (desktop) */}
+        <div className="hidden lg:flex w-64 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+          {outlinePanelInner}
         </div>
+
+        {/* Mobile Outline Drawer */}
+        {mobileOutlineOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOutlineOpen(false)} />
+            <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
+              {outlinePanelInner}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
