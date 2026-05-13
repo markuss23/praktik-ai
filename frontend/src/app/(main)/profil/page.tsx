@@ -274,15 +274,23 @@ export default function ProfilPage() {
       </div>
 
       {/* Edit profile modal */}
-      <ProfileEditModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        avatarSrc={avatarSrc}
-        onAvatarChange={handleAvatarChange}
-        initialFirstName={user?.given_name ?? ''}
-        initialLastName={user?.family_name ?? ''}
-        onNameSaved={(name) => setDisplayName(name)}
-      />
+      {(() => {
+        const source = currentUser?.displayName ?? user?.name ?? '';
+        const [firstFromApi, ...restFromApi] = source.trim().split(/\s+/);
+        const initialFirstName = firstFromApi || user?.given_name || '';
+        const initialLastName = restFromApi.join(' ') || user?.family_name || '';
+        return (
+          <ProfileEditModal
+            isOpen={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            avatarSrc={avatarSrc}
+            onAvatarChange={handleAvatarChange}
+            initialFirstName={initialFirstName}
+            initialLastName={initialLastName}
+            onNameSaved={(name) => setDisplayName(name)}
+          />
+        );
+      })()}
 
       {/* AI preferences modal */}
       <AiPreferencesModal

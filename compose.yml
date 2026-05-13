@@ -83,6 +83,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
       KC_HEALTH_ENABLED: "true"
       KC_LOG_LEVEL: info
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      JAVA_OPTS_APPEND: "-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8"
     command: start-dev --import-realm
     ports:
       - "8080:8080"

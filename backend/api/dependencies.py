@@ -223,7 +223,8 @@ class Auth:
             db.add(user)
         else:
             user.email = email
-            user.display_name = name or user.display_name
+            if not user.display_name and name:
+                user.display_name = name
             user.role = resolved_role
             user.last_synced_at = now
         db.commit()
