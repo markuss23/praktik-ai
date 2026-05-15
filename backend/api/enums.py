@@ -62,3 +62,28 @@ class TicketType(enum.StrEnum):
     task_session = "task_session"  # reklamace concept checku
     practice = "practice"  # reklamace practice AI evaluátoru
     other = "other"  # ostatní
+
+
+class EduLevel(enum.StrEnum):
+    primary = "primary"
+    secondary = "secondary"
+    higher = "higher"
+
+
+class PubResourceStatus(enum.StrEnum):
+    draft = "draft"
+    pending_review = "pending_review"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class AttachType(enum.StrEnum):
+    pdf = "pdf"
+    docx = "docx"
+    other = "other"
+
+
+class ReviewVerdict(enum.StrEnum):
+    approved = "approved"
+    rejected = "rejected"
+    needs_revision = "needs_revision"

@@ -11,6 +11,7 @@ from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
 from api.src.superadmin.routers import router as superadmin_router
 from api.src.module_tickets.routers import router as module_tickets_router
+from api.src.resources.routers import router as resources_router
 from api.dependencies import auth
 
 router = APIRouter()
@@ -36,3 +37,6 @@ router.include_router(module_tickets_router, dependencies=[Depends(auth.get_curr
 # router.include_router(modules_router)
 # router.include_router(activities_router)
 # router.include_router(agents_router)
+
+# Veřejná DB routers
+router.include_router(resources_router, dependencies=[Depends(auth.get_current_user)])
