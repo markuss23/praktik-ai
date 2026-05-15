@@ -77,12 +77,12 @@ export function CoursesListView() {
   const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
   /** Can the current user delete this course?
-   *  Superadmin: always. Owner: only when course hasn't been submitted to review yet (draft/generated). */
+   *  Superadmin: always. Owner: when kurz je ve stavu draft, generated nebo edited (rozpracováno). */
   const canDeleteCourse = (course: Course) => {
     if (isSuperAdmin) return true;
     if (!isOwner(course.ownerId)) return false;
     const status = course.status as string;
-    return status === Status.Draft || status === Status.Generated;
+    return status === Status.Draft || status === Status.Generated || status === Status.Edited;
   };
 
   // Data loading
@@ -442,12 +442,14 @@ export function CoursesListView() {
             <Dropdown
               trigger={<span>Přidat kurz</span>}
               items={[
-                { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
-                { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
                 { label: 'Pomocí AI', icon: <SimpleBotIcon size={18} />, gradient: true, onClick: goToAICreate },
               ]}
             />
           </div>
+            {/* 
+          { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
+          { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
+          */}
 
           {/* Table - Desktop */}
           <div className="hidden md:block overflow-x-auto">

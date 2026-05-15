@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Plus, Loader2 } from 'lucide-react';
+
 import {
   listPracticeQuestions,
   generatePracticeQuestion,
@@ -17,7 +18,19 @@ import type {
 } from '@/api';
 import { QuestionType } from '@/api';
 
-// types 
+// Normalizace textu pro porovnávání klíčových slov:
+// odstraní diakritiku (háčky, čárky), převede na lowercase a sjednotí whitespace,
+// aby se shody nelišily kvůli velikosti písmen ani akcentům.
+function normalizeForMatch(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// types
 
 interface PracticeTabProps {
   moduleId: number;
@@ -115,9 +128,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
         userAnswerText = String(answer || '');
         const keywords = (q.openKeywords ?? []).map((k) => k.keyword);
         if (keywords.length > 0) {
-          const lowerAnswer = userAnswerText.toLowerCase();
-          matchedKeywords = keywords.filter((kw) => lowerAnswer.includes(kw.toLowerCase()));
-          missingKeywords = keywords.filter((kw) => !lowerAnswer.includes(kw.toLowerCase()));
+          const normalizedAnswer = normalizeForMatch(userAnswerText);
+          matchedKeywords = keywords.filter((kw) => normalizedAnswer.includes(normalizeForMatch(kw)));
+          missingKeywords = keywords.filter((kw) => !normalizedAnswer.includes(normalizeForMatch(kw)));
           isCorrect = matchedKeywords.length > 0;
         } else {
           isCorrect = userAnswerText.trim().length > 0;
@@ -417,7 +430,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           </motion.div>
         )}
 
-        {/* 
+        {/*
             PHASE 2 – AI-generated questions */}
         {phase === 'ai' && (
           <motion.div
@@ -427,6 +440,19 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
+            {/* Tlačítko zpět — návrat k výsledkům předem připravených otázek */}
+            {hasPracticeQuestions && (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => { setPhase('static'); setStaticSubmitted(true); }}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Zpět na vyhodnocení procvičování
+                </button>
+              </div>
+            )}
             {aiLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="flex flex-col items-center gap-3">

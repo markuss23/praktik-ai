@@ -1,11 +1,13 @@
 'use client';
 
-import { ArrowRight, Menu, MessageSquare } from 'lucide-react';
+import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
 
 interface CoursePageHeaderProps {
   breadcrumb: string;
   title: string;
   onSave?: () => void;
+  saving?: boolean;
+  saved?: boolean;
   onPreview?: () => void;
   showButtons?: boolean;
   onMenuClick?: () => void;
@@ -21,6 +23,8 @@ export function CoursePageHeader({
   breadcrumb,
   title,
   onSave,
+  saving = false,
+  saved = false,
   onPreview,
   showButtons = false,
   onMenuClick,
@@ -64,7 +68,6 @@ export function CoursePageHeader({
               </button>
             )}
           </div>
-          {/* Header buttons commented out as requested */}
           {showButtons && (
             <div className="flex items-center gap-2 sm:gap-3">
               {onPreview && (
@@ -79,10 +82,19 @@ export function CoursePageHeader({
               {onSave && (
                 <button
                   onClick={onSave}
-                  className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                  disabled={saving}
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md transition-colors text-sm text-white disabled:opacity-70 ${
+                    saved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
-                  <ArrowRight size={16} />
-                  <span>Uložit</span>
+                  {saving ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : saved ? (
+                    <Check size={16} />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  <span>{saving ? 'Ukládám...' : saved ? 'Uloženo' : 'Uložit'}</span>
                 </button>
               )}
             </div>
