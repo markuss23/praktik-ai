@@ -1,5 +1,5 @@
 """
-Controllery pro vytváření veřejných materiálů (pub_resource).
+Controllery pro vytváření veřejných materiálů.
 """
 
 from fastapi import HTTPException, UploadFile

@@ -1,5 +1,5 @@
 """
-Controllery pro čtení veřejných materiálů (pub_resource).
+Controllery pro čtení veřejných materiálů.
 """
 
 from sqlalchemy import func, or_, select
@@ -22,7 +22,7 @@ def get_resources(
     status: str | None = None,
 ) -> list[PubResource]:
     """Vrátí seznam veřejných materiálů s filtrací.
-    Doplňuje počty: ratings_count, files_count, forks_count.
+    Doplňuje počty hodnocení, souborů a kolirát si nekdo vytvořil kopii. (fork)
     """
     ratings_count_subq = (
         select(

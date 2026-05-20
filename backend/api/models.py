@@ -1086,6 +1086,9 @@ class PubResourceFork(SoftDeleteMixin, Base):
     forked: Mapped[PubResource] = relationship(foreign_keys=[forked_id])
     author: Mapped[User] = relationship(foreign_keys=[author_id])
 
+    def get_owner_id(self) -> int:
+        return self.author_id
+
 
 class PubResourceFile(TimestampMixin, SoftDeleteMixin, Base):
     """Příloha (soubor) navázaná na veřejný materiál."""
@@ -1106,6 +1109,8 @@ class PubResourceFile(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     resource: Mapped[PubResource] = relationship(back_populates="files")
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
 
 
 class PubResourceRating(TimestampMixin, SoftDeleteMixin, Base):
@@ -1138,6 +1143,9 @@ class PubResourceRating(TimestampMixin, SoftDeleteMixin, Base):
     resource: Mapped[PubResource] = relationship(back_populates="ratings")
     user: Mapped[User] = relationship(foreign_keys=[user_id])
 
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
 
 class PubResourceReview(SoftDeleteMixin, Base):
     """Recenze/schválení veřejného materiálu recenzentem."""
@@ -1166,6 +1174,9 @@ class PubResourceReview(SoftDeleteMixin, Base):
     resource: Mapped[PubResource] = relationship(back_populates="reviews")
     reviewer: Mapped[User] = relationship(foreign_keys=[reviewer_id])
 
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
 
 class PubCollection(TimestampMixin, SoftDeleteMixin, Base):
     """Sbírka veřejných materiálů vytvořená uživatelem."""
@@ -1188,6 +1199,9 @@ class PubCollection(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     _soft_delete_cascade: list[str] = ["items"]
+
+    def get_owner_id(self) -> int:
+        return self.user_id
 
 
 class PubCollectionResource(SoftDeleteMixin, Base):
@@ -1218,3 +1232,6 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 
     collection: Mapped[PubCollection] = relationship(back_populates="items")
     resource: Mapped[PubResource] = relationship(foreign_keys=[resource_id])
+
+    def get_owner_id(self) -> int:
+        return self.collection.user_id
