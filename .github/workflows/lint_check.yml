@@ -1,0 +1,18 @@
+# Název: Kontrola kódu (Lint Check)
+name: Lint Check
+
+# Trigger workflow on push to the 'dev' branch
+on:
+  push:
+    branches: [dev]
+
+# Define the job to run the lint check
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: astral-sh/ruff-action@v4.0.0
+
+            - name: Run ruff
+              run: ruff check .
