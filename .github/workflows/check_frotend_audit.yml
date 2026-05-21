@@ -1,0 +1,25 @@
+name: Check Frontend Audit
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+          - uses: actions/checkout@v6
+
+          - name: Set up Node.js
+            uses: actions/setup-node@v3
+            with:
+              node-version: 18
+
+          - name: Install dependencies
+            working-directory: ./frontend
+            run: npm ci
+
+          - name: Build
+            working-directory: ./frontend
+            run: npm audit
