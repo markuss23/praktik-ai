@@ -150,7 +150,7 @@ async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
     return await upload_course_file(db, course_id, file, user)

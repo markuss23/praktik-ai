@@ -10,7 +10,6 @@ class UserWithRole(ORMModel):
     is_active: bool
 
 
-
 class UserRoleResponse(ORMModel):
     user_id: int
     email: str
