@@ -1,6 +1,6 @@
 # Praktik-AI
 
-Platforma pro systematický rozvoj AI kompetencí akademických pracovníků pedagogických fakult. Umožňuje tvorbu, správu a absolvování kurzů s podporou AI agentů pro generování obsahu, evaluaci a mentoring.
+Platforma pro systematický rozvoj AI kompetencí akademických pracovníků pedagogických fakult. Umožňuje tvorbu, správu a absolvování kurzů s podporou AI agentů pro generování obsahu, evaluaci a mentoring. ASD
 
 ---
 
