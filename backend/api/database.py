@@ -15,6 +15,9 @@ SessionLocal: sessionmaker[Session] = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )
 
+from api.audit import register as _register_audit  # noqa: E402
+_register_audit(SessionLocal)
+
 
 def get_sql():
     """funkce vytváří, poskytuje a následně uzavírá databázovou relaci (session) pro každý HTTP požadavek."""

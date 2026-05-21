@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
+from api.audit import audit_actor
 from api.database import get_sql
 from api.models import User
 from api.enums import UserRole
@@ -191,6 +192,7 @@ class Auth:
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account deactivated")
 
+        audit_actor.set(user.user_id)
         return user
 
     def sync_user_from_token(self, token_str: str, db: Session) -> User:

@@ -81,6 +81,7 @@ class SoftDeleteMixin:
 
 
 class SystemSetting(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     """
     Dynamické systémové nastavení spravované Super Adminem.
     Ukládají se sem verze LLM modelů, globální prompty pro generování kurzů,
@@ -111,6 +112,7 @@ class SystemSetting(TimestampMixin, SoftDeleteMixin, Base):
 
 
 class User(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     __tablename__ = "user"
     __table_args__ = (
         Index("uq_user_sub", "sub", unique=True),
@@ -181,7 +183,7 @@ class AuditLog(Base):
     changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    actor_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    actor_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     diff: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
@@ -335,6 +337,7 @@ class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
 
 
 class Course(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     __tablename__ = "course"
     __table_args__ = (
         Index(
@@ -473,6 +476,7 @@ class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
 
 
 class Module(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     __tablename__ = "module"
     __table_args__ = (
         Index(
@@ -794,6 +798,7 @@ class UserPracticeAttempt(TimestampMixin, SoftDeleteMixin, Base):
 
 
 class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     """
     Zápis uživatele do kurzu.
     Unikátní kombinace (user_id, course_id) — jeden zápis na kurz.
@@ -904,6 +909,7 @@ class TaskAttempt(TimestampMixin, SoftDeleteMixin, Base):
 
 
 class ModuleTicket(TimestampMixin, SoftDeleteMixin, Base):
+    __audited__ = True
     """
     Reklamace studenta k AI hodnocení na úrovni modulu.
     Typ reklamace určuje ticket_type (concept check, practice evaluátor nebo ostatní).
