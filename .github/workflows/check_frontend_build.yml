@@ -16,8 +16,6 @@ jobs:
             with:
               node-version: 18
 
-          - uses: jongwooo/next-cache@v1
-
           - name: Install dependencies
             run: npm ci
 
