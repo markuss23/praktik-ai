@@ -30,3 +30,19 @@ COURSE_SUBJECT_ID_ANNOTATION = Annotated[
 COURSE_STATUS_ANNOTATION = Annotated[
     str | None, Query(description="Filter by course status")
 ]
+RESOURCE_STATUS_ANNOTATION = Annotated[
+    str | None, Query(description="Filter by resource status")
+]
+RESOURCE_TARGET_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by resource target ID")
+]
+
+RESOURCE_SUBJECT_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by resource subject ID")
+]
+RESOURCE_EDU_LEVEL_ID_ANNOTATION = Annotated[
+    str | None, Query(description="Filter by resource education level ID")
+]
+RESOURCE_DIFFICULTY_LEVEL_ID_ANNOTATION = Annotated[
+    str | None, Query(description="Filter by resource difficulty level ID")
+]
