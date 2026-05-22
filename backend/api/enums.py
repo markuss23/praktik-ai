@@ -80,6 +80,9 @@ class PubResourceStatus(enum.StrEnum):
 class AttachType(enum.StrEnum):
     pdf = "pdf"
     docx = "docx"
+    pptx = "pptx"
+    image = "image"
+    video = "video"
     other = "other"
 
 
