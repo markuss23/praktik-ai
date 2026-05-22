@@ -22,4 +22,4 @@ jobs:
 
           - name: Build
             working-directory: ./frontend
-            run: npm audit
+            run: npm audit --audit-level=high
