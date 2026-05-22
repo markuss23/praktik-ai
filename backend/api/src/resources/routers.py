@@ -122,8 +122,6 @@ async def endp_update_resource_status(
     return update_resource_status(db, resource_id, new_status, user)
 
 
-
-
 @router.put(
     "/{resource_id}/public",
     operation_id="update_resource_public_state",
@@ -150,7 +148,7 @@ async def endp_upload_resource_file(
     resource_id: int,
     user: CurrentUser,
     db: SessionSqlSessionDependency,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> PubResourceFile:
     return await upload_resource_file(db, resource_id, file, user)
 

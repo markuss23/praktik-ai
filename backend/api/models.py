@@ -1109,6 +1109,7 @@ class PubResourceFile(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     resource: Mapped[PubResource] = relationship(back_populates="files")
+
     def get_owner_id(self) -> int:
         return self.resource.author_id
 
