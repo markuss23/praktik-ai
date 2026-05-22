@@ -18,6 +18,7 @@ export const ROUTES = {
   COURSES: "/courses",
   MODULES: "/modules",
   PROFILE: "/profil",
+  PUBLIC_DATABASE: "/verejna-databaze",
   AUTH_CALLBACK: "/auth/callback",
 } as const;
 

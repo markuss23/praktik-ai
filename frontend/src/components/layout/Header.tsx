@@ -37,10 +37,10 @@ export function Header() {
 
   return (
     <header className="bg-white sticky top-0 z-[1000]" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
-      <div className="mx-auto px-3 sm:px-6 lg:px-[100px] py-2 lg:py-[7px]" style={{ maxWidth: '1440px', width: '100%', minHeight: '56px', height: 'auto' }}>
+      <div className="mx-auto px-3 sm:px-6 lg:px-6 xl:px-10 py-2 lg:py-[7px]" style={{ maxWidth: '1600px', width: '100%', minHeight: '56px', height: 'auto' }}>
         <nav className="flex items-center justify-between h-full gap-2">
           {/* Logo and Brand */}
-          <Link href={ROUTES.HOME} className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+          <Link href={ROUTES.HOME} className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
             <Image
               src="/logo.svg"
               alt="PRAKTIK-AI Logo"
@@ -48,11 +48,11 @@ export function Header() {
               height={83}
               className="w-[64px] h-[24px] sm:w-[180px] sm:h-[68px] lg:w-[221px] lg:h-[83px] flex-shrink-0"
             />
-            <span className="text-sm sm:text-lg lg:text-xl font-bold text-black truncate">PRAKTIK-AI</span>
+            <span className="text-sm sm:text-lg lg:text-xl font-bold text-black whitespace-nowrap">PRAKTIK-AI</span>
           </Link>
 
           {/* Navigation Links */}
-          <ul className="hidden md:flex items-center gap-4 lg:gap-8">
+          <ul className="hidden md:flex items-center gap-4 lg:gap-8 whitespace-nowrap">
             <li>
               <Link
                 href={ROUTES.HOME}
@@ -97,6 +97,27 @@ export function Header() {
                 </Link>
               </li>
             )}
+            <li>
+              <Link
+                href={ROUTES.PUBLIC_DATABASE}
+                data-text="Veřejná databáze"
+                className={`nav-link relative pb-1 transition-colors ${
+                  isActive(ROUTES.PUBLIC_DATABASE)
+                    ? 'text-black font-bold'
+                    : 'text-gray-700 hover:text-black font-medium'
+                }`}
+              >
+                Veřejná databáze
+                {isActive(ROUTES.PUBLIC_DATABASE) && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0 h-0.5"
+                    style={{
+                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
+                    }}
+                  />
+                )}
+              </Link>
+            </li>
             <li>
               <Link
                 href="/odmeny"
@@ -274,6 +295,7 @@ export function Header() {
               {isAuthenticated && (
                 <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
               )}
+              <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
               <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
               <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
               {can('lector') && (
