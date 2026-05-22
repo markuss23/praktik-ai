@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
-import { getCourse, updateCourse } from '@/lib/api-client';
+import { getCourse, updateCourse, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { czechPlural } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
+  Download,
+  FileText,
   X,
 } from 'lucide-react';
 
@@ -30,6 +32,9 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
+  const [courseFiles, setCourseFiles] = useState<CourseFileItem[]>([]);
+  const [filesLoading, setFilesLoading] = useState(true);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadCourse() {
@@ -50,6 +55,33 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     }
     loadCourse();
   }, [courseId]);
+
+  useEffect(() => {
+    async function loadFiles() {
+      setFilesLoading(true);
+      try {
+        const files = await listCourseFiles(courseId);
+        setCourseFiles(files);
+      } catch (err) {
+        console.error('Failed to load course files:', err);
+      } finally {
+        setFilesLoading(false);
+      }
+    }
+    loadFiles();
+  }, [courseId]);
+
+  const handleDownloadFile = async (file: CourseFileItem) => {
+    setDownloadingFileId(file.fileId);
+    try {
+      await downloadCourseFile(courseId, file.fileId, file.filename);
+    } catch (err) {
+      console.error('Failed to download course file:', err);
+      setError('Soubor se nepodařilo stáhnout');
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
 
   const toggleOutlineItem = (index: number) => {
     setExpandedOutlineItems(prev => {
@@ -73,18 +105,41 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     goToCourseTests(courseId);
   };
 
+  const [savingOnly, setSavingOnly] = useState(false);
+  const [savedFeedback, setSavedFeedback] = useState(false);
+
+  const saveCourseChanges = async () => {
+    if (!course) return;
+    await updateCourse(courseId, {
+      title: editedTitle,
+      description: editedDescription,
+      courseBlockId: course.courseBlockId,
+      courseTargetId: course.courseTargetId,
+      courseSubjectId: course.courseSubjectId,
+    });
+  };
+
+  const handleSave = async () => {
+    if (savingOnly) return;
+    setSavingOnly(true);
+    try {
+      await saveCourseChanges();
+      setSavedFeedback(true);
+      setTimeout(() => setSavedFeedback(false), 2000);
+    } catch (err) {
+      console.error('Failed to save course:', err);
+      setError('Nepodařilo se uložit kurz');
+    } finally {
+      setSavingOnly(false);
+    }
+  };
+
   const handleFinish = async () => {
     if (!course) return;
-    
+
     setSaving(true);
     try {
-      await updateCourse(courseId, {
-        title: editedTitle,
-        description: editedDescription,
-        courseBlockId: course.courseBlockId,
-        courseTargetId: course.courseTargetId,
-        courseSubjectId: course.courseSubjectId,
-      });
+      await saveCourseChanges();
       goToCourses();
     } catch (err) {
       console.error('Failed to save course:', err);
@@ -152,8 +207,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       <CoursePageHeader
         breadcrumb={`Kurzy / ${course.title} / Souhrn kurzu`}
         title="Souhrn kurzu"
-        onSave={handleFinish}
-        showButtons={false}
+        onSave={handleSave}
+        saving={savingOnly}
+        saved={savedFeedback}
+        showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
       />
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
@@ -221,6 +278,39 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Podkladové materiály — z čeho byl kurz vygenerován */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="p-3 bg-gray-50 border-b border-gray-200">
+                <h4 className="font-medium text-black text-sm">Podkladové materiály</h4>
+                <p className="text-xs text-gray-500 mt-0.5">Soubory, ze kterých byl kurz vygenerován</p>
+              </div>
+              {filesLoading ? (
+                <div className="p-4 text-sm text-gray-500">Načítám soubory...</div>
+              ) : courseFiles.length === 0 ? (
+                <div className="p-4 text-sm text-gray-500">Ke kurzu nejsou připojeny žádné podklady</div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {courseFiles.map((file) => (
+                    <li key={file.fileId} className="p-3 flex items-center gap-3">
+                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 text-sm text-black truncate" title={file.filename}>
+                        {file.filename}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile(file)}
+                        disabled={downloadingFileId === file.fileId}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        {downloadingFileId === file.fileId ? 'Stahuji...' : 'Stáhnout'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {activeTab === 'rubric' && (

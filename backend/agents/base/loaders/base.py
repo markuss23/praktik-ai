@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from pathlib import Path
 
+
 class SourceType(StrEnum):
     """Typy podporovaných datových zdrojů."""
 

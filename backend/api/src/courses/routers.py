@@ -1,6 +1,13 @@
 from typing import Literal
-from fastapi import APIRouter, BackgroundTasks, UploadFile, File
+import mimetypes
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from langgraph.graph.state import CompiledStateGraph
+
+from api.storage import seaweedfs
+from api.src.common.utils import get_or_404
+from api import models
 
 from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
@@ -25,6 +32,7 @@ from api.src.courses.controllers import (
     create_course,
     get_courses,
     get_course,
+    get_course_files,
     update_course,
     delete_course,
     upload_course_file,
@@ -142,10 +150,50 @@ async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
     return await upload_course_file(db, course_id, file, user)
+
+
+@router.get("/{course_id}/files", operation_id="list_course_files", dependencies=[require_role("lector")])
+async def endp_list_course_files(
+    course_id: int, db: SessionSqlSessionDependency
+) -> list[CourseFile]:
+    """Vrátí seznam podkladových souborů kurzu (pouze pro vlastníky/superadminy)."""
+    return get_course_files(db, course_id)
+
+
+@router.get(
+    "/{course_id}/files/{file_id}/download",
+    operation_id="download_course_file",
+    dependencies=[require_role("lector")],
+)
+async def endp_download_course_file(
+    course_id: int, file_id: int, db: SessionSqlSessionDependency
+) -> Response:
+    """Stáhne podkladový soubor kurzu ze SeaweedFS."""
+    course_file = get_or_404(
+        db,
+        models.CourseFile,
+        file_id,
+        check_active=False,
+        detail="Soubor nenalezen",
+    )
+    if course_file.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Soubor nenalezen")
+
+    content = seaweedfs.download_file(course_file.file_path)
+    media_type = (
+        mimetypes.guess_type(course_file.filename)[0] or "application/octet-stream"
+    )
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{course_file.filename}"'
+        },
+    )
 
 
 @router.delete(

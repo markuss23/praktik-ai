@@ -171,6 +171,54 @@ export async function deleteCourseFile(courseId: number, fileId: number) {
   return coursesApi.deleteCourseFile({ courseId, fileId });
 }
 
+export interface CourseFileItem {
+  fileId: number;
+  courseId: number;
+  filename: string;
+  filePath: string;
+}
+
+export async function listCourseFiles(courseId: number): Promise<CourseFileItem[]> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { 'Accept': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/courses/${courseId}/files`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data)
+    ? data.map((f: { file_id: number; course_id: number; filename: string; file_path: string }) => ({
+        fileId: f.file_id,
+        courseId: f.course_id,
+        filename: f.filename,
+        filePath: f.file_path,
+      }))
+    : [];
+}
+
+/** Stáhne podkladový soubor kurzu a vyvolá download dialog v prohlížeči. */
+export async function downloadCourseFile(courseId: number, fileId: number, filename: string): Promise<void> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/courses/${courseId}/files/${fileId}/download`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export async function deleteCourse(courseId: number) {
   return coursesApi.deleteCourse({ courseId });
 }

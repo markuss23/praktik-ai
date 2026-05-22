@@ -65,7 +65,7 @@ def create_enrollment(
             detail="Kurz není publikovaný nebo schválený, nelze se zapsat",
         )
 
-    user = get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
+    get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     existing = db.scalar(
         select(models.Enrollment).where(

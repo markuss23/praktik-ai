@@ -7,13 +7,17 @@ import { usePathname } from "next/navigation";
 import { MessageCircle, UserRound, LogIn, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useEffect, useState } from "react";
 
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user, loading, login, logout } = useAuth();
   const { can } = useRole();
+  const { currentUser } = useCurrentUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const displayName = currentUser?.displayName ?? user?.preferred_username ?? null;
 
   const isActive = (path: string) => pathname === path;
 
@@ -198,12 +202,12 @@ export function Header() {
                   className={`flex items-center gap-1.5 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
                     isActive(ROUTES.PROFILE) ? "bg-gray-100" : ""
                   }`}
-                  title={user?.preferred_username ?? "Můj profil"}
+                  title={displayName ?? "Můj profil"}
                 >
                   <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-                  {user?.preferred_username && (
+                  {displayName && (
                     <span className="hidden lg:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
-                      {user.preferred_username}
+                      {displayName}
                     </span>
                   )}
                 </Link>
@@ -279,9 +283,9 @@ export function Header() {
               )}
             </nav>
 
-            {isAuthenticated && user?.preferred_username && (
+            {isAuthenticated && displayName && (
               <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500 truncate">
-                {user.preferred_username}
+                {displayName}
               </div>
             )}
           </div>

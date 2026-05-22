@@ -397,10 +397,12 @@ export default function CoursePage() {
 
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">
+                        {/* 
                         <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
                           <BookOpen className="w-5 h-5" />
                           <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
                         </div>
+                        */}
                         {isAccessible && !isPassed && (
                           <span
                             className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"

@@ -388,6 +388,23 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     return errors;
   };
 
+  const [savingOnly, setSavingOnly] = useState(false);
+  const [savedFeedback, setSavedFeedback] = useState(false);
+
+  const handleSave = async () => {
+    if (savingOnly) return;
+    setSavingOnly(true);
+    try {
+      await saveTestContent();
+      setSavedFeedback(true);
+      setTimeout(() => setSavedFeedback(false), 2000);
+    } catch {
+      // chyba je už zobrazena uvnitř saveTestContent
+    } finally {
+      setSavingOnly(false);
+    }
+  };
+
   const handleFinish = async () => {
     const errors = validateQuestions();
     if (errors.length > 0) {
@@ -571,8 +588,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
         title="Tvorba obsahu testu"
-        onSave={handleFinish}
-        showButtons={false}
+        onSave={handleSave}
+        saving={savingOnly}
+        saved={savedFeedback}
+        showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}

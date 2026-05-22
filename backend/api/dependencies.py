@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from typing import Annotated
 
 from keycloak import (
@@ -156,7 +156,7 @@ class Auth:
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if user is None:
             # First request — sync role from Admin API
@@ -174,7 +174,7 @@ class Auth:
             last_synced = user.last_synced_at
             if last_synced is not None and last_synced.tzinfo is None:
                 # Older rows may have been stored as naive UTC; treat them as UTC.
-                last_synced = last_synced.replace(tzinfo=timezone.utc)
+                last_synced = last_synced.replace(tzinfo=UTC)
             if last_synced is None or now - last_synced > _ROLE_SYNC_TTL:
                 resolved_role = _fetch_roles_from_admin_api(sub)
                 if resolved_role != user.role:
@@ -209,7 +209,7 @@ class Auth:
         email: str = user_info.get("email", "")
         name: str | None = user_info.get("name")
         resolved_role: UserRole = _fetch_roles_from_admin_api(sub)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
         if user is None:
@@ -223,7 +223,8 @@ class Auth:
             db.add(user)
         else:
             user.email = email
-            user.display_name = name or user.display_name
+            if not user.display_name and name:
+                user.display_name = name
             user.role = resolved_role
             user.last_synced_at = now
         db.commit()

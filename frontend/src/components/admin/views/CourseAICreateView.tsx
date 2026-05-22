@@ -583,6 +583,32 @@ export function CourseAICreateView() {
                 Nahrát podklady
               </label>
 
+              {/* File list — nad upload polem, chipy v řadě */}
+              {files.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {files.map((f) => (
+                    <div
+                      key={f.name}
+                      className="inline-flex items-center gap-2 max-w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm"
+                    >
+                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <span className="text-gray-700 truncate max-w-[180px]" title={f.name}>{f.name}</span>
+                      <span className="text-gray-400 flex-shrink-0 text-xs">
+                        {(f.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(f.name)}
+                        className="p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        title="Odebrat soubor"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Drop zone */}
               <div
                 onDrop={handleDrop}
@@ -611,34 +637,6 @@ export function CourseAICreateView() {
                   className="hidden"
                 />
               </div>
-
-              {/* File list */}
-              {files.length > 0 && (
-                <ul className="mt-3 space-y-2">
-                  {files.map((f) => (
-                    <li
-                      key={f.name}
-                      className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-gray-700 truncate">{f.name}</span>
-                        <span className="text-gray-400 flex-shrink-0">
-                          ({(f.size / 1024).toFixed(0)} KB)
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(f.name)}
-                        className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
-                        title="Odebrat soubor"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
 
             {/* Tlačítka */}

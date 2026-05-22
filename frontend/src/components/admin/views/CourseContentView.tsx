@@ -484,9 +484,19 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     goBack();
   };
 
+  const [savingOnly, setSavingOnly] = useState(false);
+  const [savedFeedback, setSavedFeedback] = useState(false);
+
   const handleSave = async () => {
-    await saveContent();
-    handleContinue();
+    if (savingOnly) return;
+    setSavingOnly(true);
+    try {
+      await saveContent();
+      setSavedFeedback(true);
+      setTimeout(() => setSavedFeedback(false), 2000);
+    } finally {
+      setSavingOnly(false);
+    }
   };
 
   if (courseLoading) return <LoadingState />;
@@ -616,7 +626,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
         onSave={handleSave}
-        showButtons={false}
+        saving={savingOnly}
+        saved={savedFeedback}
+        showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
