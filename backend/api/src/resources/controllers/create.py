@@ -86,14 +86,12 @@ async def upload_resource_file(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
     validate_owner_or_superadmin(resource, user, "materiál")
-    
+
     # Omezit velikost souboru na 30 MB
-    max_file_size = 30 * 1024 * 1024  
+    max_file_size = 30 * 1024 * 1024
     content = await file.read()
     if len(content) > max_file_size:
-        raise HTTPException(
-            status_code=413, detail="Soubor nesmí být větší než 30 MB"
-        )
+        raise HTTPException(status_code=413, detail="Soubor nesmí být větší než 30 MB")
 
     remote_path = f"resources/{resource_id}/{file.filename}"
     seaweedfs.upload_file(

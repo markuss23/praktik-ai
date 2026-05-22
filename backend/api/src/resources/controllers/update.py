@@ -53,7 +53,7 @@ def update_resource(
     # Pouze vlastník nebo superadmin může upravovat materiál
     validate_owner_or_superadmin(resource, user, "materiál")
 
-# U materiálů ve stavu rejected musí být poslední recenze needs_revision, aby bylo možné upravovat
+    # U materiálů ve stavu rejected musí být poslední recenze needs_revision, aby bylo možné upravovat
     if resource.status == PubResourceStatus.rejected:
         latest_review = (
             db.execute(
@@ -103,7 +103,9 @@ def update_resource_status(
     user: models.User,
 ) -> PubResource:
     """Aktualizuje status veřejného materiálu."""
-    resource = get_or_404(db, models.PubResource, resource_id, detail="Materiál nenalezen")
+    resource = get_or_404(
+        db, models.PubResource, resource_id, detail="Materiál nenalezen"
+    )
 
     valid_status_transitions = {
         PubResourceStatus.draft: PubResourceStatus.pending_review,
@@ -117,6 +119,30 @@ def update_resource_status(
             status_code=400,
             detail=f"Neplatný přechod statusu z {resource.status} na {new_status}",
         )
+    # Pokud je material rejected s verdiktem rejected nepujde poslat k recenzi
+    if resource.status == PubResourceStatus.rejected:
+        latest_review = (
+            db.execute(
+                select(models.PubResourceReview)
+                .where(
+                    models.PubResourceReview.resource_id == resource_id,
+                    models.PubResourceReview.is_active.is_(True),
+                )
+                .order_by(desc(models.PubResourceReview.reviewed_at))
+                .limit(1)
+            )
+            .scalars()
+            .first()
+        )
+
+        if (
+            latest_review is None
+            or latest_review.verdict != ReviewVerdict.needs_revision
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Materiál s verdiktem rejected nelze znovu odeslat k recenzi",
+            )
 
     # Pouze vlastník nebo superadmin může posílat materiál k recenzi
     validate_owner_or_superadmin(resource, user, "materiál")

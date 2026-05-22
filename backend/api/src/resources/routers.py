@@ -115,13 +115,14 @@ async def endp_update_resource(
 )
 async def endp_update_resource_status(
     resource_id: int,
-    new_status: Literal["draft", "pending_review",],
+    new_status: Literal[
+        "draft",
+        "pending_review",
+    ],
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> PubResource:
     return update_resource_status(db, resource_id, new_status, user)
-
-
 
 
 @router.put(
@@ -164,5 +165,3 @@ async def endp_delete_resource_file(
     resource_id: int, file_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
     delete_resource_file(db, resource_id, file_id, user)
-
-
