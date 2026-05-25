@@ -1,35 +1,139 @@
 import type { Material, MaterialCategory, MaterialFolder } from "./types";
 import {
-  MOCK_CATEGORIES,
-  MOCK_FOLDERS,
-  MOCK_MY_MATERIALS,
-  MOCK_PUBLIC_MATERIALS,
-  getMockMaterialById,
-} from "./mockData";
+  catalogsApi,
+  getMe,
+  listResources,
+  getResource,
+  createResource,
+  updateResource,
+  deleteResource,
+  uploadResourceFile,
+  deleteResourceFile,
+} from "@/lib/api-client";
+import type { PubResource } from "@/api";
+import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 
-/**
- * Tyto funkce jsou zatím napojené na mock data. Před napojením na backend
- * je nahraď voláním přes `@/lib/api-client` (zachovej stejný tvar návratu).
- */
+const EDU_LEVEL_LABELS: Record<string, string> = {
+  primary: "Základní škola",
+  secondary: "Střední škola",
+  higher: "Vysoká škola",
+};
+
+const STATUS_MAP: Record<string, Material["status"]> = {
+  approved: "approved",
+  pending_review: "in_review",
+  draft: "in_review",
+  rejected: "rejected",
+};
+
+function categoryIdFromSubject(subjectCode: string | undefined, subjectId: number | null | undefined): string {
+  if (subjectCode) return subjectCode;
+  if (subjectId != null) return String(subjectId);
+  return "uncategorized";
+}
+
+function fileLabelFor(resource: PubResource): string {
+  const file = resource.files?.[0];
+  if (!file) {
+    return resource.filesCount && resource.filesCount > 0
+      ? `${resource.filesCount} souborů`
+      : "Bez souboru";
+  }
+  return (file.fileType ?? "file").toString().toUpperCase();
+}
+
+function attachmentNameFromPath(path: string, fallback: string): string {
+  if (!path) return fallback;
+  const parts = path.split("/");
+  return parts[parts.length - 1] || fallback;
+}
+
+export function mapPubResourceToMaterial(resource: PubResource): Material {
+  return {
+    id: String(resource.resourceId),
+    title: resource.title,
+    description: resource.description ?? "",
+    difficultyLabel: resource.difficultyLevel
+      ? DIFFICULTY_LABELS[resource.difficultyLevel] ?? resource.difficultyLevel
+      : "—",
+    fileLabel: fileLabelFor(resource),
+    rating: 0,
+    reviewsCount: resource.ratingsCount ?? 0,
+    categoryId: categoryIdFromSubject(resource.subject?.code, resource.subjectId),
+    status: STATUS_MAP[resource.status] ?? "in_review",
+    ownerId: String(resource.authorId),
+    targetAudience: resource.target?.name,
+    educationLevel: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
+    difficulty: resource.difficultyLevel,
+    targets: [
+      ...(resource.target ? [{ label: "Cílová skupina", value: resource.target.name }] : []),
+      {
+        label: "Úroveň vzdělání",
+        value: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
+      },
+      ...(resource.difficultyLevel
+        ? [{ label: "Obtížnost", value: DIFFICULTY_LABELS[resource.difficultyLevel] ?? resource.difficultyLevel }]
+        : []),
+      ...(resource.authorDisplayName
+        ? [{ label: "Autor", value: resource.authorDisplayName }]
+        : []),
+    ],
+    attachments: (resource.files ?? []).map((f) => ({
+      id: String(f.fileId),
+      name: attachmentNameFromPath(f.filename, `Soubor ${f.fileId}`),
+      format: (f.fileType ?? "file").toString().toUpperCase(),
+      sizeLabel: "",
+      url: f.filePath,
+    })),
+  };
+}
 
 export async function fetchPublicMaterials(): Promise<Material[]> {
-  return MOCK_PUBLIC_MATERIALS;
+  try {
+    const resources = await listResources({ isPublished: true, status: "approved" });
+    return resources.map(mapPubResourceToMaterial);
+  } catch (err) {
+    console.error("fetchPublicMaterials failed:", err);
+    return [];
+  }
 }
 
 export async function fetchMyMaterials(): Promise<Material[]> {
-  return MOCK_MY_MATERIALS;
+  try {
+    const [me, resources] = await Promise.all([getMe(), listResources({ includeInactive: true })]);
+    return resources
+      .filter((r) => r.authorId === me.userId)
+      .map(mapPubResourceToMaterial);
+  } catch (err) {
+    console.error("fetchMyMaterials failed:", err);
+    return [];
+  }
 }
 
 export async function fetchMaterialCategories(): Promise<MaterialCategory[]> {
-  return MOCK_CATEGORIES;
+  try {
+    const subjects = await catalogsApi.listCourseSubjects();
+    return subjects.map((s) => ({ id: s.code, label: s.name }));
+  } catch (err) {
+    console.error("fetchMaterialCategories failed:", err);
+    return [];
+  }
 }
 
 export async function fetchMyFolders(): Promise<MaterialFolder[]> {
-  return MOCK_FOLDERS;
+  return [];
 }
 
 export async function fetchMaterialById(id: string): Promise<Material | null> {
-  return getMockMaterialById(id) ?? null;
+  const resourceId = Number(id);
+  if (!Number.isFinite(resourceId)) return null;
+  try {
+    const resource = await getResource(resourceId);
+    return mapPubResourceToMaterial(resource);
+  } catch (err) {
+    console.error("fetchMaterialById failed:", err);
+    return null;
+  }
 }
 
 export async function createFolder(name: string): Promise<MaterialFolder> {
@@ -53,5 +157,19 @@ export async function toggleBookmark(materialId: string): Promise<void> {
 }
 
 export async function fetchMaterialsForReview(): Promise<Material[]> {
-  return MOCK_MY_MATERIALS.filter((m) => m.status === "in_review");
+  try {
+    const resources = await listResources({ status: "pending_review", includeInactive: true });
+    return resources.map(mapPubResourceToMaterial);
+  } catch (err) {
+    console.error("fetchMaterialsForReview failed:", err);
+    return [];
+  }
 }
+
+export {
+  createResource,
+  updateResource,
+  deleteResource,
+  uploadResourceFile,
+  deleteResourceFile,
+};

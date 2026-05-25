@@ -5,6 +5,7 @@ export interface MaterialAttachment {
   name: string;
   format: string;
   sizeLabel: string;
+  url?: string;
 }
 
 export interface MaterialTarget {

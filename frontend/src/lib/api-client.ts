@@ -8,6 +8,7 @@ import {
   AuthenticationApi,
   EnrollmentsApi,
   FeedbacksApi,
+  ResourcesApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -20,6 +21,10 @@ import {
   QuestionKeywordUpdate,
   type Middleware,
   type QuestionType,
+  type PubResourceCreate,
+  type PubResourceUpdate,
+  type ListResourcesRequest,
+  type PubResource,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
 import { getValidAccessToken } from "./keycloak";
@@ -51,6 +56,7 @@ export const catalogsApi = new CatalogsApi(configuration);
 export const authApi = new AuthenticationApi(configuration);
 export const enrollmentsApi = new EnrollmentsApi(configuration);
 export const feedbacksApi = new FeedbacksApi(configuration);
+export const resourcesApi = new ResourcesApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -511,4 +517,38 @@ export async function updateSystemSetting(
     body: JSON.stringify(update),
   });
   return mapSettingFromApi(data as Record<string, unknown>);
+}
+
+//  Public Resources (Veřejná databáze) API functions
+
+export async function listResources(params: ListResourcesRequest = {}): Promise<PubResource[]> {
+  return resourcesApi.listResources(params);
+}
+
+export async function getResource(resourceId: number): Promise<PubResource> {
+  return resourcesApi.getResource({ resourceId });
+}
+
+export async function createResource(data: PubResourceCreate): Promise<PubResource> {
+  const created = await resourcesApi.createResource({ pubResourceCreate: data });
+  return resourcesApi.getResource({ resourceId: created.resourceId });
+}
+
+export async function updateResource(
+  resourceId: number,
+  data: PubResourceUpdate,
+): Promise<PubResource> {
+  return resourcesApi.updateResource({ resourceId, pubResourceUpdate: data });
+}
+
+export async function deleteResource(resourceId: number): Promise<void> {
+  await resourcesApi.deleteResource({ resourceId });
+}
+
+export async function uploadResourceFile(resourceId: number, file: File) {
+  return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
+}
+
+export async function deleteResourceFile(resourceId: number, fileId: number) {
+  return resourcesApi.deleteResourceFile({ resourceId, fileId });
 }
