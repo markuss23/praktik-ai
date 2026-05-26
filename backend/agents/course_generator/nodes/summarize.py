@@ -28,12 +28,15 @@ def summarize_content_node(state: AgentState) -> AgentState:
     model = create_chat_llm(cfg.model)
 
     modules_count = course_input.modules_count_ai_generated
+    duration_minutes = course_input.duration_minutes
+    duration_info = f"{duration_minutes} minut" if duration_minutes is not None else "neurčena"
 
     prompt: str = f"""{cfg.prompt}
 
                 KURZ: {course_input.title}
                 POPIS: {course_input.description}
                 POČET MODULŮ: {modules_count}
+                DÉLKA KURZU: {duration_info}
 
                 ZDROJOVÝ OBSAH:
                 {source_content}"""
