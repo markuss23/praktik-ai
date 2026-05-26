@@ -55,6 +55,7 @@ class PubResource(PubResourceBase):
     author_id: int
     author_display_name: str | None = None
     is_active: bool
+    is_public: bool
     status: PubResourceStatus
     is_fork: bool
     created_at: datetime

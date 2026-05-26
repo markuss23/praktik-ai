@@ -14,9 +14,9 @@ from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
 from api.src.superadmin.routers import router as superadmin_router
 from api.src.module_tickets.routers import router as module_tickets_router
-from api.src.resources.routers import router as resources_router
-from api.src.resources.routers import public_router as resources_public_router
-from api.src.reviews.routers import router as review_router
+from api.src.publicDB.resources.routers import router as resources_router
+from api.src.publicDB.resources.routers import public_router as resources_public_router
+from api.src.publicDB.reviews.routers import router as review_router
 from api.dependencies import auth
 
 router = APIRouter()

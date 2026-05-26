@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.common.utils import get_or_404
 from api.enums import PubResourceStatus, ReviewVerdict
-from api.src.resources.schemas import (
+from api.src.publicDB.resources.schemas import (
     PubResource,
     PubResourceUpdate,
 )

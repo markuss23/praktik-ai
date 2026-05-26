@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import get_or_404
-from api.src.resources.schemas import (
+from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
     PubResourceCreated,
     PubResourceFile,

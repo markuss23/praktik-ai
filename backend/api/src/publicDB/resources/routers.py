@@ -15,14 +15,14 @@ from api.src.common.annotations import (
     TEXT_SEARCH_ANNOTATION,
 )
 
-from api.src.resources.schemas import (
+from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
     PubResourceCreated,
     PubResourceFile,
     PubResource,
     PubResourceUpdate,
 )
-from api.src.resources.controllers import (
+from api.src.publicDB.resources.controllers import (
     create_resource,
     upload_resource_file,
     get_resource,

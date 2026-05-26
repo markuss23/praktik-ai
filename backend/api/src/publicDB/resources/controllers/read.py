@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from api import models
 from api.src.common.utils import get_or_404
-from api.src.resources.schemas import PubResource, PubResourceFile
+from api.src.publicDB.resources.schemas import PubResource, PubResourceFile
 
 
 def get_resources(

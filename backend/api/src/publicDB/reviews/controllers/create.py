@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.common.utils import get_or_404
-from api.src.reviews.schemas import PubResourceReviewCreate
+from api.src.publicDB.reviews.schemas import PubResourceReviewCreate
 from api.enums import PubResourceStatus, ReviewVerdict
 from api.authorization import validate_guarantor_or_superadmin
-from api.src.resources.schemas import PubResource
+from api.src.publicDB.resources.schemas import PubResource
 
 
-def review_resource(
+def create_review(
     db: Session,
     resource_id: int,
     review_data: PubResourceReviewCreate,
