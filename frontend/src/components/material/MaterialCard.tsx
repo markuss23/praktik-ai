@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
-import type { Material } from "./types";
+import type { Material, MaterialFolder } from "./types";
 import { StarRating } from "./StarRating";
 import { MaterialStatusBadge } from "./MaterialStatusBadge";
 import { MaterialCardActions } from "./MaterialCardActions";
@@ -16,6 +16,12 @@ interface MaterialCardProps {
   showBookmarkAction?: boolean;
   /** Kompaktnější varianta pro Moje sbírka. */
   variant?: "default" | "compact";
+  /** Dostupné složky pro modal výběru. */
+  folders?: MaterialFolder[];
+  /** Callback pro vytvoření nové složky uvnitř pickeru. */
+  onCreateFolder?: (name: string) => Promise<MaterialFolder>;
+  /** Callback po úspěšném přesunu materiálu do složky. */
+  onMoved?: (materialId: string, folderId: string) => void;
 }
 
 export function MaterialCard({
@@ -24,6 +30,9 @@ export function MaterialCard({
   showFolderAction = true,
   showBookmarkAction = true,
   variant = "default",
+  folders,
+  onCreateFolder,
+  onMoved,
 }: MaterialCardProps) {
   const detailHref = `${ROUTES.PUBLIC_DATABASE}/${material.id}`;
   const isCompact = variant === "compact";
@@ -70,6 +79,9 @@ export function MaterialCard({
             materialId={material.id}
             showFolder={showFolderAction}
             showBookmark={showBookmarkAction}
+            folders={folders}
+            onCreateFolder={onCreateFolder}
+            onMoved={(folderId) => onMoved?.(material.id, folderId)}
           />
           <Link
             href={detailHref}

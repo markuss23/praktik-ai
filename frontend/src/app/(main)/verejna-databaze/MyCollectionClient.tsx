@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Folder, FolderPlus, Plus, Search } from "lucide-react";
-import { ROUTES } from "@/lib/constants";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import { MaterialCard } from "@/components/material/MaterialCard";
+import { FolderNameModal } from "@/components/material/FolderNameModal";
+import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
+import { createFolder } from "@/components/material/api";
 
 interface MyCollectionClientProps {
   materials: Material[];
@@ -22,6 +23,9 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
   const [targetAudience, setTargetAudience] = useState("");
   const [educationLevel, setEducationLevel] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [localFolders, setLocalFolders] = useState<MaterialFolder[]>(folders);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -49,8 +53,22 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
     setDifficulty("");
   };
 
-  const handleCreateFolder = () => {
-    // dodelat: otevřít modal pro vytvoření nové složky -> createFolder()
+  const handleFolderSubmit = async (name: string) => {
+    const created = await createFolder(name);
+    setLocalFolders((prev) =>
+      prev.some((f) => f.id === created.id) ? prev : [...prev, created],
+    );
+  };
+
+  const handleCreateFolderFromPicker = async (name: string): Promise<MaterialFolder> => {
+    const created = await createFolder(name);
+    setLocalFolders((prev) =>
+      prev.some((f) => f.id === created.id) ? prev : [...prev, created],
+    );
+    return created;
+  };
+
+  const handleMaterialCreated = () => {
   };
 
   return (
@@ -68,7 +86,7 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
       <section className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={handleCreateFolder}
+          onClick={() => setFolderModalOpen(true)}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-purple-300 text-purple-700 bg-white text-sm font-medium hover:bg-purple-50 transition-colors"
         >
           <FolderPlus size={16} strokeWidth={1.75} />
@@ -86,7 +104,7 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
         >
           Vše
         </button>
-        {folders.map((folder) => {
+        {localFolders.map((folder) => {
           const isActive = folder.id === activeFolderId;
           return (
             <button
@@ -155,7 +173,7 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
 
       <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <CreateMaterialCard />
+          <CreateMaterialCard onClick={() => setMaterialModalOpen(true)} />
           {filtered.map((material) => (
             <MaterialCard
               key={material.id}
@@ -164,6 +182,8 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
               showFolderAction
               showBookmarkAction={false}
               variant="compact"
+              folders={localFolders}
+              onCreateFolder={handleCreateFolderFromPicker}
             />
           ))}
         </div>
@@ -174,6 +194,18 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
           </p>
         )}
       </section>
+
+      <FolderNameModal
+        isOpen={folderModalOpen}
+        onClose={() => setFolderModalOpen(false)}
+        onSubmit={handleFolderSubmit}
+      />
+
+      <MaterialCreateModal
+        isOpen={materialModalOpen}
+        onClose={() => setMaterialModalOpen(false)}
+        onCreated={handleMaterialCreated}
+      />
     </div>
   );
 }
@@ -205,16 +237,17 @@ function FilterSelect({
   );
 }
 
-function CreateMaterialCard() {
+function CreateMaterialCard({ onClick }: { onClick: () => void }) {
   return (
-    <Link
-      href={`${ROUTES.PUBLIC_DATABASE}/novy`}
-      className="flex items-center justify-center min-h-[260px] bg-purple-50/40 border-2 border-dashed border-purple-200 rounded-lg text-purple-700 hover:bg-purple-50 transition-colors"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center justify-center min-h-[260px] bg-purple-50/40 border-2 border-dashed border-purple-200 rounded-lg text-purple-700 hover:bg-purple-50 transition-colors w-full"
     >
       <div className="flex flex-col items-center gap-2">
         <Plus size={28} strokeWidth={1.5} />
         <span className="text-sm font-medium">Vytvořit nový materiál</span>
       </div>
-    </Link>
+    </button>
   );
 }
