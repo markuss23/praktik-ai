@@ -97,7 +97,7 @@ export function Header() {
                 </Link>
               </li>
             )}
-            <li>
+            {/* <li>
               <Link
                 href={ROUTES.PUBLIC_DATABASE}
                 data-text="Veřejná databáze"
@@ -117,7 +117,7 @@ export function Header() {
                   />
                 )}
               </Link>
-            </li>
+            </li> */}
             <li>
               <Link
                 href="/odmeny"
@@ -295,7 +295,7 @@ export function Header() {
               {isAuthenticated && (
                 <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
               )}
-              <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
+              {/* <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink> */}
               <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
               <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
               {can('lector') && (

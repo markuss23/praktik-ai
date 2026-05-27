@@ -11,7 +11,7 @@ import { Alert, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
-import NotesPanel from "@/components/module/NotesPanel";
+// import NotesPanel from "@/components/module/NotesPanel";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -489,7 +489,7 @@ export default function ModulePage() {
         </div>
       </div>
       {/* Vysouvací poznámkový blok */}
-      <NotesPanel />
+      {/* <NotesPanel /> */}
     </div>
   );
 }
