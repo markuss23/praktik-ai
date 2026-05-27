@@ -828,8 +828,18 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
+    last_visited_module_id: Mapped[int | None] = mapped_column(
+        ForeignKey("module.module_id"), nullable=True
+    )
+    last_activity_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     user: Mapped[User] = relationship(back_populates="enrollments")
     course: Mapped[Course] = relationship(back_populates="enrollments")
+    last_visited_module: Mapped[Module | None] = relationship(
+        "Module", foreign_keys=[last_visited_module_id]
+    )
 
 
 # ---------- AI Session / Test ----------

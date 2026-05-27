@@ -24,6 +24,9 @@ from api.src.courses.controllers.delete import (
     delete_course_file,
     delete_course_link,
 )
+from api.src.courses.controllers.recommended import (
+    get_recommended_courses,
+)
 
 __all__ = [
     # Create operations
@@ -35,6 +38,7 @@ __all__ = [
     "get_course",
     "get_course_files",
     "get_course_links",
+    "get_recommended_courses",
     # Update operations
     "update_course",
     "update_course_status",

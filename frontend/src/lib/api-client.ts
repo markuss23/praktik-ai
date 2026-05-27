@@ -346,10 +346,162 @@ export async function updateQuestionKeyword(keywordId: number, data: QuestionKey
   return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
 }
 
-//  Enrollments API functions 
+//  Enrollments API functions
 
-export async function getMyEnrollments() {
-  return enrollmentsApi.myEnrollments();
+/** Naposledy obohacený zápis: server vrací cíl pro „pokračuj" a heatmapě
+ * stačí lišta s `lastActivityAt`. Tyto poli jsou volitelná, aby fungovala
+ * koexistence se starým API clientem před regenerací. */
+export interface MyEnrollmentExtended {
+  enrollmentId: number;
+  courseId: number;
+  course: {
+    courseId: number;
+    title: string;
+    description?: string | null;
+    modulesCount?: number;
+  };
+  completedModules?: number;
+  totalModules?: number;
+  enrolledAt: Date;
+  completedAt?: Date | null;
+  nextModule?: {
+    moduleId: number;
+    title: string;
+    index: number;
+    total: number;
+  } | null;
+  lastVisitedModuleId?: number | null;
+  lastActivityAt?: Date | null;
+}
+
+function parseMyEnrollment(raw: Record<string, unknown>): MyEnrollmentExtended {
+  const course = raw['course'] as Record<string, unknown>;
+  const next = raw['next_module'] as Record<string, unknown> | null | undefined;
+  return {
+    enrollmentId: raw['enrollment_id'] as number,
+    courseId: raw['course_id'] as number,
+    course: {
+      courseId: course['course_id'] as number,
+      title: course['title'] as string,
+      description: (course['description'] as string | null | undefined) ?? null,
+      modulesCount: (course['modules_count'] as number | undefined) ?? 0,
+    },
+    completedModules: (raw['completed_modules'] as number | undefined) ?? 0,
+    totalModules: (raw['total_modules'] as number | undefined) ?? 0,
+    enrolledAt: new Date(raw['enrolled_at'] as string),
+    completedAt: raw['completed_at'] ? new Date(raw['completed_at'] as string) : null,
+    nextModule: next
+      ? {
+          moduleId: next['module_id'] as number,
+          title: next['title'] as string,
+          index: next['index'] as number,
+          total: next['total'] as number,
+        }
+      : null,
+    lastVisitedModuleId: (raw['last_visited_module_id'] as number | null | undefined) ?? null,
+    lastActivityAt: raw['last_activity_at']
+      ? new Date(raw['last_activity_at'] as string)
+      : null,
+  };
+}
+
+export async function getMyEnrollments(): Promise<MyEnrollmentExtended[]> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>[];
+  return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+}
+
+/** Tichý tracking: označí, že uživatel právě otevřel daný modul. Server
+ * updatuje last_visited_module_id + last_activity_at na enrollmentu. */
+export async function markModuleVisited(moduleId: number): Promise<void> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  try {
+    await fetch(backendUrl(`/api/v1/enrollments/my/visit/${moduleId}`), {
+      method: 'POST',
+      headers,
+    });
+  } catch {
+    // Visit tracking je fire-and-forget — nikdy by neměl rozbít UI.
+  }
+}
+
+export interface ActivityDay {
+  date: string; // ISO yyyy-mm-dd
+  count: number;
+  titles: string[];
+}
+
+export interface ActivityResponse {
+  days: ActivityDay[];
+  fromDate: string;
+  toDate: string;
+}
+
+export interface ActivityRangeOptions {
+  /** ISO yyyy-mm-dd start date. Pokud je předáno spolu s `toDate`, `days` se ignoruje. */
+  fromDate?: string;
+  /** ISO yyyy-mm-dd end date. */
+  toDate?: string;
+  /** Fallback rozsah: posledních N dnů od dneška. Default 180. Max 400. */
+  days?: number;
+}
+
+export async function getMyActivity(
+  opts: ActivityRangeOptions = {},
+): Promise<ActivityResponse> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const params = new URLSearchParams();
+  if (opts.fromDate && opts.toDate) {
+    params.set('from_date', opts.fromDate);
+    params.set('to_date', opts.toDate);
+  } else {
+    params.set('days', String(opts.days ?? 180));
+  }
+
+  const res = await fetch(
+    backendUrl(`/api/v1/enrollments/my/activity?${params.toString()}`),
+    { method: 'GET', headers },
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>;
+  const rawDays = (data['days'] as Record<string, unknown>[]) ?? [];
+  return {
+    days: rawDays.map((d) => ({
+      date: d['date'] as string,
+      count: d['count'] as number,
+      titles: (d['titles'] as string[]) ?? [],
+    })),
+    fromDate: data['from_date'] as string,
+    toDate: data['to_date'] as string,
+  };
+}
+
+export async function getRecommendedCourses(limit: number = 3) {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/courses/recommended?limit=${limit}`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  // Server vrací list[Course]; necháváme generovaný runtime to dekódovat.
+  // Pro typovou kompatibilitu importujeme generovaný Course.
+  const { CourseFromJSON } = await import('@/api');
+  const data = (await res.json()) as Record<string, unknown>[];
+  return data.map((c) => CourseFromJSON(c));
 }
 
 export async function listEnrollments(params?: {
