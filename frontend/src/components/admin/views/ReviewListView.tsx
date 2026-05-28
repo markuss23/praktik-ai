@@ -10,6 +10,9 @@ import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReviewCardsSkeleton } from '@/components/ui';
+import { fetchMaterialsForReview } from '@/components/material/api';
+import { MaterialCard } from '@/components/material/MaterialCard';
+import type { Material } from '@/components/material/types';
 
 // Carousel je stránkovaný: max 5 karet na stránku, šipka posune o celou stránku
 // (nikoli po jedné kartě). Na užších viewportech se počet karet na stránku
@@ -203,12 +206,17 @@ function CourseCarousel<T extends { courseId: number }>({
   );
 }
 
+type ReviewTab = 'courses' | 'materials';
+
 export function ReviewListView() {
   const router = useRouter();
   useRole(); // guard: only guarantors/superadmins see this page
   const { currentUser } = useCurrentUser();
+  const [activeTab, setActiveTab] = useState<ReviewTab>('courses');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -228,6 +236,24 @@ export function ReviewListView() {
     load();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMaterials() {
+      try {
+        const data = await fetchMaterialsForReview();
+        if (!cancelled) setMaterials(data);
+      } catch (err) {
+        console.error('Failed to load review materials:', err);
+      } finally {
+        if (!cancelled) setMaterialsLoading(false);
+      }
+    }
+    loadMaterials();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleStart = (courseId: number) => {
     router.push(`/admin/review/${courseId}`);
   };
@@ -244,56 +270,125 @@ export function ReviewListView() {
 
   return (
     <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Obsah ke schválení</h1>
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-black">Obsah ke schválení</h1>
+        <div className="inline-flex items-center rounded-md border border-gray-200 bg-white p-1 shadow-sm">
+          <ReviewTabButton
+            active={activeTab === 'courses'}
+            onClick={() => setActiveTab('courses')}
+          >
+            Kurzy
+          </ReviewTabButton>
+          <ReviewTabButton
+            active={activeTab === 'materials'}
+            onClick={() => setActiveTab('materials')}
+          >
+            Materiály
+          </ReviewTabButton>
+        </div>
+      </div>
 
-      {loading ? (
+      {activeTab === 'courses' ? (
+        loading ? (
+          <ReviewCardsSkeleton />
+        ) : reviewable.length === 0 && approved.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <BookOpen size={48} className="text-gray-300 mb-4" />
+            <p className="text-gray-500 text-lg font-medium">Žádné kurzy ke schválení</p>
+            <p className="text-gray-400 text-sm mt-1">
+              Momentálně nejsou žádné kurzy čekající na schválení.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {reviewable.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Ke kontrole ({reviewable.length})
+                </h2>
+                <CourseCarousel
+                  items={reviewable}
+                  renderItem={(course) => (
+                    <CourseCard
+                      course={course}
+                      onStart={() => handleStart(course.courseId)}
+                    />
+                  )}
+                />
+              </section>
+            )}
+
+            {approved.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Schváleno ({approved.length})
+                </h2>
+                <CourseCarousel
+                  items={approved}
+                  renderItem={(course) => (
+                    <CourseCard
+                      course={course}
+                      onStart={() => handleOpenApproved(course.courseId)}
+                    />
+                  )}
+                />
+              </section>
+            )}
+          </div>
+        )
+      ) : materialsLoading ? (
         <ReviewCardsSkeleton />
-      ) : reviewable.length === 0 && approved.length === 0 ? (
+      ) : materials.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <BookOpen size={48} className="text-gray-300 mb-4" />
-          <p className="text-gray-500 text-lg font-medium">Žádné kurzy ke schválení</p>
+          <p className="text-gray-500 text-lg font-medium">Žádné materiály ke schválení</p>
           <p className="text-gray-400 text-sm mt-1">
-            Momentálně nejsou žádné kurzy čekající na schválení.
+            Momentálně nejsou žádné materiály čekající na schválení.
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {reviewable.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Ke kontrole ({reviewable.length})
-              </h2>
-              <CourseCarousel
-                items={reviewable}
-                renderItem={(course) => (
-                  <CourseCard
-                    course={course}
-                    onStart={() => handleStart(course.courseId)}
-                  />
-                )}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            Ke kontrole ({materials.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {materials.map((material) => (
+              <MaterialCard
+                key={material.id}
+                material={material}
+                showStatus
+                showFolderAction={false}
+                showBookmarkAction={false}
+                variant="compact"
               />
-            </section>
-          )}
-
-          {approved.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Schváleno ({approved.length})
-              </h2>
-              <CourseCarousel
-                items={approved}
-                renderItem={(course) => (
-                  <CourseCard
-                    course={course}
-                    onStart={() => handleOpenApproved(course.courseId)}
-                  />
-                )}
-              />
-            </section>
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
+  );
+}
+
+function ReviewTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+        active ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:text-gray-900'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

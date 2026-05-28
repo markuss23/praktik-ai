@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules, getCourseProgress } from "@/lib/api-client";
+import { getModule, getCourse, getModules, getCourseProgress, markModuleVisited } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
@@ -11,7 +11,7 @@ import { Alert, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
-import NotesPanel from "@/components/module/NotesPanel";
+// import NotesPanel from "@/components/module/NotesPanel";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -92,6 +92,10 @@ export default function ModulePage() {
 
       const moduleData = await getModule(modId);
       setModule(moduleData);
+
+      // Tichý tracking — server si uloží, že user otevřel tenhle modul.
+      // Fire-and-forget; nikdy nesmí rozbít načítání stránky.
+      void markModuleVisited(modId);
 
       const [courseData, modulesData] = await Promise.all([
         getCourse(moduleData.courseId),
@@ -489,7 +493,7 @@ export default function ModulePage() {
         </div>
       </div>
       {/* Vysouvací poznámkový blok */}
-      <NotesPanel />
+      {/* <NotesPanel /> */}
     </div>
   );
 }

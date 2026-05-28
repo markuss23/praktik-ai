@@ -22,8 +22,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
 from api.enums import (
     AuditAction,
+    AttachType,
     Difficulty,
+    EduLevel,
+    PubResourceStatus,
     QuestionType,
+    ReviewVerdict,
     Status,
     TicketType,
     UserRole,
@@ -370,9 +374,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     min_modules_to_open_final_exam: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1
     )
-    duration_minutes: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     status: Mapped[Status] = mapped_column(
         Enum(Status, name="course_status"), nullable=False, default=Status.draft
@@ -826,8 +828,18 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
+    last_visited_module_id: Mapped[int | None] = mapped_column(
+        ForeignKey("module.module_id"), nullable=True
+    )
+    last_activity_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     user: Mapped[User] = relationship(back_populates="enrollments")
     course: Mapped[Course] = relationship(back_populates="enrollments")
+    last_visited_module: Mapped[Module | None] = relationship(
+        "Module", foreign_keys=[last_visited_module_id]
+    )
 
 
 # ---------- AI Session / Test ----------
@@ -988,3 +1000,249 @@ class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
 
     user: Mapped[User] = relationship(back_populates="mentor_logs")
     learn_block: Mapped[LearnBlock] = relationship(back_populates="mentor_logs")
+
+
+# ---------- Veřejná databáze (pub_*) ----------
+
+
+class PubResource(TimestampMixin, SoftDeleteMixin, Base):
+    """Veřejně sdílený výukový materiál."""
+
+    __tablename__ = "pub_resource"
+    __table_args__ = (
+        Index("ix_pub_resource_author_id", "author_id"),
+        Index("ix_pub_resource_subject_id", "subject_id"),
+        Index("ix_pub_resource_target_id", "target_id"),
+        Index("ix_pub_resource_status", "status"),
+    )
+
+    resource_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    subject_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_subject.subject_id"), nullable=True
+    )
+    target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_target.target_id"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    education_level: Mapped[EduLevel] = mapped_column(
+        Enum(EduLevel, name="edu_level"), nullable=False
+    )
+    difficulty_level: Mapped[Difficulty] = mapped_column(
+        Enum(Difficulty, name="difficulty_level"),
+        nullable=False,
+        default=Difficulty.slightly_advanced,
+        server_default=Difficulty.slightly_advanced.value,
+    )
+    status: Mapped[PubResourceStatus] = mapped_column(
+        Enum(PubResourceStatus, name="pub_resource_status"),
+        nullable=False,
+        default=PubResourceStatus.draft,
+    )
+    allow_forks: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    author: Mapped[User] = relationship(foreign_keys=[author_id])
+    subject: Mapped[CourseSubject | None] = relationship(foreign_keys=[subject_id])
+    target: Mapped[CourseTarget | None] = relationship(foreign_keys=[target_id])
+    files: Mapped[list[PubResourceFile]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceFile.resource_id, PubResourceFile.is_active==True)",
+    )
+    ratings: Mapped[list[PubResourceRating]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceRating.resource_id, PubResourceRating.is_active==True)",
+    )
+    reviews: Mapped[list[PubResourceReview]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceReview.resource_id, PubResourceReview.is_active==True)",
+    )
+
+    _soft_delete_cascade: list[str] = ["files", "ratings", "reviews"]
+
+    def get_owner_id(self) -> int:
+        return self.author_id
+
+
+class PubResourceFork(SoftDeleteMixin, Base):
+    """Vazba mezi originálem a jeho odvozenou verzí (forkem)."""
+
+    __tablename__ = "pub_resource_fork"
+    __table_args__ = (
+        Index("ix_pub_resource_fork_original_id", "original_id"),
+        Index("ix_pub_resource_fork_forked_id", "forked_id"),
+        Index("ix_pub_resource_fork_author_id", "author_id"),
+    )
+
+    fork_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    original_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    forked_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    original: Mapped[PubResource] = relationship(foreign_keys=[original_id])
+    forked: Mapped[PubResource] = relationship(foreign_keys=[forked_id])
+    author: Mapped[User] = relationship(foreign_keys=[author_id])
+
+    def get_owner_id(self) -> int:
+        return self.author_id
+
+
+class PubResourceFile(TimestampMixin, SoftDeleteMixin, Base):
+    """Příloha (soubor) navázaná na veřejný materiál."""
+
+    __tablename__ = "pub_resource_file"
+    __table_args__ = (Index("ix_pub_resource_file_resource_id", "resource_id"),)
+
+    file_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    file_type: Mapped[AttachType] = mapped_column(
+        Enum(AttachType, name="attach_type"), nullable=False
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="files")
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubResourceRating(TimestampMixin, SoftDeleteMixin, Base):
+    """Hodnocení veřejného materiálu uživatelem (1 až 5 hvězdiček)."""
+
+    __tablename__ = "pub_resource_rating"
+    __table_args__ = (
+        Index(
+            "uq_pub_resource_rating_resource_user",
+            "resource_id",
+            "user_id",
+            unique=True,
+        ),
+        Index("ix_pub_resource_rating_resource_id", "resource_id"),
+        CheckConstraint(
+            "score >= 1 AND score <= 5", name="ck_pub_resource_rating_score"
+        ),
+    )
+
+    rating_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    resource: Mapped[PubResource] = relationship(back_populates="ratings")
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubResourceReview(SoftDeleteMixin, Base):
+    """Recenze/schválení veřejného materiálu recenzentem."""
+
+    __tablename__ = "pub_resource_review"
+    __table_args__ = (
+        Index("ix_pub_resource_review_resource_id", "resource_id"),
+        Index("ix_pub_resource_review_reviewer_id", "reviewer_id"),
+    )
+
+    review_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    reviewer_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    verdict: Mapped[ReviewVerdict] = mapped_column(
+        Enum(ReviewVerdict, name="review_verdict"), nullable=False
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="reviews")
+    reviewer: Mapped[User] = relationship(foreign_keys=[reviewer_id])
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubCollection(TimestampMixin, SoftDeleteMixin, Base):
+    """Sbírka veřejných materiálů vytvořená uživatelem."""
+
+    __tablename__ = "pub_collection"
+    __table_args__ = (Index("ix_pub_collection_user_id", "user_id"),)
+
+    collection_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    items: Mapped[list[PubCollectionResource]] = relationship(
+        back_populates="collection",
+        primaryjoin="and_(PubCollection.collection_id==PubCollectionResource.collection_id, PubCollectionResource.is_active==True)",
+    )
+
+    _soft_delete_cascade: list[str] = ["items"]
+
+    def get_owner_id(self) -> int:
+        return self.user_id
+
+
+class PubCollectionResource(SoftDeleteMixin, Base):
+    """Vazební tabulka materiál ↔ sbírka."""
+
+    __tablename__ = "pub_collection_resource"
+    __table_args__ = (
+        Index(
+            "uq_pub_collection_resource",
+            "collection_id",
+            "resource_id",
+            unique=True,
+        ),
+        Index("ix_pub_collection_resource_collection_id", "collection_id"),
+        Index("ix_pub_collection_resource_resource_id", "resource_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    collection_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_collection.collection_id"), nullable=False
+    )
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    collection: Mapped[PubCollection] = relationship(back_populates="items")
+    resource: Mapped[PubResource] = relationship(foreign_keys=[resource_id])
+
+    def get_owner_id(self) -> int:
+        return self.collection.user_id

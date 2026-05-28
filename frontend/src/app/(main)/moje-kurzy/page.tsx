@@ -1,49 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { BookOpen, GraduationCap, LogIn, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpen, GraduationCap, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { getMyEnrollments } from '@/lib/api-client';
-import { MyEnrollment } from '@/api';
-import { CourseCard } from '@/components/ui';
+import { getMyEnrollments, type MyEnrollmentExtended } from '@/lib/api-client';
+import { ContinueHeroCard } from './ContinueHeroCard';
+import { EnrollmentCardWithNext } from './EnrollmentCardWithNext';
+import { MyCoursesFilters, type SortKey, type StatusFilter } from './MyCoursesFilters';
+import { ActivityHeatmap } from './ActivityHeatmap';
+import { QuickStats } from './QuickStats';
+import { RecommendedCourses } from './RecommendedCourses';
 
-function CardSkeleton() {
+function HeroSkeleton() {
+  return <div className="rounded-2xl bg-gray-200 animate-pulse h-[260px]" />;
+}
+
+function GridSkeleton() {
   return (
-    <div
-      className="bg-white overflow-hidden flex flex-col animate-pulse"
-      style={{ width: '100%', maxWidth: '590px', height: '530px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-    >
-      <div style={{ width: '100%', height: '226px' }} className="bg-gray-200" />
-      <div className="flex flex-col p-6 flex-grow">
-        <div className="h-6 bg-gray-200 rounded w-3/4 mb-3" />
-        <div className="h-4 bg-gray-200 rounded w-full mb-2" />
-        <div className="h-4 bg-gray-200 rounded w-5/6 mb-2" />
-        <div className="h-4 bg-gray-200 rounded w-2/3 mb-4" />
-        <div className="mt-auto h-12 bg-gray-200 rounded-md w-full" />
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="bg-white rounded-xl border border-gray-200 h-[450px] animate-pulse" />
+      ))}
     </div>
   );
 }
 
-function EnrollmentCard({ enrollment }: { enrollment: MyEnrollment }) {
-  const total = enrollment.totalModules ?? enrollment.course.modulesCount ?? 0;
-  const done = enrollment.completedModules ?? 0;
-  return (
-    <CourseCard
-      id={String(enrollment.courseId)}
-      title={enrollment.course.title}
-      description={enrollment.course.description ?? ''}
-      duration={total > 0 ? total * 20 : 60}
-      completedModules={done}
-      totalModules={total}
-      isEnrolled
-      isCompleted={!!enrollment.completedAt}
-    />
-  );
-}
-
-function LoginPrompt({ onLogin }: { onLogin: () => void }) {
+function LoginPrompt() {
   return (
     <div className="max-w-xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm p-8 sm:p-10 text-center">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-50 text-purple-600 mb-4">
@@ -53,16 +36,6 @@ function LoginPrompt({ onLogin }: { onLogin: () => void }) {
       <p className="text-gray-600 mb-6">
         Pro zobrazení vašich zapsaných kurzů je potřeba být přihlášen.
       </p>
-      {/* 
-      <button
-        onClick={onLogin}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
-        style={{ background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)' }}
-      >
-        <LogIn size={16} strokeWidth={2} />
-        Přihlásit se
-      </button>
-      */}
     </div>
   );
 }
@@ -73,10 +46,10 @@ function EmptyState() {
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 mb-4">
         <Sparkles size={28} />
       </div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Zatím nejste zapsán/a do žádného kurzu</h2>
-      <p className="text-gray-600 mb-6">
-        Prohlédněte si nabídku kurzů a začněte se učit.
-      </p>
+      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+        Zatím nejste zapsán/a do žádného kurzu
+      </h2>
+      <p className="text-gray-600 mb-6">Prohlédněte si nabídku kurzů a začněte se učit.</p>
       <Link
         href="/courses"
         className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
@@ -90,10 +63,14 @@ function EmptyState() {
 }
 
 export default function MojeKurzyPage() {
-  const { isAuthenticated, loading: authLoading, login } = useAuth();
-  const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [enrollments, setEnrollments] = useState<MyEnrollmentExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [sort, setSort] = useState<SortKey>('recent');
 
   useEffect(() => {
     if (authLoading) return;
@@ -112,59 +89,124 @@ export default function MojeKurzyPage() {
       .finally(() => setLoading(false));
   }, [authLoading, isAuthenticated]);
 
-  const inProgress = enrollments.filter((e) => !e.completedAt);
-  const completed = enrollments.filter((e) => !!e.completedAt);
+  // Server vrací zápisy seřazené dle skutečné aktivity (last_activity_at),
+  // takže resume kurz = první neunfinishovaný v seznamu.
+  const resume = useMemo(
+    () => enrollments.find((e) => !e.completedAt) ?? null,
+    [enrollments],
+  );
+
+  const counts = useMemo(() => {
+    const inProgress = enrollments.filter(
+      (e) => !e.completedAt && (e.completedModules ?? 0) > 0,
+    ).length;
+    const notStarted = enrollments.filter(
+      (e) => !e.completedAt && (e.completedModules ?? 0) === 0,
+    ).length;
+    const completed = enrollments.filter((e) => !!e.completedAt).length;
+    return { all: enrollments.length, inProgress, notStarted, completed };
+  }, [enrollments]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = enrollments.filter((e) => {
+      const done = e.completedModules ?? 0;
+      const isCompleted = !!e.completedAt;
+      const isInProgress = !isCompleted && done > 0;
+      const isNotStarted = !isCompleted && done === 0;
+      if (status === 'in-progress' && !isInProgress) return false;
+      if (status === 'completed' && !isCompleted) return false;
+      if (status === 'not-started' && !isNotStarted) return false;
+
+      if (q) {
+        const hay = `${e.course.title} ${e.course.description ?? ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    list = [...list].sort((a, b) => {
+      if (sort === 'title') return a.course.title.localeCompare(b.course.title, 'cs');
+      const aTotal = a.totalModules ?? 1;
+      const bTotal = b.totalModules ?? 1;
+      const aPct = ((a.completedModules ?? 0) / aTotal) * 100;
+      const bPct = ((b.completedModules ?? 0) / bTotal) * 100;
+      if (sort === 'progress-desc') return bPct - aPct;
+      if (sort === 'progress-asc') return aPct - bPct;
+      // 'recent' = preferuj last_activity_at, jinak enrolledAt
+      const aTime = (a.lastActivityAt ?? a.enrolledAt).getTime();
+      const bTime = (b.lastActivityAt ?? b.enrolledAt).getTime();
+      return bTime - aTime;
+    });
+
+    return list;
+  }, [enrollments, query, status, sort]);
+
+  const isInitialLoading = authLoading || (isAuthenticated && loading);
 
   return (
-    <div className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#F0F0F0', minHeight: 'calc(100vh - 80px)' }}>
+    <div
+      className="py-8 sm:py-12 lg:py-14"
+      style={{ backgroundColor: '#F0F0F0', minHeight: 'calc(100vh - 80px)' }}
+    >
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
         <div className="mb-6 sm:mb-8">
           <p className="text-sm text-gray-500">Home / Moje kurzy</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-black mt-2">Moje kurzy</h1>
+          <p className="text-sm text-gray-600 mt-1">Tvůj učební prostor — pokračuj, kde jsi skončil.</p>
         </div>
 
-        {authLoading || (isAuthenticated && loading) ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {Array.from({ length: 3 }, (_, i) => (
-              <CardSkeleton key={i} />
-            ))}
+        {isInitialLoading ? (
+          <div className="space-y-6">
+            <HeroSkeleton />
+            <GridSkeleton />
           </div>
         ) : !isAuthenticated ? (
-          <LoginPrompt onLogin={login} />
+          <LoginPrompt />
         ) : error ? (
           <div className="max-w-xl mx-auto bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <p className="text-red-700 font-medium">Nepodařilo se načíst vaše kurzy.</p>
             <p className="text-sm text-red-600 mt-1">Zkuste obnovit stránku.</p>
           </div>
         ) : enrollments.length === 0 ? (
-          <EmptyState />
+          <>
+            <EmptyState />
+            <RecommendedCourses />
+          </>
         ) : (
-          <div className="space-y-10">
-            {inProgress.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                  Probíhající ({inProgress.length})
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {inProgress.map((e) => (
-                    <EnrollmentCard key={e.enrollmentId} enrollment={e} />
-                  ))}
-                </div>
-              </section>
-            )}
+          <div className="space-y-8">
+            {resume && <ContinueHeroCard enrollment={resume} />}
 
-            {completed.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                  Dokončené ({completed.length})
-                </h2>
+            <QuickStats enrollments={enrollments} />
+
+            <MyCoursesFilters
+              query={query}
+              onQueryChange={setQuery}
+              status={status}
+              onStatusChange={setStatus}
+              sort={sort}
+              onSortChange={setSort}
+              counts={counts}
+            />
+
+            <section>
+              {filtered.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                  <p className="text-gray-700 font-medium">Žádný kurz neodpovídá filtru</p>
+                  <p className="text-sm text-gray-500 mt-1">Zkuste upravit hledání nebo vybrat jiný stav.</p>
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {completed.map((e) => (
-                    <EnrollmentCard key={e.enrollmentId} enrollment={e} />
+                  {filtered.map((e) => (
+                    <EnrollmentCardWithNext key={e.enrollmentId} enrollment={e} />
                   ))}
                 </div>
-              </section>
-            )}
+              )}
+            </section>
+
+            <ActivityHeatmap />
+
+            <RecommendedCourses />
           </div>
         )}
       </div>
