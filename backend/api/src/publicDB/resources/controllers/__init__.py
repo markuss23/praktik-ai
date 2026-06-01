@@ -6,6 +6,7 @@ Rozděleno podle CRUD operací.
 from api.src.publicDB.resources.controllers.create import (
     create_resource,
     upload_resource_file,
+    create_resource_fork,
 )
 from api.src.publicDB.resources.controllers.read import (
     get_resources,
@@ -28,6 +29,7 @@ __all__ = [
     # Create operations
     "create_resource",
     "upload_resource_file",
+    "create_resource_fork",
     # Read operations
     "get_resources",
     "get_resource",

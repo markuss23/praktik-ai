@@ -50,6 +50,18 @@ def update_resource(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
 
+    # Ošetření pro fork
+    if resource.is_fork:
+        if (
+            resource_data.subject_id != resource.subject_id
+            and resource_data.target_id != resource.target_id
+            and resource_data.education_level != resource.education_level
+            and resource_data.difficulty_level != resource.difficulty_level
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="U forků není možné měnit obor, cílovou skupinu, vzdělávací úroveň a obtížnost zároveň",
+            )
     # Pouze vlastník nebo superadmin může upravovat materiál
     validate_owner_or_superadmin(resource, user, "materiál")
 

@@ -26,6 +26,18 @@ def delete_resource(db: Session, resource_id: int, user: models.User) -> None:
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
 
+    if resource.allow_forks and resource.status == PubResourceStatus.approved:
+        raise HTTPException(
+            status_code=400,
+            detail="Nelze smazat materiál, který umožňuje forkování.",
+        )
+
+    if resource.is_public:
+        raise HTTPException(
+            status_code=400,
+            detail="Nelze smazat materiál ve který je publikován.",
+        )
+
     is_superadmin = user.role == UserRole.superadmin
 
     if not is_superadmin:

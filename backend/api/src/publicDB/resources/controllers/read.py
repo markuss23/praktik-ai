@@ -20,6 +20,8 @@ def get_resources(
     resource_target_id: int | None = None,
     resource_subject_id: int | None = None,
     status: str | None = None,
+    is_fork: bool | None = None,
+    original_id: int | None = None,
 ) -> list[PubResource]:
     """Vrátí seznam veřejných materiálů s filtrací.
     Doplňuje počty hodnocení, souborů a kolirát si nekdo vytvořil kopii. (fork)
@@ -54,6 +56,16 @@ def get_resources(
         .subquery()
     )
 
+    # subquery pro zjištění original_id (z čeho byl fork vytvořen)
+    forked_from_subq = (
+        select(
+            models.PubResourceFork.forked_id.label("resource_id"),
+            models.PubResourceFork.original_id.label("original_id"),
+        )
+        .where(models.PubResourceFork.is_active.is_(True))
+        .subquery()
+    )
+
     ratings_count_col = func.coalesce(ratings_count_subq.c.ratings_cnt, 0).label(
         "ratings_count"
     )
@@ -63,9 +75,16 @@ def get_resources(
     forks_count_col = func.coalesce(forks_count_subq.c.forks_cnt, 0).label(
         "forks_count"
     )
+    forked_from_col = forked_from_subq.c.original_id.label("forked_from_id")
 
     stm = (
-        select(models.PubResource, ratings_count_col, files_count_col, forks_count_col)
+        select(
+            models.PubResource,
+            ratings_count_col,
+            files_count_col,
+            forks_count_col,
+            forked_from_col,
+        )
         .outerjoin(
             ratings_count_subq,
             models.PubResource.resource_id == ratings_count_subq.c.resource_id,
@@ -77,6 +96,10 @@ def get_resources(
         .outerjoin(
             forks_count_subq,
             models.PubResource.resource_id == forks_count_subq.c.resource_id,
+        )
+        .outerjoin(
+            forked_from_subq,
+            models.PubResource.resource_id == forked_from_subq.c.resource_id,
         )
         .options(
             joinedload(models.PubResource.author),
@@ -115,12 +138,19 @@ def get_resources(
     if status is not None:
         stm = stm.where(models.PubResource.status == status)
 
+    if is_fork is not None:
+        stm = stm.where(models.PubResource.is_fork.is_(is_fork))
+
+    if original_id is not None:
+        stm = stm.where(forked_from_subq.c.original_id == original_id)
+
     rows = db.execute(stm).all()
     result: list[PubResource] = []
-    for resource, ratings_cnt, files_cnt, forks_cnt in rows:
+    for resource, ratings_cnt, files_cnt, forks_cnt, forked_from_id in rows:
         resource.__dict__["ratings_count"] = int(ratings_cnt or 0)
         resource.__dict__["files_count"] = int(files_cnt or 0)
         resource.__dict__["forks_count"] = int(forks_cnt or 0)
+        resource.__dict__["forked_from_id"] = forked_from_id
         result.append(PubResource.model_validate(resource))
     return result
 
@@ -157,6 +187,15 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
         .subquery()
     )
 
+    forked_from_subq = (
+        select(
+            models.PubResourceFork.forked_id.label("resource_id"),
+            models.PubResourceFork.original_id.label("original_id"),
+        )
+        .where(models.PubResourceFork.is_active.is_(True))
+        .subquery()
+    )
+
     ratings_count_col = func.coalesce(ratings_count_subq.c.ratings_cnt, 0).label(
         "ratings_count"
     )
@@ -166,9 +205,16 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
     forks_count_col = func.coalesce(forks_count_subq.c.forks_cnt, 0).label(
         "forks_count"
     )
+    forked_from_col = forked_from_subq.c.original_id.label("forked_from_id")
 
     stm = (
-        select(models.PubResource, ratings_count_col, files_count_col, forks_count_col)
+        select(
+            models.PubResource,
+            ratings_count_col,
+            files_count_col,
+            forks_count_col,
+            forked_from_col,
+        )
         .outerjoin(
             ratings_count_subq,
             models.PubResource.resource_id == ratings_count_subq.c.resource_id,
@@ -180,6 +226,10 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
         .outerjoin(
             forks_count_subq,
             models.PubResource.resource_id == forks_count_subq.c.resource_id,
+        )
+        .outerjoin(
+            forked_from_subq,
+            models.PubResource.resource_id == forked_from_subq.c.resource_id,
         )
         .where(models.PubResource.resource_id == resource_id)
     )
@@ -194,10 +244,11 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
             check_active=False,
         )
 
-    resource, ratings_cnt, files_cnt, forks_cnt = result
+    resource, ratings_cnt, files_cnt, forks_cnt, forked_from_id = result
     resource.__dict__["ratings_count"] = int(ratings_cnt or 0)
     resource.__dict__["files_count"] = int(files_cnt or 0)
     resource.__dict__["forks_count"] = int(forks_cnt or 0)
+    resource.__dict__["forked_from_id"] = forked_from_id
     return PubResource.model_validate(resource)
 
 

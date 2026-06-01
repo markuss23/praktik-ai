@@ -26,7 +26,9 @@ app.add_middleware(
 
 
 @app.exception_handler(IntegrityError)
-async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+async def integrity_error_handler(
+    request: Request, exc: IntegrityError
+) -> JSONResponse:
     logger.error("Integrity error: %s", exc)
     return JSONResponse(
         status_code=400,

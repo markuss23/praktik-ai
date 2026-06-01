@@ -13,6 +13,7 @@ from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
     PubResourceCreated,
     PubResourceFile,
+    PubResourceCreateFork,
 )
 from api.storage import seaweedfs
 
@@ -136,3 +137,65 @@ def _detect_file_type(filename: str) -> models.AttachType:
         "webm": AttachType.video,
     }
     return mapping.get(ext, AttachType.other)
+
+
+def create_resource_fork(
+    db: Session,
+    resource_id: int,
+    data: PubResourceCreateFork,
+    user: models.User,
+) -> PubResourceCreated:
+    """Vytvoří fork (upravenou kopii) existujícího veřejného materiálu."""
+    original = get_or_404(
+        db, models.PubResource, resource_id, detail="Materiál nenalezen"
+    )
+    # overeni pokud je material public a zda povoluje forkovani
+    if not original.is_public:
+        raise HTTPException(
+            status_code=403, detail="Forky lze vytvářet pouze z veřejných materiálů"
+        )
+
+    if not original.allow_forks:
+        raise HTTPException(
+            status_code=403, detail="Autor tohoto materiálu neumožňuje vytváření forků"
+        )
+    # Kontrola unikátnosti názvu materiálu pro stejného autora
+    if (
+        db.execute(
+            select(models.PubResource).where(
+                models.PubResource.author_id == user.user_id,
+                models.PubResource.title == data.title,
+                models.PubResource.is_active.is_(True),
+            )
+        ).first()
+        is not None
+    ):
+        raise HTTPException(
+            status_code=409, detail="Materiál s tímto názvem již existuje"
+        )
+
+    resource_data = data.model_dump()
+    resource_data["subject_id"] = original.subject_id
+    resource_data["target_id"] = original.target_id
+    resource_data["education_level"] = original.education_level
+    resource_data["difficulty_level"] = original.difficulty_level
+
+    forked = models.PubResource(
+        **resource_data,
+        author_id=user.user_id,
+        is_fork=True,
+    )
+    db.add(forked)
+    db.flush()
+
+    fork_record = models.PubResourceFork(
+        original_id=resource_id,
+        forked_id=forked.resource_id,
+        author_id=user.user_id,
+    )
+    db.add(fork_record)
+
+    db.commit()
+    db.refresh(forked)
+
+    return PubResourceCreated.model_validate(forked)

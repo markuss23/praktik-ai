@@ -13,10 +13,13 @@ from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     IS_PUBLISHED_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
+    RESOURCE_IS_FORK_ANNOTATION,
+    RESROURCE_ORIGINAL_ID_ANNOTATION,
 )
 
 from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
+    PubResourceCreateFork,
     PubResourceCreated,
     PubResourceFile,
     PubResource,
@@ -32,6 +35,7 @@ from api.src.publicDB.resources.controllers import (
     update_resource,
     update_resource_status,
     update_resource_public_state,
+    create_resource_fork,
 )
 
 from api.database import SessionSqlSessionDependency
@@ -53,6 +57,8 @@ async def list_resources(
     resource_target_id: RESOURCE_TARGET_ID_ANNOTATION = None,
     resource_subject_id: RESOURCE_SUBJECT_ID_ANNOTATION = None,
     status: RESOURCE_STATUS_ANNOTATION = None,
+    is_fork: RESOURCE_IS_FORK_ANNOTATION = None,
+    original_id: RESROURCE_ORIGINAL_ID_ANNOTATION = None,
 ) -> list[PubResource]:
     return get_resources(
         db,
@@ -64,6 +70,8 @@ async def list_resources(
         resource_target_id=resource_target_id,
         resource_subject_id=resource_subject_id,
         status=status,
+        is_fork=is_fork,
+        original_id=original_id,
     )
 
 
@@ -165,3 +173,20 @@ async def endp_delete_resource_file(
     resource_id: int, file_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
     delete_resource_file(db, resource_id, file_id, user)
+
+
+# ----------- Fork endpoints -----------
+
+
+@router.post(
+    "/{resource_id}/fork",
+    operation_id="create_resource_fork",
+    dependencies=[require_role("user")],
+)
+async def endp_create_resource_fork(
+    resource_id: int,
+    data: PubResourceCreateFork,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> PubResourceCreated:
+    return create_resource_fork(db, resource_id, data, user)

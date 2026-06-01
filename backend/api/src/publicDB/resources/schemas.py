@@ -21,6 +21,12 @@ class PubResourceCreate(PubResourceBase):
     pass
 
 
+class PubResourceCreateFork(ORMModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    allow_forks: bool = False
+
+
 class PubResourceUpdate(PubResourceBase):
     pass
 
@@ -46,6 +52,7 @@ class PubResourceCreated(ORMModel):
     status: PubResourceStatus
     author_id: int
     allow_forks: bool
+    is_fork: bool
     is_public: bool
     created_at: datetime
 
@@ -58,6 +65,7 @@ class PubResource(PubResourceBase):
     is_public: bool
     status: PubResourceStatus
     is_fork: bool
+    forked_from_id: int | None = None
     created_at: datetime
     updated_at: datetime
     ratings_count: int = 0
