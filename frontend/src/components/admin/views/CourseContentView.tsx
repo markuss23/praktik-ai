@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LearnBlock, FeedbackItem, Status } from '@/api';
 import {
   updateModule, createModule, createLearnBlock, updateLearnBlock,
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { Modal } from '@/components/ui/Modal';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -213,7 +213,7 @@ function ModuleItem({
 
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
-  const { goToCourseTests, goBack } = useAdminNavigation();
+  const { goToCourseTests, goToCourseSummary, goBack } = useAdminNavigation();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
 
@@ -322,9 +322,11 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
   };
 
-  // Inicializace z courseData
+  // Inicializace z courseData – proběhne jen jednou (jakmile jsou data i editor k dispozici).
+  // Díky tomu revalidace dat na pozadí (z cache v useCourseData) nepřepíše rozepsané úpravy.
+  const initRef = useRef(false);
   useEffect(() => {
-    if (!courseData) return;
+    if (!courseData || !editor || initRef.current) return;
 
     const localModules: LocalModule[] = (courseData.modules || []).map((m) => ({
       moduleId: m.moduleId,
@@ -357,9 +359,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     });
     setModuleContents(initialContents);
 
-    if (editor && initialContents[0]) {
+    if (initialContents[0]) {
       editor.commands.setContent(initialContents[0].content);
     }
+    initRef.current = true;
   }, [courseData, editor, initialModuleId]);
 
   // Aktualizace obsahu editoru při změně modulu
@@ -482,6 +485,23 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const handleBack = async () => {
     await saveContent();
     goBack();
+  };
+
+  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  const handleStepNavigate = async (step: CourseStep) => {
+    if (step === 'content') return;
+    let savedModules: LocalModule[] | undefined;
+    try {
+      savedModules = await saveContent();
+    } catch {
+      return; // uložení selhalo (alert je zobrazen), zůstaneme na místě
+    }
+    if (step === 'tests') {
+      const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
+      goToCourseTests(courseId, selectedModule?.moduleId);
+    } else {
+      goToCourseSummary(courseId);
+    }
   };
 
   const [savingOnly, setSavingOnly] = useState(false);
@@ -633,10 +653,11 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
+      <CourseStepNav current="content" onNavigate={handleStepNavigate} />
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 view-fade-in">
           <CourseRubric />
         </div>
       ) : (
@@ -660,7 +681,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         </div>
       )} */}
 
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Left Sidebar - Course Outline (desktop) */}
         <div className="hidden lg:flex w-56 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
           <OutlineHeader

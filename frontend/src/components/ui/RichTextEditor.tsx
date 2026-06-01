@@ -26,6 +26,7 @@ import {
   Loader2,
   Trash2,
   Quote,
+  SeparatorHorizontal,
 } from 'lucide-react';
 
 // Toolbar Button
@@ -479,6 +480,15 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
         <ToolbarDivider />
 
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Zalomit list (začne nová stránka pro studenta)"
+        >
+          <SeparatorHorizontal size={16} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
         <ToolbarButton onClick={() => setImageDialogOpen(true)} title="Vložit obrázek">
           <ImageIcon size={16} />
         </ToolbarButton>
@@ -517,6 +527,8 @@ const EDITOR_EXTENSIONS = (placeholder: string) => [
       HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
     },
     blockquote: false,
+    // Vodorovná čára slouží jako značka zalomení listu (nová stránka u studenta)
+    horizontalRule: { HTMLAttributes: { class: 'page-break' } },
   }),
   Blockquote.configure({
     HTMLAttributes: {

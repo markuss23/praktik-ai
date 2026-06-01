@@ -9,6 +9,11 @@ interface UseCourseDataOptions {
   initialModuleId?: number;
 }
 
+// Cache načtených kurzů v rámci sezení – přepínání fází (podklady ↔ testy)
+// se tak vykreslí okamžitě z cache a data se jen na pozadí revalidují.
+type CourseData = Awaited<ReturnType<typeof getCourse>>;
+const courseCache = new Map<number, CourseData>();
+
 interface UseCourseDataResult {
   loading: boolean;
   error: string;
@@ -24,37 +29,61 @@ interface UseCourseDataResult {
 }
 
 export function useCourseData({ courseId, initialModuleId }: UseCourseDataOptions): UseCourseDataResult {
-  const [loading, setLoading] = useState(true);
+  const cached = courseCache.get(courseId) ?? null;
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState('');
-  const [courseTitle, setCourseTitle] = useState('');
-  const [modules, setModules] = useState<Module[]>([]);
+  const [courseTitle, setCourseTitle] = useState(cached?.title ?? '');
+  const [modules, setModules] = useState<Module[]>(cached?.modules ?? []);
   const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
-  const [courseData, setCourseData] = useState<Awaited<ReturnType<typeof getCourse>> | null>(null);
+  const [courseData, setCourseData] = useState<CourseData | null>(cached);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const applyInitialModule = (course: CourseData) => {
+      if (initialModuleId && course.modules) {
+        const idx = course.modules.findIndex(m => m.moduleId === initialModuleId);
+        if (idx >= 0) {
+          setSelectedModuleIndex(idx);
+          setExpandedOutlineItems(new Set([idx]));
+        }
+      }
+    };
+
+    // Pokud máme kurz v cache, vykreslíme ho okamžitě (bez loading spinneru)
+    const cachedNow = courseCache.get(courseId);
+    if (cachedNow) {
+      setCourseData(cachedNow);
+      setCourseTitle(cachedNow.title);
+      setModules(cachedNow.modules || []);
+      setLoading(false);
+      applyInitialModule(cachedNow);
+    } else {
+      setLoading(true);
+    }
+
     async function loadCourse() {
       try {
         const course = await getCourse(courseId);
+        if (cancelled) return;
+        courseCache.set(courseId, course);
         setCourseData(course);
         setCourseTitle(course.title);
         setModules(course.modules || []);
-
-        if (initialModuleId && course.modules) {
-          const idx = course.modules.findIndex(m => m.moduleId === initialModuleId);
-          if (idx >= 0) {
-            setSelectedModuleIndex(idx);
-            setExpandedOutlineItems(new Set([idx]));
-          }
-        }
+        applyInitialModule(course);
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load course:', err);
-        setError('Nepodařilo se načíst kurz');
+        // Chybu hlásíme jen pokud nemáme co zobrazit z cache
+        if (!courseCache.has(courseId)) setError('Nepodařilo se načíst kurz');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadCourse();
+
+    return () => { cancelled = true; };
   }, [courseId, initialModuleId]);
 
   const toggleOutlineItem = (index: number) => {

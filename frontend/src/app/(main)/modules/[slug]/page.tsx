@@ -11,6 +11,7 @@ import { Alert, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
+import PaperSheets from "@/components/module/PaperSheets";
 // import NotesPanel from "@/components/module/NotesPanel";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
@@ -379,8 +380,9 @@ export default function ModulePage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="bg-white rounded-lg p-6 sm:p-10"
-                style={{ border: '1px solid #e5e7eb' }}
+                /* Příručka se zobrazuje jako samostatné bílé listy na šedém pozadí. */
+                className={activeTab === 'prirucka' ? 'rounded-lg' : 'bg-white rounded-lg p-6 sm:p-10'}
+                style={activeTab === 'prirucka' ? undefined : { border: '1px solid #e5e7eb' }}
               >
                 {/* Transition loading overlay */}
                 {transitioning && (
@@ -408,19 +410,19 @@ export default function ModulePage() {
                   <>
                     {currentBlock ? (
                       <>
-                        <div className="mb-6 pb-4 border-b border-gray-100">
-                          <span className="text-sm text-gray-500">
-                            Stránka {currentBlockIndex + 1} z {totalBlocks}
-                          </span>
+                        {totalBlocks > 1 && (
+                          <div className="mb-4">
+                            <span className="text-sm text-gray-500">
+                              Část {currentBlockIndex + 1} z {totalBlocks}
+                            </span>
+                          </div>
+                        )}
+
+                        <div ref={contentRef}>
+                          <PaperSheets html={currentBlock.content} />
                         </div>
 
-                        <div
-                          ref={contentRef}
-                          className="module-content"
-                          dangerouslySetInnerHTML={{ __html: currentBlock.content }}
-                        />
-
-                        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+                        <div className="flex items-center justify-between mt-6 sm:mt-8 pt-6">
                           <button
                             onClick={handlePrevBlock}
                             disabled={currentBlockIndex === 0}

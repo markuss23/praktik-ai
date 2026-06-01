@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { czechPlural } from '@/lib/utils';
 import {
@@ -20,7 +20,7 @@ interface CourseSummaryViewProps {
 
 // Souhrn kurzu s přehledem modulů
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
-  const { goToCourseTests, goToCourses } = useAdminNavigation();
+  const { goToCourseTests, goToCourseContent, goToCourses } = useAdminNavigation();
   
   const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [loading, setLoading] = useState(true);
@@ -103,6 +103,20 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
   const handleBack = () => {
     goToCourseTests(courseId);
+  };
+
+  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  const handleStepNavigate = async (step: CourseStep) => {
+    if (step === 'summary') return;
+    try {
+      await saveCourseChanges();
+    } catch (err) {
+      console.error('Failed to save course:', err);
+      setError('Nepodařilo se uložit kurz');
+      return;
+    }
+    if (step === 'content') goToCourseContent(courseId);
+    else goToCourseTests(courseId);
   };
 
   const [savingOnly, setSavingOnly] = useState(false);
@@ -213,16 +227,19 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
       />
+      <CourseStepNav current="summary" onNavigate={handleStepNavigate} />
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Left Content - Summary */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <h2 className="font-semibold text-black">Přehled kurzu</h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div key={activeTab} className="flex-1 overflow-y-auto p-6 space-y-6 view-fade-in">
+            {activeTab === 'general' && (
+            <>
             {/* Editable Course Info */}
             <div className="space-y-4">
               <div>
@@ -313,10 +330,11 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
               )}
             </div>
 
+            </>
+            )}
+
             {activeTab === 'rubric' && (
-              <div className="pt-2">
-                <CourseRubric />
-              </div>
+              <CourseRubric />
             )}
 
           </div>

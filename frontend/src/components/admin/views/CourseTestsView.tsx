@@ -7,7 +7,7 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, type CreationTab } from '@/components/admin';
+import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
@@ -244,15 +244,37 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const saveTestContent = async () => {
+  // Otázka je "prázdná", pokud nemá vyplněné žádné pole (text, možnosti ani příklad odpovědi)
+  const isQuestionEmpty = (q: QuestionItem) =>
+    !q.question.trim() &&
+    !q.exampleAnswer?.trim() &&
+    q.options.every(opt => !opt.text.trim());
+
+  // Odstraní nevyplněné otázky, které nikdy nebyly uloženy (nemají questionId).
+  // Vrací aktuální mapu otázek, kterou lze rovnou předat do uložení/validace.
+  const pruneEmptyQuestions = (): {[key: number]: QuestionItem[]} => {
+    let changed = false;
+    const pruned: {[key: number]: QuestionItem[]} = {};
+    for (const key of Object.keys(moduleQuestions)) {
+      const idx = Number(key);
+      const list = moduleQuestions[idx] || [];
+      const kept = list.filter(q => q.questionId || !isQuestionEmpty(q));
+      if (kept.length !== list.length) changed = true;
+      pruned[idx] = kept;
+    }
+    if (changed) setModuleQuestions(pruned);
+    return pruned;
+  };
+
+  const saveTestContent = async (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions) => {
     try {
       const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1] }[] = [];
       const optionUpdatePromises: Promise<unknown>[] = [];
       const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
       const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
 
-      for (const moduleIndex of Object.keys(moduleQuestions)) {
-        const questionsForModule = moduleQuestions[Number(moduleIndex)] || [];
+      for (const moduleIndex of Object.keys(questionsMap)) {
+        const questionsForModule = questionsMap[Number(moduleIndex)] || [];
         const module = modules[Number(moduleIndex)];
 
         for (let qIndex = 0; qIndex < questionsForModule.length; qIndex++) {
@@ -359,11 +381,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     }
   };
 
-  const validateQuestions = (): ValidationError[] => {
+  const validateQuestions = (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions): ValidationError[] => {
     const errors: ValidationError[] = [];
-    for (const moduleIndexStr of Object.keys(moduleQuestions)) {
+    for (const moduleIndexStr of Object.keys(questionsMap)) {
       const moduleIndex = Number(moduleIndexStr);
-      const questionsForModule = moduleQuestions[moduleIndex] || [];
+      const questionsForModule = questionsMap[moduleIndex] || [];
       const module = modules[moduleIndex];
       const moduleName = module?.title || `Modul ${moduleIndex + 1}`;
 
@@ -395,7 +417,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     if (savingOnly) return;
     setSavingOnly(true);
     try {
-      await saveTestContent();
+      const pruned = pruneEmptyQuestions();
+      await saveTestContent(pruned);
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2000);
     } catch {
@@ -406,19 +429,21 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   };
 
   const handleFinish = async () => {
-    const errors = validateQuestions();
+    const pruned = pruneEmptyQuestions();
+    const errors = validateQuestions(pruned);
     if (errors.length > 0) {
       setValidationErrors(errors);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     setValidationErrors([]);
-    await saveTestContent();
+    await saveTestContent(pruned);
     goToCourseSummary(courseId);
   };
 
   const handleNextModule = async () => {
-    await saveTestContent();
+    const pruned = pruneEmptyQuestions();
+    await saveTestContent(pruned);
     if (selectedModuleIndex < modules.length - 1) {
       const nextIndex = selectedModuleIndex + 1;
       setSelectedModuleIndex(nextIndex);
@@ -428,8 +453,27 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   };
 
   const handleBack = async () => {
-    await saveTestContent();
+    // Prázdné (nikdy neuložené) otázky zahodíme, ať neblokují uložení a návrat zpět funguje
+    const pruned = pruneEmptyQuestions();
+    try {
+      await saveTestContent(pruned);
+    } catch {
+      // i kdyby se uložení nepodařilo, návrat zpět musí projít
+    }
     goToCourseContent(courseId);
+  };
+
+  // Přepnutí mezi fázemi tvorby (podklady → testy → souhrn) přes krokový přepínač
+  const handleStepNavigate = async (step: CourseStep) => {
+    if (step === 'tests') return;
+    const pruned = pruneEmptyQuestions();
+    try {
+      await saveTestContent(pruned);
+    } catch {
+      // i při chybě uložení umožníme přechod (alert je už zobrazen)
+    }
+    if (step === 'content') goToCourseContent(courseId);
+    else goToCourseSummary(courseId);
   };
 
   const isLastModule = selectedModuleIndex >= modules.length - 1;
@@ -596,10 +640,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
+      <CourseStepNav current="tests" onNavigate={handleStepNavigate} />
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 view-fade-in">
           <CourseRubric />
         </div>
       ) : (
@@ -638,7 +683,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         </div>
       )}
 
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Left Sidebar - Course Outline (desktop) */}
         <CourseOutlineSidebar
           items={outlineItems}
