@@ -225,6 +225,70 @@ hr.page-break::after {
   color: #9333ea;
 }
 
+/* ── Changelog accordion */
+@property --cl-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes clBorderSpin {
+  to {
+    --cl-angle: 360deg;
+  }
+}
+@keyframes clGlowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(177, 71, 92, 0);
+  }
+  50% {
+    box-shadow: 0 0 22px 2px rgba(133, 122, 210, 0.45);
+  }
+}
+.changelog-glow {
+  position: relative;
+  padding: 2px; /* tloušťka borderu */
+  border-radius: 0.85rem;
+  background: conic-gradient(
+    from var(--cl-angle),
+    #b1475c,
+    #857ad2,
+    #5ba8c2,
+    #857ad2,
+    #b1475c
+  );
+  animation: clBorderSpin 4s linear infinite, clGlowPulse 3s ease-in-out infinite;
+}
+.changelog-glow > * {
+  border-radius: 0.7rem;
+}
+
+/* Posouvající se gradientový nadpis */
+@keyframes clTextShimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+.changelog-title {
+  background: linear-gradient(90deg, #b1475c, #857ad2, #5ba8c2, #857ad2, #b1475c);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: clTextShimmer 3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .changelog-glow {
+    animation: none;
+    background: linear-gradient(135deg, #b1475c 0%, #857ad2 100%);
+  }
+  .changelog-title {
+    animation: none;
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / starší Edge */
