@@ -10,25 +10,17 @@ export function Footer() {
         <div className="flex flex-col mx-auto gap-8 sm:gap-12 lg:gap-12" style={{ maxWidth: '1240px', width: '100%' }}>
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" style={{ width: '100%' }}>
-          {/* Logo and Contact Info */}
+          {/* Logo */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 sm:gap-3">
-              <Image 
-                src="/logo.svg" 
-                alt="PRAKTIK-AI Logo" 
-                width={81} 
+              <Image
+                src="/logo.svg"
+                alt="PRAKTIK-AI Logo"
+                width={81}
                 height={83}
                 className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px]"
               />
               <span className="text-lg sm:text-xl font-bold text-black">PRAKTIK-AI</span>
-            </div>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>Datová schránka: 6nhj9dq</p>
-              <p>tel.: +420 475 286 222</p>
-              <p>podatelna@ujep.cz</p>
-              <p className="mt-3">IČ: 44555601</p>
-              <p>DIČ: CZ44555601</p>
-              <p className="mt-2">Sídlo: Pasteurova 3544/1, 400 96 Ústí nad Labem</p>
             </div>
           </div>
 
@@ -95,10 +87,16 @@ export function Footer() {
           </div>
 
         {/* Copyright */}
-        <div className="text-center" style={{ width: '100%', minHeight: '24px' }}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2" style={{ width: '100%', minHeight: '24px' }}>
           <p className="text-sm text-gray-500">
             © {currentYear} All rights reserved
           </p>
+          <Link
+            href="/ochrana-udaju"
+            className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
+          >
+            Ochrana údajů
+          </Link>
         </div>
         </div>
       </div>

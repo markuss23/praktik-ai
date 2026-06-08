@@ -24,6 +24,7 @@ dependencies = [
     "langchain-core>=1.2.9",
     "gunicorn>=25.1.0",
     "python-docx>=1.2.0",
+    "langchain-community>=0.4.1",
 ]
 
 [tool.ruff]

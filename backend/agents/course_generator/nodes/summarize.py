@@ -5,30 +5,6 @@ from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
 from api.src.agents.progress import set_progress
 
-DEFAULT_MODEL = "gpt-5.2"
-
-DEFAULT_PROMPT = (
-    "Analyzuj následující obsah a vytvoř strukturovaný souhrn "
-    "optimalizovaný pro vytvoření vzdělávacího kurzu.\n\n"
-    "INSTRUKCE:\n"
-    "1. Identifikuj hlavní tematické celky, které lze rozdělit do samostatných modulů. "
-    "Pokud obsah pokrývá méně témat, rozděl dostupný obsah na logické části bez vymýšlení nového obsahu.\n"
-    "2. Pro každý tematický celek extrahuj:\n"
-    "- Klíčové koncepty a pojmy k naučení\n"
-    "- Praktické příklady a ukázky\n"
-    "- Fakta vhodná pro testové otázky (ABC)\n\n"
-    "3. Výstup strukturuj takto:\n\n"
-    "TÉMA 1: [název tématu]\n"
-    "- Klíčové koncepty: [seznam pojmů a definic]\n"
-    "- Látka k naučení: [detailní vysvětlení]\n"
-    "- Testovatelná fakta: [konkrétní informace pro otázky]\n\n"
-    "TÉMA 2: [název tématu]\n"
-    "...\n\n"
-    "4. Zachovej odbornou terminologii a přesné definice\n"
-    "5. Maximální délka: 4000 znaků\n"
-    "6. Piš v češtině, bez markdown formátování"
-)
-
 
 def summarize_content_node(state: AgentState) -> AgentState:
     """Node pro vytvoření sumarizaci kurzu."""
@@ -48,21 +24,19 @@ def summarize_content_node(state: AgentState) -> AgentState:
     if course_id is None:
         raise ValueError("course_id is not available in state")
 
-    cfg = get_llm_config(
-        db,
-        "course_summarizer",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
+    cfg = get_llm_config(db, "course_summarizer")
     model = create_chat_llm(cfg.model)
 
     modules_count = course_input.modules_count_ai_generated
+    duration_minutes = course_input.duration_minutes
+    duration_info = f"{duration_minutes} minut" if duration_minutes is not None else "neurčena"
 
     prompt: str = f"""{cfg.prompt}
 
                 KURZ: {course_input.title}
                 POPIS: {course_input.description}
                 POČET MODULŮ: {modules_count}
+                DÉLKA KURZU: {duration_info}
 
                 ZDROJOVÝ OBSAH:
                 {source_content}"""

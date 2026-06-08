@@ -33,6 +33,7 @@ from api.src.courses.controllers import (
     get_courses,
     get_course,
     get_course_files,
+    get_recommended_courses,
     update_course,
     delete_course,
     upload_course_file,
@@ -50,6 +51,27 @@ from agents.embedding_generator.state import AgentState
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 public_router = APIRouter(prefix="/courses", tags=["Courses"])
+
+
+# DŮLEŽITÉ: `/recommended` MUSÍ být zaregistrované před `/{course_id}` na
+# public_routeru, protože `public_router` je v main routers.py includovaný
+# dříve než auth `router`. Jinak FastAPI nejdřív matchne `/{course_id}`
+# a pokusí se "recommended" konvertovat na int → 422.
+# Auth se vyřeší přes `require_role("user")`, který interně pulluje
+# `auth.get_current_user` (viz dependencies.py).
+@public_router.get(
+    "/recommended",
+    operation_id="list_recommended_courses",
+    dependencies=[require_role("user")],
+)
+async def endp_list_recommended_courses(
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+    limit: int = 3,
+) -> list[Course]:
+    """Vrátí kurzy doporučené aktuálnímu uživateli — preferuje předměty,
+    do nichž je již zapsán, tiebreaker je popularita. Vylučuje již zapsané."""
+    return get_recommended_courses(db, user=user, limit=limit)
 
 
 @public_router.get("", operation_id="list_courses")
@@ -150,7 +172,7 @@ async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> CourseFile:
     """Nahraje soubor ke kurzu"""
     return await upload_course_file(db, course_id, file, user)

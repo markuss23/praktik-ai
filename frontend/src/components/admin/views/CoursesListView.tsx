@@ -12,7 +12,7 @@ import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useToast } from "@/components/ui";
+import { useToast, ConfirmModal, type ConfirmVariant } from "@/components/ui";
 import { czechPlural } from "@/lib/utils";
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
@@ -41,6 +41,27 @@ export function CoursesListView() {
 
   // Status change loading
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
+
+  // Potvrzovací modal pro významné akce (odeslat ke schválení, archivovat, …)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: ConfirmVariant;
+    action: () => Promise<void> | void;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const runConfirm = async () => {
+    if (!confirmConfig) return;
+    setConfirmLoading(true);
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmLoading(false);
+      setConfirmConfig(null);
+    }
+  };
 
   // Quick edit state (inline accordion)
   const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
@@ -252,7 +273,43 @@ export function CoursesListView() {
     }
   };
 
-  // Modal handlers 
+  // Potvrzovací – otevřou modal, samotnou akci spustí až po potvrzení
+
+  const requestSubmitForReview = (course: Course) => setConfirmConfig({
+    title: 'Odeslat ke schválení',
+    message: `Opravdu chcete odeslat kurz „${course.title}" ke schválení? Dokud nebude zkontrolován, nebudete ho moci upravovat.`,
+    confirmLabel: 'Odeslat',
+    variant: 'primary',
+    action: () => handleSubmitForReview(course),
+  });
+
+  const requestArchive = (course: Course) => setConfirmConfig({
+    title: 'Archivovat kurz',
+    message: `Opravdu chcete archivovat kurz „${course.title}"? Přestane být dostupný studentům.`,
+    confirmLabel: 'Archivovat',
+    variant: 'warning',
+    action: () => handleArchive(course),
+  });
+
+  const requestRevertToEditing = (course: Course) => setConfirmConfig({
+    title: 'Vrátit do úprav',
+    message: `Opravdu chcete vrátit kurz „${course.title}" zpět do úprav? Pokud je publikovaný, bude zároveň zrušeno jeho publikování.`,
+    confirmLabel: 'Vrátit do úprav',
+    variant: 'warning',
+    action: () => handleRevertToEditing(course),
+  });
+
+  const requestTogglePublish = (course: Course) => setConfirmConfig({
+    title: course.isPublished ? 'Zrušit publikování' : 'Publikovat kurz',
+    message: course.isPublished
+      ? `Opravdu chcete zrušit publikování kurzu „${course.title}"? Přestane být dostupný studentům.`
+      : `Opravdu chcete publikovat kurz „${course.title}"? Stane se dostupným studentům.`,
+    confirmLabel: course.isPublished ? 'Zrušit publikování' : 'Publikovat',
+    variant: course.isPublished ? 'warning' : 'primary',
+    action: () => togglePublish(course),
+  });
+
+  // Modal handlers
 
   const openCreateCourseModal = () => {
     setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
@@ -521,7 +578,7 @@ export function CoursesListView() {
                                 {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
                                 {canPublishCourse(course) && (
                                   <button
-                                    onClick={() => togglePublish(course)}
+                                    onClick={() => requestTogglePublish(course)}
                                     className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
                                   >
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
@@ -540,7 +597,7 @@ export function CoursesListView() {
                               <>
                                 {/* Published (non-archived): archive (+ delete for superadmin) */}
                                 <button
-                                  onClick={() => handleArchive(course)}
+                                  onClick={() => requestArchive(course)}
                                   disabled={statusLoading === course.courseId}
                                   className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                 >
@@ -578,7 +635,7 @@ export function CoursesListView() {
                                 {/* Submit for review - owner can submit when in editable status */}
                                 {canSubmitForReview(course) && (
                                   <button
-                                    onClick={() => handleSubmitForReview(course)}
+                                    onClick={() => requestSubmitForReview(course)}
                                     disabled={statusLoading === course.courseId}
                                     className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                   >
@@ -589,7 +646,7 @@ export function CoursesListView() {
                                 {/* Publish - only when approved and not yet published */}
                                 {canPublishCourse(course) && course.status === Status.Approved && (
                                   <button
-                                    onClick={() => togglePublish(course)}
+                                    onClick={() => requestTogglePublish(course)}
                                     className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
                                   >
                                     Publikovat
@@ -599,7 +656,7 @@ export function CoursesListView() {
                                 {/* Revert to editing - superadmin only, when approved */}
                                 {isSuperAdmin && course.status === Status.Approved && (
                                   <button
-                                    onClick={() => handleRevertToEditing(course)}
+                                    onClick={() => requestRevertToEditing(course)}
                                     disabled={statusLoading === course.courseId}
                                     className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                   >
@@ -721,7 +778,7 @@ export function CoursesListView() {
                 isExpanded={expandedCourse === course.courseId}
                 modules={courseModules[course.courseId] || []}
                 onToggleExpand={() => toggleCourseExpand(course.courseId)}
-                onTogglePublish={() => togglePublish(course)}
+                onTogglePublish={() => requestTogglePublish(course)}
                 onDelete={() => handleDeleteClick(course.courseId)}
                 onEditCourse={() => goToCourseContent(course.courseId)}
                 onCloseExpand={closeCourseExpand}
@@ -738,10 +795,10 @@ export function CoursesListView() {
                 canEdit={canEditCourse(course)}
                 canPublish={canPublishCourse(course)}
                 canDelete={canDeleteCourse(course)}
-                onSubmitForReview={() => handleSubmitForReview(course)}
+                onSubmitForReview={() => requestSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
-                onRevertToEditing={() => handleRevertToEditing(course)}
-                onArchive={() => handleArchive(course)}
+                onRevertToEditing={() => requestRevertToEditing(course)}
+                onArchive={() => requestArchive(course)}
                 statusLoading={statusLoading === course.courseId}
               />
             ))}
@@ -785,6 +842,17 @@ export function CoursesListView() {
           setModuleToDelete(null);
         }}
       />
+
+      <ConfirmModal
+        isOpen={confirmConfig !== null}
+        title={confirmConfig?.title ?? ''}
+        message={confirmConfig?.message ?? ''}
+        confirmLabel={confirmConfig?.confirmLabel}
+        variant={confirmConfig?.variant}
+        loading={confirmLoading}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirmConfig(null)}
+      />
     </>
   );
 }
@@ -811,7 +879,7 @@ function ExpandedModuleList({
   onEditModuleName,
   onToggleModuleActive,
   onDeleteModule,
-  onAddModule,
+  // onAddModule, // možnost "Přidat modul" dočasně skryta
 }: ExpandedModuleListProps) {
   return (
     <div className="p-6">
@@ -855,6 +923,7 @@ function ExpandedModuleList({
           ))}
         </div>
 
+        {/* Možnost "Přidat modul" dočasně skryta
         <div className="p-4 border-t">
           <button
             onClick={onAddModule}
@@ -866,6 +935,7 @@ function ExpandedModuleList({
             </svg>
           </button>
         </div>
+        */}
       </div>
     </div>
   );
@@ -909,7 +979,7 @@ function MobileCourseCard({
   onEditModule,
   onToggleModuleActive,
   onDeleteModule,
-  onAddModule,
+  // onAddModule, // možnost "Přidat modul" dočasně skryta
   canEdit,
   canPublish,
   canDelete,
@@ -1013,12 +1083,14 @@ function MobileCourseCard({
               </div>
             ))}
           </div>
+          {/* Možnost "Přidat modul" dočasně skryta
           <button
             onClick={onAddModule}
             className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm w-full"
           >
             <span>Přidat modul</span>
           </button>
+          */}
           <button
             onClick={onEditCourse}
             className="mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm w-full"

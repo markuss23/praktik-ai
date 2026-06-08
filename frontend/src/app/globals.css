@@ -180,6 +180,65 @@ body {
   display: none !important;
 }
 
+/* fade-in pro přepínání fází tvorby kurzu  */
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.view-fade-in {
+  animation: viewFadeIn 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-fade-in {
+    animation: none;
+  }
+}
+
+/* "List" obsahu modulu – bílá stránka jako ve Wordu, oddělená mezerou */
+.paper-sheet {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Značka zalomení listu v editoru  */
+hr.page-break {
+  border: 0;
+  border-top: 2px dashed #c084fc;
+  height: 0;
+  margin: 2rem 0;
+  overflow: visible;
+  position: relative;
+}
+hr.page-break::after {
+  content: "nový list";
+  position: absolute;
+  top: -0.72em;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 0.5rem;
+  background-color: #ffffff;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9333ea;
+}
+
+/* ── Changelog accordion */
+.changelog-glow {
+  position: relative;
+  border-radius: 0.85rem;
+  border: 1px solid #e5e7eb;
+}
+.changelog-glow > * {
+  border-radius: 0.7rem;
+}
+
+.changelog-title {
+  color: #111827;
+}
+
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / starší Edge */

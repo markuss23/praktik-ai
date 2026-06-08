@@ -159,7 +159,7 @@ async def endp_upload_resource_file(
     resource_id: int,
     user: CurrentUser,
     db: SessionSqlSessionDependency,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> PubResourceFile:
     return await upload_resource_file(db, resource_id, file, user)
 

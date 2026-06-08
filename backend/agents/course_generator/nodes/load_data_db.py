@@ -45,6 +45,7 @@ def load_data_from_db_node(state: AgentState) -> AgentState:
         title=course.title,
         description=course.description,
         modules_count_ai_generated=course.modules_count_ai_generated,
+        duration_minutes=course.duration_minutes,
         files=file_paths,
     )
 
