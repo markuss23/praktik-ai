@@ -50,3 +50,18 @@ RESOURCE_IS_FORK_ANNOTATION = Annotated[
 RESROURCE_ORIGINAL_ID_ANNOTATION = Annotated[
     int | None, Query(description="Filter by original resource ID for forks")
 ]
+REVIEW_VERDICT_ANNOTATION = Annotated[
+    str | None, Query(description="Filter reviews by verdict")
+]
+REVIEW_RESOURCE_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter reviews by resource ID")
+]
+REVIEW_REVIEWER_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter reviews by reviewer ID")
+]
+RATING_SCORE_MIN_ANNOTATION = Annotated[
+    int | None, Query(description="Minimum rating score to filter by")
+]
+RATING_SCORE_MAX_ANNOTATION = Annotated[
+    int | None, Query(description="Maximum rating score to filter by")
+]

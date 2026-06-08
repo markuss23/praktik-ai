@@ -1145,7 +1145,7 @@ class PubResourceRating(TimestampMixin, SoftDeleteMixin, Base):
     user: Mapped[User] = relationship(foreign_keys=[user_id])
 
     def get_owner_id(self) -> int:
-        return self.resource.author_id
+        return self.user_id
 
 
 class PubResourceReview(SoftDeleteMixin, Base):

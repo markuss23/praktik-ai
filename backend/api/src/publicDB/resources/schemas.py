@@ -66,15 +66,16 @@ class PubResource(PubResourceBase):
     status: PubResourceStatus
     is_fork: bool
     forked_from_id: int | None = None
-    created_at: datetime
-    updated_at: datetime
     ratings_count: int = 0
+    avg_rating: float | None = None
     files_count: int = 0
     forks_count: int = 0
 
     files: list[PubResourceFile] = []
     subject: CourseSubject | None = None
     target: CourseTarget | None = None
+    created_at: datetime
+    updated_at: datetime
 
     @model_validator(mode="before")
     @classmethod

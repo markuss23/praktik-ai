@@ -17,6 +17,7 @@ from api.src.module_tickets.routers import router as module_tickets_router
 from api.src.publicDB.resources.routers import router as resources_router
 from api.src.publicDB.resources.routers import public_router as resources_public_router
 from api.src.publicDB.reviews.routers import router as review_router
+from api.src.publicDB.rating.routers import router as rating_router
 from api.dependencies import auth
 
 router = APIRouter()
@@ -52,3 +53,4 @@ router.include_router(resources_public_router)
 
 router.include_router(resources_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(review_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(rating_router, dependencies=[Depends(auth.get_current_user)])

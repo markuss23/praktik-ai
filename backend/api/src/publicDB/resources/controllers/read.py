@@ -30,6 +30,7 @@ def get_resources(
         select(
             models.PubResourceRating.resource_id.label("resource_id"),
             func.count(models.PubResourceRating.rating_id).label("ratings_cnt"),
+            func.avg(models.PubResourceRating.score).label("avg_score"),
         )
         .where(models.PubResourceRating.is_active.is_(True))
         .group_by(models.PubResourceRating.resource_id)
@@ -69,6 +70,7 @@ def get_resources(
     ratings_count_col = func.coalesce(ratings_count_subq.c.ratings_cnt, 0).label(
         "ratings_count"
     )
+    avg_rating_col = ratings_count_subq.c.avg_score.label("avg_rating")
     files_count_col = func.coalesce(files_count_subq.c.files_cnt, 0).label(
         "files_count"
     )
@@ -81,6 +83,7 @@ def get_resources(
         select(
             models.PubResource,
             ratings_count_col,
+            avg_rating_col,
             files_count_col,
             forks_count_col,
             forked_from_col,
@@ -146,8 +149,11 @@ def get_resources(
 
     rows = db.execute(stm).all()
     result: list[PubResource] = []
-    for resource, ratings_cnt, files_cnt, forks_cnt, forked_from_id in rows:
+    for resource, ratings_cnt, avg_rating, files_cnt, forks_cnt, forked_from_id in rows:
         resource.__dict__["ratings_count"] = int(ratings_cnt or 0)
+        resource.__dict__["avg_rating"] = (
+            float(round(avg_rating, 2)) if avg_rating is not None else None
+        )
         resource.__dict__["files_count"] = int(files_cnt or 0)
         resource.__dict__["forks_count"] = int(forks_cnt or 0)
         resource.__dict__["forked_from_id"] = forked_from_id
@@ -161,6 +167,7 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
         select(
             models.PubResourceRating.resource_id.label("resource_id"),
             func.count(models.PubResourceRating.rating_id).label("ratings_cnt"),
+            func.avg(models.PubResourceRating.score).label("avg_score"),
         )
         .where(models.PubResourceRating.is_active.is_(True))
         .group_by(models.PubResourceRating.resource_id)
@@ -199,6 +206,7 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
     ratings_count_col = func.coalesce(ratings_count_subq.c.ratings_cnt, 0).label(
         "ratings_count"
     )
+    avg_rating_col = ratings_count_subq.c.avg_score.label("avg_rating")
     files_count_col = func.coalesce(files_count_subq.c.files_cnt, 0).label(
         "files_count"
     )
@@ -211,6 +219,7 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
         select(
             models.PubResource,
             ratings_count_col,
+            avg_rating_col,
             files_count_col,
             forks_count_col,
             forked_from_col,
@@ -244,8 +253,11 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
             check_active=False,
         )
 
-    resource, ratings_cnt, files_cnt, forks_cnt, forked_from_id = result
+    resource, ratings_cnt, avg_rating, files_cnt, forks_cnt, forked_from_id = result
     resource.__dict__["ratings_count"] = int(ratings_cnt or 0)
+    resource.__dict__["avg_rating"] = (
+        float(round(avg_rating, 2)) if avg_rating is not None else None
+    )
     resource.__dict__["files_count"] = int(files_cnt or 0)
     resource.__dict__["forks_count"] = int(forks_cnt or 0)
     resource.__dict__["forked_from_id"] = forked_from_id
