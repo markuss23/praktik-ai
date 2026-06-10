@@ -43,5 +43,8 @@
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "shell-quote": "^1.8.4"
   }
 }

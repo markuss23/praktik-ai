@@ -133,6 +133,15 @@ export function CoursesListView() {
     }
   }, []);
 
+  // Obnovení čísla stránky z localStorage (návrat z editace na stejnou stránku)
+  useEffect(() => {
+    const savedPage = localStorage.getItem('coursesListPage');
+    if (savedPage) {
+      const n = parseInt(savedPage, 10);
+      if (Number.isFinite(n) && n > 0) setPage(n);
+    }
+  }, []);
+
   // Načtení modulů při změně rozbalené kurzu
   useEffect(() => {
     async function loadModulesForExpandedCourse() {
@@ -192,18 +201,33 @@ export function CoursesListView() {
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
   const pagedCourses = filteredCourses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Po změně filtrů zpět na první stránku
+  // Po změně filtrů zpět na první stránku (první běh přeskočíme kvůli obnově stránky)
+  const isFirstFilterRun = useRef(true);
   useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
     setPage(1);
   }, [
     debouncedSearch, filters.onlyMine, filters.difficulty, filters.status,
     filters.published, filters.blockId, filters.targetId, filters.subjectId,
   ]);
 
-  // Drž stránku v platném rozsahu (např. po smazání kurzu)
+  // Drž stránku v platném rozsahu (až po načtení, ať neoříznutí obnovenou stránku)
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    if (!coursesLoading && page > totalPages) setPage(totalPages);
+  }, [page, totalPages, coursesLoading]);
+
+  // Zapamatuj číslo stránky (první běh přeskočíme, ať nepřepíšeme obnovenou hodnotu)
+  const isFirstPagePersist = useRef(true);
+  useEffect(() => {
+    if (isFirstPagePersist.current) {
+      isFirstPagePersist.current = false;
+      return;
+    }
+    localStorage.setItem('coursesListPage', String(page));
+  }, [page]);
 
   // Zavři rozbalené sekce při kliknutí mimo ně nebo klávesou Escape
   useEffect(() => {
@@ -227,15 +251,12 @@ export function CoursesListView() {
     };
   }, [expandedCourse, quickEditCourseId, closeAllExpanded]);
 
-  // Po přechodu na jinou stránku zavři rozbalené sekce na pozadí
-  const isFirstPageRender = useRef(true);
-  useEffect(() => {
-    if (isFirstPageRender.current) {
-      isFirstPageRender.current = false;
-      return;
-    }
+  // Přechod na jinou stránku přes paginaci: nejdřív přejdi, pak na pozadí zavři sekce.
+  // (Voláno z klik handleru, ne z efektu na `page`, aby obnova stránky sekce nezavírala.)
+  const handlePageChange = (next: number) => {
+    setPage(next);
     closeAllExpanded();
-  }, [page, closeAllExpanded]);
+  };
 
   //  Course actions
 
@@ -919,7 +940,7 @@ export function CoursesListView() {
 
           {/* Paginace */}
           {!coursesLoading && filteredCourses.length > PAGE_SIZE && (
-            <CoursePagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            <CoursePagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
         </div>
       </div>

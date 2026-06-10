@@ -11,6 +11,8 @@ interface UseAutosaveOptions {
 
 // Debounced autosave: po `delay` ms od poslední změny zavolá save().
 // Initial hodnotu přeskočí, při unmountu doulží neuloženou změnu (flush).
+// "Uloženo" hlásí jen když aktuální hodnota opravdu odpovídá uložené;
+// změny během ukládání se po dokončení uloží znovu.
 export function useAutosave<T>(
   value: T,
   save: () => Promise<void>,
@@ -20,37 +22,50 @@ export function useAutosave<T>(
 
   const [status, setStatus] = useState<SaveStatus>('idle');
 
-  // Poslední uložený snapshot pro porovnání změn.
+  // Poslední úspěšně uložený snapshot.
   const savedSnapshotRef = useRef<string | null>(null);
-  // Nejnovější hodnota a callback (pro flush na unmount).
+  // Nejnovější hodnota / callback / delay (pro běh mimo render).
   const valueRef = useRef(value);
   valueRef.current = value;
   const saveRef = useRef(save);
   saveRef.current = save;
-  // Neuložená změna + běžící timery.
-  const dirtyRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayRef = useRef(delay);
+  delayRef.current = delay;
 
-  // Uloží nejnovější hodnotu (volá se z timeru i z flushe na unmount).
+  const savingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const runSaveRef = useRef(async () => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    if (!dirtyRef.current) return;
+    if (savingRef.current) return; // už běží; po dokončení se znovu zkontroluje
+
     const snapshot = JSON.stringify(valueRef.current);
+    if (snapshot === savedSnapshotRef.current) return; // není co ukládat
+
+    savingRef.current = true;
     setStatus('saving');
     try {
       await saveRef.current();
       savedSnapshotRef.current = snapshot;
-      dirtyRef.current = false;
-      setStatus('saved');
-      if (savedResetRef.current) clearTimeout(savedResetRef.current);
-      savedResetRef.current = setTimeout(() => setStatus('idle'), 2000);
     } catch {
-      // Necháme dirty, zkusí to příští změna/flush.
+      savingRef.current = false;
+      setStatus('pending'); // necháme neuložené, zkusí příští změna/flush
+      return;
+    }
+    savingRef.current = false;
+
+    // Změnilo se něco během ukládání? Pokud ano, ulož znovu.
+    if (JSON.stringify(valueRef.current) === savedSnapshotRef.current) {
+      setStatus('saved');
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => setStatus('idle'), 2000);
+    } else {
       setStatus('pending');
+      timerRef.current = setTimeout(() => void runSaveRef.current(), delayRef.current);
     }
   });
 
@@ -68,13 +83,12 @@ export function useAutosave<T>(
     // Beze změny.
     if (snapshot === savedSnapshotRef.current) return;
 
-    dirtyRef.current = true;
     setStatus('pending');
-
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      void runSaveRef.current();
-    }, delay);
+    // Když právě běží uložení, nový timer neplánuj – přeplánuje se po jeho dokončení.
+    if (!savingRef.current) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => void runSaveRef.current(), delay);
+    }
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -82,14 +96,12 @@ export function useAutosave<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(value), enabled, delay]);
 
-  // Flush na unmount.
+  // Flush na unmount – ať se rozepsaný obsah neztratí při odchodu z editace.
   useEffect(() => {
     const runSave = runSaveRef.current;
-    const dirty = dirtyRef;
-    const savedReset = savedResetRef;
     return () => {
-      if (savedReset.current) clearTimeout(savedReset.current);
-      if (dirty.current) void runSave();
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (JSON.stringify(valueRef.current) !== savedSnapshotRef.current) void runSave();
     };
   }, []);
 

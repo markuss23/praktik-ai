@@ -11,7 +11,7 @@ import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCr
 import { Modal } from '@/components/ui/Modal';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
 import {
@@ -472,6 +472,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         }
       }
       await Promise.all(learnBlockPromises);
+      invalidateCourseCache(courseId);
       return updatedModules;
     } catch (err) {
       console.error('Failed to save content:', err);
@@ -518,7 +519,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const { status: saveStatus } = useAutosave(
     autosaveValue,
     async () => { await saveContent(); },
-    { delay: 500, enabled: contentInitialized },
+    { delay: 3000, enabled: contentInitialized },
   );
 
   if (courseLoading) return <LoadingState />;

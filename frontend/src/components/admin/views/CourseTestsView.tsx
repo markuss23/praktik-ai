@@ -10,7 +10,7 @@ import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { useCourseData } from '@/hooks/useCourseData';
+import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
 import {
@@ -375,6 +375,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           }
         }
       }
+      invalidateCourseCache(courseId);
     } catch (err) {
       console.error('Failed to save test content:', err);
       alert('Nepodařilo se uložit obsah testu');
@@ -435,7 +436,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const { status: saveStatus } = useAutosave(
     autosaveValue,
     async () => { await saveTestContent(pruneEmptyQuestions()); },
-    { delay: 500, enabled: questionsInitialized },
+    { delay: 3000, enabled: questionsInitialized },
   );
 
   const handleFinish = async () => {

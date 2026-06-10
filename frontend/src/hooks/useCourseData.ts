@@ -14,6 +14,14 @@ interface UseCourseDataOptions {
 type CourseData = Awaited<ReturnType<typeof getCourse>>;
 const courseCache = new Map<number, CourseData>();
 
+// Po uložení obsahu/testů je potřeba cache zneplatnit, aby si příští
+// otevření kurzu načetlo čerstvá data ze serveru (jinak by se zobrazila
+// stará verze z cache, dokud ji revalidace na pozadí nepřepíše).
+export function invalidateCourseCache(courseId?: number) {
+  if (courseId === undefined) courseCache.clear();
+  else courseCache.delete(courseId);
+}
+
 interface UseCourseDataResult {
   loading: boolean;
   error: string;
