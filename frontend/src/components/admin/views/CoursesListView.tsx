@@ -2,9 +2,10 @@
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
-import React, { useState, useEffect, useCallback } from "react";
-import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
+import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
@@ -12,8 +13,11 @@ import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useToast, ConfirmModal, type ConfirmVariant } from "@/components/ui";
 import { czechPlural } from "@/lib/utils";
+
+const PAGE_SIZE = 10;
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
@@ -22,7 +26,7 @@ export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
   const { blocks, targets, subjects } = useCatalogData();
-  const { isOwner } = useCurrentUser();
+  const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
 
   const [courses, setCourses] = useState<Course[]>([]);
@@ -34,6 +38,18 @@ export function CoursesListView() {
   const [deleting, setDeleting] = useState(false);
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
   const [courseModules, setCourseModules] = useState<{ [key: number]: Module[] }>({});
+
+  // Filtry a stránkování (klientské, nad načteným seznamem)
+  const [filters, setFilters] = useState<CourseFilterState>(DEFAULT_COURSE_FILTERS);
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const [page, setPage] = useState(1);
+
+  // Zavře rozbalené moduly i rychlé úpravy
+  const closeAllExpanded = useCallback(() => {
+    setExpandedCourse(null);
+    localStorage.removeItem('expandedCourse');
+    setQuickEditCourseId(null);
+  }, []);
 
   // Embedding generation state
   const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
@@ -151,7 +167,77 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
-  //  Course actions 
+  // Filtrování a stránkování
+
+  const filteredCourses = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return courses.filter((c) => {
+      if (filters.onlyMine && c.ownerId !== currentUser?.userId) return false;
+      if (filters.difficulty && c.difficulty !== filters.difficulty) return false;
+      if (filters.status && (c.status as string) !== filters.status) return false;
+      if (filters.published === 'yes' && !c.isPublished) return false;
+      if (filters.published === 'no' && c.isPublished) return false;
+      if (filters.blockId && c.courseBlockId !== filters.blockId) return false;
+      if (filters.targetId && c.courseTargetId !== filters.targetId) return false;
+      if (filters.subjectId && (c.courseSubjectId ?? 0) !== filters.subjectId) return false;
+      if (q && !c.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [
+    courses, currentUser?.userId, debouncedSearch,
+    filters.onlyMine, filters.difficulty, filters.status, filters.published,
+    filters.blockId, filters.targetId, filters.subjectId,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
+  const pagedCourses = filteredCourses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Po změně filtrů zpět na první stránku
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedSearch, filters.onlyMine, filters.difficulty, filters.status,
+    filters.published, filters.blockId, filters.targetId, filters.subjectId,
+  ]);
+
+  // Drž stránku v platném rozsahu (např. po smazání kurzu)
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  // Zavři rozbalené sekce při kliknutí mimo ně nebo klávesou Escape
+  useEffect(() => {
+    if (expandedCourse === null && quickEditCourseId === null) return;
+
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      // Klik uvnitř otevřené sekce nebo na její spouštěč nech být
+      if (target?.closest('[data-accordion-panel]')) return;
+      if (target?.closest('[data-accordion-keep]')) return;
+      closeAllExpanded();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeAllExpanded();
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [expandedCourse, quickEditCourseId, closeAllExpanded]);
+
+  // Po přechodu na jinou stránku zavři rozbalené sekce na pozadí
+  const isFirstPageRender = useRef(true);
+  useEffect(() => {
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
+    closeAllExpanded();
+  }, [page, closeAllExpanded]);
+
+  //  Course actions
 
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
@@ -503,10 +589,23 @@ export function CoursesListView() {
               ]}
             />
           </div>
-            {/* 
+            {/*
           { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
           { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
           */}
+
+          {/* Filtry */}
+          {!coursesLoading && courses.length > 0 && (
+            <CourseFilters
+              value={filters}
+              onChange={setFilters}
+              blocks={blocks}
+              targets={targets}
+              subjects={subjects}
+              totalCount={courses.length}
+              filteredCount={filteredCourses.length}
+            />
+          )}
 
           {/* Table - Desktop */}
           <div className="hidden md:block overflow-x-auto">
@@ -521,7 +620,7 @@ export function CoursesListView() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Akce</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody key={`page-${page}`} className="divide-y divide-gray-200">
                 {coursesLoading && courses.length === 0 ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
@@ -538,7 +637,13 @@ export function CoursesListView() {
                       {coursesError ?? 'Zatím nejsou žádné kurzy. Vytvořte první přes „Přidat kurz".'}
                     </td>
                   </tr>
-                ) : courses.map((course) => {
+                ) : filteredCourses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                      Žádné kurzy neodpovídají zvoleným filtrům.
+                    </td>
+                  </tr>
+                ) : pagedCourses.map((course, pageIndex) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
                   const handleRowClick = () => {
@@ -549,9 +654,11 @@ export function CoursesListView() {
                     }
                   };
                   return (
-                    <React.Fragment key={course.courseId}>
+                    <React.Fragment key={`${page}-${course.courseId}`}>
                       <tr
-                        className="hover:bg-gray-50 cursor-pointer"
+                        data-accordion-keep
+                        className="hover:bg-gray-50 cursor-pointer row-fade-in"
+                        style={{ animationDelay: `${pageIndex * 30}ms` }}
                         onClick={handleRowClick}
                         role="button"
                         tabIndex={0}
@@ -681,7 +788,7 @@ export function CoursesListView() {
 
                       {/* Quick Edit Accordion */}
                       {quickEditCourseId === course.courseId && (
-                        <tr>
+                        <tr data-accordion-panel>
                           <td colSpan={6} className="bg-purple-50 p-0 border-b border-purple-200">
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -743,7 +850,7 @@ export function CoursesListView() {
 
                       {/* Expanded Module List */}
                       {expandedCourse === course.courseId && (
-                        <tr>
+                        <tr data-accordion-panel>
                           <td colSpan={6} className="bg-gray-50 p-0">
                             <ExpandedModuleList
                               course={course}
@@ -770,10 +877,15 @@ export function CoursesListView() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden divide-y divide-gray-200">
-            {courses.map((course) => (
+          <div key={`mobile-page-${page}`} className="md:hidden divide-y divide-gray-200">
+            {!coursesLoading && courses.length > 0 && filteredCourses.length === 0 && (
+              <div className="px-4 py-12 text-center text-sm text-gray-500">
+                Žádné kurzy neodpovídají zvoleným filtrům.
+              </div>
+            )}
+            {pagedCourses.map((course, pageIndex) => (
+              <div key={`${page}-${course.courseId}`} className="row-fade-in" style={{ animationDelay: `${pageIndex * 30}ms` }}>
               <MobileCourseCard
-                key={course.courseId}
                 course={course}
                 isExpanded={expandedCourse === course.courseId}
                 modules={courseModules[course.courseId] || []}
@@ -801,8 +913,14 @@ export function CoursesListView() {
                 onArchive={() => requestArchive(course)}
                 statusLoading={statusLoading === course.courseId}
               />
+              </div>
             ))}
           </div>
+
+          {/* Paginace */}
+          {!coursesLoading && filteredCourses.length > PAGE_SIZE && (
+            <CoursePagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          )}
         </div>
       </div>
 
@@ -858,6 +976,79 @@ export function CoursesListView() {
 }
 
 // Pomocné komponenty
+
+// Stránkovací ovládání
+function CoursePagination({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+}) {
+  // Čísla stránek s výpustkami, ať ovládání není příliš dlouhé
+  const pages: (number | 'ellipsis')[] = [];
+  const pushRange = (from: number, to: number) => {
+    for (let i = from; i <= to; i++) pages.push(i);
+  };
+  if (totalPages <= 7) {
+    pushRange(1, totalPages);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push('ellipsis');
+    pushRange(Math.max(2, page - 1), Math.min(totalPages - 1, page + 1));
+    if (page < totalPages - 2) pages.push('ellipsis');
+    pages.push(totalPages);
+  }
+
+  const btnBase =
+    'min-w-[34px] h-[34px] px-2 flex items-center justify-center rounded-md text-sm font-medium transition-colors';
+
+  return (
+    <div data-accordion-keep className="flex items-center justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-white">
+      <span className="text-xs text-gray-500 whitespace-nowrap">
+        Stránka {page} z {totalPages}
+      </span>
+      <nav className="flex items-center gap-1" aria-label="Stránkování">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className={`${btnBase} text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed`}
+          aria-label="Předchozí stránka"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        {pages.map((p, i) =>
+          p === 'ellipsis' ? (
+            <span key={`e-${i}`} className="px-1 text-gray-400 select-none">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              aria-current={p === page ? 'page' : undefined}
+              className={`${btnBase} ${
+                p === page
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className={`${btnBase} text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed`}
+          aria-label="Další stránka"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </nav>
+    </div>
+  );
+}
 
 interface ExpandedModuleListProps {
   course: Course;
@@ -1011,7 +1202,7 @@ function MobileCourseCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <div data-accordion-keep className="mt-3 flex flex-wrap items-center gap-1.5">
         {statusStr === Status.Archived ? (
           <>
             {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
@@ -1058,7 +1249,7 @@ function MobileCourseCard({
 
       {/* Expanded Module List - Mobile */}
       {isExpanded && (
-        <div className="mt-4 bg-gray-50 rounded-lg p-3">
+        <div data-accordion-panel className="mt-4 bg-gray-50 rounded-lg p-3">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-gray-900 text-sm">Moduly</h4>
             <button onClick={onCloseExpand} className="text-gray-500 hover:text-gray-700">

@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
+import { Check, Cloud, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
+import type { SaveStatus } from '@/hooks/useAutosave';
 
 interface CoursePageHeaderProps {
   breadcrumb: string;
@@ -8,11 +9,45 @@ interface CoursePageHeaderProps {
   onSave?: () => void;
   saving?: boolean;
   saved?: boolean;
+  // Když je předán, místo tlačítka Uložit se zobrazí informativní indikátor autosave.
+  saveStatus?: SaveStatus;
   onPreview?: () => void;
   showButtons?: boolean;
   onMenuClick?: () => void;
   onCommentsClick?: () => void;
   commentsCount?: number;
+}
+
+// Neklikatelný indikátor stavu autosave.
+function SaveStatusIndicator({ status }: { status: SaveStatus }) {
+  const isSaving = status === 'saving';
+  const isPending = status === 'pending';
+
+  const styles = isPending
+    ? 'bg-amber-50 text-amber-700 border-amber-200'
+    : isSaving
+      ? 'bg-blue-50 text-blue-700 border-blue-200'
+      : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      title="Změny se ukládají automaticky"
+      className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md border text-sm font-medium select-none cursor-default ${styles} ${
+        status === 'saving' || status === 'saved' ? 'save-status-pop' : ''
+      }`}
+    >
+      {isSaving ? (
+        <Loader2 size={16} className="animate-spin" />
+      ) : isPending ? (
+        <Cloud size={16} />
+      ) : (
+        <Check size={16} />
+      )}
+      <span>{isSaving ? 'Ukládám…' : isPending ? 'Neuložené změny…' : 'Uloženo'}</span>
+    </div>
+  );
 }
 
 /**
@@ -25,6 +60,7 @@ export function CoursePageHeader({
   onSave,
   saving = false,
   saved = false,
+  saveStatus,
   onPreview,
   showButtons = false,
   onMenuClick,
@@ -79,7 +115,9 @@ export function CoursePageHeader({
                   Živý náhled kurzu
                 </button>
               )}
-              {onSave && (
+              {saveStatus !== undefined ? (
+                <SaveStatusIndicator status={saveStatus} />
+              ) : onSave ? (
                 <button
                   onClick={onSave}
                   disabled={saving}
@@ -96,7 +134,7 @@ export function CoursePageHeader({
                   )}
                   <span>{saving ? 'Ukládám...' : saved ? 'Uloženo' : 'Uložit'}</span>
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { LearnBlock, FeedbackItem, Status } from '@/api';
 import {
   updateModule, createModule, createLearnBlock, updateLearnBlock,
@@ -13,6 +13,7 @@ import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAutosave } from '@/hooks/useAutosave';
 import {
   Plus,
   Trash2,
@@ -325,6 +326,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   // Inicializace z courseData – proběhne jen jednou (jakmile jsou data i editor k dispozici).
   // Díky tomu revalidace dat na pozadí (z cache v useCourseData) nepřepíše rozepsané úpravy.
   const initRef = useRef(false);
+  // Stav (ne jen ref) pro zapnutí autosave až po inicializaci dat.
+  const [contentInitialized, setContentInitialized] = useState(false);
   useEffect(() => {
     if (!courseData || !editor || initRef.current) return;
 
@@ -363,6 +366,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       editor.commands.setContent(initialContents[0].content);
     }
     initRef.current = true;
+    setContentInitialized(true);
   }, [courseData, editor, initialModuleId]);
 
   // Aktualizace obsahu editoru při změně modulu
@@ -504,20 +508,18 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
   };
 
-  const [savingOnly, setSavingOnly] = useState(false);
-  const [savedFeedback, setSavedFeedback] = useState(false);
+  // Pro autosave sledujeme jen názvy a text obsahu, ne ID/learnId
+  // (ty se mění po uložení temp modulů a vznikla by smyčka ukládání).
+  const autosaveValue = useMemo(() => ({
+    titles: modules.map(m => m.title),
+    contents: modules.map((_, i) => moduleContents[i]?.content ?? ''),
+  }), [modules, moduleContents]);
 
-  const handleSave = async () => {
-    if (savingOnly) return;
-    setSavingOnly(true);
-    try {
-      await saveContent();
-      setSavedFeedback(true);
-      setTimeout(() => setSavedFeedback(false), 2000);
-    } finally {
-      setSavingOnly(false);
-    }
-  };
+  const { status: saveStatus } = useAutosave(
+    autosaveValue,
+    async () => { await saveContent(); },
+    { delay: 500, enabled: contentInitialized },
+  );
 
   if (courseLoading) return <LoadingState />;
   if (courseError) return <ErrorState message={courseError} />;
@@ -645,9 +647,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
-        onSave={handleSave}
-        saving={savingOnly}
-        saved={savedFeedback}
+        saveStatus={saveStatus}
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
@@ -740,7 +740,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             )}
           </div>
 
-          <PageFooterActions onBack={handleBack} onContinue={handleContinue} />
+          <PageFooterActions onBack={handleBack} onContinue={handleContinue} continueLabel="Uložit a pokračovat" />
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}

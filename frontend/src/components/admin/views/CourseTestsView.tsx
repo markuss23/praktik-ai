@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { QuestionType, FeedbackItem, Status } from '@/api';
 import {
   updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption,
@@ -12,6 +12,7 @@ import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAutosave } from '@/hooks/useAutosave';
 import {
   Plus,
   Trash2,
@@ -410,23 +411,32 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     return errors;
   };
 
-  const [savingOnly, setSavingOnly] = useState(false);
-  const [savedFeedback, setSavedFeedback] = useState(false);
-
-  const handleSave = async () => {
-    if (savingOnly) return;
-    setSavingOnly(true);
-    try {
-      const pruned = pruneEmptyQuestions();
-      await saveTestContent(pruned);
-      setSavedFeedback(true);
-      setTimeout(() => setSavedFeedback(false), 2000);
-    } catch {
-      // chyba je už zobrazena uvnitř saveTestContent
-    } finally {
-      setSavingOnly(false);
+  // Pro autosave sledujeme jen vyplněné otázky (bez ID a bez prázdných
+  // neuložených, ať přidání prázdné otázky nespouští ukládání).
+  const autosaveValue = useMemo(() => {
+    const norm: { [key: number]: unknown[] } = {};
+    for (const key of Object.keys(moduleQuestions)) {
+      const idx = Number(key);
+      norm[idx] = (moduleQuestions[idx] || [])
+        .filter(q => q.questionId || !(
+          !q.question.trim() && !q.exampleAnswer?.trim() && q.options.every(opt => !opt.text.trim())
+        ))
+        .map(q => ({
+          question: q.question,
+          type: q.type,
+          correctAnswer: q.correctAnswer,
+          exampleAnswer: q.exampleAnswer,
+          options: q.options.map(o => ({ text: o.text, isCorrect: o.isCorrect })),
+        }));
     }
-  };
+    return norm;
+  }, [moduleQuestions]);
+
+  const { status: saveStatus } = useAutosave(
+    autosaveValue,
+    async () => { await saveTestContent(pruneEmptyQuestions()); },
+    { delay: 500, enabled: questionsInitialized },
+  );
 
   const handleFinish = async () => {
     const pruned = pruneEmptyQuestions();
@@ -632,9 +642,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
         title="Tvorba obsahu testu"
-        onSave={handleSave}
-        saving={savingOnly}
-        saved={savedFeedback}
+        saveStatus={saveStatus}
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
@@ -858,8 +866,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   onClick={handleNextModule}
                   className="flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm bg-purple-600 text-white hover:bg-purple-700"
                 >
-                  <span className="hidden sm:inline">Pokračovat na modul {selectedModuleIndex + 2}</span>
-                  <span className="sm:hidden">Modul {selectedModuleIndex + 2}</span>
+                  <span className="hidden sm:inline">Uložit a pokračovat na modul {selectedModuleIndex + 2}</span>
+                  <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
                 </button>
               )}
               <button

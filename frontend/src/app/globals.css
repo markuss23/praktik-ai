@@ -194,6 +194,35 @@ body {
   }
 }
 
+/* Postupné naskakování řádků/karet při změně stránky (paginace) */
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.row-fade-in {
+  animation: rowFadeIn 0.25s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-fade-in {
+    animation: none;
+  }
+}
+
+/* Krátký „pop" pro informativní indikátor autosave (Ukládám… / Uloženo) */
+@keyframes saveStatusPop {
+  0% { transform: scale(0.94); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.save-status-pop {
+  animation: saveStatusPop 0.32s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-status-pop {
+    animation: none;
+  }
+}
+
 /* "List" obsahu modulu – bílá stránka jako ve Wordu, oddělená mezerou */
 .paper-sheet {
   background-color: #ffffff;
