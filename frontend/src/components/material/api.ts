@@ -9,8 +9,10 @@ import {
   deleteResource,
   uploadResourceFile,
   deleteResourceFile,
+  updateResourceStatus,
 } from "@/lib/api-client";
 import type { PubResource } from "@/api";
+import { UpdateResourceStatusNewStatusEnum } from "@/api";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 
 const EDU_LEVEL_LABELS: Record<string, string> = {
@@ -22,7 +24,7 @@ const EDU_LEVEL_LABELS: Record<string, string> = {
 const STATUS_MAP: Record<string, Material["status"]> = {
   approved: "approved",
   pending_review: "in_review",
-  draft: "in_review",
+  draft: "draft",
   rejected: "rejected",
 };
 
@@ -57,7 +59,7 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
       ? DIFFICULTY_LABELS[resource.difficultyLevel] ?? resource.difficultyLevel
       : "—",
     fileLabel: fileLabelFor(resource),
-    rating: 0,
+    rating: resource.avgRating ?? 0,
     reviewsCount: resource.ratingsCount ?? 0,
     categoryId: categoryIdFromSubject(resource.subject?.code, resource.subjectId),
     status: STATUS_MAP[resource.status] ?? "in_review",
@@ -164,6 +166,11 @@ export async function fetchMaterialsForReview(): Promise<Material[]> {
     console.error("fetchMaterialsForReview failed:", err);
     return [];
   }
+}
+
+// Odeslání konceptu ke schválení (draft → pending_review)
+export async function submitResourceForReview(resourceId: number): Promise<PubResource> {
+  return updateResourceStatus(resourceId, UpdateResourceStatusNewStatusEnum.PendingReview);
 }
 
 export {

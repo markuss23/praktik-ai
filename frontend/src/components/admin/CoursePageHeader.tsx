@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Cloud, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
+import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
 
 interface CoursePageHeaderProps {
@@ -18,34 +18,23 @@ interface CoursePageHeaderProps {
   commentsCount?: number;
 }
 
-// Neklikatelný indikátor stavu autosave.
+// Neklikatelný indikátor stavu autosave – jen dva stavy: Ukládám / Uloženo.
 function SaveStatusIndicator({ status }: { status: SaveStatus }) {
-  const isSaving = status === 'saving';
-  const isPending = status === 'pending';
-
-  const styles = isPending
-    ? 'bg-amber-50 text-amber-700 border-amber-200'
-    : isSaving
-      ? 'bg-blue-50 text-blue-700 border-blue-200'
-      : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  const isSaving = status === 'saving' || status === 'pending';
 
   return (
     <div
       role="status"
       aria-live="polite"
       title="Změny se ukládají automaticky"
-      className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md border text-sm font-medium select-none cursor-default ${styles} ${
-        status === 'saving' || status === 'saved' ? 'save-status-pop' : ''
+      className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md border text-sm font-medium select-none cursor-default ${
+        isSaving
+          ? 'bg-blue-50 text-blue-700 border-blue-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200 save-status-pop'
       }`}
     >
-      {isSaving ? (
-        <Loader2 size={16} className="animate-spin" />
-      ) : isPending ? (
-        <Cloud size={16} />
-      ) : (
-        <Check size={16} />
-      )}
-      <span>{isSaving ? 'Ukládám…' : isPending ? 'Neuložené změny…' : 'Uloženo'}</span>
+      {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+      <span>{isSaving ? 'Ukládám…' : 'Uloženo'}</span>
     </div>
   );
 }

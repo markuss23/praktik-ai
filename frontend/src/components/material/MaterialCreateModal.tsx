@@ -6,9 +6,11 @@ import {
   catalogsApi,
   createResource,
   uploadResourceFile,
+  updateResourceStatus,
+  getResource,
 } from "@/lib/api-client";
 import type { CourseSubject, CourseTarget, PubResource } from "@/api";
-import { Difficulty, EduLevel } from "@/api";
+import { Difficulty, EduLevel, UpdateResourceStatusNewStatusEnum } from "@/api";
 import { useModalDismiss } from "@/hooks/useModalDismiss";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 
@@ -139,7 +141,12 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
         await uploadResourceFile(created.resourceId, file);
       }
 
-      onCreated?.(created);
+      // Materiál se vytvoří jako draft – odešleme ho ke schválení (draft → pending_review)
+      await updateResourceStatus(created.resourceId, UpdateResourceStatusNewStatusEnum.PendingReview);
+
+      // Načteme finální stav (pending_review + soubory) pro okamžité zobrazení ve sbírce
+      const finalResource = await getResource(created.resourceId);
+      onCreated?.(finalResource);
       onClose();
     } catch (err) {
       console.error("MaterialCreateModal: create failed", err);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -8,8 +8,10 @@ import {
   fetchMyFolders,
   fetchMyMaterials,
   fetchPublicMaterials,
+  mapPubResourceToMaterial,
 } from "@/components/material/api";
 import type { Material, MaterialCategory, MaterialFolder } from "@/components/material/types";
+import type { PubResource } from "@/api";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
 import { MyCollectionClient } from "./MyCollectionClient";
@@ -75,6 +77,17 @@ function PublicDatabasePageInner() {
     };
   }, [activeTab]);
 
+  // Po vytvoření materiálu ho hned přidáme do sbírky, bez reloadu
+  const handleMaterialCreated = useCallback((resource: PubResource) => {
+    setMyMaterials((prev) => [mapPubResourceToMaterial(resource), ...prev]);
+  }, []);
+
+  // Po změně materiálu (např. odeslání ke schválení) aktualizujeme jeho stav v sbírce
+  const handleMaterialUpdated = useCallback((resource: PubResource) => {
+    const mapped = mapPubResourceToMaterial(resource);
+    setMyMaterials((prev) => prev.map((m) => (m.id === mapped.id ? mapped : m)));
+  }, []);
+
   const content = useMemo(() => {
     if (loading) {
       return <p className="text-sm text-gray-500">Načítání…</p>;
@@ -89,8 +102,15 @@ function PublicDatabasePageInner() {
     if (activeTab === "public") {
       return <PublicDatabaseClient materials={publicMaterials} categories={categories} />;
     }
-    return <MyCollectionClient materials={myMaterials} folders={folders} />;
-  }, [activeTab, categories, error, folders, loading, myMaterials, publicMaterials]);
+    return (
+      <MyCollectionClient
+        materials={myMaterials}
+        folders={folders}
+        onMaterialCreated={handleMaterialCreated}
+        onMaterialUpdated={handleMaterialUpdated}
+      />
+    );
+  }, [activeTab, categories, error, folders, loading, myMaterials, publicMaterials, handleMaterialCreated, handleMaterialUpdated]);
 
   return (
     <PageShell>

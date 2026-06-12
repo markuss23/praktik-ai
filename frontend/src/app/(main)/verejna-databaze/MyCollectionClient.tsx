@@ -3,21 +3,25 @@
 import { useMemo, useState } from "react";
 import { Folder, FolderPlus, Plus, Search } from "lucide-react";
 import type { Material, MaterialFolder } from "@/components/material/types";
+import type { PubResource } from "@/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
 import { FolderNameModal } from "@/components/material/FolderNameModal";
 import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
-import { createFolder } from "@/components/material/api";
+import { MaterialEditModal } from "@/components/material/MaterialEditModal";
+import { createFolder, submitResourceForReview } from "@/components/material/api";
 
 interface MyCollectionClientProps {
   materials: Material[];
   folders: MaterialFolder[];
+  onMaterialCreated?: (resource: PubResource) => void;
+  onMaterialUpdated?: (resource: PubResource) => void;
 }
 
 const TARGET_AUDIENCES = ["Student", "Učitel", "Lektor"];
 const EDUCATION_LEVELS = ["Základní škola", "Střední škola", "Vysoká škola"];
 const DIFFICULTIES = ["Začátečník", "Pokročilý", "Expert"];
 
-export function MyCollectionClient({ materials, folders }: MyCollectionClientProps) {
+export function MyCollectionClient({ materials, folders, onMaterialCreated, onMaterialUpdated }: MyCollectionClientProps) {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
@@ -26,6 +30,7 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
   const [localFolders, setLocalFolders] = useState<MaterialFolder[]>(folders);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [editResourceId, setEditResourceId] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -68,7 +73,18 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
     return created;
   };
 
-  const handleMaterialCreated = () => {
+  const handleMaterialCreated = (resource: PubResource) => {
+    onMaterialCreated?.(resource);
+  };
+
+  const handleSubmitForReview = async (materialId: string) => {
+    const updated = await submitResourceForReview(Number(materialId));
+    onMaterialUpdated?.(updated);
+  };
+
+  const handleEdit = (materialId: string) => {
+    const id = Number(materialId);
+    if (Number.isFinite(id)) setEditResourceId(id);
   };
 
   return (
@@ -184,6 +200,8 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
               variant="compact"
               folders={localFolders}
               onCreateFolder={handleCreateFolderFromPicker}
+              onSubmitForReview={handleSubmitForReview}
+              onEdit={handleEdit}
             />
           ))}
         </div>
@@ -205,6 +223,13 @@ export function MyCollectionClient({ materials, folders }: MyCollectionClientPro
         isOpen={materialModalOpen}
         onClose={() => setMaterialModalOpen(false)}
         onCreated={handleMaterialCreated}
+      />
+
+      <MaterialEditModal
+        isOpen={editResourceId !== null}
+        resourceId={editResourceId}
+        onClose={() => setEditResourceId(null)}
+        onUpdated={(resource) => onMaterialUpdated?.(resource)}
       />
     </div>
   );

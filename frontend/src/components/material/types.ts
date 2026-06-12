@@ -1,4 +1,4 @@
-export type MaterialApprovalStatus = "approved" | "in_review" | "rejected";
+export type MaterialApprovalStatus = "draft" | "approved" | "in_review" | "rejected";
 
 export interface MaterialAttachment {
   id: string;

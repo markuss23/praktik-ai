@@ -1,5 +1,6 @@
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Send, Pencil } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import type { Material, MaterialFolder } from "./types";
 import { StarRating } from "./StarRating";
@@ -22,6 +23,10 @@ interface MaterialCardProps {
   onCreateFolder?: (name: string) => Promise<MaterialFolder>;
   /** Callback po úspěšném přesunu materiálu do složky. */
   onMoved?: (materialId: string, folderId: string) => void;
+  /** Callback pro odeslání konceptu ke schválení (zobrazí se jen u draftů/vrácených). */
+  onSubmitForReview?: (materialId: string) => Promise<void> | void;
+  /** Callback pro úpravu materiálu (zobrazí se jen u draftů/vrácených). */
+  onEdit?: (materialId: string) => void;
 }
 
 export function MaterialCard({
@@ -33,9 +38,33 @@ export function MaterialCard({
   folders,
   onCreateFolder,
   onMoved,
+  onSubmitForReview,
+  onEdit,
 }: MaterialCardProps) {
   const detailHref = `${ROUTES.PUBLIC_DATABASE}/${material.id}`;
   const isCompact = variant === "compact";
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Upravit i odeslat ke schválení lze u konceptu i vráceného (k přepracování) materiálu
+  const isEditable = material.status === "draft" || material.status === "rejected";
+  const canSubmit = isEditable && !!onSubmitForReview;
+  const canEdit = isEditable && !!onEdit;
+
+  const handleSubmit = async () => {
+    if (submitting || !onSubmitForReview) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmitForReview(material.id);
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Nepodařilo se odeslat ke schválení.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="group bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow flex flex-col h-full">
@@ -67,6 +96,38 @@ export function MaterialCard({
             {material.fileLabel}
           </span>
         </div>
+
+        {(canEdit || canSubmit) && (
+          <div className="mt-1 space-y-1">
+            <div className="flex gap-2">
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit?.(material.id)}
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 flex-1"
+                >
+                  <Pencil size={14} strokeWidth={1.75} />
+                  Upravit
+                </button>
+              )}
+              {canSubmit && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 flex-1"
+                >
+                  <Send size={14} strokeWidth={1.75} />
+                  {submitting ? "Odesílám…" : "Odeslat ke schválení"}
+                </button>
+              )}
+            </div>
+            {submitError && (
+              <p className="text-xs text-red-600">{submitError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="border-t border-gray-100" />

@@ -25,6 +25,7 @@ import {
   type PubResourceUpdate,
   type ListResourcesRequest,
   type PubResource,
+  UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
 import { getValidAccessToken } from "./keycloak";
@@ -695,6 +696,14 @@ export async function updateResource(
 
 export async function deleteResource(resourceId: number): Promise<void> {
   await resourcesApi.deleteResource({ resourceId });
+}
+
+// Změna stavu materiálu (např. draft → pending_review = odeslání ke schválení)
+export async function updateResourceStatus(
+  resourceId: number,
+  newStatus: UpdateResourceStatusNewStatusEnum,
+): Promise<PubResource> {
+  return resourcesApi.updateResourceStatus({ resourceId, newStatus });
 }
 
 export async function uploadResourceFile(resourceId: number, file: File) {
