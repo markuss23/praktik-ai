@@ -18,6 +18,8 @@ function S({ className }: { className: string }) {
   PageSpinner - univerzální motion spinner s volitelným textem (pro Suspense fallbacky)
   CourseDetailSkeleton - skeleton detailu kurzu
   ProfileSkeleton - spinner pro profil stránku
+  MaterialDetailSkeleton - skeleton detailu veřejného materiálu
+  RatingListSkeleton - karty hodnocení s pulse efektem (pro sekci Hodnocení)
  */
 
 /**
@@ -213,6 +215,55 @@ export function CourseDetailSkeleton() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/**
+ * Material detail page skeleton (veřejná databáze)
+ */
+export function MaterialDetailSkeleton() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="flex gap-2 mb-4">
+        <S className="h-6 w-24 rounded-md" />
+        <S className="h-6 w-20 rounded-md" />
+      </div>
+      <S className="h-8 w-2/3 mb-3" />
+      <S className="h-4 w-full max-w-3xl mb-1.5" />
+      <S className="h-4 w-3/4 max-w-2xl mb-6" />
+      <S className="h-24 w-full rounded-lg mb-6" />
+      <S className="h-6 w-32 mb-3" />
+      <div className="space-y-2">
+        <S className="h-14 w-full rounded-md" />
+        <S className="h-14 w-full rounded-md" />
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Rating cards skeleton (sekce Hodnocení na detailu materiálu)
+ */
+export function RatingListSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      {[1, 2].map((i) => (
+        <div key={i} className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <S className="h-3.5 w-32" />
+              <S className="h-2.5 w-16" />
+            </div>
+            <S className="h-3.5 w-20" />
+          </div>
+          <S className="h-3 w-3/4 mt-3" />
+        </div>
+      ))}
+    </div>
   );
 }
 

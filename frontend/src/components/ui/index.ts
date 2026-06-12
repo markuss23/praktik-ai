@@ -23,6 +23,8 @@ export {
   PageSpinner,
   CourseDetailSkeleton,
   ProfileSkeleton,
+  MaterialDetailSkeleton,
+  RatingListSkeleton,
 } from "./Skeletons";
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";
 export type { Toast, ToastVariant } from "./Toast";

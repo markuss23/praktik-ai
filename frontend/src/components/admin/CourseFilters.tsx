@@ -46,8 +46,11 @@ interface CourseFiltersProps {
   filteredCount: number;
 }
 
+// Pevná šířka a výška: výběr hodnoty nesmí změnit rozměry filtru,
+// jinak se přeskládá celý řádek a seznam pod ním poskočí.
+// Mobil: dva filtry vedle sebe (gap-2 = 0.5rem), od sm: fixních 160px.
 const selectClass =
-  'px-2.5 py-1.5 border border-gray-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'h-9 w-[calc(50%-0.25rem)] sm:w-40 px-2.5 border border-gray-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export function CourseFilters({
   value,
@@ -76,25 +79,25 @@ export function CourseFilters({
   return (
     <div className="px-3 sm:px-6 py-3 border-b bg-gray-50">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div className="flex items-center gap-1.5 text-gray-500 text-sm font-medium mr-1">
+        <div className="h-9 flex items-center gap-1.5 text-gray-500 text-sm font-medium mr-1">
           <SlidersHorizontal size={16} />
           <span className="hidden sm:inline">Filtry</span>
         </div>
 
         {/* Hledání podle názvu */}
-        <div className="relative">
+        <div className="relative w-full sm:w-56">
           <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={value.search}
             onChange={(e) => set('search', e.target.value)}
             placeholder="Hledat podle názvu…"
-            className="w-44 sm:w-56 pl-8 pr-2.5 py-1.5 border border-gray-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-9 pl-8 pr-2.5 border border-gray-300 rounded-md text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* Pouze moje kurzy */}
-        <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-700 cursor-pointer select-none hover:bg-gray-50">
+        <label className="h-9 flex items-center gap-2 px-2.5 bg-white border border-gray-300 rounded-md text-sm text-gray-700 cursor-pointer select-none hover:bg-gray-50 whitespace-nowrap">
           <input
             type="checkbox"
             checked={value.onlyMine}
@@ -181,16 +184,22 @@ export function CourseFilters({
           ))}
         </select>
 
-        {isFiltered && (
-          <button
-            onClick={reset}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <X size={14} /> Zrušit filtry
-          </button>
-        )}
+        {/* Tlačítko je vykreslené vždy, aby jeho objevení nerozhýbalo řádek —
+            bez aktivních filtrů je jen neviditelné (místo zůstává rezervované). */}
+        <button
+          onClick={reset}
+          tabIndex={isFiltered ? 0 : -1}
+          aria-hidden={!isFiltered}
+          className={`h-9 flex items-center gap-1 px-2.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+            isFiltered
+              ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+              : 'invisible pointer-events-none'
+          }`}
+        >
+          <X size={14} /> Zrušit filtry
+        </button>
 
-        <span className="ml-auto text-xs text-gray-500 whitespace-nowrap">
+        <span className="ml-auto text-xs text-gray-500 whitespace-nowrap tabular-nums">
           Zobrazeno {filteredCount} z {totalCount}
         </span>
       </div>

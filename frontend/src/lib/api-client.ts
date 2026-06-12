@@ -10,6 +10,7 @@ import {
   FeedbacksApi,
   ResourcesApi,
   ReviewsApi,
+  RatingsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -28,6 +29,7 @@ import {
   type PubResource,
   type PubResourceReview,
   type PubResourceReviewCreate,
+  type PubResourceRatingCreated,
   UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
@@ -62,6 +64,7 @@ export const enrollmentsApi = new EnrollmentsApi(configuration);
 export const feedbacksApi = new FeedbacksApi(configuration);
 export const resourcesApi = new ResourcesApi(configuration);
 export const reviewsApi = new ReviewsApi(configuration);
+export const ratingsApi = new RatingsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -815,4 +818,54 @@ export async function deleteResourceComment(
   await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments/${commentId}`, {
     method: "DELETE",
   });
+}
+
+//  Public Resource Ratings (hodnocení materiálů hvězdičkami) API functions
+
+/** Vytáhne český `detail` z chybové odpovědi generovaného klienta (ResponseError). */
+export async function apiErrorDetail(err: unknown, fallback: string): Promise<string> {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as { response?: unknown }).response;
+    if (response instanceof Response) {
+      try {
+        const body = await response.clone().json();
+        if (typeof body?.detail === "string") return body.detail;
+      } catch {
+        // odpověď nemusí být JSON
+      }
+    }
+  }
+  return fallback;
+}
+
+export async function listResourceRatings(
+  resourceId: number,
+): Promise<PubResourceRatingCreated[]> {
+  return ratingsApi.getResourceRatings({ resourceId });
+}
+
+export async function createResourceRating(
+  resourceId: number,
+  score: number,
+  comment?: string | null,
+): Promise<PubResourceRatingCreated> {
+  return ratingsApi.createRating({
+    resourceId,
+    pubResourceRatingCreate: { score, comment },
+  });
+}
+
+export async function updateResourceRating(
+  ratingId: number,
+  score: number,
+  comment?: string | null,
+): Promise<PubResourceRatingCreated> {
+  return ratingsApi.updateRating({
+    ratingId,
+    pubResourceRatingCreate: { score, comment },
+  });
+}
+
+export async function deleteResourceRating(ratingId: number): Promise<void> {
+  await ratingsApi.deleteRating({ ratingId });
 }

@@ -615,8 +615,9 @@ export function CoursesListView() {
           { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
           */}
 
-          {/* Filtry */}
-          {!coursesLoading && courses.length > 0 && (
+          {/* Filtry — zůstávají vykreslené i během reloadu (po akcích jako
+              publikování/smazání), aby lišta nemizela a seznam neposkakoval */}
+          {courses.length > 0 && (
             <CourseFilters
               value={filters}
               onChange={setFilters}
@@ -628,8 +629,9 @@ export function CoursesListView() {
             />
           )}
 
-          {/* Table - Desktop */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Table - Desktop. Min. výška drží pevné hranice seznamu,
+              aby se blok nezkracoval při filtrování na méně řádků. */}
+          <div className="hidden md:block overflow-x-auto min-h-[480px]">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -898,7 +900,7 @@ export function CoursesListView() {
           </div>
 
           {/* Mobile Card View */}
-          <div key={`mobile-page-${page}`} className="md:hidden divide-y divide-gray-200">
+          <div key={`mobile-page-${page}`} className="md:hidden divide-y divide-gray-200 min-h-[320px]">
             {!coursesLoading && courses.length > 0 && filteredCourses.length === 0 && (
               <div className="px-4 py-12 text-center text-sm text-gray-500">
                 Žádné kurzy neodpovídají zvoleným filtrům.
@@ -938,8 +940,9 @@ export function CoursesListView() {
             ))}
           </div>
 
-          {/* Paginace */}
-          {!coursesLoading && filteredCourses.length > PAGE_SIZE && (
+          {/* Paginace — viditelnost se řídí celkovým počtem kurzů (ne filtrovaným),
+              aby lišta nemizela při filtrování ani během reloadu a layout držel. */}
+          {courses.length > PAGE_SIZE && (
             <CoursePagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
         </div>
