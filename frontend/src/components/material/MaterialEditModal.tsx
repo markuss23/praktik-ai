@@ -8,6 +8,8 @@ import {
   updateResource,
   uploadResourceFile,
   deleteResourceFile,
+  listResourceComments,
+  type ResourceComment,
 } from "@/lib/api-client";
 import type { CourseSubject, CourseTarget, PubResource, PubResourceFile } from "@/api";
 import { Difficulty, EduLevel } from "@/api";
@@ -44,6 +46,7 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
   const [targets, setTargets] = useState<CourseTarget[]>([]);
+  const [comments, setComments] = useState<ResourceComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,17 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
     setSubmitting(false);
     setNewFiles([]);
     setFilesToDelete(new Set());
+    setComments([]);
+
+    // Komentáře od garanta (např. u vráceného materiálu) – načítáme zvlášť,
+    // aby případná chyba nezablokovala načtení formuláře.
+    listResourceComments(resourceId)
+      .then((list) => {
+        if (!cancelled) setComments(list);
+      })
+      .catch(() => {
+        // komentáře nemusí existovat
+      });
 
     Promise.all([
       getResource(resourceId),
@@ -221,6 +235,22 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
         ) : (
           <>
             <div className="px-6 pb-6 space-y-4">
+              {comments.length > 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-amber-800">Komentáře od garanta</p>
+                  <ul className="space-y-2">
+                    {comments.map((c) => (
+                      <li key={c.commentId} className="text-xs text-gray-700">
+                        <span className="font-medium text-gray-800">
+                          {c.authorDisplayName ?? "Garant"}:
+                        </span>{" "}
+                        <span className="whitespace-pre-wrap">{c.comment}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <input
                 type="text"
                 required

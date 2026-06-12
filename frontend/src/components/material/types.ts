@@ -33,6 +33,8 @@ export interface Material {
   reviewsCount: number;
   categoryId: string;
   status: MaterialApprovalStatus;
+  /** Zda je schválený materiál publikovaný ve veřejné databázi. */
+  isPublic?: boolean;
   folderId?: string;
   ownerId?: string;
   targetAudience?: string;

@@ -8,7 +8,7 @@ import { MaterialCard } from "@/components/material/MaterialCard";
 import { FolderNameModal } from "@/components/material/FolderNameModal";
 import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
 import { MaterialEditModal } from "@/components/material/MaterialEditModal";
-import { createFolder, submitResourceForReview } from "@/components/material/api";
+import { createFolder, submitResourceForReview, updateResourcePublicState } from "@/components/material/api";
 
 interface MyCollectionClientProps {
   materials: Material[];
@@ -85,6 +85,11 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const handleEdit = (materialId: string) => {
     const id = Number(materialId);
     if (Number.isFinite(id)) setEditResourceId(id);
+  };
+
+  const handleTogglePublic = async (materialId: string, nextIsPublic: boolean) => {
+    const updated = await updateResourcePublicState(Number(materialId), nextIsPublic);
+    onMaterialUpdated?.(updated);
   };
 
   return (
@@ -202,6 +207,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               onCreateFolder={handleCreateFolderFromPicker}
               onSubmitForReview={handleSubmitForReview}
               onEdit={handleEdit}
+              onTogglePublic={handleTogglePublic}
             />
           ))}
         </div>

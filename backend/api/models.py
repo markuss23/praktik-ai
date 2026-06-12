@@ -1061,8 +1061,12 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="resource",
         primaryjoin="and_(PubResource.resource_id==PubResourceReview.resource_id, PubResourceReview.is_active==True)",
     )
+    comments: Mapped[list[PubResourceComment]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceComment.resource_id, PubResourceComment.is_active==True)",
+    )
 
-    _soft_delete_cascade: list[str] = ["files", "ratings", "reviews"]
+    _soft_delete_cascade: list[str] = ["files", "ratings", "reviews", "comments"]
 
     def get_owner_id(self) -> int:
         return self.author_id
@@ -1184,6 +1188,35 @@ class PubResourceReview(SoftDeleteMixin, Base):
 
     resource: Mapped[PubResource] = relationship(back_populates="reviews")
     reviewer: Mapped[User] = relationship(foreign_keys=[reviewer_id])
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubResourceComment(TimestampMixin, SoftDeleteMixin, Base):
+    """Komentář garanta k veřejnému materiálu v rámci schvalování.
+
+    Na rozdíl od PubResourceReview (verdikt + změna stavu) jde o čistý komentář
+    bez verdiktu — vlákno zpětné vazby mezi garantem a autorem.
+    """
+
+    __tablename__ = "pub_resource_comment"
+    __table_args__ = (
+        Index("ix_pub_resource_comment_resource_id", "resource_id"),
+        Index("ix_pub_resource_comment_author_id", "author_id"),
+    )
+
+    comment_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+
+    resource: Mapped[PubResource] = relationship(back_populates="comments")
+    author: Mapped[User] = relationship(foreign_keys=[author_id])
 
     def get_owner_id(self) -> int:
         return self.resource.author_id

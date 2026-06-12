@@ -25,6 +25,12 @@ from api.src.publicDB.resources.controllers.update import (
     update_resource_public_state,
 )
 
+from api.src.publicDB.resources.controllers.comment import (
+    get_resource_comments,
+    create_resource_comment,
+    delete_resource_comment,
+)
+
 __all__ = [
     # Create operations
     "create_resource",
@@ -41,4 +47,8 @@ __all__ = [
     "update_resource",
     "update_resource_status",
     "update_resource_public_state",
+    # Comment operations
+    "get_resource_comments",
+    "create_resource_comment",
+    "delete_resource_comment",
 ]

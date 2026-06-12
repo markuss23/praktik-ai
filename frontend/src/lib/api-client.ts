@@ -9,6 +9,7 @@ import {
   EnrollmentsApi,
   FeedbacksApi,
   ResourcesApi,
+  ReviewsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -25,6 +26,8 @@ import {
   type PubResourceUpdate,
   type ListResourcesRequest,
   type PubResource,
+  type PubResourceReview,
+  type PubResourceReviewCreate,
   UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
@@ -58,6 +61,7 @@ export const authApi = new AuthenticationApi(configuration);
 export const enrollmentsApi = new EnrollmentsApi(configuration);
 export const feedbacksApi = new FeedbacksApi(configuration);
 export const resourcesApi = new ResourcesApi(configuration);
+export const reviewsApi = new ReviewsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -706,10 +710,109 @@ export async function updateResourceStatus(
   return resourcesApi.updateResourceStatus({ resourceId, newStatus });
 }
 
+// Publikace / skrytí schváleného materiálu (jen vlastník nebo superadmin).
+export async function updateResourcePublicState(
+  resourceId: number,
+  isPublished: boolean,
+): Promise<PubResource> {
+  return resourcesApi.updateResourcePublicState({ resourceId, isPublished });
+}
+
 export async function uploadResourceFile(resourceId: number, file: File) {
   return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
 }
 
 export async function deleteResourceFile(resourceId: number, fileId: number) {
   return resourcesApi.deleteResourceFile({ resourceId, fileId });
+}
+
+//  Public Resource Reviews (recenze materiálů) API functions
+
+export async function listResourceReviews(resourceId: number): Promise<PubResourceReview[]> {
+  return reviewsApi.listReviews({ resourceId });
+}
+
+// Vytvoří recenzi (verdikt + poznámka) a podle verdiktu změní stav materiálu.
+export async function createResourceReview(
+  resourceId: number,
+  data: PubResourceReviewCreate,
+): Promise<PubResource> {
+  return reviewsApi.createReview({ resourceId, pubResourceReviewCreate: data });
+}
+
+//  Public Resource Comments (komentáře ke schvalování) API functions
+//
+//  Tyto endpointy zatím nejsou v generovaném klientovi – voláme je přímo
+//  přes fetch se stejným tokenem jako generovaný klient. Po `npm run
+//  generate:openapi` je lze nahradit generovaným ResourcesApi voláním.
+
+export interface ResourceComment {
+  commentId: number;
+  resourceId: number;
+  authorId: number;
+  authorDisplayName: string | null;
+  comment: string;
+  createdAt: Date;
+  isActive: boolean;
+}
+
+function mapResourceComment(json: Record<string, unknown>): ResourceComment {
+  return {
+    commentId: json["comment_id"] as number,
+    resourceId: json["resource_id"] as number,
+    authorId: json["author_id"] as number,
+    authorDisplayName: (json["author_display_name"] as string | null) ?? null,
+    comment: json["comment"] as string,
+    createdAt: new Date(json["created_at"] as string),
+    isActive: json["is_active"] as boolean,
+  };
+}
+
+async function resourceCommentsFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = await getValidAccessToken();
+  const res = await fetch(backendUrl(path), {
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    let detail = `Požadavek selhal (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  return res;
+}
+
+export async function listResourceComments(resourceId: number): Promise<ResourceComment[]> {
+  const res = await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments`);
+  const data = (await res.json()) as Record<string, unknown>[];
+  return data.map(mapResourceComment);
+}
+
+export async function createResourceComment(
+  resourceId: number,
+  comment: string,
+): Promise<ResourceComment> {
+  const res = await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ comment }),
+  });
+  return mapResourceComment((await res.json()) as Record<string, unknown>);
+}
+
+export async function deleteResourceComment(
+  resourceId: number,
+  commentId: number,
+): Promise<void> {
+  await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments/${commentId}`, {
+    method: "DELETE",
+  });
 }

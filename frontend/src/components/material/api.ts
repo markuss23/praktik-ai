@@ -10,6 +10,7 @@ import {
   uploadResourceFile,
   deleteResourceFile,
   updateResourceStatus,
+  updateResourcePublicState,
 } from "@/lib/api-client";
 import type { PubResource } from "@/api";
 import { UpdateResourceStatusNewStatusEnum } from "@/api";
@@ -63,6 +64,7 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
     reviewsCount: resource.ratingsCount ?? 0,
     categoryId: categoryIdFromSubject(resource.subject?.code, resource.subjectId),
     status: STATUS_MAP[resource.status] ?? "in_review",
+    isPublic: resource.isPublic,
     ownerId: String(resource.authorId),
     targetAudience: resource.target?.name,
     educationLevel: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
@@ -168,6 +170,17 @@ export async function fetchMaterialsForReview(): Promise<Material[]> {
   }
 }
 
+// Schválené materiály (veřejné i skryté) – pro správu publikace v přehledu ke schválení.
+export async function fetchApprovedMaterials(): Promise<Material[]> {
+  try {
+    const resources = await listResources({ status: "approved" });
+    return resources.map(mapPubResourceToMaterial);
+  } catch (err) {
+    console.error("fetchApprovedMaterials failed:", err);
+    return [];
+  }
+}
+
 // Odeslání konceptu ke schválení (draft → pending_review)
 export async function submitResourceForReview(resourceId: number): Promise<PubResource> {
   return updateResourceStatus(resourceId, UpdateResourceStatusNewStatusEnum.PendingReview);
@@ -179,4 +192,5 @@ export {
   deleteResource,
   uploadResourceFile,
   deleteResourceFile,
+  updateResourcePublicState,
 };

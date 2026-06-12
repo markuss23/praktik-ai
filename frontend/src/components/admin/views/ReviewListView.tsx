@@ -10,7 +10,7 @@ import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReviewCardsSkeleton } from '@/components/ui';
-import { fetchMaterialsForReview } from '@/components/material/api';
+import { fetchMaterialsForReview, fetchApprovedMaterials } from '@/components/material/api';
 import { MaterialCard } from '@/components/material/MaterialCard';
 import type { Material } from '@/components/material/types';
 
@@ -216,6 +216,7 @@ export function ReviewListView() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [approvedMaterials, setApprovedMaterials] = useState<Material[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(true);
 
   useEffect(() => {
@@ -240,8 +241,14 @@ export function ReviewListView() {
     let cancelled = false;
     async function loadMaterials() {
       try {
-        const data = await fetchMaterialsForReview();
-        if (!cancelled) setMaterials(data);
+        const [pending, approved] = await Promise.all([
+          fetchMaterialsForReview(),
+          fetchApprovedMaterials(),
+        ]);
+        if (!cancelled) {
+          setMaterials(pending);
+          setApprovedMaterials(approved);
+        }
       } catch (err) {
         console.error('Failed to load review materials:', err);
       } finally {
@@ -338,7 +345,7 @@ export function ReviewListView() {
         )
       ) : materialsLoading ? (
         <ReviewCardsSkeleton />
-      ) : materials.length === 0 ? (
+      ) : materials.length === 0 && approvedMaterials.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <BookOpen size={48} className="text-gray-300 mb-4" />
           <p className="text-gray-500 text-lg font-medium">Žádné materiály ke schválení</p>
@@ -347,23 +354,49 @@ export function ReviewListView() {
           </p>
         </div>
       ) : (
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-            Ke kontrole ({materials.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {materials.map((material) => (
-              <MaterialCard
-                key={material.id}
-                material={material}
-                showStatus
-                showFolderAction={false}
-                showBookmarkAction={false}
-                variant="compact"
-              />
-            ))}
-          </div>
-        </section>
+        <div className="space-y-8">
+          {materials.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                Ke kontrole ({materials.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {materials.map((material) => (
+                  <MaterialCard
+                    key={material.id}
+                    material={material}
+                    showStatus
+                    showFolderAction={false}
+                    showBookmarkAction={false}
+                    variant="compact"
+                    detailHref={`/admin/review/material/${material.id}`}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {approvedMaterials.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                Schváleno ({approvedMaterials.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {approvedMaterials.map((material) => (
+                  <MaterialCard
+                    key={material.id}
+                    material={material}
+                    showStatus
+                    showFolderAction={false}
+                    showBookmarkAction={false}
+                    variant="compact"
+                    detailHref={`/admin/review/material/${material.id}`}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       )}
     </div>
   );

@@ -57,6 +57,32 @@ class PubResourceCreated(ORMModel):
     created_at: datetime
 
 
+class PubResourceCommentCreate(ORMModel):
+    """Vstup pro vytvoření komentáře ke schvalování materiálu."""
+
+    comment: str = Field(min_length=1, max_length=2000)
+
+
+class PubResourceComment(ORMModel):
+    """Komentář garanta k materiálu (v rámci schvalování)."""
+
+    comment_id: int
+    resource_id: int
+    author_id: int
+    author_display_name: str | None = None
+    comment: str
+    created_at: datetime
+    is_active: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_author_display_name(cls, value):
+        """Vyplní author_display_name z navázaného ORM vztahu author."""
+        if hasattr(value, "author") and value.author is not None:
+            value.__dict__["author_display_name"] = value.author.display_name
+        return value
+
+
 class PubResource(PubResourceBase):
     resource_id: int
     author_id: int
