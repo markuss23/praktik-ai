@@ -24,6 +24,7 @@ export {
   CourseDetailSkeleton,
   ProfileSkeleton,
   MaterialDetailSkeleton,
+  MaterialGridSkeleton,
   RatingListSkeleton,
 } from "./Skeletons";
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";

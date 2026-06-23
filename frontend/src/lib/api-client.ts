@@ -25,6 +25,8 @@ import {
   type QuestionType,
   type PubResourceCreate,
   type PubResourceUpdate,
+  type PubResourceCreateFork,
+  type PubResourceCreated,
   type ListResourcesRequest,
   type PubResource,
   type PubResourceReview,
@@ -723,6 +725,14 @@ export async function updateResourcePublicState(
 
 export async function uploadResourceFile(resourceId: number, file: File) {
   return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
+}
+
+// Vytvoří fork
+export async function createResourceFork(
+  resourceId: number,
+  data: PubResourceCreateFork,
+): Promise<PubResourceCreated> {
+  return resourcesApi.createResourceFork({ resourceId, pubResourceCreateFork: data });
 }
 
 export async function deleteResourceFile(resourceId: number, fileId: number) {

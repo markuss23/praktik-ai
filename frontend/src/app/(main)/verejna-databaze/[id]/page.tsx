@@ -2,8 +2,8 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { LogIn } from "lucide-react";
+import { notFound, useRouter } from "next/navigation";
+import { Copy, LogIn } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { fetchMaterialById, fetchMaterialCategories } from "@/components/material/api";
 import {
@@ -11,6 +11,7 @@ import {
   MaterialStatusBadge,
 } from "@/components/material/MaterialStatusBadge";
 import { MaterialAttachments } from "@/components/material/MaterialAttachments";
+import { MaterialForkModal } from "@/components/material/MaterialForkModal";
 import { RatingsSection } from "@/components/material/RatingsSection";
 import { MaterialDetailSkeleton } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
@@ -104,17 +105,40 @@ function MaterialDetail({
   material: Material;
   categories: MaterialCategory[];
 }) {
+  const router = useRouter();
   const category = categories.find((c) => c.id === material.categoryId);
+  const [forkOpen, setForkOpen] = useState(false);
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        {category && <MaterialCategoryBadge label={category.label} />}
-        <MaterialStatusBadge status={material.status} />
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {category && <MaterialCategoryBadge label={category.label} />}
+          <MaterialStatusBadge status={material.status} />
+        </div>
+        {material.allowForks && material.isPublic && (
+          <button
+            type="button"
+            onClick={() => setForkOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Copy size={14} strokeWidth={1.75} />
+            Vytvořit kopii
+          </button>
+        )}
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-black mb-3">{material.title}</h1>
       <p className="text-sm text-gray-600 max-w-3xl mb-6">{material.description}</p>
+
+      <MaterialForkModal
+        isOpen={forkOpen}
+        onClose={() => setForkOpen(false)}
+        resourceId={Number(material.id)}
+        defaultTitle={`Kopie: ${material.title}`}
+        defaultDescription={material.description}
+        onForked={() => router.push(`${ROUTES.PUBLIC_DATABASE}?tab=mine`)}
+      />
 
       {material.targets && material.targets.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
@@ -129,7 +153,7 @@ function MaterialDetail({
         </div>
       )}
 
-      <MaterialAttachments attachments={material.attachments ?? []} />
+      <MaterialAttachments attachments={material.attachments ?? []} title={material.title} />
 
       <RatingsSection resourceId={Number(material.id)} />
     </>

@@ -408,6 +408,17 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
                 className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
               />
 
+              <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={allowForks}
+                  onChange={(e) => setAllowForks(e.target.checked)}
+                  disabled={submitting}
+                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-200"
+                />
+                Povolit ostatním vytvářet kopie tohoto materiálu
+              </label>
+
               {error && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
                   {error}

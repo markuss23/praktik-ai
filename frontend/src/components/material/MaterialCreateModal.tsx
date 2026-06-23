@@ -6,11 +6,10 @@ import {
   catalogsApi,
   createResource,
   uploadResourceFile,
-  updateResourceStatus,
   getResource,
 } from "@/lib/api-client";
 import type { CourseSubject, CourseTarget, PubResource } from "@/api";
-import { Difficulty, EduLevel, UpdateResourceStatusNewStatusEnum } from "@/api";
+import { Difficulty, EduLevel } from "@/api";
 import { useModalDismiss } from "@/hooks/useModalDismiss";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 
@@ -33,6 +32,7 @@ interface FormState {
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
   description: string;
+  allowForks: boolean;
 }
 
 const INITIAL_FORM: FormState = {
@@ -42,6 +42,7 @@ const INITIAL_FORM: FormState = {
   educationLevel: EduLevel.Higher,
   difficultyLevel: "",
   description: "",
+  allowForks: false,
 };
 
 export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCreateModalProps) {
@@ -135,16 +136,15 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
         targetId: form.targetId ? Number(form.targetId) : null,
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
+        allowForks: form.allowForks,
       });
 
       for (const file of files) {
         await uploadResourceFile(created.resourceId, file);
       }
 
-      // Materiál se vytvoří jako draft – odešleme ho ke schválení (draft → pending_review)
-      await updateResourceStatus(created.resourceId, UpdateResourceStatusNewStatusEnum.PendingReview);
-
-      // Načteme finální stav (pending_review + soubory) pro okamžité zobrazení ve sbírce
+      // Materiál zůstává jako koncept (draft). Ke schválení ho uživatel odešle
+      // později tlačítkem „Odeslat ke schválení" v přehledu Moje sbírka.
       const finalResource = await getResource(created.resourceId);
       onCreated?.(finalResource);
       onClose();
@@ -303,6 +303,17 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
             className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
           />
 
+          <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
+            <input
+              type="checkbox"
+              checked={form.allowForks}
+              onChange={(e) => setForm((s) => ({ ...s, allowForks: e.target.checked }))}
+              disabled={submitting}
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-200"
+            />
+            Povolit ostatním vytvářet kopie tohoto materiálu
+          </label>
+
           {error && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
               {error}
@@ -324,7 +335,7 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
             disabled={submitting || form.title.trim().length < 3}
             className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
           >
-            {submitting ? "Odesílání…" : "Odeslat ke schválení"}
+            {submitting ? "Vytvářím…" : "Vytvořit materiál"}
           </button>
         </div>
       </form>

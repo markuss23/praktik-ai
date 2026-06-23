@@ -203,7 +203,6 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Popis (nepovinný)"
         rows={3}
         maxLength={2000}
         disabled={submitting}
@@ -237,15 +236,15 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
 
   // Vlastní hodnocení — připnutá zvýrazněná karta s akcemi (upravit / smazat)
   const myRatingCard = myRating && (
-    <div className="bg-purple-50/40 border border-purple-200 rounded-lg p-4 view-fade-in hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 view-fade-in hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-bold text-gray-900 truncate">
               {myRating.userDisplayName ?? "Uživatel"}
             </p>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
-              Tvoje hodnocení
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
+              Tvůj komentář
             </span>
             {justSaved && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 save-status-pop">
@@ -347,13 +346,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
               {loadError}
             </p>
-          ) : count === 0 ? (
-            isAuthenticated && (
-              <p className="text-sm text-gray-500 bg-white border border-gray-200 rounded-lg p-5 text-center">
-                Zatím žádné hodnocení. Buď první, kdo materiál ohodnotí!
-              </p>
-            )
-          ) : (
+          ) : count === 0 ? null : (
             otherRatings.length > 0 && (
               <ul className="space-y-3">
                 {otherRatings.map((rating, index) => (

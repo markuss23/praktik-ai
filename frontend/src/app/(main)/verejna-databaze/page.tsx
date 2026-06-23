@@ -3,22 +3,22 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { RotateCcw } from "lucide-react";
 import {
-  fetchMaterialCategories,
   fetchMyFolders,
   fetchMyMaterials,
-  fetchPublicMaterials,
   mapPubResourceToMaterial,
 } from "@/components/material/api";
-import type { Material, MaterialCategory, MaterialFolder } from "@/components/material/types";
+import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
+import { MaterialGridSkeleton } from "@/components/ui";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
 import { MyCollectionClient } from "./MyCollectionClient";
 
 export default function PublicDatabasePage() {
   return (
-    <Suspense fallback={<PageShell><p className="text-sm text-gray-500">Načítání…</p></PageShell>}>
+    <Suspense fallback={<PageShell><MaterialGridSkeleton count={6} columns={3} /></PageShell>}>
       <PublicDatabasePageInner />
     </Suspense>
   );
@@ -29,42 +29,28 @@ function PublicDatabasePageInner() {
   const tabParam = searchParams.get("tab");
   const activeTab: DatabaseTab = tabParam === "mine" ? "mine" : "public";
 
-  const [publicMaterials, setPublicMaterials] = useState<Material[]>([]);
   const [myMaterials, setMyMaterials] = useState<Material[]>([]);
-  const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [folders, setFolders] = useState<MaterialFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
+  // Data načítáme jen pro záložku „Moje sbírka". Veřejná databáze si data
+  // (vč. filtrů, řazení a stránkování) řeší sama v PublicDatabaseClient.
   useEffect(() => {
+    if (activeTab !== "mine") return;
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    const tasks: Promise<unknown>[] = [
-      fetchMaterialCategories().then((data) => {
-        if (!cancelled) setCategories(data);
+    Promise.all([
+      fetchMyMaterials().then((data) => {
+        if (!cancelled) setMyMaterials(data);
       }),
-    ];
-
-    if (activeTab === "public") {
-      tasks.push(
-        fetchPublicMaterials().then((data) => {
-          if (!cancelled) setPublicMaterials(data);
-        }),
-      );
-    } else {
-      tasks.push(
-        fetchMyMaterials().then((data) => {
-          if (!cancelled) setMyMaterials(data);
-        }),
-        fetchMyFolders().then((data) => {
-          if (!cancelled) setFolders(data);
-        }),
-      );
-    }
-
-    Promise.all(tasks)
+      fetchMyFolders().then((data) => {
+        if (!cancelled) setFolders(data);
+      }),
+    ])
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       })
@@ -75,7 +61,7 @@ function PublicDatabasePageInner() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab]);
+  }, [activeTab, reloadKey]);
 
   // Po vytvoření materiálu ho hned přidáme do sbírky, bez reloadu
   const handleMaterialCreated = useCallback((resource: PubResource) => {
@@ -89,18 +75,26 @@ function PublicDatabasePageInner() {
   }, []);
 
   const content = useMemo(() => {
+    if (activeTab === "public") {
+      return <PublicDatabaseClient />;
+    }
     if (loading) {
-      return <p className="text-sm text-gray-500">Načítání…</p>;
+      return <MaterialGridSkeleton count={6} columns={3} />;
     }
     if (error) {
       return (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
-          Materiály se nepodařilo načíst: {error}
-        </p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-sm text-red-700 mb-3">Materiály se nepodařilo načíst: {error}</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            <RotateCcw size={15} strokeWidth={1.75} />
+            Zkusit znovu
+          </button>
+        </div>
       );
-    }
-    if (activeTab === "public") {
-      return <PublicDatabaseClient materials={publicMaterials} categories={categories} />;
     }
     return (
       <MyCollectionClient
@@ -110,7 +104,7 @@ function PublicDatabasePageInner() {
         onMaterialUpdated={handleMaterialUpdated}
       />
     );
-  }, [activeTab, categories, error, folders, loading, myMaterials, publicMaterials, handleMaterialCreated, handleMaterialUpdated]);
+  }, [activeTab, error, folders, loading, myMaterials, handleMaterialCreated, handleMaterialUpdated]);
 
   return (
     <PageShell>

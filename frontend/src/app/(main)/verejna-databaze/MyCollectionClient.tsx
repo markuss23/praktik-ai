@@ -1,14 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Folder, FolderPlus, Plus, Search } from "lucide-react";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
+import { FilterSelect, type FilterOption } from "@/components/material/FilterSelect";
 import { FolderNameModal } from "@/components/material/FolderNameModal";
 import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
 import { MaterialEditModal } from "@/components/material/MaterialEditModal";
-import { createFolder, submitResourceForReview, updateResourcePublicState } from "@/components/material/api";
+import {
+  createFolder,
+  fetchResourceTargets,
+  submitResourceForReview,
+  updateResourcePublicState,
+  type ResourceTargetOption,
+} from "@/components/material/api";
+import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import { EDU_LEVEL_LABELS, EDU_LEVEL_ORDER } from "@/lib/edu-level";
 
 interface MyCollectionClientProps {
   materials: Material[];
@@ -17,9 +26,17 @@ interface MyCollectionClientProps {
   onMaterialUpdated?: (resource: PubResource) => void;
 }
 
-const TARGET_AUDIENCES = ["Student", "Učitel", "Lektor"];
-const EDUCATION_LEVELS = ["Základní škola", "Střední škola", "Vysoká škola"];
-const DIFFICULTIES = ["Začátečník", "Pokročilý", "Expert"];
+// Volby filtrů pocházejí z číselníků/enumů, ne z natvrdo psaných stringů.
+// Filtrace v Mojí sbírce je klientská (vlastní malá sada), proto porovnáváme
+// podle českých popisků — hodnota selectu = zobrazený popisek.
+const DIFFICULTY_FILTER_OPTIONS: FilterOption[] = DIFFICULTY_ORDER.map((d) => ({
+  value: DIFFICULTY_LABELS[d],
+  label: DIFFICULTY_LABELS[d],
+}));
+const EDU_LEVEL_FILTER_OPTIONS: FilterOption[] = EDU_LEVEL_ORDER.map((lvl) => ({
+  value: EDU_LEVEL_LABELS[lvl],
+  label: EDU_LEVEL_LABELS[lvl],
+}));
 
 export function MyCollectionClient({ materials, folders, onMaterialCreated, onMaterialUpdated }: MyCollectionClientProps) {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -27,10 +44,26 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const [targetAudience, setTargetAudience] = useState("");
   const [educationLevel, setEducationLevel] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [targets, setTargets] = useState<ResourceTargetOption[]>([]);
   const [localFolders, setLocalFolders] = useState<MaterialFolder[]>(folders);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
   const [editResourceId, setEditResourceId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchResourceTargets().then((data) => {
+      if (!cancelled) setTargets(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const targetOptions: FilterOption[] = useMemo(
+    () => targets.map((t) => ({ value: t.label, label: t.label })),
+    [targets],
+  );
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -168,19 +201,19 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           value={targetAudience}
           onChange={setTargetAudience}
           placeholder="Cílová skupina"
-          options={TARGET_AUDIENCES}
+          options={targetOptions}
         />
         <FilterSelect
           value={educationLevel}
           onChange={setEducationLevel}
           placeholder="Úroveň vzdělání"
-          options={EDUCATION_LEVELS}
+          options={EDU_LEVEL_FILTER_OPTIONS}
         />
         <FilterSelect
           value={difficulty}
           onChange={setDifficulty}
           placeholder="Obtížnost"
-          options={DIFFICULTIES}
+          options={DIFFICULTY_FILTER_OPTIONS}
         />
 
         <button
@@ -238,33 +271,6 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         onUpdated={(resource) => onMaterialUpdated?.(resource)}
       />
     </div>
-  );
-}
-
-function FilterSelect({
-  value,
-  onChange,
-  placeholder,
-  options,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  placeholder: string;
-  options: string[];
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-    >
-      <option value="">{placeholder}</option>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
   );
 }
 

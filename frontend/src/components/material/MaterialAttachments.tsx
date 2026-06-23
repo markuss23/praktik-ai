@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Folder } from "lucide-react";
+import JSZip from "jszip";
 import type { MaterialAttachment } from "./types";
 
 /** Stáhne soubor jako blob a vyvolá download dialog; při selhání otevře v nové kartě. */
@@ -24,15 +25,71 @@ async function downloadAttachment(attachment: MaterialAttachment): Promise<void>
   }
 }
 
+/** Nahradí znaky nepovolené v názvu souboru podtržítkem. */
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]+/g, "_").trim() || "soubory";
+}
+
+/** Stáhne všechny přílohy zabalené do jednoho ZIP archivu (jeden download dialog). */
+async function downloadAllAsZip(
+  attachments: MaterialAttachment[],
+  zipName: string,
+): Promise<void> {
+  const zip = new JSZip();
+  const usedNames = new Map<string, number>();
+  let added = 0;
+
+  await Promise.all(
+    attachments.map(async (attachment) => {
+      if (!attachment.url) return;
+      try {
+        const res = await fetch(attachment.url);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        // Ošetření duplicitních názvů: soubor.pdf, soubor (1).pdf, …
+        const count = usedNames.get(attachment.name) ?? 0;
+        usedNames.set(attachment.name, count + 1);
+        let entryName = attachment.name;
+        if (count > 0) {
+          const dot = entryName.lastIndexOf(".");
+          entryName =
+            dot > 0
+              ? `${entryName.slice(0, dot)} (${count})${entryName.slice(dot)}`
+              : `${entryName} (${count})`;
+        }
+        zip.file(entryName, blob);
+        added += 1;
+      } catch {
+        // Soubor, který se nepodaří načíst, do archivu nepřidáme.
+      }
+    }),
+  );
+
+  if (added === 0) throw new Error("Žádný soubor se nepodařilo stáhnout.");
+
+  const content = await zip.generateAsync({ type: "blob" });
+  const objectUrl = window.URL.createObjectURL(content);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = zipName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 interface MaterialAttachmentsProps {
   attachments: MaterialAttachment[];
+  /** Použije se pro pojmenování ZIP archivu (např. „<title>.zip"). */
+  title?: string;
 }
 
 /** Sekce „Přílohy" na detailu materiálu — seznam souborů se stažením po jednom i najednou. */
-export function MaterialAttachments({ attachments }: MaterialAttachmentsProps) {
+export function MaterialAttachments({ attachments, title }: MaterialAttachmentsProps) {
   const downloadable = attachments.filter((a) => a.url);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   if (attachments.length === 0) return null;
 
@@ -49,10 +106,12 @@ export function MaterialAttachments({ attachments }: MaterialAttachmentsProps) {
   const handleDownloadAll = async () => {
     if (downloadingAll || downloadable.length === 0) return;
     setDownloadingAll(true);
+    setDownloadError(null);
     try {
-      for (const attachment of downloadable) {
-        await downloadAttachment(attachment);
-      }
+      const base = title ? sanitizeFileName(title) : "prilohy";
+      await downloadAllAsZip(downloadable, `${base}.zip`);
+    } catch {
+      setDownloadError("Soubory se nepodařilo stáhnout. Zkus to prosím znovu.");
     } finally {
       setDownloadingAll(false);
     }
@@ -74,6 +133,10 @@ export function MaterialAttachments({ attachments }: MaterialAttachmentsProps) {
           </button>
         )}
       </div>
+
+      {downloadError && (
+        <p className="mb-3 text-xs text-red-600">{downloadError}</p>
+      )}
 
       <ul className="space-y-2">
         {attachments.map((attachment, index) => (

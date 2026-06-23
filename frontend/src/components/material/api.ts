@@ -11,16 +11,27 @@ import {
   deleteResourceFile,
   updateResourceStatus,
   updateResourcePublicState,
+  createResourceFork,
 } from "@/lib/api-client";
 import type { PubResource } from "@/api";
 import { UpdateResourceStatusNewStatusEnum } from "@/api";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
+import { EDU_LEVEL_LABELS } from "@/lib/edu-level";
 
-const EDU_LEVEL_LABELS: Record<string, string> = {
-  primary: "Základní škola",
-  secondary: "Střední škola",
-  higher: "Vysoká škola",
-};
+/** Volba do selectu cílové skupiny (z katalogu). */
+export interface ResourceTargetOption {
+  id: number;
+  label: string;
+}
+
+/** Serverové filtry pro veřejný seznam materiálů. */
+export interface PublicMaterialsFilter {
+  textSearch?: string;
+  subjectId?: number;
+  educationLevel?: string;
+  difficultyLevel?: string;
+  targetId?: number;
+}
 
 const STATUS_MAP: Record<string, Material["status"]> = {
   approved: "approved",
@@ -65,6 +76,8 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
     categoryId: categoryIdFromSubject(resource.subject?.code, resource.subjectId),
     status: STATUS_MAP[resource.status] ?? "in_review",
     isPublic: resource.isPublic,
+    allowForks: resource.allowForks ?? false,
+    isFork: resource.isFork,
     ownerId: String(resource.authorId),
     targetAudience: resource.target?.name,
     educationLevel: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
@@ -92,34 +105,47 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
   };
 }
 
-export async function fetchPublicMaterials(): Promise<Material[]> {
-  try {
-    const resources = await listResources({ isPublished: true, status: "approved" });
-    return resources.map(mapPubResourceToMaterial);
-  } catch (err) {
-    console.error("fetchPublicMaterials failed:", err);
-    return [];
-  }
+// chyby zde  neodchytáváme — rozlišuje stav „chyba" (btn zkusit znovu) od prázdný výsledek
+export async function fetchPublicMaterials(
+  filter: PublicMaterialsFilter = {},
+): Promise<Material[]> {
+  const resources = await listResources({
+    isPublished: true,
+    status: "approved",
+    textSearch: filter.textSearch || undefined,
+    resourceSubjectId: filter.subjectId,
+    educationLevel: filter.educationLevel || undefined,
+    difficultyLevel: filter.difficultyLevel || undefined,
+    resourceTargetId: filter.targetId,
+  });
+  return resources.map(mapPubResourceToMaterial);
 }
 
+// Chyby propagujeme, aby stránka mohla nabídnout „Zkusit znovu".
 export async function fetchMyMaterials(): Promise<Material[]> {
-  try {
-    const [me, resources] = await Promise.all([getMe(), listResources({ includeInactive: true })]);
-    return resources
-      .filter((r) => r.authorId === me.userId)
-      .map(mapPubResourceToMaterial);
-  } catch (err) {
-    console.error("fetchMyMaterials failed:", err);
-    return [];
-  }
+  const [me, resources] = await Promise.all([getMe(), listResources({ includeInactive: true })]);
+  return resources
+    .filter((r) => r.authorId === me.userId)
+    .map(mapPubResourceToMaterial);
 }
 
 export async function fetchMaterialCategories(): Promise<MaterialCategory[]> {
   try {
     const subjects = await catalogsApi.listCourseSubjects();
-    return subjects.map((s) => ({ id: s.code, label: s.name }));
+    return subjects.map((s) => ({ id: s.code, label: s.name, subjectId: s.subjectId }));
   } catch (err) {
     console.error("fetchMaterialCategories failed:", err);
+    return [];
+  }
+}
+
+/** Cílové skupiny z katalogu pro filtr „Cílová skupina". */
+export async function fetchResourceTargets(): Promise<ResourceTargetOption[]> {
+  try {
+    const targets = await catalogsApi.listCourseTargets();
+    return targets.map((t) => ({ id: t.targetId, label: t.name }));
+  } catch (err) {
+    console.error("fetchResourceTargets failed:", err);
     return [];
   }
 }
@@ -193,4 +219,5 @@ export {
   uploadResourceFile,
   deleteResourceFile,
   updateResourcePublicState,
+  createResourceFork,
 };

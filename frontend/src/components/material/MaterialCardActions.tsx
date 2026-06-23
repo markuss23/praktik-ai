@@ -1,9 +1,15 @@
 "use client";
 
-import { Folder, Bookmark } from "lucide-react";
-import { useState } from "react";
-import { FolderPickerModal } from "./FolderPickerModal";
-import { moveMaterialToFolder } from "./api";
+// Pozn.: Ikony „Přidat do složky" a „Oblíbené" jsou dočasně skryté.
+// Backend pro složky ani oblíbené zatím neexistuje (viz prázdné implementace
+// moveMaterialToFolder/toggleBookmark v ./api), takže by tlačítka slibovala
+// funkce, které nic nedělají. Až bude backend hotový, stačí odkomentovat
+// importy níže a tělo komponenty (a vrátit zpět původní `return`).
+
+// import { Folder, Bookmark } from "lucide-react";
+// import { useState } from "react";
+// import { FolderPickerModal } from "./FolderPickerModal";
+// import { moveMaterialToFolder } from "./api";
 import type { MaterialFolder } from "./types";
 
 interface MaterialCardActionsProps {
@@ -15,14 +21,20 @@ interface MaterialCardActionsProps {
   onMoved?: (folderId: string) => void;
 }
 
-export function MaterialCardActions({
-  materialId,
-  showFolder = true,
-  showBookmark = true,
-  folders = [],
-  onCreateFolder,
-  onMoved,
-}: MaterialCardActionsProps) {
+export function MaterialCardActions(props: MaterialCardActionsProps) {
+  void props; // props zatím nevyužité — viz poznámka nahoře
+  return null;
+
+  /* PŮVODNÍ OBSAH — znovu zapnout po napojení backendu složek/oblíbených:
+
+  const {
+    materialId,
+    showFolder = true,
+    showBookmark = true,
+    folders = [],
+    onCreateFolder,
+    onMoved,
+  } = props;
   const [bookmarked, setBookmarked] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -82,4 +94,5 @@ export function MaterialCardActions({
       )}
     </div>
   );
+  */
 }

@@ -268,6 +268,44 @@ export function RatingListSkeleton() {
 }
 
 /**
+ * Material card grid skeleton (veřejná databáze / moje sbírka)
+ */
+export function MaterialGridSkeleton({
+  count = 6,
+  columns = 2,
+}: {
+  count?: number;
+  columns?: 2 | 3;
+}) {
+  const gridCols = columns === 3 ? "md:grid-cols-2 lg:grid-cols-3" : "md:grid-cols-2";
+  return (
+    <div className={`grid grid-cols-1 ${gridCols} gap-4`} aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-white rounded-lg border border-gray-200 flex flex-col h-full animate-pulse"
+        >
+          <div className="p-5 flex flex-col gap-3 flex-1">
+            <S className="h-5 w-3/4" />
+            <S className="h-3.5 w-full" />
+            <S className="h-3.5 w-5/6" />
+            <div className="flex gap-2 mt-1">
+              <S className="h-6 w-20 rounded-md" />
+              <S className="h-6 w-16 rounded-md" />
+            </div>
+          </div>
+          <div className="border-t border-gray-100" />
+          <div className="flex items-center justify-between px-5 py-4">
+            <S className="h-4 w-24" />
+            <S className="h-9 w-9 rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Profile page skeleton
  */
 export function ProfileSkeleton() {

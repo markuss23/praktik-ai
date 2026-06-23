@@ -16,6 +16,8 @@ export interface MaterialTarget {
 export interface MaterialCategory {
   id: string;
   label: string;
+  /** Numerické ID předmětu pro serverovou filtraci (`resourceSubjectId`). */
+  subjectId?: number;
 }
 
 export interface MaterialFolder {
@@ -35,6 +37,10 @@ export interface Material {
   status: MaterialApprovalStatus;
   /** Zda je schválený materiál publikovaný ve veřejné databázi. */
   isPublic?: boolean;
+  /** Zda autor povoluje vytváření kopií (forků) tohoto materiálu. */
+  allowForks?: boolean;
+  /** Zda je tento materiál sám kopií (forkem) jiného materiálu. */
+  isFork?: boolean;
   folderId?: string;
   ownerId?: string;
   targetAudience?: string;
