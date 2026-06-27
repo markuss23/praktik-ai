@@ -14,6 +14,7 @@ import type { PubResource } from "@/api";
 import { MaterialGridSkeleton } from "@/components/ui";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
+import { PublicCollectionsClient } from "./PublicCollectionsClient";
 import { MyCollectionClient } from "./MyCollectionClient";
 
 export default function PublicDatabasePage() {
@@ -27,7 +28,8 @@ export default function PublicDatabasePage() {
 function PublicDatabasePageInner() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const activeTab: DatabaseTab = tabParam === "mine" ? "mine" : "public";
+  const activeTab: DatabaseTab =
+    tabParam === "mine" ? "mine" : tabParam === "collections" ? "collections" : "public";
 
   const [myMaterials, setMyMaterials] = useState<Material[]>([]);
   const [folders, setFolders] = useState<MaterialFolder[]>([]);
@@ -77,6 +79,9 @@ function PublicDatabasePageInner() {
   const content = useMemo(() => {
     if (activeTab === "public") {
       return <PublicDatabaseClient />;
+    }
+    if (activeTab === "collections") {
+      return <PublicCollectionsClient />;
     }
     if (loading) {
       return <MaterialGridSkeleton count={6} columns={3} />;

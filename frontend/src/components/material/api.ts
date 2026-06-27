@@ -12,8 +12,17 @@ import {
   updateResourceStatus,
   updateResourcePublicState,
   createResourceFork,
+  listMyCollections,
+  listPublicCollections,
+  getCollection,
+  createCollection,
+  updateCollection,
+  updateCollectionPublicState,
+  deleteCollection,
+  addResourceToCollection,
+  removeResourceFromCollection,
 } from "@/lib/api-client";
-import type { PubResource } from "@/api";
+import type { PubResource, PubResourceBasic, PubCollectionDetail } from "@/api";
 import { UpdateResourceStatusNewStatusEnum } from "@/api";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS } from "@/lib/edu-level";
@@ -105,6 +114,37 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
   };
 }
 
+/** Mapuje sbírku z API na frontendovou složku (vč. odvození členství z položek). */
+function mapCollectionToFolder(c: PubCollectionDetail): MaterialFolder {
+  const items = c.items ?? [];
+  return {
+    id: String(c.collectionId),
+    name: c.title,
+    description: c.description ?? undefined,
+    isPublic: c.isPublic ?? false,
+    resourceIds: items.map((it) => String(it.resource.resourceId)),
+    itemCount: items.length,
+  };
+}
+
+/** Odlehčené mapování položky sbírky (PubResourceBasic) na kartu materiálu.
+ * Plná data (hodnocení, soubory, obtížnost) se dotáhnou až na detailu materiálu. */
+function mapBasicResourceToMaterial(basic: PubResourceBasic): Material {
+  return {
+    id: String(basic.resourceId),
+    title: basic.title,
+    description: basic.description ?? "",
+    difficultyLabel: "—",
+    fileLabel: "—",
+    rating: 0,
+    reviewsCount: 0,
+    categoryId: "uncategorized",
+    status: STATUS_MAP[basic.status] ?? "in_review",
+    isPublic: basic.isPublic,
+    ownerId: String(basic.authorId),
+  };
+}
+
 // chyby zde  neodchytáváme — rozlišuje stav „chyba" (btn zkusit znovu) od prázdný výsledek
 export async function fetchPublicMaterials(
   filter: PublicMaterialsFilter = {},
@@ -151,7 +191,20 @@ export async function fetchResourceTargets(): Promise<ResourceTargetOption[]> {
 }
 
 export async function fetchMyFolders(): Promise<MaterialFolder[]> {
-  return [];
+  const collections = await listMyCollections();
+  return collections.map(mapCollectionToFolder);
+}
+
+/** Veřejné sbírky ostatních uživatelů (pro záložku „Veřejné sbírky"). */
+export async function fetchPublicCollections(textSearch?: string): Promise<MaterialFolder[]> {
+  const collections = await listPublicCollections(textSearch);
+  return collections.map(mapCollectionToFolder);
+}
+
+/** Materiály v dané sbírce (vlastní i uložené cizí veřejné). */
+export async function fetchCollectionMaterials(folderId: string): Promise<Material[]> {
+  const detail = await getCollection(Number(folderId));
+  return (detail.items ?? []).map((it) => mapBasicResourceToMaterial(it.resource));
 }
 
 export async function fetchMaterialById(id: string): Promise<Material | null> {
@@ -167,23 +220,45 @@ export async function fetchMaterialById(id: string): Promise<Material | null> {
 }
 
 export async function createFolder(name: string): Promise<MaterialFolder> {
-  return { id: name.toLowerCase().replace(/\s+/g, "_"), name };
+  const created = await createCollection({ title: name });
+  return {
+    id: String(created.collectionId),
+    name: created.title,
+    description: created.description ?? undefined,
+    isPublic: created.isPublic ?? false,
+    resourceIds: [],
+    itemCount: 0,
+  };
+}
+
+export async function renameFolder(folderId: string, name: string): Promise<void> {
+  await updateCollection(Number(folderId), { title: name });
 }
 
 export async function deleteFolder(folderId: string): Promise<void> {
-  void folderId;
+  await deleteCollection(Number(folderId));
 }
 
-export async function moveMaterialToFolder(
+/** Zveřejní / skryje sbírku pro ostatní uživatele. */
+export async function setFolderPublic(folderId: string, isPublic: boolean): Promise<void> {
+  await updateCollectionPublicState(Number(folderId), isPublic);
+}
+
+/** Přidá materiál do sbírky (many-to-many) — vrací aktualizovanou složku. */
+export async function addMaterialToFolder(
   materialId: string,
-  folderId: string | null,
-): Promise<void> {
-  void materialId;
-  void folderId;
+  folderId: string,
+): Promise<MaterialFolder> {
+  const detail = await addResourceToCollection(Number(folderId), Number(materialId));
+  return mapCollectionToFolder(detail);
 }
 
-export async function toggleBookmark(materialId: string): Promise<void> {
-  void materialId;
+/** Odebere materiál ze sbírky. */
+export async function removeMaterialFromFolder(
+  materialId: string,
+  folderId: string,
+): Promise<void> {
+  await removeResourceFromCollection(Number(folderId), Number(materialId));
 }
 
 export async function fetchMaterialsForReview(): Promise<Material[]> {

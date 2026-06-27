@@ -23,6 +23,16 @@ export interface MaterialCategory {
 export interface MaterialFolder {
   id: string;
   name: string;
+  /** Popis sbírky (volitelný). */
+  description?: string;
+  /** Zda je sbírka zveřejněná pro ostatní uživatele. */
+  isPublic?: boolean;
+  /** ID materiálů, které sbírka obsahuje (pro odvození členství). */
+  resourceIds?: string[];
+  /** Počet položek ve sbírce. */
+  itemCount?: number;
+  /** Jméno vlastníka sbírky (jen u veřejných sbírek ostatních). */
+  ownerName?: string;
 }
 
 export interface Material {

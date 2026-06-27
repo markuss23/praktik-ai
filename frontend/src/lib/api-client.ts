@@ -11,6 +11,7 @@ import {
   ResourcesApi,
   ReviewsApi,
   RatingsApi,
+  CollectionsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -32,6 +33,10 @@ import {
   type PubResourceReview,
   type PubResourceReviewCreate,
   type PubResourceRatingCreated,
+  type PubCollectionCreate,
+  type PubCollectionUpdate,
+  type PubCollectionCreated,
+  type PubCollectionDetail,
   UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
@@ -67,6 +72,7 @@ export const feedbacksApi = new FeedbacksApi(configuration);
 export const resourcesApi = new ResourcesApi(configuration);
 export const reviewsApi = new ReviewsApi(configuration);
 export const ratingsApi = new RatingsApi(configuration);
+export const collectionsApi = new CollectionsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -878,4 +884,67 @@ export async function updateResourceRating(
 
 export async function deleteResourceRating(ratingId: number): Promise<void> {
   await ratingsApi.deleteRating({ ratingId });
+}
+
+//  Public Collections (Sbírky veřejných materiálů) API functions
+
+export async function listMyCollections(
+  params: { includeInactive?: boolean; textSearch?: string } = {},
+): Promise<PubCollectionDetail[]> {
+  return collectionsApi.getMyCollections({
+    includeInactive: params.includeInactive,
+    textSearch: params.textSearch,
+  });
+}
+
+export async function listPublicCollections(
+  textSearch?: string,
+): Promise<PubCollectionDetail[]> {
+  return collectionsApi.getPublicCollections({ textSearch });
+}
+
+export async function getCollection(
+  collectionId: number,
+  textSearch?: string,
+): Promise<PubCollectionDetail> {
+  return collectionsApi.getCollection({ collectionId, textSearch });
+}
+
+export async function createCollection(
+  data: PubCollectionCreate,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.createCollection({ pubCollectionCreate: data });
+}
+
+export async function updateCollection(
+  collectionId: number,
+  data: PubCollectionUpdate,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.updateCollection({ collectionId, pubCollectionUpdate: data });
+}
+
+export async function updateCollectionPublicState(
+  collectionId: number,
+  isPublic: boolean,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.updateCollectionPublicState({ collectionId, isPublic });
+}
+
+export async function deleteCollection(collectionId: number): Promise<void> {
+  await collectionsApi.deleteCollection({ collectionId });
+}
+
+// Přidání materiálu do sbírky — vrací aktualizovaný detail sbírky.
+export async function addResourceToCollection(
+  collectionId: number,
+  resourceId: number,
+): Promise<PubCollectionDetail> {
+  return collectionsApi.addResourceToCollection({ collectionId, resourceId });
+}
+
+export async function removeResourceFromCollection(
+  collectionId: number,
+  resourceId: number,
+): Promise<void> {
+  await collectionsApi.removeResourceFromCollection({ collectionId, resourceId });
 }

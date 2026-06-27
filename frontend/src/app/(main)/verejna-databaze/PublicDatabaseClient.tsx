@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
-import type { Material, MaterialCategory } from "@/components/material/types";
+import type { Material, MaterialCategory, MaterialFolder } from "@/components/material/types";
 import {
+  createFolder,
   fetchMaterialCategories,
+  fetchMyFolders,
   fetchPublicMaterials,
   fetchResourceTargets,
   type ResourceTargetOption,
@@ -53,6 +55,8 @@ export function PublicDatabaseClient() {
   // Číselníky pro filtry
   const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [targets, setTargets] = useState<ResourceTargetOption[]>([]);
+  // Vlastní složky uživatele (pro „Přidat do složky" na kartách)
+  const [folders, setFolders] = useState<MaterialFolder[]>([]);
 
   // Stav filtrů
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
@@ -70,7 +74,7 @@ export function PublicDatabaseClient() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Číselníky načteme jednou
+  // Číselníky a vlastní složky načteme jednou
   useEffect(() => {
     let cancelled = false;
     Promise.all([fetchMaterialCategories(), fetchResourceTargets()]).then(
@@ -80,10 +84,28 @@ export function PublicDatabaseClient() {
         setTargets(tgts);
       },
     );
+    // Složky jsou jen pro přihlášené – případnou chybu tiše ignorujeme.
+    fetchMyFolders()
+      .then((data) => {
+        if (!cancelled) setFolders(data);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const handleCreateFolder = async (name: string): Promise<MaterialFolder> => {
+    const created = await createFolder(name);
+    setFolders((prev) => (prev.some((f) => f.id === created.id) ? prev : [created, ...prev]));
+    return created;
+  };
+
+  const handleMovedToFolder = () => {
+    fetchMyFolders()
+      .then(setFolders)
+      .catch(() => {});
+  };
 
   // Debounce hledání (300 ms), ať netlučíme dotaz na každý stisk
   useEffect(() => {
@@ -277,7 +299,13 @@ export function PublicDatabaseClient() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pageItems.map((material) => (
-                <MaterialCard key={material.id} material={material} />
+                <MaterialCard
+                  key={material.id}
+                  material={material}
+                  folders={folders}
+                  onCreateFolder={handleCreateFolder}
+                  onMoved={handleMovedToFolder}
+                />
               ))}
             </div>
             <Pagination

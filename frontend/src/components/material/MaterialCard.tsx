@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Send, Pencil, Globe, EyeOff } from "lucide-react";
+import { ArrowRight, Send, Pencil, Globe, EyeOff, FolderMinus } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import type { Material, MaterialFolder } from "./types";
 import { StarRating } from "./StarRating";
@@ -23,6 +23,8 @@ interface MaterialCardProps {
   onCreateFolder?: (name: string) => Promise<MaterialFolder>;
   /** Callback po úspěšném přesunu materiálu do složky. */
   onMoved?: (materialId: string, folderId: string) => void;
+  /** Callback pro odebrání materiálu z právě otevřené složky (zobrazí ikonu). */
+  onRemoveFromFolder?: (materialId: string) => Promise<void> | void;
   /** Callback pro odeslání konceptu ke schválení (zobrazí se jen u draftů/vrácených). */
   onSubmitForReview?: (materialId: string) => Promise<void> | void;
   /** Callback pro úpravu materiálu (zobrazí se jen u draftů/vrácených). */
@@ -42,6 +44,7 @@ export function MaterialCard({
   folders,
   onCreateFolder,
   onMoved,
+  onRemoveFromFolder,
   onSubmitForReview,
   onEdit,
   onTogglePublic,
@@ -53,6 +56,17 @@ export function MaterialCard({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemoveFromFolder = async () => {
+    if (removing || !onRemoveFromFolder) return;
+    setRemoving(true);
+    try {
+      await onRemoveFromFolder(material.id);
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   // Upravit i odeslat ke schválení lze u konceptu i vráceného (k přepracování) materiálu
   const isEditable = material.status === "draft" || material.status === "rejected";
@@ -190,6 +204,18 @@ export function MaterialCard({
         <StarRating rating={material.rating} reviewsCount={material.reviewsCount} />
 
         <div className="flex items-center gap-2">
+          {onRemoveFromFolder && (
+            <button
+              type="button"
+              onClick={handleRemoveFromFolder}
+              disabled={removing}
+              aria-label="Odebrat ze složky"
+              title="Odebrat ze složky"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-gray-50 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-60"
+            >
+              <FolderMinus size={16} strokeWidth={1.75} />
+            </button>
+          )}
           <MaterialCardActions
             materialId={material.id}
             showFolder={showFolderAction}
