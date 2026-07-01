@@ -59,7 +59,7 @@ export function PublicCollectionsClient() {
           <div>
             <h2 className="text-xl font-bold text-black">Veřejné sbírky</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Sbírky materiálů, které sdílejí ostatní uživatelé. Otevři si je a
+              Veřejně sdílené sbírky materiálů – včetně těch tvých. Otevři si je a
               prohlédni jejich obsah.
             </p>
           </div>
