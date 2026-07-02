@@ -12,6 +12,7 @@ dependencies = [
     "ruff>=0.14.2",
     "sqlalchemy>=2.0.44",
     "unstructured[md]>=0.18.20",
+    "pypdf>=6.0.0",
     "pgvector==0.3.0",
     "langgraph>=1.0.5",
     "langchain-openai>=1.1.6",

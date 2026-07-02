@@ -12,6 +12,7 @@ class SourceType(StrEnum):
     TEXT = "txt"
     CSV = "csv"
     DOCX = "docx"  # Pro budoucí Google Docs API
+    PDF = "pdf"
 
 
 class BaseLoader(ABC):
@@ -37,12 +38,14 @@ class DataLoader:
     def __init__(self) -> None:
         from agents.base.loaders.docx_file import DocxLoader
         from agents.base.loaders.markdown import MarkdownLoader
+        from agents.base.loaders.pdf_file import PdfLoader
         # from agents.base.loaders.text import TextLoader
         # from agents.base.loaders.csv_loader import CSVLoader
 
         self._loaders = {
             SourceType.MARKDOWN: MarkdownLoader(),
             SourceType.DOCX: DocxLoader(),
+            SourceType.PDF: PdfLoader(),
             # SourceType.TEXT: TextLoader(),
             # SourceType.CSV: CSVLoader(),
         }
@@ -57,6 +60,7 @@ class DataLoader:
             ".csv": SourceType.CSV,
             ".txt": SourceType.TEXT,
             ".docx": SourceType.DOCX,
+            ".pdf": SourceType.PDF,
         }
 
         return type_mapping.get(suffix, SourceType.TEXT)
