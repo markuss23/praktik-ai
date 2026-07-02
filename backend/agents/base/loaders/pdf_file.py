@@ -21,14 +21,11 @@ class PdfLoader(BaseLoader):
             Obsah souboru jako text
         """
 
-        print(f"   -> Načítám PDF soubor: {source}")
         path: Path = self.validate_file_exists(source)
         if path.suffix.lower() != ".pdf":
             raise ValueError(f"Očekáván .pdf soubor, ale dostal: {path.suffix}")
 
         reader = PdfReader(str(path))
         pages_text = [page.extract_text() or "" for page in reader.pages]
-
-        print("\n".join(text for text in pages_text if text.strip()))
 
         return "\n".join(text for text in pages_text if text.strip())
