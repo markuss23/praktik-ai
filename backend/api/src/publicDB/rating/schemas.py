@@ -23,14 +23,13 @@ class PubResourceRatingCreated(PubResourceRatingBase):
     rating_id: int
     resource_id: int
     user_id: int
-    user_display_name: str | None = None
+    user_display_name: str
     created_at: datetime
 
     @model_validator(mode="before")
     @classmethod
     def fill_user_display_name(cls, value: Any) -> Any:
-        """Vyplní user_display_name z navázaného ORM vztahu user."""
-        if hasattr(value, "user") and value.user is not None:
+        if hasattr(value, "user"):
             value.__dict__["user_display_name"] = value.user.display_name
         return value
 
@@ -39,7 +38,7 @@ class PubResourceRating(PubResourceRatingBase):
     rating_id: int
     resource_id: int
     user_id: int
-    user_display_name: str | None = None
+    user_display_name: str
     created_at: datetime
     updated_at: datetime
     is_active: bool
@@ -47,7 +46,6 @@ class PubResourceRating(PubResourceRatingBase):
     @model_validator(mode="before")
     @classmethod
     def fill_user_display_name(cls, value: Any) -> Any:
-        """Vyplní user_display_name z navázaného ORM vztahu user."""
-        if hasattr(value, "user") and value.user is not None:
+        if hasattr(value, "user"):
             value.__dict__["user_display_name"] = value.user.display_name
         return value

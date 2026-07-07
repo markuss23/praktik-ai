@@ -88,6 +88,7 @@ async def endp_update_rating(
     "/{rating_id}",
     operation_id="delete_rating",
     dependencies=[require_role("user")],
+    status_code=204,
 )
 async def endp_delete_rating(
     rating_id: int, db: SessionSqlSessionDependency, user: CurrentUser

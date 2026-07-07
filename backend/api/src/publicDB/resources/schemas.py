@@ -60,7 +60,7 @@ class PubResourceCreated(ORMModel):
 class PubResource(PubResourceBase):
     resource_id: int
     author_id: int
-    author_display_name: str | None = None
+    author_display_name: str
     is_active: bool
     is_public: bool
     status: PubResourceStatus
@@ -80,11 +80,6 @@ class PubResource(PubResourceBase):
     @model_validator(mode="before")
     @classmethod
     def populate_computed_fields(cls, obj):
-        if hasattr(obj, "__dict__"):
-            author = getattr(obj, "author", None)
-            if author is not None:
-                try:
-                    obj.__dict__["author_display_name"] = author.display_name
-                except Exception:
-                    pass
+        if hasattr(obj, "author"):
+            obj.__dict__["author_display_name"] = obj.author.display_name
         return obj

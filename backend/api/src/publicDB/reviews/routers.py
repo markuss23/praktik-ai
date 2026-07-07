@@ -66,6 +66,7 @@ async def endp_create_review(
     "/{review_id}",
     operation_id="delete_review",
     dependencies=[require_role("guarantor")],
+    status_code=204,
 )
 async def endp_delete_review(
     review_id: int, db: SessionSqlSessionDependency, user: CurrentUser

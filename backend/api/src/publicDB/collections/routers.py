@@ -105,6 +105,7 @@ async def endp_update_collection_public_state(
     "/{collection_id}",
     operation_id="delete_collection",
     dependencies=[require_role("user")],
+    status_code=204,
 )
 async def endp_delete_collection(
     collection_id: int,
@@ -132,6 +133,7 @@ async def endp_add_resource_to_collection(
     "/{collection_id}/resources/{resource_id}",
     operation_id="remove_resource_from_collection",
     dependencies=[require_role("user")],
+    status_code=204,
 )
 async def endp_remove_resource_from_collection(
     collection_id: int,

@@ -24,14 +24,13 @@ class PubResourceReview(PubResourceReviewBase):
     review_id: int
     resource_id: int
     reviewer_id: int
-    reviewer_display_name: str | None = None
+    reviewer_display_name: str
     reviewed_at: datetime
     is_active: bool
 
     @model_validator(mode="before")
     @classmethod
     def fill_reviewer_display_name(cls, value: Any) -> Any:
-        """Vyplní reviewer_display_name z navázaného ORM vztahu reviewer."""
-        if hasattr(value, "reviewer") and value.reviewer is not None:
+        if hasattr(value, "reviewer"):
             value.__dict__["reviewer_display_name"] = value.reviewer.display_name
         return value
