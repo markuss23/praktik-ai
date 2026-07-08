@@ -18,6 +18,7 @@ export const ROUTES = {
   COURSES: "/courses",
   MODULES: "/modules",
   PROFILE: "/profil",
+  MY_TICKETS: "/moje-tikety",
   PUBLIC_DATABASE: "/verejna-databaze",
   CHANGELOG: "/changelog",
   AUTH_CALLBACK: "/auth/callback",

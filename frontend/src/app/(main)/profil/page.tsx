@@ -9,6 +9,7 @@ import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
+import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -73,6 +74,7 @@ export default function ProfilPage() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [sidebarTicket, setSidebarTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -270,8 +272,20 @@ export default function ProfilPage() {
               <ProfileModulesSection enrollments={enrollments} />
             </motion.div>
           )}
+
+          {/* Tikety podpory */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <ProfileTicketsCard onTicketDetail={setSidebarTicket} />
+          </motion.div>
         </div>
       </div>
+
+      {/* Chat sidebar s konverzací tiketu */}
+      <TicketsSidebar ticket={sidebarTicket} onClose={() => setSidebarTicket(null)} />
 
       {/* Edit profile modal */}
       {(() => {
