@@ -24,7 +24,6 @@ class PubResourceCreate(PubResourceBase):
 class PubResourceCreateFork(ORMModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
-    allow_forks: bool = False
 
 
 class PubResourceUpdate(PubResourceBase):

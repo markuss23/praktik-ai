@@ -154,6 +154,11 @@ def create_resource_fork(
     original = get_or_404(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
+
+    # overeni pokud je material fork
+    if original.is_fork:
+        raise HTTPException(status_code=400, detail="Nelze vytvořit kopii z kopie")
+
     # overeni pokud je material public a zda povoluje forkovani
     if not original.is_public:
         raise HTTPException(
@@ -189,6 +194,7 @@ def create_resource_fork(
         **resource_data,
         author_id=user.user_id,
         is_fork=True,
+        allow_forks=False,
     )
     db.add(forked)
     db.flush()
