@@ -31,6 +31,8 @@ from api.src.publicDB.resources.schemas import (
     PubResourceFile,
     PubResource,
     PubResourceUpdate,
+    PubResourceComment,
+    PubResourceCommentCreate,
 )
 from api.src.publicDB.resources.controllers import (
     create_resource,
@@ -44,6 +46,9 @@ from api.src.publicDB.resources.controllers import (
     update_resource_status,
     update_resource_public_state,
     create_resource_fork,
+    get_resource_comments,
+    create_resource_comment,
+    delete_resource_comment,
 )
 
 from api.database import SessionSqlSessionDependency
@@ -141,6 +146,48 @@ async def endp_update_resource_public_state(
     return update_resource_public_state(db, resource_id, is_published, user)
 
 
+# ----------- Comment endpoints (komentáře ke schvalování) -----------
+
+
+@router.get(
+    "/{resource_id}/comments",
+    operation_id="list_resource_comments",
+    dependencies=[require_role("user")],
+)
+async def endp_list_resource_comments(
+    resource_id: int, db: SessionSqlSessionDependency
+) -> list[PubResourceComment]:
+    return get_resource_comments(db, resource_id)
+
+
+@router.post(
+    "/{resource_id}/comments",
+    operation_id="create_resource_comment",
+    dependencies=[require_role("guarantor")],
+)
+async def endp_create_resource_comment(
+    resource_id: int,
+    data: PubResourceCommentCreate,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> PubResourceComment:
+    return create_resource_comment(db, resource_id, data, user)
+
+
+@router.delete(
+    "/{resource_id}/comments/{comment_id}",
+    operation_id="delete_resource_comment",
+    dependencies=[require_role("guarantor")],
+)
+async def endp_delete_resource_comment(
+    resource_id: int,
+    comment_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> None:
+    delete_resource_comment(db, comment_id, user)
+
+
 # ----------- File endpoints -----------
 
 
@@ -188,7 +235,7 @@ async def endp_upload_resource_file(
     resource_id: int,
     user: CurrentUser,
     db: SessionSqlSessionDependency,
-    file: UploadFile = File(...),
+    file: UploadFile = File(...),  # noqa: B008
 ) -> PubResourceFile:
     return await upload_resource_file(db, resource_id, file, user)
 

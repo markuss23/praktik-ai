@@ -13,6 +13,7 @@ export { Dropdown, SimpleBotIcon } from "./Dropdown";
 export { CourseCard } from "./CourseCard";
 export { StatusBadge, PublishBadge, ModuleActiveBadge } from "./Badge";
 export { Modal } from "./Modal";
+export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
 export { RichTextEditor, useRichTextEditor } from "./RichTextEditor";
 export {
   AdminDashboardSkeleton,
@@ -22,6 +23,9 @@ export {
   PageSpinner,
   CourseDetailSkeleton,
   ProfileSkeleton,
+  MaterialDetailSkeleton,
+  MaterialGridSkeleton,
+  RatingListSkeleton,
 } from "./Skeletons";
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";
 export type { Toast, ToastVariant } from "./Toast";

@@ -11,7 +11,7 @@ nezahodil a aby šlo zjistit, jestli pro daný kurz už generace běží
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from threading import Lock
 
 
@@ -22,7 +22,7 @@ class GenerationProgress:
     label: str = "Čekání"
     status: str = "pending"  # pending | running | completed | failed
     error: str | None = None
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 _progress: dict[int, GenerationProgress] = {}
@@ -43,7 +43,7 @@ def set_progress(
             total=total,
             label=label,
             status=status,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
 
 
@@ -57,7 +57,7 @@ def mark_completed(course_id: int) -> None:
         entry.label = "Dokončeno"
         entry.status = "completed"
         entry.error = None
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
 
 
 def mark_failed(course_id: int, error: str) -> None:
@@ -65,7 +65,7 @@ def mark_failed(course_id: int, error: str) -> None:
         entry = _progress.get(course_id) or GenerationProgress()
         entry.status = "failed"
         entry.error = error
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
         _progress[course_id] = entry
 
 

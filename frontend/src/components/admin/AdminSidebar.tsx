@@ -6,7 +6,7 @@ import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot } from 'lucide-
 import { useState, useEffect, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { getCourses } from '@/lib/api-client';
+import { getCourses, listResources } from '@/lib/api-client';
 import { Status } from '@/api';
 
 // Custom DOM event, kterým komponenty hlásí změnu stavu kurzu (schválení,
@@ -36,16 +36,20 @@ export function AdminSidebar() {
   const { currentUser } = useCurrentUser();
   const [reviewCount, setReviewCount] = useState(0);
 
-  // Fetch in_review count for badge (guarantors and superadmins only).
-  // Reviewers can't approve their own courses, so exclude them from the badge.
+  // Fetch pending count for badge (guarantors and superadmins only).
+  // Kurzy: reviewer nemůže schvalovat vlastní kurz → vlastní vyloučíme.
+  // Materiály: garant smí recenzovat libovolný (i vlastní) → počítáme všechny pending_review.
   const loadReviewCount = useCallback(async () => {
     if (!isGuarantor) return;
     try {
-      const courses = await getCourses({ includeInactive: false });
-      const inReview = courses.filter(c =>
+      const [courses, materials] = await Promise.all([
+        getCourses({ includeInactive: false }),
+        listResources({ status: 'pending_review' }).catch(() => []),
+      ]);
+      const inReviewCourses = courses.filter(c =>
         c.status === Status.InReview && c.ownerId !== currentUser?.userId
       );
-      setReviewCount(inReview.length);
+      setReviewCount(inReviewCourses.length + materials.length);
     } catch {
       // ignore
     }

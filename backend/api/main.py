@@ -1,9 +1,8 @@
 import logging
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 

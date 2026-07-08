@@ -29,9 +29,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "prompt": (
             "Analyzuj následující obsah a vytvoř strukturovaný souhrn "
             "optimalizovaný pro vytvoření vzdělávacího kurzu.\n\n"
+            "ZÁSADNÍ PRAVIDLO — ŽÁDNÉ HALUCINACE:\n"
+            "Veškerý obsah souhrnu musí pocházet VÝHRADNĚ z poskytnutých zdrojových materiálů. "
+            "Nepřidávej žádné informace, příklady ani vysvětlení, která nejsou explicitně ve zdrojích. "
+            "Pokud zdroje neobsahují dostatek informací pro dané téma, zkrať nebo vypusť danou část "
+            "místo vymýšlení obsahu.\n\n"
             "INSTRUKCE:\n"
-            "1. Identifikuj hlavní tematické celky, které lze rozdělit do samostatných modulů. "
-            "Pokud obsah pokrývá méně témat, rozděl dostupný obsah na logické části bez vymýšlení nového obsahu.\n"
+            "1. Rozděl obsah do PŘESNĚ tolika tematických celků, kolik je uvedeno v poli POČET MODULŮ. "
+            "Pokud obsah pokrývá méně témat, rozděl dostupný obsah na logické části tak, aby vznikl správný počet celků — bez vymýšlení nového obsahu.\n"
             "2. Pro každý tematický celek extrahuj:\n"
             "- Klíčové koncepty a pojmy k naučení\n"
             "- Praktické příklady a ukázky\n"
@@ -54,30 +59,98 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "name": "Plánovač kurzu",
         "model": "gpt-5.4",
         "prompt": (
-            "Na základě následujícího obsahu vytvoř strukturovaný vzdělávací kurz.\n\n"
-            "INSTRUKCE - STRUKTURA KURZU:\n"
-            "1. Rozděl obsah do logických modulů\n\n"
-            "INSTRUKCE - STRUKTURA MODULU:\n"
-            "Pro každý modul:\n"
-            "- title: Výstižný název modulu (1-200 znaků)\n"
-            "- learn_blocks: Přesně JEDEN učební blok (seznam s jedním prvkem), který má:\n"
-            "  * content: Kompletní text veškeré látky modulu k naučení (detailní vysvětlení tématu v markdown formátu)\n"
-            "- practice_questions: Seznam otázek (2 uzavřené + 1 otevřená)\n\n"
-            "INSTRUKCE - STRUKTURA OTÁZEK:\n"
-            "Pro každou otázku specifikuj:\n"
-            '- question_type: "closed" pro uzavřené nebo "open" pro otevřené\n'
-            "- question: Text otázky\n\n"
-            'Pro UZAVŘENÉ otázky (question_type="closed"):\n'
-            "- correct_answer: text správné odpovědi (musí přesně odpovídat textu jedné z closed_options). A nesmí být prázdné.\n"
-            "- closed_options: Seznam 3 možností, kde každá má:\n"
-            "  * text: Text odpovědi\n\n"
-            'Pro OTEVŘENÉ otázky (question_type="open"):\n'
-            "- example_answer: Příklad správné odpovědi. NESMÍ být prázdné.\n"
-            "- open_keywords: Seznam klíčových slov/bodů, které by měla odpověď obsahovat:\n"
-            "  * keyword: Klíčové slovo nebo bod\n\n"
-            "Všechny otázky musí ověřovat pochopení látky z learn_blocks.\n"
-            "Všechno bude bez formátování, pouze čistý text. žádný markdown, žádné odrážky, pouze strohý text.\n"
-            "Vytvoř kurz v českém jazyce."
+            """
+            Na základě následujícího obsahu vytvoř strukturovaný vzdělávací kurz.
+            OBECNÁ PRAVIDLA:
+            - Veškerý textový výstup (názvy, otázky, odpovědi, klíčová slova) bude čistý prostý text bez jakéhokoliv formátování.
+            - Výjimkou je pouze pole content v learn_blocks, kde se používají základní HTML tagy pro strukturování textu.
+            - Kurz vytvoř v českém jazyce.
+            - Používej pouze fakta obsažená v dodaných materiálech. Pokud něco v materiálech chybí nebo není jednoznačné, nevymýšlej si — upozorni na to opatrnou formulací.
+
+            STRUKTURA KURZU:
+            Rozděl obsah do logických modulů. Každý modul musí mít přesně tuto strukturu:
+
+            title: [Výstižný název modulu, 1–200 znaků]
+
+            learn_blocks:
+            - content: [
+                Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
+                Pracuj jako zkušený pedagog: vyber podstatné informace, uspořádej je od nejjednodušších ke složitějším a vysvětli je s kontextem a příklady.
+
+                ZÁVAZNÉ POŘADÍ OBSAHU:
+                1. Proč je téma důležité a k čemu slouží.
+                2. Jednoduché vysvětlení hlavní myšlenky, ideálně s analogií nebo příkladem.
+                3. Klíčové pojmy — každý pojmenuj a vysvětli před tím, než ho začneš používat.
+                4. Vztahy mezi pojmy, příčiny a důsledky.
+                5. Praktický příklad nebo ukázka z praxe.
+                6. Složitější nuance nebo časté omyly, pokud jsou v materiálech obsaženy.
+                7. Krátké shrnutí toho nejdůležitějšího.
+
+                PRAVIDLA PRO STYL VÝKLADU:
+                - Vysvětluj souvislosti a ukazuj, proč informace dává smysl — nepřepisuj zdroj mechanicky.
+                - Piš v krátkých odstavcích, věcně a srozumitelně. Vyhýbej se akademickému jazyku a dlouhým souvětím.
+                - Pokud je pojem abstraktní, použij jednoduchou analogii. Vždy za ní doplň, kde analogie přestává platit.
+                - Nezahlcuj studenta detaily příliš brzy. Nejdříve jednoduchý mentální model, pak detaily.
+
+                ZASTAVENÍ PRO PŘEMÝŠLENÍ:
+                Na vhodném místě vlož alespoň jedno zastavení pro studenta. Použij tag <blockquote> s konkrétní otázkou nebo úkolem, například:
+                <blockquote>Zastav se a promysli: Jak bys vlastními slovy vysvětlil rozdíl mezi těmito dvěma pojmy?</blockquote>
+                nebo
+                <blockquote>Mini-aplikace: Zkus najít příklad tohoto principu z vlastní praxe.</blockquote>
+
+                DOPORUČENÍ PRO AI ASISTENTA:
+                Pokud je část látky náročnější nebo vhodná k dovysvětlení, vlož na konci bloku konkrétní doporučení, například:
+                <blockquote>Pokud ti tento rozdíl není jasný, zeptej se AI asistenta: "Vysvětli mi [konkrétní pojem] na příkladu z praxe [obor studenta]."</blockquote>
+                Nedávej obecnou výzvu. Vždy navrhni konkrétní otázku.
+
+                POVOLENÉ HTML TAGY:
+                <h2> pro hlavní nadpis tématu
+                <h3> pro podnadpisy sekcí
+                <p> pro odstavce s výkladem
+                <ul> a <li> pro výčty a seznamy
+                <ol> a <li> pro číslované kroky nebo pořadí
+                <strong> pro zvýraznění klíčových pojmů
+                <blockquote> pro zastavení, analogie a doporučení pro AI asistenta
+                Žádné jiné tagy nepoužívej. Žádný markdown.
+                ]
+
+            practice_questions:
+            [Každý modul musí mít PŘESNĚ 3 otázky: první dvě jsou uzavřené, třetí je otevřená. Žádná jiná kombinace není přijatelná.]
+
+            Otázka 1 – uzavřená:
+                question_type: closed
+                question: [Text otázky]
+                closed_options:
+                - text: [Možnost A]
+                - text: [Možnost B]
+                - text: [Možnost C]
+                correct_answer: [Musí být doslovně shodný s textem jedné z closed_options. Nesmí být prázdný.]
+
+            Otázka 2 – uzavřená:
+                question_type: closed
+                question: [Text otázky]
+                closed_options:
+                - text: [Možnost A]
+                - text: [Možnost B]
+                - text: [Možnost C]
+                correct_answer: [Musí být doslovně shodný s textem jedné z closed_options. Nesmí být prázdný.]
+
+            Otázka 3 – otevřená:
+                question_type: open
+                question: [Text otázky]
+                example_answer: [Příklad správné odpovědi. Nesmí být prázdný.]
+                open_keywords:
+                - keyword: [Klíčové slovo nebo bod 1]
+                - keyword: [Klíčové slovo nebo bod 2]
+                - keyword: [Klíčové slovo nebo bod 3]
+
+            PRAVIDLA PRO OTÁZKY:
+            - Všechny otázky musí ověřovat pochopení látky z learn_blocks daného modulu.
+            - correct_answer musí být doslovně totožný s textem jedné ze tří closed_options.
+            - example_answer a open_keywords nesmí být prázdné.
+            - Počet otázek na modul je vždy přesně 3: 2 uzavřené, 1 otevřená. Nikdy více, nikdy méně.
+                        
+            """
         ),
         "description": "LLM pro generování struktury kurzu (moduly, otázky) ze sumarizace.",
     },

@@ -4,19 +4,17 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 
 const EMAIL_CONTACTS = [
-  { label: 'Obecné dotazy', value: 'info@praktik-ai.cz' },
-  { label: 'Technická podpora', value: 'podpora@praktik-ai.cz' },
-  { label: 'Pro učitele a školy', value: 'ucitele@praktik-ai.cz' },
+  { label: 'E-mail', value: 'praktikai@ujep.cz' },
 ];
 
-const PHONE_CONTACTS = [
-  { label: 'Telefon', value: '+420 475 286 222' },
-  { label: 'Úřední hodiny', value: 'Po–Pá, 9:00–16:00' },
-];
+// const PHONE_CONTACTS = [
+//   { label: 'Telefon', value: '+420 475 286 222' },
+//   { label: 'Úřední hodiny', value: 'Po–Pá, 9:00–16:00' },
+// ];
 
 const ADDRESS_CONTACTS = [
   { label: 'Adresa', value: 'Pasteurova 3544/1, 400 96 Ústí nad Labem' },
-  { label: 'Datová schránka', value: '6nhj9dq' },
+  // { label: 'Datová schránka', value: '6nhj9dq' },
 ];
 
 const ROLE_OPTIONS = ['Student', 'Učitel', 'Škola / instituce', 'Jiné'];
@@ -142,6 +140,7 @@ export function ContactSection() {
                 </ul>
               </div>
 
+              {/*
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] text-gray-500 mb-3">
                   ZAVOLEJTE
@@ -158,6 +157,7 @@ export function ContactSection() {
                   ))}
                 </ul>
               </div>
+              */}
 
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] text-gray-500 mb-3">

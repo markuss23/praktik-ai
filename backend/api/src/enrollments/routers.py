@@ -1,8 +1,16 @@
-from fastapi import APIRouter
+from datetime import date
+from typing import Annotated
+
+from fastapi import APIRouter, Query
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, require_role
-from api.src.enrollments.schemas import Enrollment, EnrollmentCreate, MyEnrollment
+from api.src.enrollments.schemas import (
+    ActivityResponse,
+    Enrollment,
+    EnrollmentCreate,
+    MyEnrollment,
+)
 from api.src.enrollments.controllers import (
     list_enrollments,
     create_enrollment,
@@ -10,6 +18,8 @@ from api.src.enrollments.controllers import (
     soft_delete_enrollment,
     my_enrollments,
     leave_enrollment,
+    mark_module_visited,
+    get_my_activity,
 )
 
 router = APIRouter(prefix="/enrollments", tags=["Enrollments"])
@@ -20,8 +30,50 @@ def endp_my_enrollments(
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
 ) -> list[MyEnrollment]:
-    """Vrátí zápisy aktuálního uživatele s progress informacemi."""
+    """Vrátí zápisy aktuálního uživatele s progress informacemi, next-module
+    cílem a posledním časem aktivity. Seřazeno od nejnovější aktivity."""
     return my_enrollments(db, user=actor)
+
+
+@router.post(
+    "/my/visit/{module_id}",
+    operation_id="mark_module_visited",
+    status_code=204,
+    dependencies=[require_role("user")],
+)
+def endp_mark_module_visited(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    actor: CurrentUser,
+) -> None:
+    """Označí modul jako naposledy otevřený. Slouží pro funkci „Pokračuj kde jsi
+    skončil" — frontend volá při otevření stránky modulu. Tichý no-op pokud
+    uživatel není v kurzu zapsán."""
+    mark_module_visited(db, module_id=module_id, user=actor)
+
+
+@router.get(
+    "/my/activity",
+    operation_id="my_activity",
+    dependencies=[require_role("user")],
+)
+def endp_my_activity(
+    db: SessionSqlSessionDependency,
+    actor: CurrentUser,
+    days: Annotated[int, Query(ge=1, le=400)] = 180,
+    from_date: Annotated[
+        date | None,
+        Query(description="Začátek rozsahu (ISO yyyy-mm-dd). Když je uveden spolu s to_date, `days` se ignoruje."),
+    ] = None,
+    to_date: Annotated[
+        date | None,
+        Query(description="Konec rozsahu (ISO yyyy-mm-dd)."),
+    ] = None,
+) -> ActivityResponse:
+    """Vrátí denní aktivitu pro heat mapu (passed moduly, zápisy, dokončené
+    kurzy). Volitelně přijímá explicitní rozsah (from_date, to_date) — pak
+    se `days` ignoruje. Bez rozsahu vrací posledních `days` dnů."""
+    return get_my_activity(db, user=actor, days=days, from_date=from_date, to_date=to_date)
 
 
 @router.get("", operation_id="list_enrollments", dependencies=[require_role("lector")])

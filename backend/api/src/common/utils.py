@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from typing import TypeVar
-
 from fastapi import HTTPException
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 from api import models
 
-T = TypeVar("T")
 
-
-def get_or_404(
+def get_or_404[T](
     db: Session,
     model: type[T],
     pk_value: int,

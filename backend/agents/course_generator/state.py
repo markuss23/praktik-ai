@@ -51,6 +51,7 @@ class CourseInput(BaseModel):
     title: str
     description: str | None
     modules_count_ai_generated: int
+    duration_minutes: int | None
     files: list[str]  # cesty k souborům
 
 

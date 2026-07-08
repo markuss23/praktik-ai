@@ -32,6 +32,12 @@ RUN npx @openapitools/openapi-generator-cli generate \
         -o ./src/api \
         -c /openapitools.json \
         --skip-validate-spec
+# Generovaný klient (openapi-generator 7.x) má v instanceOf funkcích kontroly,
+# které neprojdou striktním type-checkem Nextu. Jde o strojově generovaný kód,
+# proto v něm vypneme type-check přes @ts-nocheck (typy exportů zůstávají platné).
+RUN find ./src/api -name '*.ts' | while read -r f; do \
+      { echo '// @ts-nocheck'; cat "$f"; } > "$f.tmp" && mv "$f.tmp" "$f"; \
+    done
 
 
 FROM node:24-alpine AS builder

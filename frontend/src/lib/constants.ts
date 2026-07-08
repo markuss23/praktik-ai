@@ -18,8 +18,14 @@ export const ROUTES = {
   COURSES: "/courses",
   MODULES: "/modules",
   PROFILE: "/profil",
+  PUBLIC_DATABASE: "/verejna-databaze",
+  CHANGELOG: "/changelog",
   AUTH_CALLBACK: "/auth/callback",
 } as const;
+
+// Raw markdown changelogu z projektové wiki na GitHubu.
+export const CHANGELOG_URL =
+  "https://raw.githubusercontent.com/wiki/markuss23/praktik-ai/Changelog.md";
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 export const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif"];

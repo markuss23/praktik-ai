@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Blockquote from '@tiptap/extension-blockquote';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from './editor/ResizableImage';
@@ -24,6 +25,8 @@ import {
   Upload,
   Loader2,
   Trash2,
+  Quote,
+  SeparatorHorizontal,
 } from 'lucide-react';
 
 // Toolbar Button
@@ -367,21 +370,48 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
     editor.chain().focus().setImage({ src, alt: alt || undefined }).run();
   }, [editor]);
 
+  const activeState = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      if (!e) return null;
+      return {
+        isH1: e.isActive('heading', { level: 1 }),
+        isH2: e.isActive('heading', { level: 2 }),
+        isH3: e.isActive('heading', { level: 3 }),
+        isBold: e.isActive('bold'),
+        isItalic: e.isActive('italic'),
+        isUnderline: e.isActive('underline'),
+        isStrike: e.isActive('strike'),
+        isAlignLeft: e.isActive({ textAlign: 'left' }),
+        isAlignCenter: e.isActive({ textAlign: 'center' }),
+        isAlignRight: e.isActive({ textAlign: 'right' }),
+        isBulletList: e.isActive('bulletList'),
+        isOrderedList: e.isActive('orderedList'),
+        isBlockquote: e.isActive('blockquote'),
+        isLink: e.isActive('link'),
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      };
+    },
+  });
+
   if (!editor) return null;
+
+  const headingValue = activeState?.isH1 ? 'h1' : activeState?.isH2 ? 'h2' : activeState?.isH3 ? 'h3' : 'p';
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-gray-200 bg-white">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
+          disabled={!activeState?.canUndo}
           title="Zpět (Ctrl+Z)"
         >
           <Undo size={16} />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
+          disabled={!activeState?.canRedo}
           title="Vpřed (Ctrl+Y)"
         >
           <Redo size={16} />
@@ -391,11 +421,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
         <select
           className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-black min-w-[100px]"
-          value={
-            editor.isActive('heading', { level: 1 }) ? 'h1' :
-            editor.isActive('heading', { level: 2 }) ? 'h2' :
-            editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'
-          }
+          value={headingValue}
           onChange={(e) => {
             const value = e.target.value;
             if (value === 'p') editor.chain().focus().setParagraph().run();
@@ -412,38 +438,53 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
         <ToolbarDivider />
 
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="Tučné (Ctrl+B)">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={!!activeState?.isBold} title="Tučné (Ctrl+B)">
           <Bold size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} title="Kurzíva (Ctrl+I)">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={!!activeState?.isItalic} title="Kurzíva (Ctrl+I)">
           <Italic size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')} title="Podtržené (Ctrl+U)">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={!!activeState?.isUnderline} title="Podtržené (Ctrl+U)">
           <UnderlineIcon size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive('strike')} title="Přeškrtnuté">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={!!activeState?.isStrike} title="Přeškrtnuté">
           <Strikethrough size={16} />
         </ToolbarButton>
 
         <ToolbarDivider />
 
-        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={editor.isActive({ textAlign: 'left' })} title="Zarovnat vlevo">
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={!!activeState?.isAlignLeft} title="Zarovnat vlevo">
           <AlignLeft size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={editor.isActive({ textAlign: 'center' })} title="Zarovnat na střed">
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={!!activeState?.isAlignCenter} title="Zarovnat na střed">
           <AlignCenter size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={editor.isActive({ textAlign: 'right' })} title="Zarovnat vpravo">
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={!!activeState?.isAlignRight} title="Zarovnat vpravo">
           <AlignRight size={16} />
         </ToolbarButton>
 
         <ToolbarDivider />
 
-        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')} title="Odrážkový seznam">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={!!activeState?.isBulletList} title="Odrážkový seznam">
           <List size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive('orderedList')} title="Číslovaný seznam">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={!!activeState?.isOrderedList} title="Číslovaný seznam">
           <ListOrdered size={16} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={!!activeState?.isBlockquote} title="Citace">
+          <Quote size={16} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Zalomit list (začne nová stránka pro studenta)"
+        >
+          <SeparatorHorizontal size={16} />
         </ToolbarButton>
 
         <ToolbarDivider />
@@ -451,7 +492,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         <ToolbarButton onClick={() => setImageDialogOpen(true)} title="Vložit obrázek">
           <ImageIcon size={16} />
         </ToolbarButton>
-        <ToolbarButton onClick={openLinkDialog} isActive={editor.isActive('link')} title="Vložit odkaz">
+        <ToolbarButton onClick={openLinkDialog} isActive={!!activeState?.isLink} title="Vložit odkaz">
           <LinkIcon size={16} />
         </ToolbarButton>
       </div>
@@ -484,6 +525,14 @@ const EDITOR_EXTENSIONS = (placeholder: string) => [
     link: {
       openOnClick: false,
       HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
+    },
+    blockquote: false,
+    // Vodorovná čára slouží jako značka zalomení listu (nová stránka u studenta)
+    horizontalRule: { HTMLAttributes: { class: 'page-break' } },
+  }),
+  Blockquote.configure({
+    HTMLAttributes: {
+      class: 'border-l-4 border-gray-300 pl-4 my-3 italic text-gray-600',
     },
   }),
   TextAlign.configure({ types: ['heading', 'paragraph'] }),

@@ -23,7 +23,7 @@ def get_public_collections(
     user: models.User,
     text_search: str | None = None,
 ) -> list[PubCollectionDetail]:
-    """Vrátí seznam veřejných sbírek jiných uživatelů."""
+    """Vrátí seznam veřejných sbírek – včetně vlastních zveřejněných sbírek uživatele."""
 
     stm = (
         select(models.PubCollection)
@@ -31,7 +31,6 @@ def get_public_collections(
         .where(
             models.PubCollection.is_public.is_(True),
             models.PubCollection.is_active.is_(True),
-            models.PubCollection.user_id != user.user_id,
         )
         .order_by(models.PubCollection.collection_id.desc())
     )

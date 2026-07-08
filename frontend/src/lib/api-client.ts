@@ -8,6 +8,10 @@ import {
   AuthenticationApi,
   EnrollmentsApi,
   FeedbacksApi,
+  ResourcesApi,
+  ReviewsApi,
+  RatingsApi,
+  CollectionsApi,
   CourseUpdate,
   UpdateCourseStatusStatusEnum,
   LearnBlockCreate,
@@ -20,6 +24,20 @@ import {
   QuestionKeywordUpdate,
   type Middleware,
   type QuestionType,
+  type PubResourceCreate,
+  type PubResourceUpdate,
+  type PubResourceCreateFork,
+  type PubResourceCreated,
+  type ListResourcesRequest,
+  type PubResource,
+  type PubResourceReview,
+  type PubResourceReviewCreate,
+  type PubResourceRatingCreated,
+  type PubCollectionCreate,
+  type PubCollectionUpdate,
+  type PubCollectionCreated,
+  type PubCollectionDetail,
+  UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
 import { getValidAccessToken } from "./keycloak";
@@ -51,6 +69,10 @@ export const catalogsApi = new CatalogsApi(configuration);
 export const authApi = new AuthenticationApi(configuration);
 export const enrollmentsApi = new EnrollmentsApi(configuration);
 export const feedbacksApi = new FeedbacksApi(configuration);
+export const resourcesApi = new ResourcesApi(configuration);
+export const reviewsApi = new ReviewsApi(configuration);
+export const ratingsApi = new RatingsApi(configuration);
+export const collectionsApi = new CollectionsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -340,10 +362,162 @@ export async function updateQuestionKeyword(keywordId: number, data: QuestionKey
   return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
 }
 
-//  Enrollments API functions 
+//  Enrollments API functions
 
-export async function getMyEnrollments() {
-  return enrollmentsApi.myEnrollments();
+/** Naposledy obohacený zápis: server vrací cíl pro „pokračuj" a heatmapě
+ * stačí lišta s `lastActivityAt`. Tyto poli jsou volitelná, aby fungovala
+ * koexistence se starým API clientem před regenerací. */
+export interface MyEnrollmentExtended {
+  enrollmentId: number;
+  courseId: number;
+  course: {
+    courseId: number;
+    title: string;
+    description?: string | null;
+    modulesCount?: number;
+  };
+  completedModules?: number;
+  totalModules?: number;
+  enrolledAt: Date;
+  completedAt?: Date | null;
+  nextModule?: {
+    moduleId: number;
+    title: string;
+    index: number;
+    total: number;
+  } | null;
+  lastVisitedModuleId?: number | null;
+  lastActivityAt?: Date | null;
+}
+
+function parseMyEnrollment(raw: Record<string, unknown>): MyEnrollmentExtended {
+  const course = raw['course'] as Record<string, unknown>;
+  const next = raw['next_module'] as Record<string, unknown> | null | undefined;
+  return {
+    enrollmentId: raw['enrollment_id'] as number,
+    courseId: raw['course_id'] as number,
+    course: {
+      courseId: course['course_id'] as number,
+      title: course['title'] as string,
+      description: (course['description'] as string | null | undefined) ?? null,
+      modulesCount: (course['modules_count'] as number | undefined) ?? 0,
+    },
+    completedModules: (raw['completed_modules'] as number | undefined) ?? 0,
+    totalModules: (raw['total_modules'] as number | undefined) ?? 0,
+    enrolledAt: new Date(raw['enrolled_at'] as string),
+    completedAt: raw['completed_at'] ? new Date(raw['completed_at'] as string) : null,
+    nextModule: next
+      ? {
+          moduleId: next['module_id'] as number,
+          title: next['title'] as string,
+          index: next['index'] as number,
+          total: next['total'] as number,
+        }
+      : null,
+    lastVisitedModuleId: (raw['last_visited_module_id'] as number | null | undefined) ?? null,
+    lastActivityAt: raw['last_activity_at']
+      ? new Date(raw['last_activity_at'] as string)
+      : null,
+  };
+}
+
+export async function getMyEnrollments(): Promise<MyEnrollmentExtended[]> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>[];
+  return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+}
+
+/** Tichý tracking: označí, že uživatel právě otevřel daný modul. Server
+ * updatuje last_visited_module_id + last_activity_at na enrollmentu. */
+export async function markModuleVisited(moduleId: number): Promise<void> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  try {
+    await fetch(backendUrl(`/api/v1/enrollments/my/visit/${moduleId}`), {
+      method: 'POST',
+      headers,
+    });
+  } catch {
+    // Visit tracking je fire-and-forget — nikdy by neměl rozbít UI.
+  }
+}
+
+export interface ActivityDay {
+  date: string; // ISO yyyy-mm-dd
+  count: number;
+  titles: string[];
+}
+
+export interface ActivityResponse {
+  days: ActivityDay[];
+  fromDate: string;
+  toDate: string;
+}
+
+export interface ActivityRangeOptions {
+  /** ISO yyyy-mm-dd start date. Pokud je předáno spolu s `toDate`, `days` se ignoruje. */
+  fromDate?: string;
+  /** ISO yyyy-mm-dd end date. */
+  toDate?: string;
+  /** Fallback rozsah: posledních N dnů od dneška. Default 180. Max 400. */
+  days?: number;
+}
+
+export async function getMyActivity(
+  opts: ActivityRangeOptions = {},
+): Promise<ActivityResponse> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const params = new URLSearchParams();
+  if (opts.fromDate && opts.toDate) {
+    params.set('from_date', opts.fromDate);
+    params.set('to_date', opts.toDate);
+  } else {
+    params.set('days', String(opts.days ?? 180));
+  }
+
+  const res = await fetch(
+    backendUrl(`/api/v1/enrollments/my/activity?${params.toString()}`),
+    { method: 'GET', headers },
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>;
+  const rawDays = (data['days'] as Record<string, unknown>[]) ?? [];
+  return {
+    days: rawDays.map((d) => ({
+      date: d['date'] as string,
+      count: d['count'] as number,
+      titles: (d['titles'] as string[]) ?? [],
+    })),
+    fromDate: data['from_date'] as string,
+    toDate: data['to_date'] as string,
+  };
+}
+
+export async function getRecommendedCourses(limit: number = 3) {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/courses/recommended?limit=${limit}`), {
+    method: 'GET',
+    headers,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  // Server vrací list[Course]; necháváme generovaný runtime to dekódovat.
+  // Pro typovou kompatibilitu importujeme generovaný Course.
+  const { CourseFromJSON } = await import('@/api');
+  const data = (await res.json()) as Record<string, unknown>[];
+  return data.map((c) => CourseFromJSON(c));
 }
 
 export async function listEnrollments(params?: {
@@ -511,4 +685,266 @@ export async function updateSystemSetting(
     body: JSON.stringify(update),
   });
   return mapSettingFromApi(data as Record<string, unknown>);
+}
+
+//  Public Resources (Veřejná databáze) API functions
+
+export async function listResources(params: ListResourcesRequest = {}): Promise<PubResource[]> {
+  return resourcesApi.listResources(params);
+}
+
+export async function getResource(resourceId: number): Promise<PubResource> {
+  return resourcesApi.getResource({ resourceId });
+}
+
+export async function createResource(data: PubResourceCreate): Promise<PubResource> {
+  const created = await resourcesApi.createResource({ pubResourceCreate: data });
+  return resourcesApi.getResource({ resourceId: created.resourceId });
+}
+
+export async function updateResource(
+  resourceId: number,
+  data: PubResourceUpdate,
+): Promise<PubResource> {
+  return resourcesApi.updateResource({ resourceId, pubResourceUpdate: data });
+}
+
+export async function deleteResource(resourceId: number): Promise<void> {
+  await resourcesApi.deleteResource({ resourceId });
+}
+
+// Změna stavu materiálu (např. draft → pending_review = odeslání ke schválení)
+export async function updateResourceStatus(
+  resourceId: number,
+  newStatus: UpdateResourceStatusNewStatusEnum,
+): Promise<PubResource> {
+  return resourcesApi.updateResourceStatus({ resourceId, newStatus });
+}
+
+// Publikace / skrytí schváleného materiálu (jen vlastník nebo superadmin).
+export async function updateResourcePublicState(
+  resourceId: number,
+  isPublished: boolean,
+): Promise<PubResource> {
+  return resourcesApi.updateResourcePublicState({ resourceId, isPublished });
+}
+
+export async function uploadResourceFile(resourceId: number, file: File) {
+  return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
+}
+
+// Vytvoří fork
+export async function createResourceFork(
+  resourceId: number,
+  data: PubResourceCreateFork,
+): Promise<PubResourceCreated> {
+  return resourcesApi.createResourceFork({ resourceId, pubResourceCreateFork: data });
+}
+
+export async function deleteResourceFile(resourceId: number, fileId: number) {
+  return resourcesApi.deleteResourceFile({ resourceId, fileId });
+}
+
+//  Public Resource Reviews (recenze materiálů) API functions
+
+export async function listResourceReviews(resourceId: number): Promise<PubResourceReview[]> {
+  return reviewsApi.listReviews({ resourceId });
+}
+
+// Vytvoří recenzi (verdikt + poznámka) a podle verdiktu změní stav materiálu.
+export async function createResourceReview(
+  resourceId: number,
+  data: PubResourceReviewCreate,
+): Promise<PubResource> {
+  return reviewsApi.createReview({ resourceId, pubResourceReviewCreate: data });
+}
+
+//  Public Resource Comments (komentáře ke schvalování) API functions
+//
+//  Tyto endpointy zatím nejsou v generovaném klientovi – voláme je přímo
+//  přes fetch se stejným tokenem jako generovaný klient. Po `npm run
+//  generate:openapi` je lze nahradit generovaným ResourcesApi voláním.
+
+export interface ResourceComment {
+  commentId: number;
+  resourceId: number;
+  authorId: number;
+  authorDisplayName: string | null;
+  comment: string;
+  createdAt: Date;
+  isActive: boolean;
+}
+
+function mapResourceComment(json: Record<string, unknown>): ResourceComment {
+  return {
+    commentId: json["comment_id"] as number,
+    resourceId: json["resource_id"] as number,
+    authorId: json["author_id"] as number,
+    authorDisplayName: (json["author_display_name"] as string | null) ?? null,
+    comment: json["comment"] as string,
+    createdAt: new Date(json["created_at"] as string),
+    isActive: json["is_active"] as boolean,
+  };
+}
+
+async function resourceCommentsFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = await getValidAccessToken();
+  const res = await fetch(backendUrl(path), {
+    ...init,
+    headers: {
+      ...(init?.headers as Record<string, string> | undefined),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    let detail = `Požadavek selhal (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  return res;
+}
+
+export async function listResourceComments(resourceId: number): Promise<ResourceComment[]> {
+  const res = await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments`);
+  const data = (await res.json()) as Record<string, unknown>[];
+  return data.map(mapResourceComment);
+}
+
+export async function createResourceComment(
+  resourceId: number,
+  comment: string,
+): Promise<ResourceComment> {
+  const res = await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ comment }),
+  });
+  return mapResourceComment((await res.json()) as Record<string, unknown>);
+}
+
+export async function deleteResourceComment(
+  resourceId: number,
+  commentId: number,
+): Promise<void> {
+  await resourceCommentsFetch(`/api/v1/resources/${resourceId}/comments/${commentId}`, {
+    method: "DELETE",
+  });
+}
+
+//  Public Resource Ratings (hodnocení materiálů hvězdičkami) API functions
+
+/** Vytáhne český `detail` z chybové odpovědi generovaného klienta (ResponseError). */
+export async function apiErrorDetail(err: unknown, fallback: string): Promise<string> {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as { response?: unknown }).response;
+    if (response instanceof Response) {
+      try {
+        const body = await response.clone().json();
+        if (typeof body?.detail === "string") return body.detail;
+      } catch {
+        // odpověď nemusí být JSON
+      }
+    }
+  }
+  return fallback;
+}
+
+export async function listResourceRatings(
+  resourceId: number,
+): Promise<PubResourceRatingCreated[]> {
+  return ratingsApi.getResourceRatings({ resourceId });
+}
+
+export async function createResourceRating(
+  resourceId: number,
+  score: number,
+  comment?: string | null,
+): Promise<PubResourceRatingCreated> {
+  return ratingsApi.createRating({
+    resourceId,
+    pubResourceRatingCreate: { score, comment },
+  });
+}
+
+export async function updateResourceRating(
+  ratingId: number,
+  score: number,
+  comment?: string | null,
+): Promise<PubResourceRatingCreated> {
+  return ratingsApi.updateRating({
+    ratingId,
+    pubResourceRatingCreate: { score, comment },
+  });
+}
+
+export async function deleteResourceRating(ratingId: number): Promise<void> {
+  await ratingsApi.deleteRating({ ratingId });
+}
+
+//  Public Collections (Sbírky veřejných materiálů) API functions
+
+export async function listMyCollections(
+  params: { includeInactive?: boolean; textSearch?: string } = {},
+): Promise<PubCollectionDetail[]> {
+  return collectionsApi.getMyCollections({
+    includeInactive: params.includeInactive,
+    textSearch: params.textSearch,
+  });
+}
+
+export async function listPublicCollections(
+  textSearch?: string,
+): Promise<PubCollectionDetail[]> {
+  return collectionsApi.getPublicCollections({ textSearch });
+}
+
+export async function getCollection(
+  collectionId: number,
+  textSearch?: string,
+): Promise<PubCollectionDetail> {
+  return collectionsApi.getCollection({ collectionId, textSearch });
+}
+
+export async function createCollection(
+  data: PubCollectionCreate,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.createCollection({ pubCollectionCreate: data });
+}
+
+export async function updateCollection(
+  collectionId: number,
+  data: PubCollectionUpdate,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.updateCollection({ collectionId, pubCollectionUpdate: data });
+}
+
+export async function updateCollectionPublicState(
+  collectionId: number,
+  isPublic: boolean,
+): Promise<PubCollectionCreated> {
+  return collectionsApi.updateCollectionPublicState({ collectionId, isPublic });
+}
+
+export async function deleteCollection(collectionId: number): Promise<void> {
+  await collectionsApi.deleteCollection({ collectionId });
+}
+
+// Přidání materiálu do sbírky — vrací aktualizovaný detail sbírky.
+export async function addResourceToCollection(
+  collectionId: number,
+  resourceId: number,
+): Promise<PubCollectionDetail> {
+  return collectionsApi.addResourceToCollection({ collectionId, resourceId });
+}
+
+export async function removeResourceFromCollection(
+  collectionId: number,
+  resourceId: number,
+): Promise<void> {
+  await collectionsApi.removeResourceFromCollection({ collectionId, resourceId });
 }

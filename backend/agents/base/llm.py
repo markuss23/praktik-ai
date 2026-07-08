@@ -26,18 +26,22 @@ def get_llm_config(
     db: Session,
     key: str,
     *,
-    default_model: str,
-    default_prompt: str,
+    default_model: str | None = None,
+    default_prompt: str | None = None,
 ) -> LLMConfig:
-    """Načte SystemSetting podle klíče. Pokud neexistuje, vrátí default."""
+    """Načte SystemSetting podle klíče. Pokud neexistuje a nejsou defaulty, vyhodí chybu."""
     row = db.execute(
         select(SystemSetting).where(
             SystemSetting.key == key,
             SystemSetting.is_active == text("true"),
         )
     ).scalar_one_or_none()
-    
+
     if row is None:
+        if default_model is None or default_prompt is None:
+            raise ValueError(
+                f"SystemSetting '{key}' nebyl nalezen v databázi a není nastaven výchozí prompt/model."
+            )
         return LLMConfig(model=default_model, prompt=default_prompt)
 
     return LLMConfig(
