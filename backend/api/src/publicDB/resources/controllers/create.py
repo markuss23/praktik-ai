@@ -106,7 +106,7 @@ async def upload_resource_file(
         resource_id=resource_id,
         filename=file.filename or "unknown",
         file_path=remote_path,
-        file_type=_detect_file_type(file.filename or ""),
+        file_type=_detect_file_type(content),
     )
     db.add(resource_file)
     db.commit()
@@ -115,28 +115,33 @@ async def upload_resource_file(
     return PubResourceFile.model_validate(resource_file)
 
 
-def _detect_file_type(filename: str) -> models.AttachType:
-    """Detekuje typ souboru z přípony."""
+def _detect_file_type(content: bytes) -> models.AttachType:
+    """Detekuje typ souboru z obsahu (magic bytes)."""
+    import filetype
     from api.enums import AttachType
 
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    mapping = {
-        "pdf": AttachType.pdf,
-        "docx": AttachType.docx,
-        "pptx": AttachType.pptx,
-        "jpg": AttachType.image,
-        "jpeg": AttachType.image,
-        "png": AttachType.image,
-        "gif": AttachType.image,
-        "webp": AttachType.image,
-        "svg": AttachType.image,
-        "mp4": AttachType.video,
-        "mov": AttachType.video,
-        "avi": AttachType.video,
-        "mkv": AttachType.video,
-        "webm": AttachType.video,
-    }
-    return mapping.get(ext, AttachType.other)
+    kind = filetype.guess(content)
+    if kind is None:
+        return AttachType.other
+
+    mime = kind.mime
+    if mime == "application/pdf":
+        return AttachType.pdf
+    if (
+        mime
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ):
+        return AttachType.docx
+    if (
+        mime
+        == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ):
+        return AttachType.pptx
+    if mime.startswith("image/"):
+        return AttachType.image
+    if mime.startswith("video/"):
+        return AttachType.video
+    return AttachType.other
 
 
 def create_resource_fork(
@@ -149,6 +154,11 @@ def create_resource_fork(
     original = get_or_404(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
+
+    # overeni pokud je material fork
+    if original.is_fork:
+        raise HTTPException(status_code=400, detail="Nelze vytvořit kopii z kopie")
+
     # overeni pokud je material public a zda povoluje forkovani
     if not original.is_public:
         raise HTTPException(
@@ -184,6 +194,7 @@ def create_resource_fork(
         **resource_data,
         author_id=user.user_id,
         is_fork=True,
+        allow_forks=False,
     )
     db.add(forked)
     db.flush()
