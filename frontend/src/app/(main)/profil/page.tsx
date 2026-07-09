@@ -248,6 +248,8 @@ export default function ProfilPage() {
 
           <ProfileProgressCard items={progressItems} />
 
+          <ProfileTicketsCard onTicketDetail={setSidebarTicket} />
+
           <ProfileBadgesCard badges={badges} />
         </motion.div>
 
@@ -272,15 +274,6 @@ export default function ProfilPage() {
               <ProfileModulesSection enrollments={enrollments} />
             </motion.div>
           )}
-
-          {/* Tikety podpory */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            <ProfileTicketsCard onTicketDetail={setSidebarTicket} />
-          </motion.div>
         </div>
       </div>
 

@@ -11,15 +11,13 @@ import { Ticket } from "./types";
 interface ProfileTicketsCardProps {
   /** Kliknutí na „Zobrazit detail" tiketu (otevře chat sidebar). */
   onTicketDetail: (ticket: Ticket) => void;
-  /** Kolik tiketů karta maximálně zobrazí. */
-  limit?: number;
 }
 
 /**
  * Karta „Moje tikety" na profilové stránce — podle mockupu. Kliknutí na
  * hlavičku vede na /moje-tikety, tlačítka tiketů otevírají chat sidebar.
  */
-export function ProfileTicketsCard({ onTicketDetail, limit = 3 }: ProfileTicketsCardProps) {
+export function ProfileTicketsCard({ onTicketDetail }: ProfileTicketsCardProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,16 +39,16 @@ export function ProfileTicketsCard({ onTicketDetail, limit = 3 }: ProfileTickets
   }, []);
 
   return (
-    <section className="bg-white rounded-xl shadow-sm p-5">
+    <section className="bg-white rounded-xl shadow-sm p-6">
       <Link
         href={ROUTES.MY_TICKETS}
-        className="flex items-center gap-2.5 mb-4 group"
+        className="flex items-center gap-2 mb-5 group"
         aria-label="Přejít na Moje tikety"
       >
-        <TicketIcon size={22} className="text-gray-900" />
-        <h2 className="text-lg font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+        <TicketIcon className="w-5 h-5 text-gray-700" />
+        <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
           Moje tikety
-        </h2>
+        </h3>
       </Link>
 
       {loading ? (
@@ -60,8 +58,8 @@ export function ProfileTicketsCard({ onTicketDetail, limit = 3 }: ProfileTickets
           Zatím nemáte žádné tikety.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {tickets.slice(0, limit).map((ticket) => (
+        <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-1">
+          {tickets.map((ticket) => (
             <TicketCard key={ticket.ticketId} ticket={ticket} onDetailClick={onTicketDetail} />
           ))}
         </div>
