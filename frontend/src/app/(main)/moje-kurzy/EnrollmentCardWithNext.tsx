@@ -112,7 +112,7 @@ export function EnrollmentCardWithNext({ enrollment }: EnrollmentCardWithNextPro
             <a
               href={href}
               className="w-full inline-flex items-center justify-center gap-2 text-white font-semibold py-2.5 px-4 rounded-md hover:brightness-110 active:translate-y-px transition-all"
-              style={{ background: 'linear-gradient(90deg, #8B5BA8, #6366F1)' }}
+              style={{ backgroundColor: '#8B5BA8' }}
             >
               <span>{ctaLabel}</span>
               <ArrowRight size={16} />

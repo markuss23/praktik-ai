@@ -8,8 +8,11 @@ import { ROUTES } from "@/lib/constants";
 import {
   listMyTickets,
   Ticket,
+  TICKET_TYPE_LABELS,
   TicketCard,
   TicketCreateModal,
+  TicketDeleteModal,
+  TicketType,
 } from "@/components/tickets";
 
 type TicketsTab = "open" | "resolved";
@@ -60,12 +63,18 @@ function TicketTabs({
   );
 }
 
+const FILTER_SELECT_CLASS =
+  "px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400";
+
 export default function MojeTiketyPage() {
   const { user, loading: authLoading, login, isAuthenticated } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TicketsTab>("open");
   const [createOpen, setCreateOpen] = useState(false);
+  const [courseFilter, setCourseFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TicketType | "">("");
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -88,18 +97,39 @@ export default function MojeTiketyPage() {
     loadTickets(true);
   }, [loadTickets]);
 
-  const counts = useMemo<Record<TicketsTab, number>>(
-    () => ({
-      open: tickets.filter((t) => t.status === "open").length,
-      resolved: tickets.filter((t) => t.status === "resolved").length,
-    }),
+  // Kurzy pro filtr — unikátní názvy z načtených tiketů.
+  const courseOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(tickets.map((t) => t.courseTitle).filter((c): c is string => Boolean(c))),
+      ).sort((a, b) => a.localeCompare(b, "cs")),
     [tickets],
   );
 
-  const visibleTickets = useMemo(
-    () => tickets.filter((t) => t.status === tab),
-    [tickets, tab],
+  const filteredTickets = useMemo(
+    () =>
+      tickets.filter(
+        (t) =>
+          (courseFilter === "" || t.courseTitle === courseFilter) &&
+          (typeFilter === "" || t.ticketType === typeFilter),
+      ),
+    [tickets, courseFilter, typeFilter],
   );
+
+  const counts = useMemo<Record<TicketsTab, number>>(
+    () => ({
+      open: filteredTickets.filter((t) => t.status === "open").length,
+      resolved: filteredTickets.filter((t) => t.status === "resolved").length,
+    }),
+    [filteredTickets],
+  );
+
+  const visibleTickets = useMemo(
+    () => filteredTickets.filter((t) => t.status === tab),
+    [filteredTickets, tab],
+  );
+
+  const hasActiveFilter = courseFilter !== "" || typeFilter !== "";
 
   return (
     <div className="py-8">
@@ -134,9 +164,39 @@ export default function MojeTiketyPage() {
           </button>
         </div>
 
-        {/* Taby */}
-        <div className="mb-6">
+        {/* Taby + filtry */}
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <TicketTabs active={tab} counts={counts} onChange={setTab} />
+          {tickets.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+                aria-label="Filtrovat podle kurzu"
+                className={FILTER_SELECT_CLASS}
+              >
+                <option value="">Všechny kurzy</option>
+                {courseOptions.map((course) => (
+                  <option key={course} value={course}>
+                    {course}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as TicketType | "")}
+                aria-label="Filtrovat podle typu dotazu"
+                className={FILTER_SELECT_CLASS}
+              >
+                <option value="">Všechny typy</option>
+                {(Object.keys(TICKET_TYPE_LABELS) as TicketType[]).map((type) => (
+                  <option key={type} value={type}>
+                    {TICKET_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Seznam */}
@@ -147,9 +207,11 @@ export default function MojeTiketyPage() {
         ) : visibleTickets.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-8 text-center">
             <p className="text-sm text-gray-500">
-              {tab === "open"
-                ? "Nemáte žádné nevyřešené tikety."
-                : "Nemáte žádné vyřešené tikety."}
+              {hasActiveFilter
+                ? "Zvoleným filtrům neodpovídají žádné tikety."
+                : tab === "open"
+                  ? "Nemáte žádné nevyřešené tikety."
+                  : "Nemáte žádné vyřešené tikety."}
             </p>
           </div>
         ) : (
@@ -159,6 +221,7 @@ export default function MojeTiketyPage() {
                 key={ticket.ticketId}
                 ticket={ticket}
                 detailHref={`${ROUTES.MY_TICKETS}/${ticket.ticketId}`}
+                onDelete={setTicketToDelete}
               />
             ))}
           </div>
@@ -169,6 +232,14 @@ export default function MojeTiketyPage() {
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={() => loadTickets(false)}
+      />
+
+      <TicketDeleteModal
+        ticket={ticketToDelete}
+        onClose={() => setTicketToDelete(null)}
+        onDeleted={(deleted) =>
+          setTickets((prev) => prev.filter((t) => t.ticketId !== deleted.ticketId))
+        }
       />
     </div>
   );

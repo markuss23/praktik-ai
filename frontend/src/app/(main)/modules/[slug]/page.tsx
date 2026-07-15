@@ -13,6 +13,7 @@ import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
 import PaperSheets from "@/components/module/PaperSheets";
 import NotesPanel from "@/components/module/NotesPanel";
+import ScrollToBottomButton from "@/components/module/ScrollToBottomButton";
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -52,6 +53,13 @@ export default function ModulePage() {
   const [practiceCompleted, setPracticeCompleted] = useState(savedProgress?.practiceCompleted ?? false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Obsah scrolluje ve vnitřním kontejneru
+  const scrollContentToTop = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    scrollAreaRef.current?.scrollTo({ top: 0, behavior });
+    window.scrollTo({ top: 0, behavior });
+  }, []);
 
   // Persist tab progress to sessionStorage
   useEffect(() => {
@@ -168,8 +176,8 @@ export default function ModulePage() {
     setAssessmentCompleted(false);
     window.history.pushState(null, '', `/modules/${moduleId}`);
     setActiveModuleId(moduleId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+    scrollContentToTop();
+  }, [scrollContentToTop]);
 
   // Switch tab with direction tracking
   const switchTab = useCallback((newTab: TabType) => {
@@ -177,8 +185,11 @@ export default function ModulePage() {
     const newIdx = tabOrder.indexOf(newTab);
     setTabDirection(newIdx >= oldIdx ? 1 : -1);
     setActiveTab(newTab);
+    // Nový tab musí začínat od první otázky / začátku obsahu, ne od pozice
+    // odscrollované v předchozím tabu.
+    scrollContentToTop('auto');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, scrollContentToTop]);
 
   // Loading state
   if (loading && !transitioning) {
@@ -220,7 +231,7 @@ export default function ModulePage() {
     if (activeTab === 'prirucka') {
       if (currentBlockIndex < totalBlocks - 1) {
         setCurrentBlockIndex((prev: number) => prev + 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollContentToTop();
       } else {
         setHandbookCompleted(true);
         switchTab('procvicovani');
@@ -231,7 +242,7 @@ export default function ModulePage() {
   const handlePrevBlock = () => {
     if (currentBlockIndex > 0) {
       setCurrentBlockIndex((prev: number) => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollContentToTop();
     }
   };
 
@@ -239,7 +250,6 @@ export default function ModulePage() {
   const handlePracticeComplete = () => {
     setPracticeCompleted(true);
     switchTab('test');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Called when user completes the assessment or needs to move on
@@ -260,7 +270,7 @@ export default function ModulePage() {
     setHandbookCompleted(false);
     setPracticeCompleted(false);
     setAssessmentCompleted(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollContentToTop();
   };
 
   // Tab configuration
@@ -371,8 +381,9 @@ export default function ModulePage() {
           </div>
 
           {/* Main Content — vlastní scroll na úrovni karty obsahu, aby
-              breadcrumb a sidebar zůstaly fixní a posouvalo se jen pole lekce. */}
-          <div className="flex-grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar">
+              breadcrumb a sidebar zůstaly fixní a posouvalo se jen pole lekce.
+              pb-12 dává tlačítkům na konci obsahu prostor nad spodním okrajem. */}
+          <div ref={scrollAreaRef} className="flex-grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar pb-12">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeModuleId}
@@ -494,6 +505,11 @@ export default function ModulePage() {
           </div>
         </div>
       </div>
+      {/* Levitující tlačítko pro sjetí na konec příručky */}
+      {activeTab === 'prirucka' && !transitioning && currentBlock && (
+        <ScrollToBottomButton targetRef={scrollAreaRef} />
+      )}
+
       {/* Vysouvací poznámkový blok */}
       <NotesPanel />
     </div>

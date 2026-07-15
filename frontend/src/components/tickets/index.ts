@@ -6,4 +6,5 @@ export { TicketConversation } from "./TicketConversation";
 export { TicketReplyBox } from "./TicketReplyBox";
 export { TicketsSidebar } from "./TicketsSidebar";
 export { TicketCreateModal } from "./TicketCreateModal";
+export { TicketDeleteModal } from "./TicketDeleteModal";
 export { ProfileTicketsCard } from "./ProfileTicketsCard";
