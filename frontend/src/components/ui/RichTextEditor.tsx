@@ -116,10 +116,12 @@ function ImageDialog({
     onClose();
   };
 
-  const onUrlChange = (value: string) => {
-    setUrl(value);
-    setPreviewUrl(value);
-  };
+  // obrázky se vkládají jen z počítače.
+  // popř. odkoment handler i sekci URL obrázku
+  // const onUrlChange = (value: string) => {
+  //   setUrl(value);
+  //   setPreviewUrl(value);
+  // };
 
   return (
     <Modal
@@ -174,6 +176,7 @@ function ImageDialog({
           />
         </div>
 
+        {/* Vkládání přes URL dočasně vypnuté — ponecháno pro případné znovuzapnutí.
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-gray-200" />
           <span className="text-xs text-gray-400">nebo</span>
@@ -190,6 +193,7 @@ function ImageDialog({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
           />
         </div>
+        */}
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">

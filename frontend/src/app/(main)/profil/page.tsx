@@ -248,7 +248,14 @@ export default function ProfilPage() {
 
           <ProfileProgressCard items={progressItems} />
 
-          <ProfileTicketsCard onTicketDetail={setSidebarTicket} />
+          <ProfileTicketsCard
+            onTicketDetail={setSidebarTicket}
+            onTicketDeleted={(deleted) =>
+              setSidebarTicket((current) =>
+                current?.ticketId === deleted.ticketId ? null : current,
+              )
+            }
+          />
 
           <ProfileBadgesCard badges={badges} />
         </motion.div>

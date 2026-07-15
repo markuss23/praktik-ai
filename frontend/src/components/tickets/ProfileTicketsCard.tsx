@@ -5,21 +5,30 @@ import Link from "next/link";
 import { Ticket as TicketIcon } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { TicketCard } from "./TicketCard";
+import { TicketDeleteModal } from "./TicketDeleteModal";
 import { listMyTickets } from "./api";
 import { Ticket } from "./types";
 
 interface ProfileTicketsCardProps {
   /** Kliknutí na „Zobrazit detail" tiketu (otevře chat sidebar). */
   onTicketDetail: (ticket: Ticket) => void;
+  /** Zavolá se po smazání tiketu (např. zavření sidebaru s jeho konverzací). */
+  onTicketDeleted?: (ticket: Ticket) => void;
 }
 
 /**
  * Karta „Moje tikety" na profilové stránce — podle mockupu. Kliknutí na
  * hlavičku vede na /moje-tikety, tlačítka tiketů otevírají chat sidebar.
  */
-export function ProfileTicketsCard({ onTicketDetail }: ProfileTicketsCardProps) {
+export function ProfileTicketsCard({
+  onTicketDetail,
+  onTicketDeleted,
+}: ProfileTicketsCardProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+
+  const openCount = tickets.filter((t) => t.status === "open").length;
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +58,14 @@ export function ProfileTicketsCard({ onTicketDetail }: ProfileTicketsCardProps) 
         <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
           Moje tikety
         </h3>
+        {openCount > 0 && (
+          <span
+            title={`Nevyřešené tikety: ${openCount}`}
+            className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-50 px-1.5 text-xs font-medium text-red-600"
+          >
+            {openCount}
+          </span>
+        )}
       </Link>
 
       {loading ? (
@@ -60,10 +77,24 @@ export function ProfileTicketsCard({ onTicketDetail }: ProfileTicketsCardProps) 
       ) : (
         <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-1">
           {tickets.map((ticket) => (
-            <TicketCard key={ticket.ticketId} ticket={ticket} onDetailClick={onTicketDetail} />
+            <TicketCard
+              key={ticket.ticketId}
+              ticket={ticket}
+              onDetailClick={onTicketDetail}
+              onDelete={setTicketToDelete}
+            />
           ))}
         </div>
       )}
+
+      <TicketDeleteModal
+        ticket={ticketToDelete}
+        onClose={() => setTicketToDelete(null)}
+        onDeleted={(deleted) => {
+          setTickets((prev) => prev.filter((t) => t.ticketId !== deleted.ticketId));
+          onTicketDeleted?.(deleted);
+        }}
+      />
     </section>
   );
 }

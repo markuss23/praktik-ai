@@ -5,14 +5,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { MessageCircleQuestion, SendHorizontal, X } from "lucide-react";
 import { useModalDismiss } from "@/hooks/useModalDismiss";
 import { TicketConversation } from "./TicketConversation";
-import { TICKET_ACTION_UNSUPPORTED } from "./api";
+import { TICKET_MESSAGING_UNAVAILABLE } from "./api";
 import { buildTicketConversation, formatTicketCode, Ticket } from "./types";
 
 interface TicketsSidebarProps {
   /** Tiket, jehož konverzace se zobrazí; null = sidebar zavřený. */
   ticket: Ticket | null;
   onClose: () => void;
-  /** Odeslání zprávy; bez handleru se zobrazí hláška o nepodporované akci. */
+  /** Odeslání zprávy; bez handleru je vstup deaktivovaný s vysvětlením. */
   onSend?: (text: string) => Promise<void> | void;
 }
 
@@ -34,6 +34,7 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
   const [message, setMessage] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const canSend = Boolean(onSend);
 
   const isOpen = ticket !== null;
   useModalDismiss(isOpen, onClose);
@@ -53,12 +54,8 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = message.trim();
-    if (!trimmed || !ticket) return;
+    if (!trimmed || !ticket || !onSend) return;
 
-    if (!onSend) {
-      setNotice(TICKET_ACTION_UNSUPPORTED);
-      return;
-    }
     setNotice(null);
     setSending(true);
     try {
@@ -101,7 +98,7 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900">Nápověda a podpora</p>
-                <p className="text-xs text-gray-500">AI asistent · obvykle odpoví ihned</p>
+                <p className="text-xs text-gray-500">Na dotaz odpoví lektor kurzu</p>
               </div>
               <button
                 type="button"
@@ -126,19 +123,22 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
 
             {/* Vstup pro zprávu */}
             <div className="border-t border-gray-100 p-3">
+              {!canSend && (
+                <p className="mb-2 text-xs text-gray-500">{TICKET_MESSAGING_UNAVAILABLE}</p>
+              )}
               {notice && <p className="mb-2 text-xs text-red-600">{notice}</p>}
               <form onSubmit={handleSend} className="flex items-center gap-2">
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Napište zprávu…"
-                  disabled={sending}
+                  placeholder={canSend ? "Napište zprávu…" : "Psaní zpráv zatím není dostupné"}
+                  disabled={sending || !canSend}
                   className="flex-1 px-4 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
                 />
                 <button
                   type="submit"
-                  disabled={sending || message.trim().length < 1}
+                  disabled={sending || !canSend || message.trim().length < 1}
                   aria-label="Odeslat zprávu"
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-40"
                 >

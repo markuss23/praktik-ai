@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/lib/constants";
 import {
@@ -10,18 +10,21 @@ import {
   formatTicketCode,
   listMyTickets,
   Ticket,
-  TICKET_ACTION_UNSUPPORTED,
+  TICKET_MESSAGING_UNAVAILABLE,
   TicketCard,
   TicketConversation,
+  TicketDeleteModal,
   TicketReplyBox,
 } from "@/components/tickets";
 
 export default function TicketDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const ticketId = Number(params.id);
   const { user, loading: authLoading, login, isAuthenticated } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -57,12 +60,6 @@ export default function TicketDetailPage() {
     () => (ticket ? buildTicketConversation(ticket) : []),
     [ticket],
   );
-
-  // Vlastník tiketu zatím nemůže přes backend komentovat ani uzavírat —
-  // UI je připravené, akce hlásí nedostupnost (viz components/tickets/api.ts).
-  const unsupportedAction = () => {
-    throw new Error(TICKET_ACTION_UNSUPPORTED);
-  };
 
   return (
     <div className="py-8">
@@ -102,7 +99,7 @@ export default function TicketDetailPage() {
         ) : (
           <>
             {/* Hlavička tiketu */}
-            <TicketCard ticket={ticket} hideDetailButton large />
+            <TicketCard ticket={ticket} hideDetailButton large onDelete={setTicketToDelete} />
 
             {/* Konverzace */}
             <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4">Konverzace</h2>
@@ -110,15 +107,18 @@ export default function TicketDetailPage() {
               <TicketConversation messages={messages} />
             </div>
 
-            {/* Odpověď */}
-            <TicketReplyBox
-              onSend={unsupportedAction}
-              onResolve={unsupportedAction}
-              hideResolve={ticket.status === "resolved"}
-            />
+            {/* Odpověď — vlastník tiketu zatím přes backend komentovat ani
+                uzavírat nemůže, vstupy jsou deaktivované s vysvětlením. */}
+            <TicketReplyBox disabledNotice={TICKET_MESSAGING_UNAVAILABLE} hideResolve />
           </>
         )}
       </div>
+
+      <TicketDeleteModal
+        ticket={ticketToDelete}
+        onClose={() => setTicketToDelete(null)}
+        onDeleted={() => router.push(ROUTES.MY_TICKETS)}
+      />
     </div>
   );
 }

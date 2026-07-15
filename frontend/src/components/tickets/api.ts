@@ -10,7 +10,8 @@
 //    skládáme přes kurzy z enrollmentů.
 //  - Odpovědět může jen autor kurzu / garant (a jen jednou); vlastník
 //    tiketu komentáře přidávat nemůže a tiket nelze ručně označit jako
-//    vyřešený — příslušné UI akce proto zatím hlásí nedostupnost.
+//    vyřešený — příslušné vstupy jsou v UI deaktivované s vysvětlením
+//    (TICKET_MESSAGING_UNAVAILABLE).
 
 import { backendUrl } from "@/lib/constants";
 import { getValidAccessToken } from "@/lib/keycloak";
@@ -109,6 +110,9 @@ export async function deleteTicket(ticketId: number): Promise<void> {
   await ticketsFetch(`/api/v1/module-tickets/${ticketId}`, { method: "DELETE" });
 }
 
-/** Jednotná hláška pro akce, které backend neumí. */
-export const TICKET_ACTION_UNSUPPORTED =
-  "neni implemnetovat";
+/**
+ * Jednotné vysvětlení u deaktivovaných vstupů konverzace — backend zatím
+ * drží jen dvojici dotaz + odpověď, další zprávy vlastník přidávat nemůže.
+ */
+export const TICKET_MESSAGING_UNAVAILABLE =
+  "Přidávání dalších zpráv zatím není dostupné. Na váš dotaz odpoví lektor kurzu.";

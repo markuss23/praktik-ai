@@ -46,6 +46,14 @@ export function formatTicketCode(ticketId: number): string {
   return `#PA-${String(ticketId).padStart(5, "0")}`;
 }
 
+/**
+ * Tiket smí vlastník smazat, jen dokud nemá odpověď podpory —
+ * stejné pravidlo vynucuje backend (delete_ticket).
+ */
+export function isTicketDeletable(ticket: Ticket): boolean {
+  return ticket.reply === null;
+}
+
 /** Formát data podle mockupů: „17:35 28. 6. 2026". */
 export function formatTicketDateTime(date: Date): string {
   const time = date.toLocaleTimeString("cs-CZ", {
