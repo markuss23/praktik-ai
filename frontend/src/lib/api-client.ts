@@ -759,6 +759,38 @@ export async function createResourceReview(
   return reviewsApi.createReview({ resourceId, pubResourceReviewCreate: data });
 }
 
+//  Editor Images (obrázky vkládané v rich-text editoru) API functions
+//
+//  Tento endpoint zatím není v generovaném klientovi – voláme ho přímo přes
+//  fetch se stejným tokenem jako generovaný klient.
+
+export interface EditorImageUploadResult {
+  url: string;
+}
+
+export async function uploadEditorImage(file: File): Promise<EditorImageUploadResult> {
+  const token = await getValidAccessToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(backendUrl("/api/v1/editor-images"), {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+  if (!res.ok) {
+    let detail = `Nahrání selhalo (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  const data = (await res.json()) as { url: string };
+  return { url: backendUrl(data.url) };
+}
+
 //  Public Resource Comments (komentáře ke schvalování) API functions
 //
 //  Tyto endpointy zatím nejsou v generovaném klientovi – voláme je přímo

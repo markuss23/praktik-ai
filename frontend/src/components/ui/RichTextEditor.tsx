@@ -8,6 +8,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from './editor/ResizableImage';
 import { Modal } from './Modal';
+import { uploadEditorImage } from '@/lib/api-client';
 import {
   Bold,
   Italic,
@@ -95,13 +96,9 @@ function ImageDialog({
     setError(null);
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch('/api/editor-image', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Nahrání selhalo');
-      setUrl(data.url);
-      setPreviewUrl(data.url);
+      const { url: uploadedUrl } = await uploadEditorImage(file);
+      setUrl(uploadedUrl);
+      setPreviewUrl(uploadedUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Nahrání obrázku selhalo');
     } finally {
