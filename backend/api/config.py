@@ -25,10 +25,15 @@ class SeaweedFSSettings(BaseModel):
     filer_url: str = "http://seaweedfs-filer:8888"
 
 
+class WikiSettings(BaseModel):
+    sync_interval_hours: float = 12
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
+    wiki: WikiSettings = WikiSettings()
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

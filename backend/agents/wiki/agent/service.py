@@ -2,11 +2,20 @@ from dataclasses import dataclass
 
 from agents.wiki.agent.graph import create_graph
 
+WIKI_REPO_URL = "https://github.com/markuss23/praktik-ai.wiki.git"
+WIKI_LOCAL_PATH = "../wiki_data"
+
 
 @dataclass
 class WikiSyncResult:
     repo_url: str
     pages_processed: int
+
+
+async def sync_wiki() -> "WikiSyncResult":
+    """Naklonuje/aktualizuje projektovou GitHub wiki a znovu ji zaindexuje."""
+    service = WikiAgentService(repo_url=WIKI_REPO_URL, local_path=WIKI_LOCAL_PATH)
+    return await service.sync()
 
 
 class WikiAgentService:

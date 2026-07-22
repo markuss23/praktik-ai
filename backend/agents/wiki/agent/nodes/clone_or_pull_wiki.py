@@ -55,7 +55,7 @@ def clone_or_pull_wiki_node(state: WikiAgentState) -> WikiAgentState:
 if __name__ == "__main__":
     # Ruční test: spusť "python -m agents.wiki.agent.nodes.clone_or_pull_wiki" z backend/ složky.
     test_repo_url = "https://github.com/markuss23/praktik-ai.wiki.git"
-    test_local_path = "agents/wiki/agent/data/praktik-ai.wiki"
+    test_local_path = "../wiki_data"
 
     result_path = clone_or_pull_wiki(test_repo_url, test_local_path)
 

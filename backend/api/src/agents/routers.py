@@ -44,7 +44,7 @@ from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
-from agents.wiki.agent.service import WikiAgentService
+from agents.wiki.agent.service import sync_wiki
 from agents.assessment_generator.service import AssessmentService
 from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
@@ -273,16 +273,9 @@ async def wiki_chat(
     dependencies=[require_role("superadmin")],
 )
 async def wiki_sync() -> WikiSyncResponse:
-    """Endpoint pro synchronizaci a re-indexaci GitHub wiki."""
+    """Endpoint pro ruční synchronizaci a re-indexaci GitHub wiki."""
 
-    repo_url = "https://github.com/markuss23/praktik-ai.wiki.git"
-    local_path = "agents/wiki/agent/data/praktik-ai.wiki"
-
-    service = WikiAgentService(
-        repo_url=repo_url,
-        local_path=local_path,
-    )
-    result = await service.sync()
+    result = await sync_wiki()
 
     return WikiSyncResponse(pages_processed=result.pages_processed)
 
