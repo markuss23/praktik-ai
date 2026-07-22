@@ -188,9 +188,9 @@ export default function CoursePage() {
       {/* Course Header */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-black break-words">{course.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-black break-words min-w-0">{course.title}</h1>
           {isAuthenticated && (
-            <div>
+            <div className="flex-shrink-0">
               <AnimatePresence mode="wait">
                 {enrollment ? (
                   // TODO: "Opustit kurz" button temporarily disabled
@@ -201,7 +201,7 @@ export default function CoursePage() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-green-700 bg-green-50 border border-green-200"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Zapsáno!
@@ -212,7 +212,7 @@ export default function CoursePage() {
                     key="enroll-btn"
                     onClick={handleEnroll}
                     disabled={enrollLoading}
-                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md text-sm font-medium disabled:opacity-50"
+                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
                     style={{ backgroundColor: '#00C896' }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}

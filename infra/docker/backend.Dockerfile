@@ -19,6 +19,11 @@ WORKDIR /code
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# git je potřeba pro clone/pull GitHub wiki (agents/wiki/agent)
+#RUN apt-get update \
+#    && apt-get install -y --no-install-recommends git \
+#    && rm -rf /var/lib/apt/lists/*
+
 # Přenese nainstalované deps
 COPY --from=deps /install /usr/local
 

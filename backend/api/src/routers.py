@@ -14,9 +14,15 @@ from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
 from api.src.superadmin.routers import router as superadmin_router
 from api.src.module_tickets.routers import router as module_tickets_router
-from api.src.resources.routers import router as resources_router
-from api.src.resources.routers import public_router as resources_public_router
-from api.src.reviews.routers import router as review_router
+from api.src.editor_images.routers import (
+    router as editor_images_router,
+    public_router as editor_images_public_router,
+)
+from api.src.publicDB.resources.routers import router as resources_router
+from api.src.publicDB.resources.routers import public_router as resources_public_router
+from api.src.publicDB.reviews.routers import router as review_router
+from api.src.publicDB.rating.routers import router as rating_router
+from api.src.publicDB.collections.routers import router as collections_router
 from api.dependencies import auth
 
 router = APIRouter()
@@ -38,6 +44,9 @@ router.include_router(superadmin_router, dependencies=[Depends(auth.get_current_
 router.include_router(
     module_tickets_router, dependencies=[Depends(auth.get_current_user)]
 )
+router.include_router(
+    editor_images_router, dependencies=[Depends(auth.get_current_user)]
+)
 # --
 # router.include_router(categories_router)
 # router.include_router(courses_router)
@@ -49,6 +58,9 @@ router.include_router(
 
 # Bez autentizace
 router.include_router(resources_public_router)
+router.include_router(editor_images_public_router)
 
 router.include_router(resources_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(review_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(rating_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(collections_router, dependencies=[Depends(auth.get_current_user)])

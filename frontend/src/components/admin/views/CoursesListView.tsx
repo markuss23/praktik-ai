@@ -2,9 +2,10 @@
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
-import React, { useState, useEffect, useCallback } from "react";
-import { X, BicepsFlexed, Upload, RotateCcw, Archive } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight } from "lucide-react";
 import { CourseModal, ModuleModal, DeleteConfirmModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
+import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
@@ -12,8 +13,11 @@ import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useToast } from "@/components/ui";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useToast, ConfirmModal, type ConfirmVariant } from "@/components/ui";
 import { czechPlural } from "@/lib/utils";
+
+const PAGE_SIZE = 10;
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
@@ -22,7 +26,7 @@ export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
   const { blocks, targets, subjects } = useCatalogData();
-  const { isOwner } = useCurrentUser();
+  const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
 
   const [courses, setCourses] = useState<Course[]>([]);
@@ -35,12 +39,45 @@ export function CoursesListView() {
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
   const [courseModules, setCourseModules] = useState<{ [key: number]: Module[] }>({});
 
+  // Filtry a stránkování (klientské, nad načteným seznamem)
+  const [filters, setFilters] = useState<CourseFilterState>(DEFAULT_COURSE_FILTERS);
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const [page, setPage] = useState(1);
+
+  // Zavře rozbalené moduly i rychlé úpravy
+  const closeAllExpanded = useCallback(() => {
+    setExpandedCourse(null);
+    localStorage.removeItem('expandedCourse');
+    setQuickEditCourseId(null);
+  }, []);
+
   // Embedding generation state
   const [embeddingLoading, setEmbeddingLoading] = useState<number | null>(null);
   const [embeddingDone, setEmbeddingDone] = useState<Set<number>>(new Set());
 
   // Status change loading
   const [statusLoading, setStatusLoading] = useState<number | null>(null);
+
+  // Potvrzovací modal pro významné akce (odeslat ke schválení, archivovat, …)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: ConfirmVariant;
+    action: () => Promise<void> | void;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const runConfirm = async () => {
+    if (!confirmConfig) return;
+    setConfirmLoading(true);
+    try {
+      await confirmConfig.action();
+    } finally {
+      setConfirmLoading(false);
+      setConfirmConfig(null);
+    }
+  };
 
   // Quick edit state (inline accordion)
   const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
@@ -96,6 +133,15 @@ export function CoursesListView() {
     }
   }, []);
 
+  // Obnovení čísla stránky z localStorage (návrat z editace na stejnou stránku)
+  useEffect(() => {
+    const savedPage = localStorage.getItem('coursesListPage');
+    if (savedPage) {
+      const n = parseInt(savedPage, 10);
+      if (Number.isFinite(n) && n > 0) setPage(n);
+    }
+  }, []);
+
   // Načtení modulů při změně rozbalené kurzu
   useEffect(() => {
     async function loadModulesForExpandedCourse() {
@@ -130,7 +176,89 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
-  //  Course actions 
+  // Filtrování a stránkování
+
+  const filteredCourses = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return courses.filter((c) => {
+      if (filters.onlyMine && c.ownerId !== currentUser?.userId) return false;
+      if (filters.difficulty && c.difficulty !== filters.difficulty) return false;
+      if (filters.status && (c.status as string) !== filters.status) return false;
+      if (filters.published === 'yes' && !c.isPublished) return false;
+      if (filters.published === 'no' && c.isPublished) return false;
+      if (filters.blockId && c.courseBlockId !== filters.blockId) return false;
+      if (filters.targetId && c.courseTargetId !== filters.targetId) return false;
+      if (filters.subjectId && (c.courseSubjectId ?? 0) !== filters.subjectId) return false;
+      if (q && !c.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [
+    courses, currentUser?.userId, debouncedSearch,
+    filters.onlyMine, filters.difficulty, filters.status, filters.published,
+    filters.blockId, filters.targetId, filters.subjectId,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
+  const pagedCourses = filteredCourses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Po změně filtrů zpět na první stránku (první běh přeskočíme kvůli obnově stránky)
+  const isFirstFilterRun = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    setPage(1);
+  }, [
+    debouncedSearch, filters.onlyMine, filters.difficulty, filters.status,
+    filters.published, filters.blockId, filters.targetId, filters.subjectId,
+  ]);
+
+  // Drž stránku v platném rozsahu (až po načtení, ať neoříznutí obnovenou stránku)
+  useEffect(() => {
+    if (!coursesLoading && page > totalPages) setPage(totalPages);
+  }, [page, totalPages, coursesLoading]);
+
+  // Zapamatuj číslo stránky (první běh přeskočíme, ať nepřepíšeme obnovenou hodnotu)
+  const isFirstPagePersist = useRef(true);
+  useEffect(() => {
+    if (isFirstPagePersist.current) {
+      isFirstPagePersist.current = false;
+      return;
+    }
+    localStorage.setItem('coursesListPage', String(page));
+  }, [page]);
+
+  // Zavři rozbalené sekce při kliknutí mimo ně nebo klávesou Escape
+  useEffect(() => {
+    if (expandedCourse === null && quickEditCourseId === null) return;
+
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      // Klik uvnitř otevřené sekce nebo na její spouštěč nech být
+      if (target?.closest('[data-accordion-panel]')) return;
+      if (target?.closest('[data-accordion-keep]')) return;
+      closeAllExpanded();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeAllExpanded();
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [expandedCourse, quickEditCourseId, closeAllExpanded]);
+
+  // Přechod na jinou stránku přes paginaci: nejdřív přejdi, pak na pozadí zavři sekce.
+  // (Voláno z klik handleru, ne z efektu na `page`, aby obnova stránky sekce nezavírala.)
+  const handlePageChange = (next: number) => {
+    setPage(next);
+    closeAllExpanded();
+  };
+
+  //  Course actions
 
   const handleDeleteClick = (courseId: number) => {
     setCourseToDelete(courseId);
@@ -252,7 +380,43 @@ export function CoursesListView() {
     }
   };
 
-  // Modal handlers 
+  // Potvrzovací – otevřou modal, samotnou akci spustí až po potvrzení
+
+  const requestSubmitForReview = (course: Course) => setConfirmConfig({
+    title: 'Odeslat ke schválení',
+    message: `Opravdu chcete odeslat kurz „${course.title}" ke schválení? Dokud nebude zkontrolován, nebudete ho moci upravovat.`,
+    confirmLabel: 'Odeslat',
+    variant: 'primary',
+    action: () => handleSubmitForReview(course),
+  });
+
+  const requestArchive = (course: Course) => setConfirmConfig({
+    title: 'Archivovat kurz',
+    message: `Opravdu chcete archivovat kurz „${course.title}"? Přestane být dostupný studentům.`,
+    confirmLabel: 'Archivovat',
+    variant: 'warning',
+    action: () => handleArchive(course),
+  });
+
+  const requestRevertToEditing = (course: Course) => setConfirmConfig({
+    title: 'Vrátit do úprav',
+    message: `Opravdu chcete vrátit kurz „${course.title}" zpět do úprav? Pokud je publikovaný, bude zároveň zrušeno jeho publikování.`,
+    confirmLabel: 'Vrátit do úprav',
+    variant: 'warning',
+    action: () => handleRevertToEditing(course),
+  });
+
+  const requestTogglePublish = (course: Course) => setConfirmConfig({
+    title: course.isPublished ? 'Zrušit publikování' : 'Publikovat kurz',
+    message: course.isPublished
+      ? `Opravdu chcete zrušit publikování kurzu „${course.title}"? Přestane být dostupný studentům.`
+      : `Opravdu chcete publikovat kurz „${course.title}"? Stane se dostupným studentům.`,
+    confirmLabel: course.isPublished ? 'Zrušit publikování' : 'Publikovat',
+    variant: course.isPublished ? 'warning' : 'primary',
+    action: () => togglePublish(course),
+  });
+
+  // Modal handlers
 
   const openCreateCourseModal = () => {
     setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
@@ -446,13 +610,28 @@ export function CoursesListView() {
               ]}
             />
           </div>
-            {/* 
+            {/*
           { label: 'Manuální zadání', icon: <BicepsFlexed size={18} />, onClick: openCreateCourseModal },
           { label: 'Nahrát soubor', icon: <Upload size={18} />, onClick: goToCourseUpload },
           */}
 
-          {/* Table - Desktop */}
-          <div className="hidden md:block overflow-x-auto">
+          {/* Filtry — zůstávají vykreslené i během reloadu (po akcích jako
+              publikování/smazání), aby lišta nemizela a seznam neposkakoval */}
+          {courses.length > 0 && (
+            <CourseFilters
+              value={filters}
+              onChange={setFilters}
+              blocks={blocks}
+              targets={targets}
+              subjects={subjects}
+              totalCount={courses.length}
+              filteredCount={filteredCourses.length}
+            />
+          )}
+
+          {/* Table - Desktop. Min. výška drží pevné hranice seznamu,
+              aby se blok nezkracoval při filtrování na méně řádků. */}
+          <div className="hidden md:block overflow-x-auto min-h-[480px]">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -464,7 +643,7 @@ export function CoursesListView() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Akce</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody key={`page-${page}`} className="divide-y divide-gray-200">
                 {coursesLoading && courses.length === 0 ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
@@ -481,7 +660,13 @@ export function CoursesListView() {
                       {coursesError ?? 'Zatím nejsou žádné kurzy. Vytvořte první přes „Přidat kurz".'}
                     </td>
                   </tr>
-                ) : courses.map((course) => {
+                ) : filteredCourses.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                      Žádné kurzy neodpovídají zvoleným filtrům.
+                    </td>
+                  </tr>
+                ) : pagedCourses.map((course, pageIndex) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
                   const handleRowClick = () => {
@@ -492,9 +677,11 @@ export function CoursesListView() {
                     }
                   };
                   return (
-                    <React.Fragment key={course.courseId}>
+                    <React.Fragment key={`${page}-${course.courseId}`}>
                       <tr
-                        className="hover:bg-gray-50 cursor-pointer"
+                        data-accordion-keep
+                        className="hover:bg-gray-50 cursor-pointer row-fade-in"
+                        style={{ animationDelay: `${pageIndex * 30}ms` }}
                         onClick={handleRowClick}
                         role="button"
                         tabIndex={0}
@@ -521,7 +708,7 @@ export function CoursesListView() {
                                 {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
                                 {canPublishCourse(course) && (
                                   <button
-                                    onClick={() => togglePublish(course)}
+                                    onClick={() => requestTogglePublish(course)}
                                     className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
                                   >
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
@@ -540,7 +727,7 @@ export function CoursesListView() {
                               <>
                                 {/* Published (non-archived): archive (+ delete for superadmin) */}
                                 <button
-                                  onClick={() => handleArchive(course)}
+                                  onClick={() => requestArchive(course)}
                                   disabled={statusLoading === course.courseId}
                                   className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                 >
@@ -578,7 +765,7 @@ export function CoursesListView() {
                                 {/* Submit for review - owner can submit when in editable status */}
                                 {canSubmitForReview(course) && (
                                   <button
-                                    onClick={() => handleSubmitForReview(course)}
+                                    onClick={() => requestSubmitForReview(course)}
                                     disabled={statusLoading === course.courseId}
                                     className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                   >
@@ -589,7 +776,7 @@ export function CoursesListView() {
                                 {/* Publish - only when approved and not yet published */}
                                 {canPublishCourse(course) && course.status === Status.Approved && (
                                   <button
-                                    onClick={() => togglePublish(course)}
+                                    onClick={() => requestTogglePublish(course)}
                                     className="px-2.5 py-1 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium whitespace-nowrap transition-colors"
                                   >
                                     Publikovat
@@ -599,7 +786,7 @@ export function CoursesListView() {
                                 {/* Revert to editing - superadmin only, when approved */}
                                 {isSuperAdmin && course.status === Status.Approved && (
                                   <button
-                                    onClick={() => handleRevertToEditing(course)}
+                                    onClick={() => requestRevertToEditing(course)}
                                     disabled={statusLoading === course.courseId}
                                     className="px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 hover:bg-amber-100 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
                                   >
@@ -624,7 +811,7 @@ export function CoursesListView() {
 
                       {/* Quick Edit Accordion */}
                       {quickEditCourseId === course.courseId && (
-                        <tr>
+                        <tr data-accordion-panel>
                           <td colSpan={6} className="bg-purple-50 p-0 border-b border-purple-200">
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -686,7 +873,7 @@ export function CoursesListView() {
 
                       {/* Expanded Module List */}
                       {expandedCourse === course.courseId && (
-                        <tr>
+                        <tr data-accordion-panel>
                           <td colSpan={6} className="bg-gray-50 p-0">
                             <ExpandedModuleList
                               course={course}
@@ -713,15 +900,20 @@ export function CoursesListView() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden divide-y divide-gray-200">
-            {courses.map((course) => (
+          <div key={`mobile-page-${page}`} className="md:hidden divide-y divide-gray-200 min-h-[320px]">
+            {!coursesLoading && courses.length > 0 && filteredCourses.length === 0 && (
+              <div className="px-4 py-12 text-center text-sm text-gray-500">
+                Žádné kurzy neodpovídají zvoleným filtrům.
+              </div>
+            )}
+            {pagedCourses.map((course, pageIndex) => (
+              <div key={`${page}-${course.courseId}`} className="row-fade-in" style={{ animationDelay: `${pageIndex * 30}ms` }}>
               <MobileCourseCard
-                key={course.courseId}
                 course={course}
                 isExpanded={expandedCourse === course.courseId}
                 modules={courseModules[course.courseId] || []}
                 onToggleExpand={() => toggleCourseExpand(course.courseId)}
-                onTogglePublish={() => togglePublish(course)}
+                onTogglePublish={() => requestTogglePublish(course)}
                 onDelete={() => handleDeleteClick(course.courseId)}
                 onEditCourse={() => goToCourseContent(course.courseId)}
                 onCloseExpand={closeCourseExpand}
@@ -738,14 +930,21 @@ export function CoursesListView() {
                 canEdit={canEditCourse(course)}
                 canPublish={canPublishCourse(course)}
                 canDelete={canDeleteCourse(course)}
-                onSubmitForReview={() => handleSubmitForReview(course)}
+                onSubmitForReview={() => requestSubmitForReview(course)}
                 canSubmitReview={canSubmitForReview(course)}
-                onRevertToEditing={() => handleRevertToEditing(course)}
-                onArchive={() => handleArchive(course)}
+                onRevertToEditing={() => requestRevertToEditing(course)}
+                onArchive={() => requestArchive(course)}
                 statusLoading={statusLoading === course.courseId}
               />
+              </div>
             ))}
           </div>
+
+          {/* Paginace — viditelnost se řídí celkovým počtem kurzů (ne filtrovaným),
+              aby lišta nemizela při filtrování ani během reloadu a layout držel. */}
+          {courses.length > PAGE_SIZE && (
+            <CoursePagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          )}
         </div>
       </div>
 
@@ -785,11 +984,95 @@ export function CoursesListView() {
           setModuleToDelete(null);
         }}
       />
+
+      <ConfirmModal
+        isOpen={confirmConfig !== null}
+        title={confirmConfig?.title ?? ''}
+        message={confirmConfig?.message ?? ''}
+        confirmLabel={confirmConfig?.confirmLabel}
+        variant={confirmConfig?.variant}
+        loading={confirmLoading}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirmConfig(null)}
+      />
     </>
   );
 }
 
 // Pomocné komponenty
+
+// Stránkovací ovládání
+function CoursePagination({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+}) {
+  // Čísla stránek s výpustkami, ať ovládání není příliš dlouhé
+  const pages: (number | 'ellipsis')[] = [];
+  const pushRange = (from: number, to: number) => {
+    for (let i = from; i <= to; i++) pages.push(i);
+  };
+  if (totalPages <= 7) {
+    pushRange(1, totalPages);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push('ellipsis');
+    pushRange(Math.max(2, page - 1), Math.min(totalPages - 1, page + 1));
+    if (page < totalPages - 2) pages.push('ellipsis');
+    pages.push(totalPages);
+  }
+
+  const btnBase =
+    'min-w-[34px] h-[34px] px-2 flex items-center justify-center rounded-md text-sm font-medium transition-colors';
+
+  return (
+    <div data-accordion-keep className="flex items-center justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-white">
+      <span className="text-xs text-gray-500 whitespace-nowrap">
+        Stránka {page} z {totalPages}
+      </span>
+      <nav className="flex items-center gap-1" aria-label="Stránkování">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className={`${btnBase} text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed`}
+          aria-label="Předchozí stránka"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        {pages.map((p, i) =>
+          p === 'ellipsis' ? (
+            <span key={`e-${i}`} className="px-1 text-gray-400 select-none">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              aria-current={p === page ? 'page' : undefined}
+              className={`${btnBase} ${
+                p === page
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className={`${btnBase} text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed`}
+          aria-label="Další stránka"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </nav>
+    </div>
+  );
+}
 
 interface ExpandedModuleListProps {
   course: Course;
@@ -811,7 +1094,7 @@ function ExpandedModuleList({
   onEditModuleName,
   onToggleModuleActive,
   onDeleteModule,
-  onAddModule,
+  // onAddModule, // možnost "Přidat modul" dočasně skryta
 }: ExpandedModuleListProps) {
   return (
     <div className="p-6">
@@ -855,6 +1138,7 @@ function ExpandedModuleList({
           ))}
         </div>
 
+        {/* Možnost "Přidat modul" dočasně skryta
         <div className="p-4 border-t">
           <button
             onClick={onAddModule}
@@ -866,6 +1150,7 @@ function ExpandedModuleList({
             </svg>
           </button>
         </div>
+        */}
       </div>
     </div>
   );
@@ -909,7 +1194,7 @@ function MobileCourseCard({
   onEditModule,
   onToggleModuleActive,
   onDeleteModule,
-  onAddModule,
+  // onAddModule, // možnost "Přidat modul" dočasně skryta
   canEdit,
   canPublish,
   canDelete,
@@ -941,7 +1226,7 @@ function MobileCourseCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <div data-accordion-keep className="mt-3 flex flex-wrap items-center gap-1.5">
         {statusStr === Status.Archived ? (
           <>
             {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
@@ -988,7 +1273,7 @@ function MobileCourseCard({
 
       {/* Expanded Module List - Mobile */}
       {isExpanded && (
-        <div className="mt-4 bg-gray-50 rounded-lg p-3">
+        <div data-accordion-panel className="mt-4 bg-gray-50 rounded-lg p-3">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-gray-900 text-sm">Moduly</h4>
             <button onClick={onCloseExpand} className="text-gray-500 hover:text-gray-700">
@@ -1013,12 +1298,14 @@ function MobileCourseCard({
               </div>
             ))}
           </div>
+          {/* Možnost "Přidat modul" dočasně skryta
           <button
             onClick={onAddModule}
             className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm w-full"
           >
             <span>Přidat modul</span>
           </button>
+          */}
           <button
             onClick={onEditCourse}
             className="mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm w-full"

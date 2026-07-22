@@ -142,7 +142,7 @@ export function FolderPickerModal({
               disabled={submitting || !selectedId}
               className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
             >
-              {submitting ? "Ukládání…" : "Přesunout"}
+              {submitting ? "Ukládání…" : "Přidat do složky"}
             </button>
           </div>
         </div>

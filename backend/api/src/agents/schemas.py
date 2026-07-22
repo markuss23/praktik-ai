@@ -143,3 +143,25 @@ class LearnBlocksChatResponse(BaseModel):
     """Response s odpovědí na otázku"""
 
     answer: str = Field(..., description="Odpověď vygenerovaná na základě learn blocku")
+
+
+class WikiChatRequest(BaseModel):
+    """Request pro chat nad projektovou wiki"""
+
+    message: str = Field(..., description="Zpráva od uživatele (otázka o projektu)")
+
+
+class WikiChatResponse(BaseModel):
+    """Response s odpovědí na otázku o wiki"""
+
+    answer: str = Field(..., description="Odpověď vygenerovaná na základě wiki obsahu")
+
+
+class WikiSyncResponse(BaseModel):
+    """Response s odpovědí pro synchronizaci wiki repozitáře"""
+
+    pages_processed: int = Field(..., description="Počet zpracovaných wiki stránek")
+    message: str = Field(
+        default="Wiki byla úspěšně synchronizována a re-indexována",
+        description="Stavová zpráva",
+    )

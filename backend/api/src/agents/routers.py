@@ -21,6 +21,9 @@ from api.src.agents.schemas import (
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
+    WikiChatRequest,
+    WikiChatResponse,
+    WikiSyncResponse,
 )
 from api.src.agents.progress import (
     get_progress,
@@ -40,6 +43,8 @@ from api.src.agents.practice_controllers import (
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.mentor.service import MentorService
+from agents.wiki.mentor.service import WikiChatService
+from agents.wiki.agent.service import WikiAgentService
 from agents.assessment_generator.service import AssessmentService
 from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
@@ -248,6 +253,38 @@ async def learn_blocks_chat(
     db.commit()
 
     return LearnBlocksChatResponse(answer=result.answer)
+
+
+@router.post("/wiki-chat", operation_id="wiki_chat")
+async def wiki_chat(
+    user_input: WikiChatRequest, db: SessionSqlSessionDependency
+) -> WikiChatResponse:
+    """Endpoint pro chat nad projektovou wiki."""
+
+    service = WikiChatService(db=db, message=user_input.message)
+    result = await service.chat()
+
+    return WikiChatResponse(answer=result.answer)
+
+
+@router.post(
+    "/wiki-sync",
+    operation_id="wiki_sync",
+    dependencies=[require_role("superadmin")],
+)
+async def wiki_sync() -> WikiSyncResponse:
+    """Endpoint pro synchronizaci a re-indexaci GitHub wiki."""
+
+    repo_url = "https://github.com/markuss23/praktik-ai.wiki.git"
+    local_path = "agents/wiki/agent/data/praktik-ai.wiki"
+
+    service = WikiAgentService(
+        repo_url=repo_url,
+        local_path=local_path,
+    )
+    result = await service.sync()
+
+    return WikiSyncResponse(pages_processed=result.pages_processed)
 
 
 @router.post(

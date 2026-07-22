@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 
-export type DatabaseTab = "public" | "mine";
+export type DatabaseTab = "public" | "collections" | "mine";
 
 const TAB_DEFINITIONS: { id: DatabaseTab; label: string; href: string }[] = [
   { id: "public", label: "Veřejná databáze", href: ROUTES.PUBLIC_DATABASE },
+  { id: "collections", label: "Veřejné sbírky", href: `${ROUTES.PUBLIC_DATABASE}?tab=collections` },
   { id: "mine", label: "Moje sbírka", href: `${ROUTES.PUBLIC_DATABASE}?tab=mine` },
 ];
 

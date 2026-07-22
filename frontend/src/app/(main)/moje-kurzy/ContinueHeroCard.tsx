@@ -23,12 +23,22 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
   return (
     <a
       href={href}
-      className="group block rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
-      style={{
-        background: 'linear-gradient(135deg, #6366F1 0%, #8B5BA8 55%, #B1475C 100%)',
-      }}
+      className="group relative block rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
+      style={{ backgroundColor: '#8B5BA8' }}
     >
-      <div className="flex flex-col md:flex-row">
+      {/* Decentní dekorace místo gradientu — jemné obrysové kruhy v rohu */}
+      <svg
+        className="pointer-events-none absolute -right-10 -bottom-16 h-56 w-56 text-white/10"
+        viewBox="0 0 200 200"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="100" cy="100" r="98" stroke="currentColor" strokeWidth="2" />
+        <circle cx="100" cy="100" r="70" stroke="currentColor" strokeWidth="2" />
+        <circle cx="100" cy="100" r="42" stroke="currentColor" strokeWidth="2" />
+      </svg>
+
+      <div className="relative flex flex-col md:flex-row">
         <div className="relative w-full md:w-[340px] h-[200px] md:h-auto flex-shrink-0 overflow-hidden">
           <Image
             src="/courseai2.png"
@@ -36,7 +46,7 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/40 md:from-transparent md:to-[#6366F1]/40 to-transparent" />
+          <div className="absolute inset-0 bg-black/20 md:bg-[#8B5BA8]/25" />
           <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-purple-900">
             <Play size={12} className="fill-current" />
             Pokračuj kde jsi skončil

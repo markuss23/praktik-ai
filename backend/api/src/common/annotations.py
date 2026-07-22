@@ -7,9 +7,7 @@ INCLUDE_INACTIVE_ANNOTATION = Annotated[
     bool, Query(description="Include inactive records")
 ]
 
-TEXT_SEARCH_ANNOTATION = Annotated[
-    str | None, Query(description="Text to search for")
-]
+TEXT_SEARCH_ANNOTATION = Annotated[str | None, Query(description="Text to search for")]
 
 IS_PUBLISHED_ANNOTATION = Annotated[
     bool, Query(description="Filter by published status")
@@ -45,4 +43,25 @@ RESOURCE_EDU_LEVEL_ID_ANNOTATION = Annotated[
 ]
 RESOURCE_DIFFICULTY_LEVEL_ID_ANNOTATION = Annotated[
     str | None, Query(description="Filter by resource difficulty level ID")
+]
+RESOURCE_IS_FORK_ANNOTATION = Annotated[
+    bool | None, Query(description="Filter by whether the resource is a fork")
+]
+RESROURCE_ORIGINAL_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by original resource ID for forks")
+]
+REVIEW_VERDICT_ANNOTATION = Annotated[
+    str | None, Query(description="Filter reviews by verdict")
+]
+REVIEW_RESOURCE_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter reviews by resource ID")
+]
+REVIEW_REVIEWER_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter reviews by reviewer ID")
+]
+RATING_SCORE_MIN_ANNOTATION = Annotated[
+    int | None, Query(description="Minimum rating score to filter by")
+]
+RATING_SCORE_MAX_ANNOTATION = Annotated[
+    int | None, Query(description="Maximum rating score to filter by")
 ]

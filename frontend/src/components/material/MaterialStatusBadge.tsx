@@ -1,6 +1,10 @@
 import type { MaterialApprovalStatus } from "./types";
 
 const STATUS_STYLES: Record<MaterialApprovalStatus, { label: string; className: string }> = {
+  draft: {
+    label: "Koncept",
+    className: "bg-gray-100 text-gray-600",
+  },
   approved: {
     label: "Schváleno",
     className: "bg-green-100 text-green-700",

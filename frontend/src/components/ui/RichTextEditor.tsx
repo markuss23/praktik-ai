@@ -8,6 +8,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from './editor/ResizableImage';
 import { Modal } from './Modal';
+import { uploadEditorImage } from '@/lib/api-client';
 import {
   Bold,
   Italic,
@@ -26,6 +27,7 @@ import {
   Loader2,
   Trash2,
   Quote,
+  SeparatorHorizontal,
 } from 'lucide-react';
 
 // Toolbar Button
@@ -94,13 +96,9 @@ function ImageDialog({
     setError(null);
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch('/api/editor-image', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Nahrání selhalo');
-      setUrl(data.url);
-      setPreviewUrl(data.url);
+      const { url: uploadedUrl } = await uploadEditorImage(file);
+      setUrl(uploadedUrl);
+      setPreviewUrl(uploadedUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Nahrání obrázku selhalo');
     } finally {
@@ -115,10 +113,12 @@ function ImageDialog({
     onClose();
   };
 
-  const onUrlChange = (value: string) => {
-    setUrl(value);
-    setPreviewUrl(value);
-  };
+  // obrázky se vkládají jen z počítače.
+  // popř. odkoment handler i sekci URL obrázku
+  // const onUrlChange = (value: string) => {
+  //   setUrl(value);
+  //   setPreviewUrl(value);
+  // };
 
   return (
     <Modal
@@ -173,6 +173,7 @@ function ImageDialog({
           />
         </div>
 
+        {/* Vkládání přes URL dočasně vypnuté — ponecháno pro případné znovuzapnutí.
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-gray-200" />
           <span className="text-xs text-gray-400">nebo</span>
@@ -189,6 +190,7 @@ function ImageDialog({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
           />
         </div>
+        */}
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
@@ -479,6 +481,15 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
         <ToolbarDivider />
 
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Zalomit list (začne nová stránka pro studenta)"
+        >
+          <SeparatorHorizontal size={16} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
         <ToolbarButton onClick={() => setImageDialogOpen(true)} title="Vložit obrázek">
           <ImageIcon size={16} />
         </ToolbarButton>
@@ -517,6 +528,8 @@ const EDITOR_EXTENSIONS = (placeholder: string) => [
       HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
     },
     blockquote: false,
+    // Vodorovná čára slouží jako značka zalomení listu (nová stránka u studenta)
+    horizontalRule: { HTMLAttributes: { class: 'page-break' } },
   }),
   Blockquote.configure({
     HTMLAttributes: {
