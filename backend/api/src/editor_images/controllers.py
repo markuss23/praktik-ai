@@ -50,8 +50,8 @@ def get_editor_image(filename: str) -> Response:
     remote_path = f"{_REMOTE_PREFIX}/{filename}"
     try:
         content = seaweedfs.download_file(remote_path)
-    except httpx.HTTPStatusError:
-        raise HTTPException(status_code=404, detail="Obrázek nenalezen")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=404, detail="Obrázek nenalezen") from e
 
     media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     return Response(content=content, media_type=media_type)

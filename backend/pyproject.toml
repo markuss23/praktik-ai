@@ -9,7 +9,8 @@ dependencies = [
     "uvicorn>=0.30.6",
     "psycopg[binary]==3.3.2",
     "pydantic-settings>=2.11.0",
-    "ruff>=0.14.2",
+    # ruff-action si bere verzi odsud
+    "ruff>=0.16.0,<0.17",
     "sqlalchemy>=2.0.44",
     "unstructured[md]>=0.18.20",
     "pypdf>=6.0.0",
