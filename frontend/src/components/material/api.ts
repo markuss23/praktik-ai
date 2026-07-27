@@ -104,12 +104,15 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
         ? [{ label: "Autor", value: resource.authorDisplayName }]
         : []),
     ],
+    // `filePath` je interní klíč v SeaweedFS, ne odkaz ke stažení — přílohy se
+    // stahují přes backend podle resourceId/fileId.
     attachments: (resource.files ?? []).map((f) => ({
       id: String(f.fileId),
       name: attachmentNameFromPath(f.filename, `Soubor ${f.fileId}`),
       format: (f.fileType ?? "file").toString().toUpperCase(),
       sizeLabel: "",
-      url: f.filePath,
+      resourceId: resource.resourceId,
+      fileId: f.fileId,
     })),
   };
 }

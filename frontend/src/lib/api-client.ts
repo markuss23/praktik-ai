@@ -40,6 +40,7 @@ import {
   UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
+import { saveBlob } from "./download";
 import { getValidAccessToken } from "./keycloak";
 
 
@@ -230,15 +231,7 @@ export async function downloadCourseFile(courseId: number, fileId: number, filen
     headers,
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+  saveBlob(await res.blob(), filename);
 }
 
 export async function deleteCourse(courseId: number) {
@@ -731,6 +724,40 @@ export async function updateResourcePublicState(
 
 export async function uploadResourceFile(resourceId: number, file: File) {
   return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
+}
+
+// v DB je jen klíč v SeaweedFS, ne veřejná URL- zatím není v generovaném klientovi, voláme ho tedy přes fetch.
+export async function fetchResourceFileBlob(
+  resourceId: number,
+  fileId: number,
+): Promise<Blob> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(
+    backendUrl(`/api/v1/resources/${resourceId}/files/${fileId}`),
+    { method: 'GET', headers },
+  );
+  if (!res.ok) {
+    let detail = `Stažení selhalo (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  return res.blob();
+}
+
+/** Stáhne přílohu materiálu a vyvolá download dialog v prohlížeči. */
+export async function downloadResourceFile(
+  resourceId: number,
+  fileId: number,
+  filename: string,
+): Promise<void> {
+  saveBlob(await fetchResourceFileBlob(resourceId, fileId), filename);
 }
 
 // Vytvoří fork

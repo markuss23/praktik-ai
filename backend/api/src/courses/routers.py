@@ -1,12 +1,12 @@
 from typing import Literal
-import mimetypes
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from langgraph.graph.state import CompiledStateGraph
 
 from api.storage import seaweedfs
-from api.src.common.utils import get_or_404
+from api.src.common.utils import attachment_response, get_or_404
 from api import models
 
 from api.dependencies import CurrentUser, require_role
@@ -205,17 +205,18 @@ async def endp_download_course_file(
     if course_file.course_id != course_id:
         raise HTTPException(status_code=404, detail="Soubor nenalezen")
 
-    content = seaweedfs.download_file(course_file.file_path)
-    media_type = (
-        mimetypes.guess_type(course_file.filename)[0] or "application/octet-stream"
-    )
-    return Response(
-        content=content,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{course_file.filename}"'
-        },
-    )
+    try:
+        content = seaweedfs.download_file(course_file.file_path)
+    except httpx.HTTPError as e:
+        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
+            raise HTTPException(
+                status_code=404, detail="Soubor už není v úložišti"
+            ) from e
+        raise HTTPException(
+            status_code=502, detail="Úložiště souborů je nedostupné"
+        ) from e
+
+    return attachment_response(content, course_file.filename)
 
 
 @router.delete(

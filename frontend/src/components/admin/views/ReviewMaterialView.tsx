@@ -12,10 +12,11 @@ import {
   listResourceComments,
   createResourceComment,
   deleteResourceComment,
+  downloadResourceFile,
   type ResourceComment,
 } from '@/lib/api-client';
 import { mapPubResourceToMaterial } from '@/components/material/api';
-import type { Material } from '@/components/material/types';
+import type { Material, MaterialAttachment } from '@/components/material/types';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { REVIEW_COUNT_EVENT } from '@/components/admin/AdminSidebar';
@@ -68,6 +69,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
   const [actionLoading, setActionLoading] = useState<null | 'approve' | 'return'>(null);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [approvedTransition, setApprovedTransition] = useState(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +139,20 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
       console.error('Failed to submit review:', err);
       setError(err instanceof Error ? err.message : 'Nepodařilo se uložit rozhodnutí.');
       setActionLoading(null);
+    }
+  };
+
+  const handleDownloadAttachment = async (attachment: MaterialAttachment) => {
+    if (attachment.resourceId == null || attachment.fileId == null) return;
+    setDownloadingFileId(attachment.fileId);
+    setError(null);
+    try {
+      await downloadResourceFile(attachment.resourceId, attachment.fileId, attachment.name);
+    } catch (err) {
+      console.error('Failed to download attachment:', err);
+      setError(err instanceof Error ? err.message : 'Soubor se nepodařilo stáhnout.');
+    } finally {
+      setDownloadingFileId(null);
     }
   };
 
@@ -306,16 +322,16 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <span className="text-xs text-gray-500">{attachment.format}</span>
-                      {attachment.url ? (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      {attachment.resourceId != null && attachment.fileId != null ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(attachment)}
+                          disabled={downloadingFileId === attachment.fileId}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
                         >
                           <Download size={14} strokeWidth={1.75} />
-                          Stáhnout
-                        </a>
+                          {downloadingFileId === attachment.fileId ? 'Stahuji…' : 'Stáhnout'}
+                        </button>
                       ) : (
                         <span className="text-xs text-gray-400">Bez souboru</span>
                       )}

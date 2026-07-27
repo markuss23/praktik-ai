@@ -3,26 +3,33 @@
 import { useState } from "react";
 import { Download, Folder } from "lucide-react";
 import JSZip from "jszip";
+import { fetchResourceFileBlob } from "@/lib/api-client";
+import { saveBlob } from "@/lib/download";
 import type { MaterialAttachment } from "./types";
 
-/** Stáhne soubor jako blob a vyvolá download dialog; při selhání otevře v nové kartě. */
-async function downloadAttachment(attachment: MaterialAttachment): Promise<void> {
-  if (!attachment.url) return;
-  try {
+/** Zda přílohu vůbec lze stáhnout (reálný soubor v API, nebo přímá URL u mocků). */
+function isDownloadable(attachment: MaterialAttachment): boolean {
+  return (
+    (attachment.resourceId != null && attachment.fileId != null) || !!attachment.url
+  );
+}
+
+/** Načte obsah přílohy — přes backend (s tokenem), nebo z přímé URL u mocků. */
+async function loadAttachmentBlob(attachment: MaterialAttachment): Promise<Blob> {
+  if (attachment.resourceId != null && attachment.fileId != null) {
+    return fetchResourceFileBlob(attachment.resourceId, attachment.fileId);
+  }
+  if (attachment.url) {
     const res = await fetch(attachment.url);
     if (!res.ok) throw new Error(`Stažení selhalo (${res.status})`);
-    const blob = await res.blob();
-    const objectUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = attachment.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(objectUrl);
-  } catch {
-    window.open(attachment.url, "_blank", "noopener,noreferrer");
+    return res.blob();
   }
+  throw new Error("Soubor není k dispozici.");
+}
+
+/** Stáhne soubor jako blob a vyvolá download dialog. */
+async function downloadAttachment(attachment: MaterialAttachment): Promise<void> {
+  saveBlob(await loadAttachmentBlob(attachment), attachment.name);
 }
 
 /** Nahradí znaky nepovolené v názvu souboru podtržítkem. */
@@ -41,11 +48,9 @@ async function downloadAllAsZip(
 
   await Promise.all(
     attachments.map(async (attachment) => {
-      if (!attachment.url) return;
+      if (!isDownloadable(attachment)) return;
       try {
-        const res = await fetch(attachment.url);
-        if (!res.ok) return;
-        const blob = await res.blob();
+        const blob = await loadAttachmentBlob(attachment);
         // Ošetření duplicitních názvů: soubor.pdf, soubor (1).pdf, …
         const count = usedNames.get(attachment.name) ?? 0;
         usedNames.set(attachment.name, count + 1);
@@ -67,15 +72,7 @@ async function downloadAllAsZip(
 
   if (added === 0) throw new Error("Žádný soubor se nepodařilo stáhnout.");
 
-  const content = await zip.generateAsync({ type: "blob" });
-  const objectUrl = window.URL.createObjectURL(content);
-  const a = document.createElement("a");
-  a.href = objectUrl;
-  a.download = zipName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(objectUrl);
+  saveBlob(await zip.generateAsync({ type: "blob" }), zipName);
 }
 
 interface MaterialAttachmentsProps {
@@ -86,7 +83,7 @@ interface MaterialAttachmentsProps {
 
 /** Sekce „Přílohy" na detailu materiálu — seznam souborů se stažením po jednom i najednou. */
 export function MaterialAttachments({ attachments, title }: MaterialAttachmentsProps) {
-  const downloadable = attachments.filter((a) => a.url);
+  const downloadable = attachments.filter(isDownloadable);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -96,8 +93,16 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
   const handleDownload = async (attachment: MaterialAttachment) => {
     if (downloadingId || downloadingAll) return;
     setDownloadingId(attachment.id);
+    setDownloadError(null);
     try {
       await downloadAttachment(attachment);
+    } catch (err) {
+      console.error("downloadAttachment failed:", err);
+      setDownloadError(
+        err instanceof Error
+          ? `„${attachment.name}" se nepodařilo stáhnout: ${err.message}`
+          : `„${attachment.name}" se nepodařilo stáhnout.`,
+      );
     } finally {
       setDownloadingId(null);
     }
@@ -161,9 +166,13 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
               <button
                 type="button"
                 onClick={() => handleDownload(attachment)}
-                disabled={!attachment.url || downloadingId === attachment.id || downloadingAll}
+                disabled={
+                  !isDownloadable(attachment) ||
+                  downloadingId === attachment.id ||
+                  downloadingAll
+                }
                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium transition-colors ${
-                  attachment.url
+                  isDownloadable(attachment)
                     ? "text-gray-700 hover:bg-gray-50"
                     : "text-gray-400 cursor-not-allowed"
                 } disabled:opacity-60`}

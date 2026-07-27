@@ -5,6 +5,10 @@ export interface MaterialAttachment {
   name: string;
   format: string;
   sizeLabel: string;
+  /** ID materiálu a souboru pro stažení přes backend (vyžaduje přihlášení). */
+  resourceId?: number;
+  fileId?: number;
+  /** Přímá URL — jen pro ukázková data; reálné přílohy se stahují přes API. */
   url?: string;
 }
 
