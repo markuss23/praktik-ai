@@ -90,3 +90,30 @@ class ReviewVerdict(enum.StrEnum):
     approved = "approved"
     rejected = "rejected"
     needs_revision = "needs_revision"
+
+
+class AssessmentContext(enum.StrEnum):
+    """Kde v kurzu je interakční formát nasazen."""
+
+    practice = "practice"
+    assessment = "assessment"
+    course_final = "course_final"
+
+
+class AssessmentSessionStatus(enum.StrEnum):
+    """Stav běhu studenta. awaiting_review/reviewer zatím nevyužito —
+    rezervováno pro formáty s hodnocením člověkem (open_questions a další)."""
+
+    in_progress = "in_progress"
+    awaiting_review = "awaiting_review"
+    completed = "completed"
+    passed = "passed"
+    failed = "failed"
+    abandoned = "abandoned"
+
+
+class AssessmentTurnRole(enum.StrEnum):
+    student = "student"
+    assistant = "assistant"
+    reviewer = "reviewer"
+    system = "system"

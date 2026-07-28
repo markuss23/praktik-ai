@@ -2,7 +2,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from api.database import SessionLocal
-from api.models import CourseBlock, CourseSubject, CourseTarget, SystemSetting
+from api.models import (
+    AssessmentType,
+    CourseBlock,
+    CourseSubject,
+    CourseTarget,
+    SystemSetting,
+)
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -232,6 +238,19 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     },
 ]
 
+ASSESSMENT_TYPES: list[dict] = [
+    {
+        "code": "closed_questions",
+        "name": "Uzavřené otázky",
+        "description": (
+            "Lektor autoruje otázky s možnostmi; student je prochází po jedné, "
+            "na konci skóre proti prahu úspěšnosti. Bez LLM."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": {"questions": []},
+    },
+]
+
 COURSE_SUBJECTS: list[dict[str, str]] = [
     {"code": "01", "name": "Český jazyk a literatura"},
     {"code": "02", "name": "Cizí jazyky – obecné"},
@@ -266,6 +285,9 @@ def seed_db() -> None:
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
+
+        if db.query(AssessmentType).count() == 0:
+            db.add_all([AssessmentType(**row) for row in ASSESSMENT_TYPES])
 
         db.commit()
     finally:
