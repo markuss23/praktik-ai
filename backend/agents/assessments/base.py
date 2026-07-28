@@ -1,27 +1,30 @@
 """
-Základní kontrakt a registr interakčních formátů (assessments).
+Základní nástroje a registr interakčních formátů (assessments).
 
-Každý formát (uzavřené otázky, do budoucna otevřené otázky, AI procvičování...)
-implementuje ``BaseAssessmentService`` a zaregistruje se dekorátorem
-``@register``. API vrstva (api/src/assessments) je generická — na typ
-se nedívá, jen dispatchuje do registru podle ``assessment_type_code``.
+Žádné třídy ani dědičnost. Formát = obyčejný Python modul (viz
+``closed_questions/service.py``) se třemi funkcemi:
 
-Nový formát = nový balíček vedle closed_questions/ + import
-v ``agents/assessments/__init__.py``. Routery ani DB se nemění.
+    def start(db, session) -> TurnResult: ...
+    def handle_turn(db, session, turn) -> TurnResult: ...
+    def current_view(session) -> AssessmentView: ...
+
+Tenhle soubor drží:
+  - ``TurnResult`` — datová krabička, co se vrací z ``start``/``handle_turn``.
+  - tři sdílené pomocné funkce, které formát může (ale nemusí) použít.
+  - ``REGISTRY`` — obyčejný dict {kód formátu: {funkce a schéma formátu}}.
+    Vyplňuje se ručně v ``agents/assessments/__init__.py`` — žádná
+    automatická registrace, žádná magie. Nový formát = nový řádek v tom
+    dictu.
 """
 
-from __future__ import annotations
-
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import ClassVar
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from api import models
 from api.enums import AssessmentSessionStatus, AssessmentTurnRole
-from agents.assessments.schemas import AssessmentView, TurnInput
+from agents.assessments.schemas import AssessmentView
 
 
 @dataclass
@@ -32,92 +35,63 @@ class TurnResult:
     view: AssessmentView
 
 
-class BaseAssessmentService(ABC):
+# ---------- Sdílené pomocné funkce ----------
+#
+# Formát je bezstavový mezi requesty — veškerý stav žije v DB
+# (``session.result``, ``session.settings_snapshot`` a tahy v
+# ``assessment_turn``) a při každém volání se z ní znovu přečte.
+# Commit dělá vždy controller (api/src/assessments/controllers.py),
+# tyhle funkce jen připraví/upraví objekty v paměti.
+
+
+def add_turn(
+    db: Session,
+    session: models.AssessmentSession,
+    role: AssessmentTurnRole,
+    content: str | None = None,
+    payload: dict | None = None,
+) -> models.AssessmentTurn:
+    """Přidá tah do session (bez commitu — ten dělá controller)."""
+    turn = models.AssessmentTurn(
+        session_id=session.session_id,
+        role=role,
+        content=content,
+        payload=payload,
+    )
+    db.add(turn)
+    return turn
+
+
+def update_result(session: models.AssessmentSession, **changes) -> dict:
     """
-    Kontrakt jednoho interakčního formátu.
+    Aktualizuje session.result NOVÝM dictem.
 
-    Service je bezstavová mezi requesty — veškerý stav žije v DB
-    (``session.result``, ``session.settings_snapshot`` a tahy v
-    ``assessment_turn``) a při každém volání se z ní rekonstruuje.
-    Commit dělá controller, service jen přidává objekty do session.
+    JSONB sloupec bez MutableDict nesleduje in-place mutace —
+    ``session.result["x"] = 1`` by se tiše neuložilo. Vždy přiřazujeme
+    nový objekt.
     """
+    new_result = {**(session.result or {}), **changes}
+    session.result = new_result
+    return new_result
 
-    #: kód formátu — musí odpovídat assessment_type.code v katalogu
-    type_code: ClassVar[str]
-    #: Pydantic schéma pro CourseAssessment.settings (validace při konfiguraci)
-    settings_schema: ClassVar[type[BaseModel]]
 
-    def __init__(self, db: Session, session: models.AssessmentSession):
-        self.db = db
-        self.session = session
-
-    # ---------- povinné metody formátu ----------
-
-    @abstractmethod
-    async def start(self) -> TurnResult:
-        """Inicializuje novou session (výběr otázek, první otázka...)."""
-
-    @abstractmethod
-    async def handle_turn(self, turn: TurnInput) -> TurnResult:
-        """Zpracuje tah studenta. Na nepodporovaný druh tahu vyhodí ValueError."""
-
-    @abstractmethod
-    def current_view(self) -> AssessmentView:
-        """Zrekonstruuje aktuální obrazovku z DB (refresh stránky, návrat)."""
-
-    # ---------- sdílené helpery ----------
-
-    def add_turn(
-        self,
-        role: AssessmentTurnRole,
-        content: str | None = None,
-        payload: dict | None = None,
-    ) -> models.AssessmentTurn:
-        """Přidá tah do session (bez commitu — ten dělá controller)."""
-        turn = models.AssessmentTurn(
-            session_id=self.session.session_id,
-            role=role,
-            content=content,
-            payload=payload,
-        )
-        self.db.add(turn)
-        return turn
-
-    def update_result(self, **changes) -> dict:
-        """
-        Aktualizuje session.result NOVÝM dictem.
-
-        JSONB sloupec bez MutableDict nesleduje in-place mutace —
-        ``session.result["x"] = 1`` by se tiše neuložilo. Vždy přiřazujeme
-        nový objekt.
-        """
-        new_result = {**(self.session.result or {}), **changes}
-        self.session.result = new_result
-        return new_result
-
-    @property
-    def settings(self) -> BaseModel:
-        """Zvalidovaný snapshot nastavení z okamžiku startu session."""
-        return self.settings_schema.model_validate(self.session.settings_snapshot)
+def get_settings(
+    session: models.AssessmentSession, settings_schema: type[BaseModel]
+) -> BaseModel:
+    """Zvalidovaný snapshot nastavení z okamžiku startu session."""
+    return settings_schema.model_validate(session.settings_snapshot)
 
 
 # ---------- Registr formátů ----------
+#
+# Klíč = assessment_type.code z katalogu. Hodnota = dict se čtyřmi věcmi:
+# Pydantic schéma nastavení + tři funkce formátu.
 
-REGISTRY: dict[str, type[BaseAssessmentService]] = {}
-
-
-def register(cls: type[BaseAssessmentService]) -> type[BaseAssessmentService]:
-    """Class dekorátor — zaregistruje formát do registru podle type_code."""
-    if not getattr(cls, "type_code", None):
-        raise ValueError(f"{cls.__name__} nemá nastavený type_code")
-    if cls.type_code in REGISTRY:
-        raise ValueError(f"Formát '{cls.type_code}' je již zaregistrován")
-    REGISTRY[cls.type_code] = cls
-    return cls
+REGISTRY: dict[str, dict] = {}
 
 
-def get_service_class(type_code: str) -> type[BaseAssessmentService]:
-    """Vrátí service třídu formátu, nebo vyhodí ValueError (kód bez implementace)."""
+def get_format(type_code: str) -> dict:
+    """Vrátí dict formátu z registru, nebo vyhodí ValueError (kód bez implementace)."""
     try:
         return REGISTRY[type_code]
     except KeyError:
@@ -134,9 +108,9 @@ def validate_settings(type_code: str, settings: dict) -> dict:
 
     Vyhazuje ValueError s čitelnou hláškou pro 400/422 odpověď.
     """
-    service_cls = get_service_class(type_code)
+    fmt = get_format(type_code)
     try:
-        validated = service_cls.settings_schema.model_validate(settings)
+        validated = fmt["settings_schema"].model_validate(settings)
     except ValidationError as e:
         errors = "; ".join(
             f"{'.'.join(str(loc) for loc in err['loc']) or 'settings'}: {err['msg']}"

@@ -1,3 +1,1 @@
-from agents.assessments.closed_questions.service import (  # noqa: F401
-    ClosedQuestionsService,
-)
+"""Formát 'Uzavřené otázky' — viz service.py. Registrace je v agents/assessments/__init__.py."""

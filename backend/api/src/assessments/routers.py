@@ -104,13 +104,13 @@ def delete_course_assessment(
     operation_id="start_assessment_session",
     status_code=201,
 )
-async def start_assessment_session(
+def start_assessment_session(
     course_assessment_id: int,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> SessionStateResponse:
     """Spustí session formátu. Existující rozběhnutá session se vrátí (idempotentní)."""
-    return await controllers.start_session(db, user, course_assessment_id)
+    return controllers.start_session(db, user, course_assessment_id)
 
 
 @router.get(
@@ -130,14 +130,14 @@ def get_current_assessment_session(
     "/assessment-sessions/{session_id}/turns",
     operation_id="submit_assessment_turn",
 )
-async def submit_assessment_turn(
+def submit_assessment_turn(
     session_id: int,
     body: TurnInput,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> SessionStateResponse:
     """Tah studenta (odpověď, otázky, ukončení...) — tvar podle formátu (pole `kind`)."""
-    return await controllers.submit_turn(db, user, session_id, body)
+    return controllers.submit_turn(db, user, session_id, body)
 
 
 @router.get(

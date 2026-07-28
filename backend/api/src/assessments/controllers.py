@@ -5,19 +5,13 @@ Drží sdílenou mechaniku (autorizace, lifecycle session, commit) —
 o typech nic nevědí, typová logika žije v agents/assessments.
 """
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agents.assessments.base import (
-    BaseAssessmentService,
-    get_service_class,
-    validate_settings,
-)
+from agents.assessments.base import get_format, validate_settings
 from api import models
 from api.authorization import validate_owner_or_superadmin
 from api.enums import AssessmentContext, AssessmentSessionStatus, UserRole
@@ -204,24 +198,20 @@ def delete_course_assessment(
 # ---------- Runtime (student) ----------
 
 
-def _get_service(
-    db: Session, session: models.AssessmentSession
-) -> BaseAssessmentService:
+def _get_format(session: models.AssessmentSession) -> dict:
+    """Najde v registru dict formátu ({settings_schema, start, handle_turn, current_view})."""
     try:
-        service_cls = get_service_class(session.assessment_type_code)
+        return get_format(session.assessment_type_code)
     except ValueError as e:
         # Formát je v katalogu, ale chybí implementace — chyba konfigurace serveru
         raise HTTPException(status_code=500, detail=str(e)) from e
-    return service_cls(db=db, session=session)
 
 
-def _session_state(
-    session: models.AssessmentSession, service: BaseAssessmentService
-) -> SessionStateResponse:
+def _session_state(session: models.AssessmentSession, fmt: dict) -> SessionStateResponse:
     return SessionStateResponse(
         session_id=session.session_id,
         status=session.status,
-        view=service.current_view(),
+        view=fmt["current_view"](session),
     )
 
 
@@ -266,7 +256,7 @@ def _find_active_session(
     ).first()
 
 
-async def start_session(
+def start_session(
     db: Session, user: models.User, course_assessment_id: int
 ) -> SessionStateResponse:
     course_assessment = _get_runnable_course_assessment(db, user, course_assessment_id)
@@ -274,7 +264,7 @@ async def start_session(
     # Idempotence: existující rozběhnutá session se vrací místo chyby
     existing = _find_active_session(db, user, course_assessment_id)
     if existing is not None:
-        return _session_state(existing, _get_service(db, existing))
+        return _session_state(existing, _get_format(existing))
 
     session = models.AssessmentSession(
         user_id=user.user_id,
@@ -285,9 +275,9 @@ async def start_session(
     db.add(session)
     db.flush()  # session_id pro tahy
 
-    service = _get_service(db, session)
+    fmt = _get_format(session)
     try:
-        result = await service.start()
+        result = fmt["start"](db, session)
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -315,7 +305,7 @@ def _get_own_session(
     return session
 
 
-async def submit_turn(
+def submit_turn(
     db: Session, user: models.User, session_id: int, body: TurnInput
 ) -> SessionStateResponse:
     session = _get_own_session(db, user, session_id)
@@ -326,9 +316,9 @@ async def submit_turn(
             detail=f"Session není rozběhnutá (aktuální stav: {session.status.value})",
         )
 
-    service = _get_service(db, session)
+    fmt = _get_format(session)
     try:
-        result = await service.handle_turn(body)
+        result = fmt["handle_turn"](db, session, body)
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -345,7 +335,7 @@ def get_session_state(
     db: Session, user: models.User, session_id: int
 ) -> SessionStateResponse:
     session = _get_own_session(db, user, session_id)
-    return _session_state(session, _get_service(db, session))
+    return _session_state(session, _get_format(session))
 
 
 def get_current_session(
@@ -355,4 +345,4 @@ def get_current_session(
     session = _find_active_session(db, user, course_assessment_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Žádná rozběhnutá session")
-    return _session_state(session, _get_service(db, session))
+    return _session_state(session, _get_format(session))
