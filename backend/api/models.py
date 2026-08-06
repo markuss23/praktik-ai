@@ -30,6 +30,7 @@ from api.enums import (
     ReviewVerdict,
     Status,
     TicketType,
+    TicketEntityType,
     UserRole,
     ModuleTaskSessionStatus,
     AttemptStatus,
@@ -915,63 +916,100 @@ class TaskAttempt(TimestampMixin, SoftDeleteMixin, Base):
 # ---------- Ticket ----------
 
 
-class ModuleTicket(TimestampMixin, SoftDeleteMixin, Base):
+class Ticket(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Reklamace studenta k AI hodnocení na úrovni modulu.
-    Typ reklamace určuje ticket_type (concept check, practice evaluátor nebo ostatní).
-    Manuálně řeší autor kurzu.
+    Univerzální reklamace/dotaz vázaný na libovolnou entitu v systému.
+    Vlastní obsah reklamace a odpovědi žije ve vlákně TicketMessage.
     """
 
-    __tablename__ = "module_ticket"
+    __tablename__ = "ticket"
     __table_args__ = (
-        # Jeden otevřený ticket na uživatele, modul a typ
+        # Jeden otevřený ticket na uživatele, entitu a kategorii
         Index(
-            "uq_ticket_user_module_type",
-            "user_id",
-            "module_id",
-            "ticket_type",
+            "uq_ticket_requester_entity_category",
+            "requester_id",
+            "entity_type",
+            "entity_id",
+            "category",
             unique=True,
             postgresql_where=text("status = 'open'"),
         ),
         Index(
-            "uq_title_ticket_type_module_active",
+            "uq_title_category_entity_active",
             "title",
-            "ticket_type",
-            "module_id",
+            "category",
+            "entity_type",
+            "entity_id",
             unique=True,
             postgresql_where=text("is_active"),
         ),
-        Index("ix_ticket_user_id", "user_id"),
-        Index("ix_ticket_module_id", "module_id"),
+        Index("ix_ticket_requester_id", "requester_id"),
+        Index("ix_ticket_assignee_id", "assignee_id"),
+        Index("ix_ticket_entity", "entity_type", "entity_id"),
         Index("ix_ticket_course_id", "course_id"),
     )
 
     ticket_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
+    requester_id: Mapped[int] = mapped_column(
+        ForeignKey("user.user_id"), nullable=False
     )
-    # Denormalizováno pro rychlý přístup bez joinu (dashboard autora kurzu)
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("course.course_id"), nullable=False
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id"), nullable=True
     )
-    ticket_type: Mapped[TicketType] = mapped_column(
+    entity_type: Mapped[TicketEntityType | None] = mapped_column(
+        Enum(TicketEntityType, name="ticket_entity_type"), nullable=True
+    )
+    entity_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Denormalizováno pro rychlý přístup bez joinu (dashboard autora kurzu);
+    # null u entit, které pod žádný kurz nespadají.
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course.course_id"), nullable=True
+    )
+    category: Mapped[TicketType] = mapped_column(
         Enum(TicketType, name="ticket_type"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TicketStatus] = mapped_column(
         Enum(TicketStatus, name="ticket_status"),
         nullable=False,
         default=TicketStatus.open,
     )
 
-    user: Mapped[User] = relationship(foreign_keys=[user_id])
-    module: Mapped[Module] = relationship()
-    course: Mapped[Course] = relationship()
+    requester: Mapped[User] = relationship(foreign_keys=[requester_id])
+    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
+    course: Mapped[Course | None] = relationship()
+    messages: Mapped[list[TicketMessage]] = relationship(
+        back_populates="ticket",
+        order_by="TicketMessage.created_at",
+        primaryjoin="and_(Ticket.ticket_id==TicketMessage.ticket_id, TicketMessage.is_active==True)",
+    )
+
+    _soft_delete_cascade: list[str] = ["messages"]
+
+
+class TicketMessage(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Jedna zpráva ve vlákně ticketu. is_internal odlišuje poznámky viditelné
+    jen pro staff (lector/guarantor/superadmin) od odpovědí směrem k requesterovi.
+    """
+
+    __tablename__ = "ticket_message"
+    __table_args__ = (Index("ix_ticket_message_ticket_id", "ticket_id"),)
+
+    message_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    ticket_id: Mapped[int] = mapped_column(
+        ForeignKey("ticket.ticket_id"), nullable=False
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    ticket: Mapped[Ticket] = relationship(back_populates="messages")
+    author: Mapped[User] = relationship(foreign_keys=[author_id])
 
 
 # ---------- Mentor Interaction Log ----------

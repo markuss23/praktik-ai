@@ -55,13 +55,21 @@ class AttemptStatus(enum.StrEnum):
 
 class TicketStatus(enum.StrEnum):
     open = "open"
+    pending = "pending"  # čeká se na doplnění od studenta
     resolved = "resolved"
+    closed = "closed"
 
 
 class TicketType(enum.StrEnum):
     task_session = "task_session"  # reklamace concept checku
     practice = "practice"  # reklamace practice AI evaluátoru
     other = "other"  # ostatní
+
+
+class TicketEntityType(enum.StrEnum):
+    """Typ entity, ke které se ticket váže (entity_id ukazuje do její tabulky)."""
+
+    module = "module"
 
 
 class EduLevel(enum.StrEnum):
