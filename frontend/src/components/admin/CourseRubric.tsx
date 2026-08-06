@@ -116,56 +116,56 @@ export function CourseRubric() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Základní informace */}
-      <section className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold text-black mb-1">Základní informace o kurzu</h3>
-        <p className="text-xs sm:text-sm text-gray-500 mb-4">Obecné údaje, které se zobrazí studentům v katalogu.</p>
+      <section className="bg-card rounded-lg border border-border p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1">Základní informace o kurzu</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4">Obecné údaje, které se zobrazí studentům v katalogu.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Název kurzu</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Název kurzu</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Např. Základy práce s AI pro učitele"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Kategorie</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Kategorie</label>
             <input
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="Vyberte kategorii"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Popis kurzu</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Popis kurzu</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Krátký popis, který uvidí studenti v katalogu..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Garant kurzu</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Garant kurzu</label>
             <input
               type="text"
               value={garant}
               onChange={(e) => setGarant(e.target.value)}
               placeholder="Vyberte lektora / garanta"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Náhled kurzu</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Náhled kurzu</label>
             <button
               type="button"
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-border hover:bg-muted/50 transition-colors"
             >
               <Upload size={14} />
               <span>Nahrát obrázek</span>
@@ -175,42 +175,42 @@ export function CourseRubric() {
       </section>
 
       {/* Struktura kurzu */}
-      <section className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg font-semibold text-black mb-1">Struktura kurzu</h3>
-        <p className="text-xs sm:text-sm text-gray-500 mb-4">Definujte počet modulů a podmínky pro Course Final.</p>
+      <section className="bg-card rounded-lg border border-border p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1">Struktura kurzu</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4">Definujte počet modulů a podmínky pro Course Final.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Počet modulů</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Počet modulů</label>
             <input
               type="number"
               min={1}
               max={20}
               value={moduleCount}
               onChange={(e) => setModuleCount(Number(e.target.value) || 1)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Minimální počet splněných modulů pro Course Final</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Minimální počet splněných modulů pro Course Final</label>
             <input
               type="number"
               min={1}
               max={moduleCount}
               value={minModulesForFinal}
               onChange={(e) => setMinModulesForFinal(Number(e.target.value) || 1)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Badge threshold (% úspěšnosti)</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Badge threshold (% úspěšnosti)</label>
             <input
               type="number"
               min={0}
               max={100}
               value={badgeThreshold}
               onChange={(e) => setBadgeThreshold(Number(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
             />
           </div>
         </div>
@@ -238,13 +238,13 @@ export function CourseRubric() {
       </section>
 
       {/* Interaktivní formáty */}
-      <section className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+      <section className="bg-card rounded-lg border border-border p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-base sm:text-lg font-semibold text-black mb-1">Interaktivní formáty</h3>
-            <p className="text-xs sm:text-sm text-gray-500">Nakonfigurujte, které formáty budou studentům dostupné a v jakých modulech.</p>
+            <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1">Interaktivní formáty</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">Nakonfigurujte, které formáty budou studentům dostupné a v jakých modulech.</p>
           </div>
-          <div className="flex flex-wrap gap-1.5 flex-shrink-0">
+          <div className="flex flex-wrap gap-1.5 shrink-0">
             <FormatPill label="PRACTICE" />
             <FormatPill label="ASSESSMENT" />
             <FormatPill label="COURSE FINAL" />
@@ -252,7 +252,7 @@ export function CourseRubric() {
         </div>
 
         {/* Formulace otázek */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden mb-4">
+        <div className="border border-border rounded-lg overflow-hidden mb-4">
           <CollapsibleHeader
             open={questionFormulationOpen}
             onToggle={() => setQuestionFormulationOpen(!questionFormulationOpen)}
@@ -265,7 +265,7 @@ export function CourseRubric() {
           {questionFormulationOpen && (
             <div className="p-4 space-y-4">
               <div>
-                <p className="text-xs font-medium text-gray-700 mb-2">Dostupnost</p>
+                <p className="text-xs font-medium text-foreground mb-2">Dostupnost</p>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-6">
                   <Checkbox label="Practice modul" checked={qfPractice} onChange={setQfPractice} />
                   <Checkbox label="Assessment modul" checked={qfAssessment} onChange={setQfAssessment} />
@@ -274,18 +274,18 @@ export function CourseRubric() {
               </div>
 
               <div>
-                <p className="text-xs font-medium text-gray-700 mb-2">Témata pro formulaci otázek (garant)</p>
+                <p className="text-xs font-medium text-foreground mb-2">Témata pro formulaci otázek (garant)</p>
                 <div className="space-y-2">
                   {qfTopics.map((topic, index) => (
-                    <div key={index} className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-md">
-                      <span className="text-xs font-mono text-gray-400 w-6 flex-shrink-0">
+                    <div key={index} className="flex items-center gap-3 px-3 py-2 border border-border rounded-md">
+                      <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">
                         {String(index + 1).padStart(2, '0')}
                       </span>
-                      <span className="text-sm text-black flex-1 min-w-0 truncate">{topic}</span>
+                      <span className="text-sm text-foreground flex-1 min-w-0 truncate">{topic}</span>
                       <button
                         type="button"
                         onClick={() => removeTopic(index)}
-                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
                         aria-label="Odebrat téma"
                       >
                         <Trash2 size={14} />
@@ -299,12 +299,12 @@ export function CourseRubric() {
                       onChange={(e) => setNewTopic(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTopic(); } }}
                       placeholder="Nové téma..."
-                      className="flex-1 px-3 py-2 border border-dashed border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                      className="flex-1 px-3 py-2 border border-dashed border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
                     />
                     <button
                       type="button"
                       onClick={addTopic}
-                      className="flex items-center gap-1 px-3 py-2 border border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
                     >
                       <Plus size={14} />
                       <span>Přidat téma</span>
@@ -317,7 +317,7 @@ export function CourseRubric() {
         </div>
 
         {/* Sokratický dialog */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
           <CollapsibleHeader
             open={socraticOpen}
             onToggle={() => setSocraticOpen(!socraticOpen)}
@@ -331,27 +331,27 @@ export function CourseRubric() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Téma dialogu</label>
+                  <label className="block text-xs font-medium text-foreground mb-1">Téma dialogu</label>
                   <input
                     type="text"
                     value={socraticTopic}
                     onChange={(e) => setSocraticTopic(e.target.value)}
                     placeholder="Např. Role učitele v době AI"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Počet kroků (2–6)</label>
+                  <label className="block text-xs font-medium text-foreground mb-1">Počet kroků (2–6)</label>
                   <div className="flex gap-1">
                     {[2, 3, 4, 5, 6].map((n) => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => setSocraticSteps(n)}
-                        className={`w-9 h-9 rounded-md text-sm font-medium transition-colors ${
+                        className={`size-9 rounded-md text-sm font-medium transition-colors ${
                           socraticSteps === n
-                            ? 'bg-[#1e1b4b] text-white border-[#1e1b4b]'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            ? 'bg-[var(--foreground)] text-primary-foreground border-[var(--foreground)]'
+                            : 'border border-border text-foreground hover:bg-muted/50'
                         }`}
                       >
                         {n}
@@ -361,13 +361,13 @@ export function CourseRubric() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Úvodní prompt pro AI</label>
+                <label className="block text-xs font-medium text-foreground mb-1">Úvodní prompt pro AI</label>
                 <input
                   type="text"
                   value={socraticPrompt}
                   onChange={(e) => setSocraticPrompt(e.target.value)}
                   placeholder="AI zahájí dialog otázkou na studentův aktuální pohled na téma..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
                 />
               </div>
               <ToggleRow
@@ -382,7 +382,7 @@ export function CourseRubric() {
       </section>
 
       {/* Rubrika (hodnotící tabulka) */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-card rounded-lg border border-border overflow-hidden">
         <CollapsibleHeader
           open={rubricOpen}
           onToggle={() => setRubricOpen(!rubricOpen)}
@@ -397,7 +397,7 @@ export function CourseRubric() {
           <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Počet řádků (kritérií)</label>
+                <label className="block text-xs font-medium text-foreground mb-1">Počet řádků (kritérií)</label>
                 <input
                   type="number"
                   min={1}
@@ -414,11 +414,11 @@ export function CourseRubric() {
                       setRubricCriteria(rubricCriteria.slice(0, next));
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Počet sloupců (úrovně)</label>
+                <label className="block text-xs font-medium text-foreground mb-1">Počet sloupců (úrovně)</label>
                 <input
                   type="number"
                   min={1}
@@ -441,12 +441,12 @@ export function CourseRubric() {
                       })));
                     }
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Kdo hodnotí</label>
-                <div className="flex rounded-md border border-gray-300 overflow-hidden">
+                <label className="block text-xs font-medium text-foreground mb-1">Kdo hodnotí</label>
+                <div className="flex rounded-md border border-border overflow-hidden">
                   {(['ai', 'lector', 'both'] as const).map((opt) => {
                     const labels = { ai: 'AI', lector: 'Lektor', both: 'Oba' };
                     const isActive = rubricEvaluator === opt;
@@ -456,7 +456,7 @@ export function CourseRubric() {
                         type="button"
                         onClick={() => setRubricEvaluator(opt)}
                         className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-[#1e1b4b] text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                          isActive ? 'bg-[var(--foreground)] text-primary-foreground' : 'bg-card text-foreground hover:bg-muted/50'
                         }`}
                       >
                         {labels[opt]}
@@ -467,55 +467,55 @@ export function CourseRubric() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-md">
-              <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-gray-700">
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-tip/10 border border-tip/30 rounded-md">
+              <Info size={14} className="text-tip mt-0.5 shrink-0" />
+              <p className="text-xs text-foreground">
                 Systém automaticky přidá dva sloupce navíc: Sebehodnocení (student) a Finální hodnocení (lektor).
                 Výsledná tabulka bude mít {rubricLevels.length + 3} sloupců.
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-700 mb-2">Editor hodnotící tabulky</p>
-              <div className="border border-gray-200 rounded-md overflow-x-auto">
+              <p className="text-xs font-medium text-foreground mb-2">Editor hodnotící tabulky</p>
+              <div className="border border-border rounded-md overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 min-w-[140px]">Kritérium</th>
+                    <tr className="bg-muted/50 border-b border-border">
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground min-w-[140px]">Kritérium</th>
                       {rubricLevels.map((level, i) => (
-                        <th key={i} className="text-left px-3 py-2 text-xs font-medium text-gray-600 min-w-[140px]">
+                        <th key={i} className="text-left px-3 py-2 text-xs font-medium text-muted-foreground min-w-[140px]">
                           <input
                             type="text"
                             value={level}
                             onChange={(e) => updateRubricLevelName(i, e.target.value)}
-                            className="w-full bg-transparent text-xs font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded px-1 py-0.5"
+                            className="w-full bg-transparent text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 rounded px-1 py-0.5"
                           />
                         </th>
                       ))}
-                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 min-w-[120px]">
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground min-w-[120px]">
                         <span className="inline-flex items-center gap-1.5">
                           Sebehodnocení
-                          <span className="text-[9px] font-bold tracking-wide text-gray-500 bg-gray-200 rounded px-1 py-0.5">AUTO</span>
+                          <span className="text-[9px] font-bold tracking-wide text-muted-foreground bg-muted rounded px-1 py-0.5">AUTO</span>
                         </span>
                       </th>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-gray-600 min-w-[120px]">
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground min-w-[120px]">
                         <span className="inline-flex items-center gap-1.5">
                           Lektor
-                          <span className="text-[9px] font-bold tracking-wide text-gray-500 bg-gray-200 rounded px-1 py-0.5">AUTO</span>
+                          <span className="text-[9px] font-bold tracking-wide text-muted-foreground bg-muted rounded px-1 py-0.5">AUTO</span>
                         </span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {rubricCriteria.map((criterion, ci) => (
-                      <tr key={ci} className="border-b border-gray-100 last:border-b-0">
+                      <tr key={ci} className="border-b border-border last:border-b-0">
                         <td className="px-3 py-2 align-top">
                           <input
                             type="text"
                             value={criterion.name}
                             onChange={(e) => updateRubricCriterionName(ci, e.target.value)}
                             placeholder="Název kritéria"
-                            className="w-full text-sm font-medium text-black bg-transparent focus:outline-none focus:ring-1 focus:ring-purple-500 rounded px-1 py-0.5"
+                            className="w-full text-sm font-medium text-foreground bg-transparent focus:outline-none focus:ring-1 focus:ring-gradient-r/30 rounded px-1 py-0.5"
                           />
                         </td>
                         {rubricLevels.map((_, li) => (
@@ -525,12 +525,12 @@ export function CourseRubric() {
                               value={criterion.descriptions[li] ?? ''}
                               onChange={(e) => updateRubricDescription(ci, li, e.target.value)}
                               placeholder="Popis úrovně..."
-                              className="w-full text-xs text-gray-600 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded px-1 py-0.5"
+                              className="w-full text-xs text-muted-foreground bg-transparent placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 rounded px-1 py-0.5"
                             />
                           </td>
                         ))}
-                        <td className="px-3 py-2 text-center text-gray-300 text-sm">—</td>
-                        <td className="px-3 py-2 text-center text-gray-300 text-sm">—</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground text-sm">—</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground text-sm">—</td>
                       </tr>
                     ))}
                   </tbody>
@@ -541,7 +541,7 @@ export function CourseRubric() {
                 <button
                   type="button"
                   onClick={addRubricCriterion}
-                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
                 >
                   <Plus size={14} />
                   <span>Přidat kritérium</span>
@@ -549,7 +549,7 @@ export function CourseRubric() {
                 <button
                   type="button"
                   onClick={addRubricLevel}
-                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
                 >
                   <Plus size={14} />
                   <span>Přidat úroveň</span>
@@ -561,7 +561,7 @@ export function CourseRubric() {
       </section>
 
       {/* Artefakt (seminární práce) */}
-      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <section className="bg-card rounded-lg border border-border overflow-hidden">
         <CollapsibleHeader
           open={artifactOpen}
           onToggle={() => setArtifactOpen(!artifactOpen)}
@@ -582,49 +582,49 @@ export function CourseRubric() {
         {artifactOpen && (
           <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Téma seminární práce</label>
+              <label className="block text-xs font-medium text-foreground mb-1">Téma seminární práce</label>
               <input
                 type="text"
                 value={artifactTopic}
                 onChange={(e) => setArtifactTopic(e.target.value)}
                 placeholder="Např. Návrh didaktické aktivity s využitím AI pro předmět dle vaší aprobace"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
               />
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-700 mb-2">Sekce šablony</p>
+              <p className="text-xs font-medium text-foreground mb-2">Sekce šablony</p>
               <div className="space-y-2">
                 {artifactSections.map((section, index) => (
                   <div
                     key={index}
-                    className="flex items-start gap-2 px-3 py-3 border border-gray-200 rounded-md hover:border-gray-300 transition-colors"
+                    className="flex items-start gap-2 px-3 py-3 border border-border rounded-md hover:border-border transition-colors"
                   >
-                    <GripVertical size={16} className="text-gray-300 mt-0.5 flex-shrink-0 cursor-grab" />
+                    <GripVertical size={16} className="text-muted-foreground mt-0.5 shrink-0 cursor-grab" />
                     <div className="flex-1 min-w-0 space-y-1">
                       <input
                         type="text"
                         value={section.title}
                         onChange={(e) => setArtifactSections(artifactSections.map((s, i) => i === index ? { ...s, title: e.target.value } : s))}
                         placeholder="Název sekce"
-                        className="w-full text-sm font-semibold text-black bg-transparent focus:outline-none focus:ring-1 focus:ring-purple-500 rounded px-1 py-0.5"
+                        className="w-full text-sm font-semibold text-foreground bg-transparent focus:outline-none focus:ring-1 focus:ring-gradient-r/30 rounded px-1 py-0.5"
                       />
                       <input
                         type="text"
                         value={section.description}
                         onChange={(e) => setArtifactSections(artifactSections.map((s, i) => i === index ? { ...s, description: e.target.value } : s))}
                         placeholder="Popis sekce..."
-                        className="w-full text-xs text-gray-500 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500 rounded px-1 py-0.5"
+                        className="w-full text-xs text-muted-foreground bg-transparent placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 rounded px-1 py-0.5"
                       />
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {section.enabled && (
                         <Switch checked={section.enabled} onChange={() => toggleArtifactSection(index)} />
                       )}
                       <button
                         type="button"
                         onClick={() => removeArtifactSection(index)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                         aria-label="Odebrat sekci"
                       >
                         <Trash2 size={14} />
@@ -636,7 +636,7 @@ export function CourseRubric() {
                 <button
                   type="button"
                   onClick={addArtifactSection}
-                  className="w-full flex items-center justify-center gap-1 px-3 py-3 border border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 px-3 py-3 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
                 >
                   <Plus size={14} />
                   <span>Přidat sekci</span>
@@ -644,7 +644,7 @@ export function CourseRubric() {
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-md px-3 py-3">
+            <div className="bg-muted/50 rounded-md px-3 py-3">
               <ToggleRow
                 title="Povolit opakované odevzdání"
                 description="Pokud lektor neuzná práci, student ji může přepracovat a odevzdat znovu."
@@ -673,8 +673,8 @@ function ToggleRow({
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-black">{title}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       <Switch checked={checked} onChange={onChange} />
     </div>
@@ -710,14 +710,14 @@ function CollapsibleHeader({
     ? 'px-4 py-3 sm:px-6 sm:py-4'
     : 'px-4 py-3';
   const bg = variant === 'section'
-    ? 'hover:bg-gray-50'
-    : 'bg-gray-50 hover:bg-gray-100';
+    ? 'hover:bg-muted/50'
+    : 'bg-muted/50 hover:bg-muted';
   const titleClass = variant === 'section'
-    ? 'text-base sm:text-lg font-semibold text-black'
-    : 'text-sm font-semibold text-black';
+    ? 'text-base sm:text-lg font-semibold text-foreground'
+    : 'text-sm font-semibold text-foreground';
   const descClass = variant === 'section'
-    ? 'text-xs sm:text-sm text-gray-500 mt-0.5'
-    : 'text-xs text-gray-500 mt-0.5';
+    ? 'text-xs sm:text-sm text-muted-foreground mt-0.5'
+    : 'text-xs text-muted-foreground mt-0.5';
 
   return (
     <div
@@ -726,18 +726,18 @@ function CollapsibleHeader({
       onClick={onToggle}
       onKeyDown={handleKey}
       aria-expanded={open}
-      className={`w-full flex items-center justify-between gap-3 ${padding} ${bg} transition-colors text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1`}
+      className={`w-full flex items-center justify-between gap-3 ${padding} ${bg} transition-colors text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1`}
     >
       <div className="min-w-0 flex-1">
         <h4 className={titleClass}>{title}</h4>
         <p className={descClass}>{description}</p>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {rightContent}
         <Switch checked={switchChecked} onChange={onSwitchChange} stopPropagation />
         <ChevronUp
           size={16}
-          className={`text-gray-400 transition-transform ${open ? '' : 'rotate-180'}`}
+          className={`text-muted-foreground transition-transform ${open ? '' : 'rotate-180'}`}
         />
       </div>
     </div>
@@ -762,12 +762,12 @@ function Switch({
         if (stopPropagation) e.stopPropagation();
         onChange(!checked);
       }}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
-        checked ? 'bg-[#1e1b4b]' : 'bg-gray-300'
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:ring-offset-1 ${
+        checked ? 'bg-[var(--foreground)]' : 'bg-muted'
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+        className={`inline-block size-4 transform rounded-full bg-card shadow transition-transform ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
@@ -787,12 +787,12 @@ function Checkbox({
   return (
     <label className="flex items-center gap-2 cursor-pointer select-none">
       <span
-        className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${
-          checked ? 'bg-[#1e1b4b] border-[#1e1b4b]' : 'border-gray-300 bg-white'
+        className={`flex items-center justify-center size-4 rounded border transition-colors ${
+          checked ? 'bg-[var(--foreground)] border-[var(--foreground)]' : 'border-border bg-card'
         }`}
       >
         {checked && (
-          <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+          <svg className="size-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
             <path d="M2.5 6L5 8.5L9.5 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
@@ -803,7 +803,7 @@ function Checkbox({
         onChange={(e) => onChange(e.target.checked)}
         className="sr-only"
       />
-      <span className="text-sm text-black">{label}</span>
+      <span className="text-sm text-foreground">{label}</span>
     </label>
   );
 }
@@ -811,11 +811,11 @@ function Checkbox({
 function FormatPill({ label, muted }: { label: string; muted?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border text-[10px] font-semibold tracking-wide ${
-        muted ? 'border-gray-200 text-gray-400' : 'border-gray-200 text-gray-700'
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border text-[10px] font-semibold tracking-wide ${
+        muted ? 'border-border text-muted-foreground' : 'border-border text-foreground'
       }`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${muted ? 'bg-gray-300' : 'bg-[#1e1b4b]'}`} />
+      <span className={`size-1.5 rounded-full ${muted ? 'bg-muted' : 'bg-[var(--foreground)]'}`} />
       {label}
     </span>
   );

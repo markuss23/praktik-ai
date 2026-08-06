@@ -125,13 +125,13 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold text-black">Přílohy</h2>
+        <h2 className="text-lg font-bold text-foreground">Přílohy</h2>
         {downloadable.length > 1 && (
           <button
             type="button"
             onClick={handleDownloadAll}
             disabled={downloadingAll}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-60"
           >
             <Download size={14} strokeWidth={1.75} />
             {downloadingAll ? "Stahuji…" : "Stáhnout vše"}
@@ -140,26 +140,26 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
       </div>
 
       {downloadError && (
-        <p className="mb-3 text-xs text-red-600">{downloadError}</p>
+        <p className="mb-3 text-xs text-destructive">{downloadError}</p>
       )}
 
       <ul className="space-y-2">
         {attachments.map((attachment, index) => (
           <li
             key={attachment.id}
-            className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3 row-fade-in transition-colors hover:bg-gray-50/60"
+            className="flex items-center justify-between bg-card border border-border rounded-md px-4 py-3 row-fade-in transition-colors hover:bg-muted/50/60"
             style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 text-gray-700">
+              <span className="inline-flex items-center justify-center size-9 rounded-md bg-muted text-foreground">
                 <Folder size={18} strokeWidth={1.75} />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{attachment.name}</p>
+                <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 flex-shrink-0">
-              <span className="text-xs text-gray-500">
+            <div className="flex items-center gap-4 shrink-0">
+              <span className="text-xs text-muted-foreground">
                 {attachment.format}
                 {attachment.sizeLabel ? ` ${attachment.sizeLabel}` : ""}
               </span>
@@ -171,10 +171,10 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
                   downloadingId === attachment.id ||
                   downloadingAll
                 }
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium transition-colors ${
                   isDownloadable(attachment)
-                    ? "text-gray-700 hover:bg-gray-50"
-                    : "text-gray-400 cursor-not-allowed"
+                    ? "text-foreground hover:bg-muted/50"
+                    : "text-muted-foreground cursor-not-allowed"
                 } disabled:opacity-60`}
               >
                 <Download size={14} strokeWidth={1.75} />

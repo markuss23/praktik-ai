@@ -92,7 +92,7 @@ export function ContactSection() {
   const isSubmitting = status.state === 'submitting';
 
   return (
-    <section className="bg-white py-12 sm:py-16">
+    <section className="bg-card py-12 sm:py-16">
       <div
         className="mx-auto px-4 sm:px-6 lg:px-[100px]"
         style={{ maxWidth: '1440px', width: '100%' }}
@@ -105,13 +105,13 @@ export function ContactSection() {
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
           >
-            <p className="text-2xl font-semibold tracking-[0.2em] text-emerald-700 mb-4">
+            <p className="text-2xl font-semibold tracking-[0.2em] text-success mb-4">
               KONTAKT
             </p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-4">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-tight mb-4">
               Spojte se s námi
             </h2>
-            <p className="text-sm sm:text-base text-gray-600 max-w-xl mb-8">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mb-8">
               Praktik-AI je vzdělávací platforma pro učitele, kteří chtějí využívat umělou
               inteligenci ve výuce. Napište nám, ať už potřebujete pomoct s kurzem, zajímá vás
               spolupráce, nebo máte nápad, jak platformu vylepšit.
@@ -119,7 +119,7 @@ export function ContactSection() {
 
             <div className="space-y-8">
               <div>
-                <h3 className="text-xs font-semibold tracking-[0.15em] text-gray-500 mb-3">
+                <h3 className="text-xs font-semibold tracking-[0.15em] text-muted-foreground mb-3">
                   NAPIŠTE E-MAIL
                 </h3>
                 <ul className="space-y-2">
@@ -128,10 +128,10 @@ export function ContactSection() {
                       key={c.value}
                       className="grid grid-cols-[160px_1fr] text-sm sm:text-base"
                     >
-                      <span className="text-gray-500">{c.label}</span>
+                      <span className="text-muted-foreground">{c.label}</span>
                       <a
                         href={`mailto:${c.value}`}
-                        className="text-gray-900 hover:text-emerald-700 transition-colors"
+                        className="text-foreground hover:text-success transition-colors"
                       >
                         {c.value}
                       </a>
@@ -142,7 +142,7 @@ export function ContactSection() {
 
               {/*
               <div>
-                <h3 className="text-xs font-semibold tracking-[0.15em] text-gray-500 mb-3">
+                <h3 className="text-xs font-semibold tracking-[0.15em] text-muted-foreground mb-3">
                   ZAVOLEJTE
                 </h3>
                 <ul className="space-y-2">
@@ -151,8 +151,8 @@ export function ContactSection() {
                       key={c.label}
                       className="grid grid-cols-[160px_1fr] text-sm sm:text-base"
                     >
-                      <span className="text-gray-500">{c.label}</span>
-                      <span className="text-gray-900">{c.value}</span>
+                      <span className="text-muted-foreground">{c.label}</span>
+                      <span className="text-foreground">{c.value}</span>
                     </li>
                   ))}
                 </ul>
@@ -160,7 +160,7 @@ export function ContactSection() {
               */}
 
               <div>
-                <h3 className="text-xs font-semibold tracking-[0.15em] text-gray-500 mb-3">
+                <h3 className="text-xs font-semibold tracking-[0.15em] text-muted-foreground mb-3">
                   KDE NÁS NAJDETE
                 </h3>
                 <ul className="space-y-2">
@@ -169,8 +169,8 @@ export function ContactSection() {
                       key={c.label}
                       className="grid grid-cols-[160px_1fr] text-sm sm:text-base"
                     >
-                      <span className="text-gray-500">{c.label}</span>
-                      <span className="text-gray-900">{c.value}</span>
+                      <span className="text-muted-foreground">{c.label}</span>
+                      <span className="text-foreground">{c.value}</span>
                     </li>
                   ))}
                 </ul>
@@ -186,9 +186,9 @@ export function ContactSection() {
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
             whileHover={cardHover}
-            className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow"
+            className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow"
           >
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">
               Napište nám zprávu
             </h3>
 
@@ -196,9 +196,9 @@ export function ContactSection() {
               <div>
                 <label
                   htmlFor="contact-name"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
-                  Jméno a příjmení <span className="text-emerald-700">*</span>
+                  Jméno a příjmení <span className="text-success">*</span>
                 </label>
                 <input
                   id="contact-name"
@@ -208,16 +208,16 @@ export function ContactSection() {
                   value={form.name}
                   onChange={onChange}
                   placeholder="Jan Novák"
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="contact-email"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
-                  E-mail <span className="text-emerald-700">*</span>
+                  E-mail <span className="text-success">*</span>
                 </label>
                 <input
                   id="contact-email"
@@ -227,14 +227,14 @@ export function ContactSection() {
                   value={form.email}
                   onChange={onChange}
                   placeholder="jan@email.cz"
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="contact-role"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
                   Role
                 </label>
@@ -243,7 +243,7 @@ export function ContactSection() {
                   name="role"
                   value={form.role}
                   onChange={onChange}
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
                 >
                   {ROLE_OPTIONS.map((r) => (
                     <option key={r} value={r}>
@@ -256,7 +256,7 @@ export function ContactSection() {
               <div>
                 <label
                   htmlFor="contact-topic"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
                   Téma dotazu
                 </label>
@@ -265,7 +265,7 @@ export function ContactSection() {
                   name="topic"
                   value={form.topic}
                   onChange={onChange}
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
                 >
                   {TOPIC_OPTIONS.map((t) => (
                     <option key={t} value={t}>
@@ -278,9 +278,9 @@ export function ContactSection() {
               <div className="sm:col-span-2">
                 <label
                   htmlFor="contact-subject"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
-                  Předmět <span className="text-emerald-700">*</span>
+                  Předmět <span className="text-success">*</span>
                 </label>
                 <input
                   id="contact-subject"
@@ -290,16 +290,16 @@ export function ContactSection() {
                   value={form.subject}
                   onChange={onChange}
                   placeholder="Stručně popište téma"
-                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <label
                   htmlFor="contact-message"
-                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                  className="block text-sm font-medium text-foreground mb-1.5"
                 >
-                  Zpráva <span className="text-emerald-700">*</span>
+                  Zpráva <span className="text-success">*</span>
                 </label>
                 <textarea
                   id="contact-message"
@@ -309,7 +309,7 @@ export function ContactSection() {
                   value={form.message}
                   onChange={onChange}
                   placeholder="Napište nám, s čím vám můžeme pomoct…"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-y"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors resize-y"
                 />
               </div>
 
@@ -321,9 +321,9 @@ export function ContactSection() {
                   required
                   checked={form.consent}
                   onChange={onChange}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  className="mt-0.5 size-4 rounded border-border text-success focus:ring-success/30 cursor-pointer"
                 />
-                <label htmlFor="contact-consent" className="text-xs text-gray-600 cursor-pointer">
+                <label htmlFor="contact-consent" className="text-xs text-muted-foreground cursor-pointer">
                   Souhlasím se zpracováním osobních údajů pro účely vyřízení dotazu.
                 </label>
               </div>
@@ -334,7 +334,7 @@ export function ContactSection() {
                   disabled={isSubmitting}
                   whileHover={isSubmitting ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting ? undefined : { scale: 0.98 }}
-                  className="inline-flex w-fit items-center justify-center h-11 px-6 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex w-fit items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/80 transition-colors focus:outline-none focus:ring-2 focus:ring-success/30 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Odesílám…' : 'Odeslat zprávu'}
                 </motion.button>
@@ -342,7 +342,7 @@ export function ContactSection() {
                 {status.state === 'success' && (
                   <p
                     role="status"
-                    className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"
+                    className="text-sm text-success bg-success/10 border border-success/30 rounded-md px-3 py-2"
                   >
                     Zpráva byla úspěšně odeslána. Brzy se vám ozveme.
                   </p>
@@ -350,7 +350,7 @@ export function ContactSection() {
                 {status.state === 'error' && (
                   <p
                     role="alert"
-                    className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2"
+                    className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2"
                   >
                     {status.message}
                   </p>

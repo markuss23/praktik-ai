@@ -41,7 +41,7 @@ function ToolbarBtn({
       aria-label={title}
       aria-pressed={active}
       className={`p-1.5 rounded transition-colors ${
-        active ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+        active ? 'bg-gradient-r/20 text-gradient-r' : 'text-muted-foreground hover:bg-muted'
       }`}
     >
       {children}
@@ -67,7 +67,7 @@ function NotesToolbar({ editor }: { editor: Editor }) {
   });
 
   return (
-    <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-gray-100 bg-gray-50/60">
+    <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-border bg-muted/50/60">
       <ToolbarBtn
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={!!state?.isHeading2}
@@ -75,7 +75,7 @@ function NotesToolbar({ editor }: { editor: Editor }) {
       >
         <Heading2 size={15} />
       </ToolbarBtn>
-      <div className="w-px h-4 bg-gray-200 mx-1" />
+      <div className="w-px h-4 bg-muted mx-1" />
       <ToolbarBtn
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={!!state?.isBold}
@@ -104,7 +104,7 @@ function NotesToolbar({ editor }: { editor: Editor }) {
       >
         <Strikethrough size={15} />
       </ToolbarBtn>
-      <div className="w-px h-4 bg-gray-200 mx-1" />
+      <div className="w-px h-4 bg-muted mx-1" />
       <ToolbarBtn
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={!!state?.isBulletList}
@@ -236,8 +236,8 @@ export default function NotesPanel() {
             onBlur={handleLeave}
             onClick={() => setPinned(true)}
             aria-label="Otevřít poznámky"
-            className="fixed right-0 z-40 flex flex-col items-center gap-2.5 bg-white rounded-l-xl shadow-lg border border-r-0 border-gray-200 px-2.5 py-4 hover:bg-gray-50 transition-colors group"
-            style={{ top: 140, color: '#8B5BA8' }}
+            className="fixed right-0 z-40 flex flex-col items-center gap-2.5 bg-card rounded-l-xl shadow-lg border border-r-0 border-border px-2.5 py-4 hover:bg-muted/50 transition-colors group"
+            style={{ top: 140, color: 'var(--gradient-r)' }}
           >
             <NotebookText size={20} />
             <span
@@ -264,7 +264,7 @@ export default function NotesPanel() {
             onMouseEnter={handleEnter}
             onMouseLeave={handleLeave}
             onMouseDown={() => setPinned(true)}
-            className="fixed right-4 bottom-4 z-40 flex flex-col bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+            className="fixed right-4 bottom-4 z-40 flex flex-col bg-card rounded-2xl shadow-xl border border-border overflow-hidden"
             style={{
               top: 110, //odstup od navbaru
               width: PANEL_WIDTH,
@@ -272,10 +272,10 @@ export default function NotesPanel() {
             }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
               <div className="flex items-center gap-2">
-                <NotebookText size={20} style={{ color: '#8B5BA8' }} />
-                <h3 className="font-semibold text-gray-800">Poznámky</h3>
+                <NotebookText size={20} style={{ color: 'var(--gradient-r)' }} />
+                <h3 className="font-semibold text-foreground">Poznámky</h3>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -286,15 +286,15 @@ export default function NotesPanel() {
                   title={pinned ? 'Odepnout (zavře se po opuštění myši)' : 'Připnout — zůstane otevřené'}
                   className={`p-1.5 rounded-md transition-all ${
                     pinned
-                      ? 'bg-purple-100 hover:bg-purple-200'
-                      : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-r/20 hover:bg-gradient-r/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
-                  style={pinned ? { color: '#8B5BA8' } : undefined}
+                  style={pinned ? { color: 'var(--gradient-r)' } : undefined}
                 >
                   <Pin
                     size={16}
                     strokeWidth={pinned ? 2.4 : 2}
-                    fill={pinned ? '#8B5BA8' : 'none'}
+                    fill={pinned ? 'var(--gradient-r)' : 'none'}
                     style={{
                       transform: pinned ? 'rotate(0deg)' : 'rotate(-35deg)',
                       transition: 'transform 0.2s ease',
@@ -305,7 +305,7 @@ export default function NotesPanel() {
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={closePanel}
                   aria-label="Zavřít poznámky"
-                  className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <X size={18} />
                 </button>

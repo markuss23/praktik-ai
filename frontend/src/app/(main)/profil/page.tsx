@@ -188,9 +188,9 @@ export default function ProfilPage() {
       : 0;
 
     return [
-      { label: 'Splněné moduly', percentage: modulePct, color: 'bg-green-500' },
-      { label: 'Odevzdané úkoly', percentage: completionPct, color: 'bg-yellow-400' },
-      { label: 'Kvízové skóre', percentage: avgScore, color: 'bg-orange-400' },
+      { label: 'Splněné moduly', percentage: modulePct, color: 'bg-primary' },
+      { label: 'Odevzdané úkoly', percentage: completionPct, color: 'bg-warning' },
+      { label: 'Kvízové skóre', percentage: avgScore, color: 'bg-brand-accent' },
     ];
   }, [enrollments]);
 
@@ -211,12 +211,12 @@ export default function ProfilPage() {
       style={{ maxWidth: '1440px', width: '100%', margin: '0 auto' }}
     >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-gray-700 transition-colors">
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
+        <Link href="/" className="hover:text-foreground transition-colors">
           Home
         </Link>
-        <span className="text-gray-400">/</span>
-        <span className="text-gray-700 font-medium">Profil</span>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-medium">Profil</span>
       </nav>
 
       {/* Main layout */}
@@ -226,7 +226,7 @@ export default function ProfilPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col gap-5 w-full lg:w-[320px] flex-shrink-0"
+          className="flex flex-col gap-5 w-full lg:w-[320px] shrink-0"
         >
           <ProfileCard
             name={displayName ?? currentUser?.displayName ?? user?.name ?? user?.preferred_username ?? 'Uživatel'}
@@ -238,11 +238,11 @@ export default function ProfilPage() {
 
           <button
             onClick={() => setAiModalOpen(true)}
-            className="w-full bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
+            className="w-full bg-card rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
           >
             <div>
-              <p className="text-sm font-semibold text-gray-900">AI Nastavení</p>
-              <p className="text-xs text-gray-500">Tón a vyjadřování</p>
+              <p className="text-sm font-semibold text-foreground">AI Nastavení</p>
+              <p className="text-xs text-muted-foreground">Tón a vyjadřování</p>
             </div>
           </button>
 
@@ -269,8 +269,8 @@ export default function ProfilPage() {
 
           {/* Modules sections */}
           {enrollmentsLoading ? (
-            <div className="bg-white rounded-xl shadow-sm p-8 flex items-center justify-center">
-              <p className="text-sm text-gray-500">Načítání kurzů...</p>
+            <div className="bg-card rounded-xl shadow-sm p-8 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">Načítání kurzů...</p>
             </div>
           ) : (
             <motion.div

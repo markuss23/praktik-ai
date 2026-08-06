@@ -53,8 +53,8 @@ function ToolbarButton({
       title={title}
       className={`p-2 rounded transition-colors ${
         isActive
-          ? 'bg-purple-100 text-purple-700'
-          : 'hover:bg-gray-100 text-black'
+          ? 'bg-gradient-r/20 text-gradient-r'
+          : 'hover:bg-muted text-foreground'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {children}
@@ -63,7 +63,7 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-  return <div className="w-px h-6 bg-gray-300 mx-1" />;
+  return <div className="w-px h-6 bg-muted mx-1" />;
 }
 
 // Image Dialog 
@@ -130,14 +130,14 @@ function ImageDialog({
         <>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
           >
             Zrušit
           </button>
           <button
             onClick={handleInsert}
             disabled={!url.trim() || uploading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
           >
             Vložit
           </button>
@@ -146,14 +146,14 @@ function ImageDialog({
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             Nahrát z počítače
           </label>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-md hover:border-purple-400 hover:bg-purple-50 transition-colors text-gray-600 disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-md hover:border-gradient-r/30 hover:bg-gradient-r/10 transition-colors text-muted-foreground disabled:opacity-60"
           >
             {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             <span className="text-sm">
@@ -175,32 +175,32 @@ function ImageDialog({
 
         {/* Vkládání přes URL dočasně vypnuté — ponecháno pro případné znovuzapnutí.
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">nebo</span>
-          <div className="flex-1 h-px bg-gray-200" />
+          <div className="flex-1 h-px bg-muted" />
+          <span className="text-xs text-muted-foreground">nebo</span>
+          <div className="flex-1 h-px bg-muted" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">URL obrázku</label>
+          <label className="block text-sm font-medium text-foreground mb-1">URL obrázku</label>
           <input
             type="url"
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             placeholder="https://… nebo /uploads/editor/…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
           />
         </div>
         */}
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <p className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
             {error}
           </p>
         )}
 
         {previewUrl && !error && (
-          <div className="border border-gray-200 rounded-md p-2 bg-gray-50">
-            <p className="text-xs text-gray-500 mb-2">Náhled:</p>
+          <div className="border border-border rounded-md p-2 bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Náhled:</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
@@ -262,21 +262,21 @@ function LinkDialog({
           {initialUrl && (
             <button
               onClick={() => { onRemove(); onClose(); }}
-              className="mr-auto px-3 py-2 text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1.5 text-sm"
+              className="mr-auto px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center gap-1.5 text-sm"
             >
               <Trash2 size={14} /> Odstranit odkaz
             </button>
           )}
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
           >
             Zrušit
           </button>
           <button
             onClick={handleApply}
             disabled={!url.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
           >
             {initialUrl ? 'Uložit' : 'Vložit'}
           </button>
@@ -285,32 +285,32 @@ function LinkDialog({
     >
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+          <label className="block text-sm font-medium text-foreground mb-1">URL</label>
           <input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com"
             autoFocus
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
             onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
           />
         </div>
 
         {!hasSelection && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Text odkazu <span className="text-gray-400 font-normal">— co se zobrazí</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Text odkazu <span className="text-muted-foreground font-normal">— co se zobrazí</span>
             </label>
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Zobrazený text (volitelné)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
               onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Pokud necháte prázdné, použije se URL.
             </p>
           </div>
@@ -402,7 +402,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-gray-200 bg-white">
+      <div className="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-border bg-card">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!activeState?.canUndo}
@@ -421,7 +421,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
         <ToolbarDivider />
 
         <select
-          className="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-black min-w-[100px]"
+          className="px-2 py-1 text-sm border border-border rounded bg-card text-foreground min-w-[100px]"
           value={headingValue}
           onChange={(e) => {
             const value = e.target.value;
@@ -518,14 +518,14 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
 // ─── Editor Configuration ────────────────────────────────────────────────────
 
-const EDITOR_CONTENT_CLASS = "min-h-[300px] [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:p-6 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-4 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_a]:text-blue-600 [&_.ProseMirror_a]:underline [&_.ProseMirror_p:has(+_*)]:clear-none [&_.ProseMirror_p:after]:content-[''] [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none text-black";
+const EDITOR_CONTENT_CLASS = "min-h-[300px] [&_.ProseMirror]:min-h-[300px] [&_.ProseMirror]:p-6 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:my-4 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_h3]:my-2 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ml-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ml-6 [&_.ProseMirror_li]:my-1 [&_.ProseMirror_a]:text-tip [&_.ProseMirror_a]:underline [&_.ProseMirror_p:has(+_*)]:clear-none [&_.ProseMirror_p:after]:content-[''] [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none text-foreground";
 
 const EDITOR_EXTENSIONS = (placeholder: string) => [
   StarterKit.configure({
     heading: { levels: [1, 2, 3] },
     link: {
       openOnClick: false,
-      HTMLAttributes: { class: 'text-blue-600 underline cursor-pointer' },
+      HTMLAttributes: { class: 'text-tip underline cursor-pointer' },
     },
     blockquote: false,
     // Vodorovná čára slouží jako značka zalomení listu (nová stránka u studenta)
@@ -533,7 +533,7 @@ const EDITOR_EXTENSIONS = (placeholder: string) => [
   }),
   Blockquote.configure({
     HTMLAttributes: {
-      class: 'border-l-4 border-gray-300 pl-4 my-3 italic text-gray-600',
+      class: 'border-l-4 border-border pl-4 my-3 italic text-muted-foreground',
     },
   }),
   TextAlign.configure({ types: ['heading', 'paragraph'] }),

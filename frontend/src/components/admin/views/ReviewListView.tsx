@@ -24,14 +24,14 @@ const CARD_GAP = 16;
 function StatusBadge({ status }: { status: Status }) {
   if (status === Status.InReview) {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-accent/20 text-brand-accent">
         Ke kontrole
       </span>
     );
   }
   if (status === Status.Approved) {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success">
         Schváleno
       </span>
     );
@@ -44,7 +44,7 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
   const clickable = !!onStart;
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4 min-w-0 h-full ${clickable ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
+      className={`bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col gap-4 min-w-0 h-full ${clickable ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
       onClick={clickable ? onStart : undefined}
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
@@ -61,19 +61,19 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
 
       <div className="flex-1 min-w-0">
         <h3
-          className="font-semibold text-gray-900 text-base leading-snug mb-1 break-words"
+          className="font-semibold text-foreground text-base leading-snug mb-1 break-words"
           title={course.title}
         >
           {course.title}
         </h3>
         {course.modulesCount !== undefined && (
-          <p className="text-sm text-gray-500 flex items-center gap-1">
+          <p className="text-sm text-muted-foreground flex items-center gap-1">
             <BookOpen size={13} />
             {course.modulesCount} {czechPlural(course.modulesCount, 'modul', 'moduly', 'modulů')}
           </p>
         )}
         {course.ownerDisplayName && (
-          <p className="text-xs text-gray-400 mt-1 truncate" title={course.ownerDisplayName}>
+          <p className="text-xs text-muted-foreground mt-1 truncate" title={course.ownerDisplayName}>
             Autor: {course.ownerDisplayName}
           </p>
         )}
@@ -82,8 +82,8 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
       {!isApproved && onStart && (
         <button
           onClick={(e) => { e.stopPropagation(); onStart(); }}
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-white text-sm font-semibold transition-all hover:opacity-90"
-          style={{ backgroundColor: '#00C896' }}
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-primary-foreground text-sm font-semibold transition-all hover:opacity-90"
+          style={{ backgroundColor: 'var(--primary)' }}
         >
           <ArrowRight size={16} />
           Začít kurz
@@ -162,7 +162,7 @@ function CourseCarousel<T extends { courseId: number }>({
             <div
               key={item.courseId}
               style={{ width: cardWidth || undefined, minWidth: cardWidth || undefined }}
-              className="flex-shrink-0"
+              className="shrink-0"
             >
               {renderItem(item)}
             </div>
@@ -180,7 +180,7 @@ function CourseCarousel<T extends { courseId: number }>({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 z-10"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 size-9 rounded-full bg-card shadow-md border border-border flex items-center justify-center text-foreground hover:bg-muted/50 hover:text-foreground z-10"
             aria-label="Předchozích pět kurzů"
           >
             <ChevronLeft size={18} />
@@ -195,7 +195,7 @@ function CourseCarousel<T extends { courseId: number }>({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 8 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-gray-900 z-10"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 size-9 rounded-full bg-card shadow-md border border-border flex items-center justify-center text-foreground hover:bg-muted/50 hover:text-foreground z-10"
             aria-label="Dalších pět kurzů"
           >
             <ChevronRight size={18} />
@@ -278,8 +278,8 @@ export function ReviewListView() {
   return (
     <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-black">Obsah ke schválení</h1>
-        <div className="inline-flex items-center rounded-md border border-gray-200 bg-white p-1 shadow-sm">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Obsah ke schválení</h1>
+        <div className="inline-flex items-center rounded-md border border-border bg-card p-1 shadow-sm">
           <ReviewTabButton
             active={activeTab === 'courses'}
             onClick={() => setActiveTab('courses')}
@@ -300,9 +300,9 @@ export function ReviewListView() {
           <ReviewCardsSkeleton />
         ) : reviewable.length === 0 && approved.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <BookOpen size={48} className="text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg font-medium">Žádné kurzy ke schválení</p>
-            <p className="text-gray-400 text-sm mt-1">
+            <BookOpen size={48} className="text-muted-foreground mb-4" />
+            <p className="text-muted-foreground text-lg font-medium">Žádné kurzy ke schválení</p>
+            <p className="text-muted-foreground text-sm mt-1">
               Momentálně nejsou žádné kurzy čekající na schválení.
             </p>
           </div>
@@ -310,7 +310,7 @@ export function ReviewListView() {
           <div className="space-y-8">
             {reviewable.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                   Ke kontrole ({reviewable.length})
                 </h2>
                 <CourseCarousel
@@ -327,7 +327,7 @@ export function ReviewListView() {
 
             {approved.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                   Schváleno ({approved.length})
                 </h2>
                 <CourseCarousel
@@ -347,9 +347,9 @@ export function ReviewListView() {
         <ReviewCardsSkeleton />
       ) : materials.length === 0 && approvedMaterials.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <BookOpen size={48} className="text-gray-300 mb-4" />
-          <p className="text-gray-500 text-lg font-medium">Žádné materiály ke schválení</p>
-          <p className="text-gray-400 text-sm mt-1">
+          <BookOpen size={48} className="text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-lg font-medium">Žádné materiály ke schválení</p>
+          <p className="text-muted-foreground text-sm mt-1">
             Momentálně nejsou žádné materiály čekající na schválení.
           </p>
         </div>
@@ -357,7 +357,7 @@ export function ReviewListView() {
         <div className="space-y-8">
           {materials.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Ke kontrole ({materials.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -378,7 +378,7 @@ export function ReviewListView() {
 
           {approvedMaterials.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Schváleno ({approvedMaterials.length})
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -417,7 +417,7 @@ function ReviewTabButton({
       onClick={onClick}
       aria-pressed={active}
       className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-        active ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:text-gray-900'
+        active ? 'bg-gradient-r/20 text-gradient-r' : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       {children}

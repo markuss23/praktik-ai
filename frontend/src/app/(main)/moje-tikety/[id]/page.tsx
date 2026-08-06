@@ -68,30 +68,30 @@ export default function TicketDetailPage() {
         style={{ maxWidth: "1440px", width: "100%" }}
       >
         {/* Breadcrumb */}
-        <p className="text-sm text-gray-500 mb-4">
-          <Link href="/" className="hover:text-gray-700 transition-colors">
+        <p className="text-sm text-muted-foreground mb-4">
+          <Link href="/" className="hover:text-foreground transition-colors">
             Home
           </Link>
           {" / "}
-          <Link href={ROUTES.MY_TICKETS} className="hover:text-gray-700 transition-colors">
+          <Link href={ROUTES.MY_TICKETS} className="hover:text-foreground transition-colors">
             Moje tikety
           </Link>
           {" / "}
-          <span className="text-gray-700">
+          <span className="text-foreground">
             {Number.isFinite(ticketId) ? formatTicketCode(ticketId) : "Tiket"}
           </span>
         </p>
 
         {loading ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 flex items-center justify-center">
-            <p className="text-sm text-gray-500">Načítání tiketu…</p>
+          <div className="bg-card rounded-xl shadow-sm p-8 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">Načítání tiketu…</p>
           </div>
         ) : !ticket ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <p className="text-sm text-gray-500">Tiket nenalezen.</p>
+          <div className="bg-card rounded-xl shadow-sm p-8 text-center">
+            <p className="text-sm text-muted-foreground">Tiket nenalezen.</p>
             <Link
               href={ROUTES.MY_TICKETS}
-              className="inline-block mt-3 text-sm font-medium text-purple-600 hover:text-purple-700"
+              className="inline-block mt-3 text-sm font-medium text-gradient-r hover:text-gradient-r"
             >
               Zpět na Moje tikety
             </Link>
@@ -102,8 +102,8 @@ export default function TicketDetailPage() {
             <TicketCard ticket={ticket} hideDetailButton large onDelete={setTicketToDelete} />
 
             {/* Konverzace */}
-            <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4">Konverzace</h2>
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+            <h2 className="text-xl font-bold text-foreground mt-8 mb-4">Konverzace</h2>
+            <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
               <TicketConversation messages={messages} />
             </div>
 

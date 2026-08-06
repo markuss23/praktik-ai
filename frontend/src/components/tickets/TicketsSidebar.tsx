@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { MessageCircleQuestion, SendHorizontal, X } from "lucide-react";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+
+import {
+  Button,
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  Input,
+} from "@/components/ui";
 import { TicketConversation } from "./TicketConversation";
 import { TICKET_MESSAGING_UNAVAILABLE } from "./api";
 import { buildTicketConversation, formatTicketCode, Ticket } from "./types";
@@ -27,7 +36,8 @@ function conversationStartLabel(createdAt: Date): string {
 }
 
 /**
- * Pravý sidebar „Nápověda a podpora" s konverzací tiketu — podle mockupu.
+ * Pravý panel „Nápověda a podpora" s konverzací tiketu — kitový `Drawer`
+ * (swipeDirection="right"), takže overlay, stacking i gesta řeší Base UI.
  * Otevírá se z karty Moje tikety na profilové stránce.
  */
 export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps) {
@@ -35,9 +45,6 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const canSend = Boolean(onSend);
-
-  const isOpen = ticket !== null;
-  useModalDismiss(isOpen, onClose);
 
   // Reset rozepsané zprávy při přepnutí tiketu / otevření.
   useEffect(() => {
@@ -69,86 +76,71 @@ export function TicketsSidebar({ ticket, onClose, onSend }: TicketsSidebarProps)
   };
 
   return (
-    <AnimatePresence>
-      {ticket && (
-        <div className="fixed inset-0 z-50">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/20"
-          />
-
-          {/* Panel */}
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.25 }}
-            className="absolute inset-y-0 right-0 w-full max-w-[380px] bg-white border-l border-gray-200 shadow-2xl flex flex-col"
-            role="dialog"
-            aria-label="Nápověda a podpora"
-          >
-            {/* Hlavička */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                <MessageCircleQuestion size={20} />
+    <Drawer
+      open={ticket !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      swipeDirection="right"
+    >
+      <DrawerContent aria-label="Nápověda a podpora">
+        {ticket && (
+          <>
+            <DrawerHeader className="flex-row items-center gap-3 border-b pb-4 text-left">
+              <span className="flex size-10 items-center justify-center rounded-full bg-gradient-r/15 text-gradient-r">
+                <MessageCircleQuestion className="size-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">Nápověda a podpora</p>
-                <p className="text-xs text-gray-500">Na dotaz odpoví lektor kurzu</p>
+                <DrawerTitle className="text-sm font-semibold">Nápověda a podpora</DrawerTitle>
+                <DrawerDescription className="text-xs">
+                  Na dotaz odpoví lektor kurzu
+                </DrawerDescription>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Zavřít"
-                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
+              <DrawerClose render={<Button variant="ghost" size="icon-sm" aria-label="Zavřít" />}>
+                <X />
+              </DrawerClose>
+            </DrawerHeader>
 
             {/* Konverzace */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              <p className="text-center text-[11px] text-gray-400 mb-1">
+              <p className="mb-1 text-center text-[11px] text-muted-foreground">
                 {conversationStartLabel(ticket.createdAt)}
               </p>
-              <p className="text-center text-[11px] text-gray-400 mb-4">
+              <p className="mb-4 text-center text-[11px] text-muted-foreground">
                 {formatTicketCode(ticket.ticketId)} · {ticket.title}
               </p>
               <TicketConversation messages={messages} compact />
             </div>
 
             {/* Vstup pro zprávu */}
-            <div className="border-t border-gray-100 p-3">
+            <div className="border-t p-3">
               {!canSend && (
-                <p className="mb-2 text-xs text-gray-500">{TICKET_MESSAGING_UNAVAILABLE}</p>
+                <p className="mb-2 text-xs text-muted-foreground">{TICKET_MESSAGING_UNAVAILABLE}</p>
               )}
-              {notice && <p className="mb-2 text-xs text-red-600">{notice}</p>}
+              {notice && <p className="mb-2 text-xs text-destructive">{notice}</p>}
               <form onSubmit={handleSend} className="flex items-center gap-2">
-                <input
+                <Input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={canSend ? "Napište zprávu…" : "Psaní zpráv zatím není dostupné"}
                   disabled={sending || !canSend}
-                  className="flex-1 px-4 py-2 rounded-full border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
+                  className="flex-1 rounded-full px-4"
                 />
-                <button
+                <Button
                   type="submit"
+                  size="icon"
+                  className="shrink-0 rounded-full"
                   disabled={sending || !canSend || message.trim().length < 1}
                   aria-label="Odeslat zprávu"
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-40"
                 >
-                  <SendHorizontal size={16} />
-                </button>
+                  <SendHorizontal />
+                </Button>
               </form>
             </div>
-          </motion.aside>
-        </div>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </DrawerContent>
+    </Drawer>
   );
 }

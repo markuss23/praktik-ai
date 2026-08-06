@@ -34,28 +34,28 @@ function CompactCourseTileImpl({
       transition={{ delay: idx * 0.04 }}
       whileHover={{ y: -3 }}
       onClick={() => onSelect(courseId)}
-      className={`text-left bg-white rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all w-full ${
-        isSelected ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+      className={`text-left bg-card rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all w-full ${
+        isSelected ? 'border-gradient-r/30 ring-2 ring-gradient-r/30' : 'border-border'
       }`}
     >
       <div className="flex items-start gap-2 mb-3">
-        <div className="w-1.5 self-stretch rounded-full flex-shrink-0" style={{ background: color }} />
+        <div className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: color }} />
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-gray-900 truncate">{stats.course.title}</h4>
+          <h4 className="text-sm font-semibold text-foreground truncate">{stats.course.title}</h4>
           {showOwner && stats.course.ownerDisplayName && (
-            <p className="text-[10px] text-gray-500 truncate mt-0.5">{stats.course.ownerDisplayName}</p>
+            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{stats.course.ownerDisplayName}</p>
           )}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span
               className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-              style={{ background: `${STATUS_COLORS[status] ?? '#9ca3af'}1a`, color: STATUS_COLORS[status] ?? '#6b7280' }}
+              style={{ background: `${STATUS_COLORS[status] ?? 'var(--muted-foreground)'}1a`, color: STATUS_COLORS[status] ?? 'var(--muted-foreground)' }}
             >
-              <span className="w-1 h-1 rounded-full" style={{ background: STATUS_COLORS[status] ?? '#9ca3af' }} />
+              <span className="size-1 rounded-full" style={{ background: STATUS_COLORS[status] ?? 'var(--muted-foreground)' }} />
               {STATUS_LABELS[status] ?? status}
             </span>
             <span
               className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                isPub ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                isPub ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
               }`}
             >
               {isPub ? '● Publikováno' : '○ Nepublikováno'}
@@ -70,10 +70,10 @@ function CompactCourseTileImpl({
       </div>
       <div>
         <div className="flex justify-between text-[11px] mb-1">
-          <span className="text-gray-500">Úspěšnost</span>
-          <span className="font-semibold text-gray-900 tabular-nums">{stats.completionRate}%</span>
+          <span className="text-muted-foreground">Úspěšnost</span>
+          <span className="font-semibold text-foreground tabular-nums">{stats.completionRate}%</span>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${stats.completionRate}%` }}

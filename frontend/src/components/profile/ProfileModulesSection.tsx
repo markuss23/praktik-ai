@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ConfirmModal } from './ConfirmModal';
+import { ConfirmModal } from '@/components/ui';
 import { getModules, getCourseProgress } from '@/lib/api-client';
 import type { MyEnrollment } from '@/api';
 
@@ -58,18 +58,18 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
           handleClick();
         }
       }}
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col justify-between w-full ${
+      className={`bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col justify-between w-full ${
         isCompleted ? '' : 'cursor-pointer hover:shadow-md transition-shadow'
       }`}
     >
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-500">
+          <span className="text-xs font-medium text-muted-foreground">
             Modul {enrollment.completedModules ?? 0}/{enrollment.totalModules ?? 0}
           </span>
           {isCompleted && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-green-600">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="flex items-center gap-1 text-xs font-semibold text-success">
+              <svg className="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               Splněno
@@ -79,25 +79,25 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
         <h4
           className="text-base font-semibold mb-0.5 break-words"
           style={isCompleted
-            ? { color: '#16a34a' }
-            : { background: 'linear-gradient(90deg, #6366F1, #8B5BA8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
+            ? { color: 'var(--success)' }
+            : { background: 'linear-gradient(90deg, var(--tip), var(--gradient-r))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }
           }
         >
           {enrollment.course.title}
         </h4>
         {enrollment.course.description && (
-          <p className="text-sm text-gray-500 line-clamp-2 break-words">{enrollment.course.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2 break-words">{enrollment.course.description}</p>
         )}
       </div>
       <div className="flex items-center justify-between mt-4">
-        <div className="flex items-center gap-1.5 text-sm text-gray-500">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <BookOpen size={14} />
           <span>{enrollment.totalModules ?? 0} lekce</span>
         </div>
         {/* {isCompleted && (
           <button
             onClick={() => onRepeatClick(enrollment)}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/80 rounded-lg transition-colors"
           >
             Zopakovat kurz
           </button>
@@ -130,11 +130,11 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
             onClick={() => setShowInProgress(!showInProgress)}
             className="flex items-center justify-between w-full mb-3"
           >
-            <h3 className="text-lg font-bold text-gray-900">Rozpracované kurzy</h3>
+            <h3 className="text-lg font-bold text-foreground">Rozpracované kurzy</h3>
             {showInProgress ? (
-              <ChevronDown size={22} className="text-gray-400" />
+              <ChevronDown size={22} className="text-muted-foreground" />
             ) : (
-              <ChevronUp size={22} className="text-gray-400" />
+              <ChevronUp size={22} className="text-muted-foreground" />
             )}
           </button>
           <AnimatePresence>
@@ -164,11 +164,11 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
             onClick={() => setShowCompleted(!showCompleted)}
             className="flex items-center justify-between w-full mb-3"
           >
-            <h3 className="text-lg font-bold text-gray-900">Dokončené kurzy</h3>
+            <h3 className="text-lg font-bold text-foreground">Dokončené kurzy</h3>
             {showCompleted ? (
-              <ChevronUp size={22} className="text-gray-400" />
+              <ChevronUp size={22} className="text-muted-foreground" />
             ) : (
-              <ChevronDown size={22} className="text-gray-400" />
+              <ChevronDown size={22} className="text-muted-foreground" />
             )}
           </button>
           <AnimatePresence>
@@ -192,7 +192,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
       )}
 
       {enrollments.length === 0 && (
-        <p className="text-sm text-gray-500">Nejste zapsáni v žádném kurzu.</p>
+        <p className="text-sm text-muted-foreground">Nejste zapsáni v žádném kurzu.</p>
       )}
 
       {/* Repeat confirmation modal */}

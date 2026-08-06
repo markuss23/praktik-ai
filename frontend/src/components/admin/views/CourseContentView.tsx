@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Modal } from '@/components/ui/Modal';
+import { Drawer, DrawerContent, Modal } from '@/components/ui';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
@@ -48,24 +48,24 @@ interface CourseContentViewProps {
 // Hlavička osnovy s tlačítky pro přidání a (na mobilu) zavření drawer
 function OutlineHeader({ onAdd, onClose }: { onAdd: () => void; onClose?: () => void }) {
   return (
-    <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-      <h2 className="font-semibold text-black">Osnova kurzu</h2>
+    <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+      <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
       <div className="flex items-center gap-1">
         <button
-          className="p-1 hover:bg-gray-100 rounded"
+          className="p-1 hover:bg-muted rounded"
           onClick={onAdd}
           title="Přidat modul"
         >
-          <Plus size={16} className="text-gray-600" />
+          <Plus size={16} className="text-muted-foreground" />
         </button>
         {onClose && (
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             onClick={onClose}
             title="Zavřít"
             aria-label="Zavřít osnovu"
           >
-            <X size={16} className="text-gray-600" />
+            <X size={16} className="text-muted-foreground" />
           </button>
         )}
       </div>
@@ -96,38 +96,38 @@ function OutlineList({
   return (
     <div className="flex-1 overflow-y-auto">
       {modules.map((module, index) => (
-        <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+        <div key={module.moduleId} className="border-b border-border last:border-b-0">
           <div
             className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
               selectedModuleIndex === index
-                ? 'bg-purple-50 border-l-4 border-l-purple-600'
-                : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-            } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
+                ? 'bg-gradient-r/10 border-l-4 border-l-purple-600'
+                : 'hover:bg-muted/50 border-l-4 border-l-transparent'
+            } ${module.isTemporary ? 'bg-warning/10' : ''}`}
             onClick={() => onSelect(index)}
           >
             <button
-              className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+              className="shrink-0 p-0.5 hover:bg-muted rounded"
               onClick={(e) => { e.stopPropagation(); onToggle(index); }}
             >
               {expandedOutlineItems.has(index) ? (
-                <ChevronDown size={14} className="text-gray-400" />
+                <ChevronDown size={14} className="text-muted-foreground" />
               ) : (
-                <ChevronUp size={14} className="text-gray-400" />
+                <ChevronUp size={14} className="text-muted-foreground" />
               )}
             </button>
-            <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
+            <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
               {module.title}
-              {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+              {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
             </span>
             {feedbackCountByModule(module.moduleId) > 0 && (
-              <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              <span className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                 {feedbackCountByModule(module.moduleId)}
               </span>
             )}
             {module.isTemporary && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(index); }}
-                className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
+                className="p-1 hover:bg-destructive/20 rounded text-destructive shrink-0"
                 title="Odstranit modul"
               >
                 <Trash2 size={14} />
@@ -136,7 +136,7 @@ function OutlineList({
           </div>
           {expandedOutlineItems.has(index) && moduleContents[index] && (
             <div
-              className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+              className="pl-10 pr-4 py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer truncate"
               onClick={() => onSelect(index)}
             >
               {moduleContents[index].content
@@ -148,7 +148,7 @@ function OutlineList({
       ))}
 
       {modules.length === 0 && (
-        <div className="p-4 text-center text-gray-500 text-sm">Žádné moduly</div>
+        <div className="p-4 text-center text-muted-foreground text-sm">Žádné moduly</div>
       )}
     </div>
   );
@@ -174,27 +174,27 @@ function ModuleItem({
     <div
       className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
         isSelected
-          ? 'bg-purple-50 border-l-4 border-l-purple-600'
-          : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-      } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
+          ? 'bg-gradient-r/10 border-l-4 border-l-purple-600'
+          : 'hover:bg-muted/50 border-l-4 border-l-transparent'
+      } ${module.isTemporary ? 'bg-warning/10' : ''}`}
       onClick={onSelect}
     >
       <button
-        className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+        className="shrink-0 p-0.5 hover:bg-muted rounded"
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
       >
         {isExpanded ? (
-          <ChevronDown size={14} className="text-gray-400" />
+          <ChevronDown size={14} className="text-muted-foreground" />
         ) : (
-          <ChevronUp size={14} className="text-gray-400" />
+          <ChevronUp size={14} className="text-muted-foreground" />
         )}
       </button>
-      <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
+      <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
         {module.title}
-        {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+        {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
       </span>
       {module.isTemporary && onDelete && (
         <button
@@ -202,7 +202,7 @@ function ModuleItem({
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
+          className="p-1 hover:bg-destructive/20 rounded text-destructive shrink-0"
           title="Odstranit modul"
         >
           <Trash2 size={14} />
@@ -527,38 +527,38 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
 
   const commentsPanelInner = (
     <>
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-sm font-semibold text-black">
+      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+        <h2 className="text-sm font-semibold text-foreground">
           Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
         </h2>
         <button
-          className="lg:hidden p-1 hover:bg-gray-100 rounded"
+          className="lg:hidden p-1 hover:bg-muted rounded"
           onClick={() => setMobileCommentsOpen(false)}
           aria-label="Zavřít komentáře"
         >
-          <X size={16} className="text-gray-600" />
+          <X size={16} className="text-muted-foreground" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {currentModuleFeedbacks.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+          <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
         ) : (
           currentModuleFeedbacks.map(fb => (
-            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-success/30 bg-success/10/50' : 'border-border'}`}>
               <div className="px-3.5 py-2.5">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-semibold text-gray-800 text-xs">
+                  <span className="font-semibold text-foreground text-xs">
                     {fb.author.displayName ?? 'Uživatel'}
                   </span>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => handleToggleResolve(fb)}
                       disabled={resolvingFeedback === fb.feedbackId}
                       className={`p-0.5 rounded transition-colors ${
                         fb.isResolved
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-gray-300 hover:text-green-500'
+                          ? 'text-success hover:text-success'
+                          : 'text-muted-foreground hover:text-success'
                       }`}
                       title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
                     >
@@ -568,20 +568,20 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                 </div>
 
                 {feedbackContextLabel(fb) && (
-                  <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                  <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
                 )}
 
-                <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
               </div>
 
               {fb.reply && (
                 <div className="px-3.5 pb-2.5">
-                  <div className="ml-3 bg-purple-50 rounded-lg px-3 py-2">
+                  <div className="ml-3 bg-gradient-r/10 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <CornerDownRight size={10} className="text-purple-400" />
-                      <span className="text-[10px] text-purple-500 font-medium">Vaše odpověď</span>
+                      <CornerDownRight size={10} className="text-gradient-r" />
+                      <span className="text-[10px] text-gradient-r font-medium">Vaše odpověď</span>
                     </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
                   </div>
                 </div>
               )}
@@ -595,19 +595,19 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                         onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
                         rows={2}
                         placeholder="Napište odpověď..."
-                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                        className="w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none"
                       />
                       <div className="flex gap-1 mt-1">
                         <button
                           onClick={() => handleReply(fb.feedbackId)}
                           disabled={submittingReply === fb.feedbackId}
-                          className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
+                          className="flex-1 py-1 bg-gradient-r text-primary-foreground rounded-lg text-xs font-medium hover:bg-gradient-r/80 disabled:opacity-50"
                         >
                           Odeslat
                         </button>
                         <button
                           onClick={() => setShowReplyFor(null)}
-                          className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                          className="px-2 py-1 text-muted-foreground hover:text-foreground text-xs"
                         >
                           Zrušit
                         </button>
@@ -616,7 +616,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                   ) : (
                     <button
                       onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className="text-xs text-purple-600 hover:underline flex items-center gap-0.5"
+                      className="text-xs text-gradient-r hover:underline flex items-center gap-0.5"
                     >
                       <CornerDownRight size={11} /> Odpovědět
                     </button>
@@ -628,13 +628,13 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         )}
       </div>
 
-      <div className="p-3 border-t border-gray-200 flex-shrink-0">
+      <div className="p-3 border-t border-border shrink-0">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">
+          <span className="text-muted-foreground">
             Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
           </span>
           {allResolved && (
-            <span className="text-green-600 font-medium flex items-center gap-1">
+            <span className="text-success font-medium flex items-center gap-1">
               <CheckCircle size={12} /> Vše vyřešeno
             </span>
           )}
@@ -644,7 +644,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-100">
+    <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
@@ -665,15 +665,15 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       <>
       {/* Resubmit banner */}
       {/* {isEdited && hasFeedbacks && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm text-amber-800">
+        <div className="bg-warning/10 border-b border-warning/30 px-6 py-2.5 flex items-center justify-between shrink-0">
+          <p className="text-sm text-warning">
             Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
           </p>
           {canResubmit && (
             <button
               onClick={handleResubmit}
               disabled={resubmitLoading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-1.5 bg-gradient-r text-primary-foreground rounded-lg text-sm font-medium hover:bg-gradient-r/80 transition-colors disabled:opacity-50"
             >
               <ArrowUpCircle size={14} />
               {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
@@ -684,7 +684,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Left Sidebar - Course Outline (desktop) */}
-        <div className="hidden lg:flex w-56 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+        <div className="hidden lg:flex w-56 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
           <OutlineHeader
             onAdd={() => setShowAddModuleModal(true)}
           />
@@ -700,33 +700,30 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           />
         </div>
 
-        {/* Mobile Outline Drawer */}
-        {mobileOutlineOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOutlineOpen(false)} />
-            <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-              <OutlineHeader
-                onAdd={() => setShowAddModuleModal(true)}
-                onClose={() => setMobileOutlineOpen(false)}
-              />
-              <OutlineList
-                modules={modules}
-                selectedModuleIndex={selectedModuleIndex}
-                expandedOutlineItems={expandedOutlineItems}
-                moduleContents={moduleContents}
-                feedbackCountByModule={feedbackCountByModule}
-                onSelect={selectModuleAndClose}
-                onToggle={toggleOutlineItem}
-                onDelete={handleDeleteModule}
-              />
-            </div>
-          </div>
-        )}
+        {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
+        <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
+          <DrawerContent className="lg:hidden" aria-label="Struktura kurzu">
+            <OutlineHeader
+              onAdd={() => setShowAddModuleModal(true)}
+              onClose={() => setMobileOutlineOpen(false)}
+            />
+            <OutlineList
+              modules={modules}
+              selectedModuleIndex={selectedModuleIndex}
+              expandedOutlineItems={expandedOutlineItems}
+              moduleContents={moduleContents}
+              feedbackCountByModule={feedbackCountByModule}
+              onSelect={selectModuleAndClose}
+              onToggle={toggleOutlineItem}
+              onDelete={handleDeleteModule}
+            />
+          </DrawerContent>
+        </Drawer>
 
         {/* Center - Editor */}
-        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-black">Úpravy podkladů ke kurzu</h2>
+        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
+          <div className="p-4 border-b border-border">
+            <h2 className="font-semibold text-foreground">Úpravy podkladů ke kurzu</h2>
           </div>
 
           <EditorToolbar editor={editor} />
@@ -735,7 +732,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             {modules.length > 0 ? (
               <EditorContentComponent editor={editor} className={editorContentClass} />
             ) : (
-              <div className="text-center text-gray-500 py-12">
+              <div className="text-center text-muted-foreground py-12">
                 Nejsou k dispozici žádné moduly k úpravě
               </div>
             )}
@@ -746,19 +743,18 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
         {showCommentsPanel && (
-          <div className="hidden lg:flex w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+          <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
         )}
 
         {/* Mobile Comments Drawer */}
-        {showCommentsPanel && mobileCommentsOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCommentsOpen(false)} />
-            <div className="relative w-80 max-w-[85%] bg-white shadow-xl flex flex-col">
+        {showCommentsPanel && (
+          <Drawer open={mobileCommentsOpen} onOpenChange={setMobileCommentsOpen} swipeDirection="right">
+            <DrawerContent className="lg:hidden" aria-label="Komentáře ke kurzu">
               {commentsPanelInner}
-            </div>
-          </div>
+            </DrawerContent>
+          </Drawer>
         )}
 
         {/* Add Module Modal */}
@@ -770,14 +766,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             <>
               <button
                 onClick={() => { setShowAddModuleModal(false); setNewModuleTitle(''); }}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
               >
                 Zrušit
               </button>
               <button
                 onClick={handleAddModule}
                 disabled={!newModuleTitle.trim()}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
               >
                 Přidat
               </button>
@@ -789,7 +785,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             value={newModuleTitle}
             onChange={(e) => setNewModuleTitle(e.target.value)}
             placeholder="Název modulu"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddModule(); }}
           />

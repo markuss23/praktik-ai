@@ -303,8 +303,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error ?? 'Kurz nebyl nalezen.'}</p>
-          <button onClick={() => router.push('/admin/review')} className="text-purple-600 hover:underline">
+          <p className="text-destructive mb-4">{error ?? 'Kurz nebyl nalezen.'}</p>
+          <button onClick={() => router.push('/admin/review')} className="text-gradient-r hover:underline">
             ← Zpět na přehled
           </button>
         </div>
@@ -313,18 +313,18 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-100 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
         <div>
-          <p className="text-xs text-gray-500 mb-0.5">
-            <button onClick={() => router.push('/admin/review')} className="hover:text-gray-700">
+          <p className="text-xs text-muted-foreground mb-0.5">
+            <button onClick={() => router.push('/admin/review')} className="hover:text-foreground">
               Ke schválení
             </button>
             {' / '}
-            <span className="text-gray-700">{course.title}</span>
+            <span className="text-foreground">{course.title}</span>
           </p>
-          <h1 className="text-xl font-bold text-black">Obsah ke schválení</h1>
+          <h1 className="text-xl font-bold text-foreground">Obsah ke schválení</h1>
         </div>
         <div className="flex items-center gap-3">
           {/* Guarantor: approve/reject course (only in_review) */}
@@ -333,7 +333,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               <button
                 onClick={handleRejectCourse}
                 disabled={approvalLoading}
-                className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 border border-destructive/30 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50"
               >
                 <ThumbsDown size={16} />
                 Zamítnout kurz
@@ -342,7 +342,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 onClick={handleApproveCourse}
                 disabled={approvalLoading || !allModulesApproved}
                 title={!allModulesApproved ? 'Nejprve schvalte všechny moduly' : undefined}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ThumbsUp size={16} />
                 Schválit kurz
@@ -351,7 +351,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           )}
           {/* Status badges */}
           {isApproved && (
-            <span className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
+            <span className="flex items-center gap-1.5 px-3 py-2 bg-success/10 text-success rounded-lg text-sm font-medium border border-success/30">
               <CheckCircle size={15} />
               Schváleno
             </span>
@@ -363,9 +363,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       <div className="flex-1 flex overflow-hidden p-4 gap-4">
 
         {/* Left: Module sidebar */}
-        <div className="w-56 flex-shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-black">Osnova kurzu</h2>
+        <div className="w-56 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <h2 className="text-sm font-semibold text-foreground">Osnova kurzu</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
             {modules.map((mod, idx) => {
@@ -375,25 +375,25 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 <button
                   key={mod.moduleId}
                   onClick={() => handleSelectModule(idx)}
-                  className={`w-full text-left px-3 py-3 text-sm transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2 ${
+                  className={`w-full text-left px-3 py-3 text-sm transition-colors border-b border-border last:border-b-0 flex items-center gap-2 ${
                     selectedModuleIndex === idx
-                      ? 'bg-purple-50 border-l-4 border-l-purple-600 font-medium text-black'
-                      : 'hover:bg-gray-50 text-gray-700 border-l-4 border-l-transparent'
+                      ? 'bg-gradient-r/10 border-l-4 border-l-purple-600 font-medium text-foreground'
+                      : 'hover:bg-muted/50 text-foreground border-l-4 border-l-transparent'
                   }`}
                 >
                   {modApproved && (
-                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
+                    <span className="shrink-0 size-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check size={10} className="text-primary-foreground" />
                     </span>
                   )}
                   {modRejected && (
-                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-                      <XCircle size={10} className="text-white" />
+                    <span className="shrink-0 size-4 rounded-full bg-destructive flex items-center justify-center">
+                      <XCircle size={10} className="text-primary-foreground" />
                     </span>
                   )}
                   <span className="truncate flex-1">{mod.title}</span>
                   {feedbackCountByModule(mod.moduleId) > 0 && (
-                    <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    <span className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                       {feedbackCountByModule(mod.moduleId)}
                     </span>
                   )}
@@ -401,15 +401,15 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               );
             })}
             {modules.length === 0 && (
-              <p className="p-3 text-xs text-gray-400 text-center">Žádné moduly</p>
+              <p className="p-3 text-xs text-muted-foreground text-center">Žádné moduly</p>
             )}
           </div>
         </div>
 
         {/* Center: Module content */}
-        <div className="flex-1 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden min-w-0">
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
-            <h2 className="font-semibold text-black mb-3">
+        <div className="flex-1 bg-card rounded-lg border border-border flex flex-col overflow-hidden min-w-0">
+          <div className="p-4 border-b border-border shrink-0">
+            <h2 className="font-semibold text-foreground mb-3">
               {selectedModule?.title ?? 'Výběr modulu'}
             </h2>
             {/* Tabs — freely switchable */}
@@ -418,8 +418,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 onClick={() => setActiveTab('handbook')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'handbook'
-                    ? 'bg-purple-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gradient-r text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <BookOpenText size={14} />
@@ -429,8 +429,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 onClick={() => setActiveTab('practice')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'practice'
-                    ? 'bg-purple-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-gradient-r text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <Dumbbell size={14} />
@@ -447,7 +447,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               currentBlock ? (
                 <>
                   <div className="mb-4">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       Stránka {currentBlockIndex + 1} z {totalBlocks}
                     </span>
                   </div>
@@ -458,8 +458,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                   />
                 </>
               ) : (
-                <div className="text-center py-16 text-gray-400">
-                  <BookOpenText size={40} className="mx-auto mb-3 text-gray-300" />
+                <div className="text-center py-16 text-muted-foreground">
+                  <BookOpenText size={40} className="mx-auto mb-3 text-muted-foreground" />
                   <p className="font-medium">Obsah příručky není k dispozici</p>
                 </div>
               )
@@ -467,16 +467,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               /* ===== PRACTICE TAB ===== */
               <div className="space-y-6">
                 {practiceQuestions.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
-                    <Dumbbell size={40} className="mx-auto mb-3 text-gray-300" />
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Dumbbell size={40} className="mx-auto mb-3 text-muted-foreground" />
                     <p className="font-medium">Žádné otázky k procvičování</p>
                   </div>
                 ) : (
                   practiceQuestions.map((q, idx) => (
-                    <div key={q.questionId} className="pb-5 border-b border-gray-100 last:border-b-0">
+                    <div key={q.questionId} className="pb-5 border-b border-border last:border-b-0">
                           <div className="mb-3">
-                            <p className="font-semibold text-gray-800 text-sm">
-                              <span className="text-purple-600 mr-1">{idx + 1}.</span>
+                            <p className="font-semibold text-foreground text-sm">
+                              <span className="text-gradient-r mr-1">{idx + 1}.</span>
                               {q.question}
                             </p>
                           </div>
@@ -489,16 +489,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                                     key={opt.optionId}
                                     className={`flex items-center gap-3 p-2.5 rounded-lg border ${
                                       isCorrect
-                                        ? 'border-green-300 bg-green-50'
-                                        : 'border-gray-200 bg-white'
+                                        ? 'border-success/30 bg-success/10'
+                                        : 'border-border bg-card'
                                     }`}
                                   >
-                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                      isCorrect ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                                    <div className={`size-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                      isCorrect ? 'border-success/30 bg-primary' : 'border-border'
                                     }`}>
-                                      {isCorrect && <Check size={10} className="text-white" />}
+                                      {isCorrect && <Check size={10} className="text-primary-foreground" />}
                                     </div>
-                                    <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-700'}`}>
+                                    <span className={`text-sm ${isCorrect ? 'text-success font-medium' : 'text-foreground'}`}>
                                       {opt.text}
                                     </span>
                                   </div>
@@ -509,23 +509,23 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                           {q.questionType === 'open' && (
                             <div className="ml-4 space-y-2">
                               {q.exampleAnswer && (
-                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                  <p className="text-xs text-green-600 font-medium mb-1">Příklad odpovědi:</p>
-                                  <p className="text-sm text-green-800">{q.exampleAnswer}</p>
+                                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                                  <p className="text-xs text-success font-medium mb-1">Příklad odpovědi:</p>
+                                  <p className="text-sm text-success">{q.exampleAnswer}</p>
                                 </div>
                               )}
                               {q.correctAnswer && (
-                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                  <p className="text-xs text-green-600 font-medium mb-1">Správná odpověď:</p>
-                                  <p className="text-sm text-green-800">{q.correctAnswer}</p>
+                                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
+                                  <p className="text-xs text-success font-medium mb-1">Správná odpověď:</p>
+                                  <p className="text-sm text-success">{q.correctAnswer}</p>
                                 </div>
                               )}
                               {q.openKeywords && q.openKeywords.length > 0 && (
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                  <p className="text-xs text-blue-600 font-medium mb-1">Klíčová slova:</p>
+                                <div className="p-3 bg-tip/10 border border-tip/30 rounded-lg">
+                                  <p className="text-xs text-tip font-medium mb-1">Klíčová slova:</p>
                                   <div className="flex flex-wrap gap-1">
                                     {q.openKeywords.map(kw => (
-                                      <span key={kw.keywordId} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                      <span key={kw.keywordId} className="px-2 py-0.5 bg-tip/20 text-tip rounded text-xs">
                                         {kw.keyword}
                                       </span>
                                     ))}
@@ -533,8 +533,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                                 </div>
                               )}
                               {!q.exampleAnswer && !q.correctAnswer && (!q.openKeywords || q.openKeywords.length === 0) && (
-                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                  <p className="text-xs text-gray-500">Odpověď nebyla nastavena</p>
+                                <div className="p-3 bg-muted/50 border border-border rounded-lg">
+                                  <p className="text-xs text-muted-foreground">Odpověď nebyla nastavena</p>
                                 </div>
                               )}
                             </div>
@@ -547,12 +547,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           </div>
 
           {/* Footer navigation + per-module approval */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevBlock}
                 disabled={activeTab !== 'handbook' || currentBlockIndex === 0}
-                className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed"
               >
                 ← Předchozí
               </button>
@@ -563,12 +563,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               {canApprove && isInReview && selectedModule && (
                 <>
                   {currentModuleApproved ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success bg-success/10 border border-success/30 rounded-lg">
                       <CheckCircle size={13} />
                       Modul schválen
                     </span>
                   ) : currentModuleRejected ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-destructive bg-destructive/10 border border-destructive/30 rounded-lg">
                       <XCircle size={13} />
                       Modul zamítnut
                     </span>
@@ -577,8 +577,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                     onClick={handleRejectModule}
                     className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors ${
                       currentModuleRejected
-                        ? 'border-red-400 bg-red-100 text-red-700'
-                        : 'border-red-300 text-red-600 hover:bg-red-50'
+                        ? 'border-destructive/30 bg-destructive/20 text-destructive'
+                        : 'border-destructive/30 text-destructive hover:bg-destructive/10'
                     }`}
                   >
                     <ThumbsDown size={13} />
@@ -588,8 +588,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                     onClick={handleApproveModule}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       currentModuleApproved
-                        ? 'bg-green-700 text-white'
-                        : 'bg-green-600 text-white hover:bg-green-700'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-primary text-primary-foreground hover:bg-primary/80'
                     }`}
                   >
                     <ThumbsUp size={13} />
@@ -601,8 +601,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               <button
                 onClick={handleContinue}
                 disabled={selectedModuleIndex >= modules.length - 1 && (activeTab === 'practice' || practiceQuestions.length === 0) && currentBlockIndex >= totalBlocks - 1}
-                className="flex items-center gap-2 text-white font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#00C896' }}
+                className="flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'var(--primary)' }}
               >
                 {activeTab === 'handbook' && currentBlockIndex < totalBlocks - 1
                   ? 'Pokračovat'
@@ -616,32 +616,32 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
         </div>
 
         {/* Right: Comments panel */}
-        <div className="w-72 flex-shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-black">
+        <div className="w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <h2 className="text-sm font-semibold text-foreground">
               Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
             </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {currentModuleFeedbacks.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+              <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
             ) : (
               currentModuleFeedbacks.map(fb => (
                 <div key={fb.feedbackId}>
                   {/* Feedback bubble */}
-                  <div className="bg-gray-100 rounded-xl px-3.5 py-2.5">
+                  <div className="bg-muted rounded-xl px-3.5 py-2.5">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-semibold text-gray-800 text-xs">
+                      <span className="font-semibold text-foreground text-xs">
                         {fb.author.displayName ?? 'Uživatel'}
                       </span>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className="text-[11px] text-gray-400">{timeAgo(fb.createdAt)}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] text-muted-foreground">{timeAgo(fb.createdAt)}</span>
                         {canDeleteFeedback(fb.author.userId) && !fb.reply && (
                           <button
                             onClick={() => handleDeleteFeedback(fb.feedbackId)}
                             disabled={deletingFeedback === fb.feedbackId}
-                            className="p-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                            className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
                           >
                             <Trash2 size={11} />
                           </button>
@@ -649,20 +649,20 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       </div>
                     </div>
                     {feedbackContextLabel(fb) && (
-                      <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                      <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
                     )}
-                    <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                    <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
                   </div>
 
                   {/* Reply bubble */}
                   {fb.reply && (
                     <div className="ml-4 mt-1.5">
-                      <div className="bg-purple-50 rounded-xl px-3.5 py-2.5">
+                      <div className="bg-gradient-r/10 rounded-xl px-3.5 py-2.5">
                         <div className="flex items-center gap-1 mb-1">
-                          <CornerDownRight size={10} className="text-purple-400" />
-                          <span className="text-[11px] text-purple-500 font-medium">Odpověď</span>
+                          <CornerDownRight size={10} className="text-gradient-r" />
+                          <span className="text-[11px] text-gradient-r font-medium">Odpověď</span>
                         </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                        <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
                       </div>
                     </div>
                   )}
@@ -674,7 +674,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
 
           {/* Add comment (in_review only — API requires in_review status) */}
           {canAddFeedback && isInReview && (
-            <div className="p-3 border-t border-gray-200 flex-shrink-0">
+            <div className="p-3 border-t border-border shrink-0">
               <div className="flex gap-2">
                 <textarea
                   value={newFeedbackText}
@@ -687,12 +687,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       handleAddFeedback();
                     }
                   }}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none"
                 />
                 <button
                   onClick={handleAddFeedback}
                   disabled={!newFeedbackText.trim() || submittingFeedback}
-                  className="self-end p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  className="self-end p-2 bg-gradient-r text-primary-foreground rounded-full hover:bg-gradient-r/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                 >
                   <Send size={14} />
                 </button>
@@ -702,8 +702,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
 
           {/* Info for non-commentable states */}
           {isApproved && (
-            <div className="p-3 border-t border-gray-200">
-              <p className="text-xs text-gray-400 text-center">Kurz je schválený – komentáře jsou uzavřeny.</p>
+            <div className="p-3 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center">Kurz je schválený – komentáře jsou uzavřeny.</p>
             </div>
           )}
         </div>
@@ -715,20 +715,20 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
         {approvedTransition && (
           <motion.div
             key="approved-transition"
-            className="fixed inset-0 z-[60] flex items-center justify-center"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
             <motion.div
-              className="absolute inset-0 bg-white/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-card/80 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             />
             <motion.div
-              className="relative flex flex-col items-center gap-4 px-10 py-8 rounded-2xl bg-white shadow-xl border border-green-100"
+              className="relative flex flex-col items-center gap-4 px-10 py-8 rounded-2xl bg-card shadow-xl border border-success/30"
               initial={{ scale: 0.85, opacity: 0, y: 8 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: -8 }}
@@ -738,13 +738,13 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 initial={{ scale: 0, rotate: -30 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 280, damping: 14, delay: 0.1 }}
-                className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center"
+                className="size-16 rounded-full bg-success/20 flex items-center justify-center"
               >
-                <CheckCircle size={36} className="text-green-600" />
+                <CheckCircle size={36} className="text-success" />
               </motion.div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">Kurz schválen</p>
-                <p className="text-sm text-gray-500 mt-1">Vracím vás na přehled…</p>
+                <p className="text-lg font-semibold text-foreground">Kurz schválen</p>
+                <p className="text-sm text-muted-foreground mt-1">Vracím vás na přehled…</p>
               </div>
             </motion.div>
           </motion.div>

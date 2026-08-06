@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Folder } from "lucide-react";
 import { FolderPickerModal } from "./FolderPickerModal";
 import { addMaterialToFolder } from "./api";
-import { useToast } from "@/components/ui";
+import { Button, useToast } from "@/components/ui";
 import type { MaterialFolder } from "./types";
 
 interface MaterialCardActionsProps {
@@ -44,8 +44,10 @@ export function MaterialCardActions({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="icon-lg"
         aria-label="Přidat do složky"
         title="Přidat do složky"
         onClick={(e) => {
@@ -53,10 +55,9 @@ export function MaterialCardActions({
           e.stopPropagation();
           setPickerOpen(true);
         }}
-        className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"
       >
-        <Folder size={16} strokeWidth={1.75} />
-      </button>
+        <Folder strokeWidth={1.75} />
+      </Button>
       <FolderPickerModal
         isOpen={pickerOpen}
         onClose={() => setPickerOpen(false)}

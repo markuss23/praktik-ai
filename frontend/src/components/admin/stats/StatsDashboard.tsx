@@ -160,7 +160,7 @@ export function StatsDashboard({
     return Array.from(counts.entries()).map(([status, value]) => ({
       name: STATUS_LABELS[status] ?? status,
       value,
-      color: STATUS_COLORS[status] ?? '#9ca3af',
+      color: STATUS_COLORS[status] ?? 'var(--muted-foreground)',
     }));
   }, [courseStats]);
 
@@ -174,7 +174,7 @@ export function StatsDashboard({
         name: cs.course.title.length > 22 ? cs.course.title.slice(0, 22) + '…' : cs.course.title,
         courseId: cs.course.courseId,
         Úspěšnost: cs.completionRate,
-        color: courseColors.get(cs.course.courseId) ?? '#6366f1',
+        color: courseColors.get(cs.course.courseId) ?? 'var(--tip)',
       }))
   ), [filtered, courseColors]);
 
@@ -233,49 +233,49 @@ export function StatsDashboard({
 
   if (loading) {
     return (
-      <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-gray-100 min-h-full">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-6" />
+      <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-muted min-h-full">
+        <div className="h-8 w-64 bg-muted rounded animate-pulse mb-6" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-24 bg-white rounded-2xl border border-gray-200 animate-pulse" />
+            <div key={i} className="h-24 bg-card rounded-2xl border border-border animate-pulse" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-8 h-72 bg-white rounded-2xl border border-gray-200 animate-pulse" />
-          <div className="lg:col-span-4 h-72 bg-white rounded-2xl border border-gray-200 animate-pulse" />
+          <div className="lg:col-span-8 h-72 bg-card rounded-2xl border border-border animate-pulse" />
+          <div className="lg:col-span-4 h-72 bg-card rounded-2xl border border-border animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 bg-gray-100 min-h-full">
+    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted min-h-full">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3 mb-1"
       >
-        <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white shadow-md">
+        <div className="p-2 bg-gradient-to-br from-gradient-r to-tip rounded-xl text-primary-foreground shadow-md">
           <Sparkles size={18} />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-black">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{title}</h1>
       </motion.div>
       {subtitle && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-sm text-gray-500 mb-6 ml-12"
+          className="text-sm text-muted-foreground mb-6 ml-12"
         >
           {subtitle}
         </motion.p>
       )}
 
       {courseStats.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-          <BookOpen size={48} className="text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">{emptyMessage}</p>
+        <div className="bg-card rounded-2xl border border-border p-12 text-center">
+          <BookOpen size={48} className="text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-lg">{emptyMessage}</p>
         </div>
       ) : (
         <>
@@ -284,27 +284,27 @@ export function StatsDashboard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-white rounded-2xl border border-gray-200 p-4 mb-5 shadow-sm"
+            className="bg-card rounded-2xl border border-border p-4 mb-5 shadow-sm"
           >
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <Clock size={14} className="text-gray-400" />
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Období</span>
+                <Clock size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Období</span>
                 <TimeRangeToggle value={timeRange} onChange={setTimeRange} />
               </div>
-              <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+              <div className="h-6 w-px bg-muted hidden sm:block" />
               <CourseFilterDropdown
                 courses={courseStats.map(cs => cs.course)}
                 selected={selectedCourseIds}
                 onChange={handleCourseFilterChange}
               />
-              <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+              <div className="h-6 w-px bg-muted hidden sm:block" />
               <StatusFilterChips
                 available={availableStatuses}
                 selected={selectedStatuses}
                 onChange={setSelectedStatuses}
               />
-              <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+              <div className="h-6 w-px bg-muted hidden sm:block" />
               <PublishFilterChips
                 selected={selectedPublishStates}
                 onChange={setSelectedPublishStates}
@@ -312,7 +312,7 @@ export function StatsDashboard({
               {hasActiveFilters && (
                 <button
                   onClick={resetFilters}
-                  className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500 hover:text-purple-700 transition-colors"
+                  className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gradient-r transition-colors"
                 >
                   <X size={12} /> Resetovat filtry
                 </button>
@@ -326,21 +326,21 @@ export function StatsDashboard({
               icon={BookOpen}
               label="Filtrované kurzy"
               value={filtered.length}
-              gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+              gradient="bg-gradient-to-br from-tip to-tip"
               delay={0.1}
             />
             <StatCard
               icon={Users}
               label="Celkem zapsaných"
               value={totals.totalEnrolled}
-              gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+              gradient="bg-gradient-to-br from-primary to-success"
               delay={0.15}
             />
             <StatCard
               icon={CheckCircle2}
               label="Dokončilo"
               value={totals.totalCompleted}
-              gradient="bg-gradient-to-br from-green-500 to-emerald-600"
+              gradient="bg-gradient-to-br from-primary to-success"
               delay={0.2}
             />
             <StatCard
@@ -348,7 +348,7 @@ export function StatsDashboard({
               label="Průměrná úspěšnost"
               value={totals.avgCompletion}
               suffix="%"
-              gradient="bg-gradient-to-br from-purple-500 to-fuchsia-600"
+              gradient="bg-gradient-to-br from-gradient-r to-gradient-r"
               delay={0.25}
             />
           </div>
@@ -366,25 +366,25 @@ export function StatsDashboard({
                 <AreaChart data={timeSeries} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="grad-new" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--tip)" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="var(--tip)" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="grad-completed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6b7280' }} stroke="#e5e7eb" />
-                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} stroke="#e5e7eb" allowDecimals={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--muted)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} stroke="var(--border)" />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} stroke="var(--border)" allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="new" name="Nové zápisy" stroke="#6366f1" strokeWidth={2} fill="url(#grad-new)" />
-                  <Area type="monotone" dataKey="completed" name="Dokončili" stroke="#10b981" strokeWidth={2} fill="url(#grad-completed)" />
+                  <Area type="monotone" dataKey="new" name="Nové zápisy" stroke="var(--tip)" strokeWidth={2} fill="url(#grad-new)" />
+                  <Area type="monotone" dataKey="completed" name="Dokončili" stroke="var(--primary)" strokeWidth={2} fill="url(#grad-completed)" />
                 </AreaChart>
               </ResponsiveContainer>
-              <div className="flex items-center justify-center gap-5 text-xs text-gray-600 pt-2 border-t border-gray-100 mt-2">
-                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Nové zápisy</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Dokončili</span>
+              <div className="flex items-center justify-center gap-5 text-xs text-muted-foreground pt-2 border-t border-border mt-2">
+                <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-tip" /> Nové zápisy</span>
+                <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-primary" /> Dokončili</span>
               </div>
             </ChartTile>
 
@@ -418,10 +418,10 @@ export function StatsDashboard({
                 {statusDistribution.map((s, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-gray-50 rounded-full px-2 py-0.5"
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
-                    {s.name} <strong className="text-gray-900">{s.value}</strong>
+                    <span className="size-1.5 rounded-full" style={{ background: s.color }} />
+                    {s.name} <strong className="text-foreground">{s.value}</strong>
                   </span>
                 ))}
               </div>
@@ -442,9 +442,9 @@ export function StatsDashboard({
               ) : (
                 <ResponsiveContainer width="100%" height={Math.max(220, topByCompletion.length * 38)}>
                   <BarChart data={topByCompletion} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                    <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: '#6b7280' }} stroke="#e5e7eb" />
-                    <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11, fill: '#374151' }} stroke="#e5e7eb" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--muted)" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} stroke="var(--border)" />
+                    <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11, fill: 'var(--foreground)' }} stroke="var(--border)" />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="Úspěšnost" radius={[0, 6, 6, 0]} animationDuration={800}>
                       {topByCompletion.map((d, i) => (
@@ -468,18 +468,18 @@ export function StatsDashboard({
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={enrollmentsPerCourse} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} stroke="#e5e7eb" interval={0} angle={-15} textAnchor="end" height={50} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} stroke="#e5e7eb" allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--muted)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} stroke="var(--border)" interval={0} angle={-15} textAnchor="end" height={50} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} stroke="var(--border)" allowDecimals={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="Dokončilo" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} animationDuration={800} />
-                    <Bar dataKey="Probíhá" stackId="a" fill="#6366f1" radius={[6, 6, 0, 0]} animationDuration={800} />
+                    <Bar dataKey="Dokončilo" stackId="a" fill="var(--primary)" radius={[0, 0, 0, 0]} animationDuration={800} />
+                    <Bar dataKey="Probíhá" stackId="a" fill="var(--tip)" radius={[6, 6, 0, 0]} animationDuration={800} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
-              <div className="flex items-center justify-center gap-5 text-xs text-gray-600 pt-2 border-t border-gray-100 mt-1">
-                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Dokončilo</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" /> Probíhá</span>
+              <div className="flex items-center justify-center gap-5 text-xs text-muted-foreground pt-2 border-t border-border mt-1">
+                <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-primary" /> Dokončilo</span>
+                <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-tip" /> Probíhá</span>
               </div>
             </ChartTile>
           </div>
@@ -491,8 +491,8 @@ export function StatsDashboard({
             transition={{ delay: 0.5 }}
             className="flex items-center justify-between mb-3 gap-3 flex-wrap"
           >
-            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <BookOpen size={16} className="text-purple-600" />
+            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <BookOpen size={16} className="text-gradient-r" />
               {filtered.length === 0
                 ? 'Žádné kurzy odpovídající filtru'
                 : hasMorePages
@@ -508,14 +508,14 @@ export function StatsDashboard({
                       onClick={() => setTilesPage(i)}
                       aria-label={`Přejít na stránku ${i + 1}`}
                       className={`h-1.5 rounded-full transition-all ${
-                        i === safePage ? 'w-6 bg-purple-600' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+                        i === safePage ? 'w-6 bg-gradient-r' : 'w-1.5 bg-muted hover:bg-muted-foreground'
                       }`}
                     />
                   ))}
                 </div>
                 <button
                   onClick={goToNextPage}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium shadow-sm transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-r hover:bg-gradient-r/80 text-primary-foreground rounded-lg text-xs font-medium shadow-sm transition-colors"
                 >
                   <span>Načíst další</span>
                   <motion.span
@@ -546,7 +546,7 @@ export function StatsDashboard({
                   <CompactCourseTile
                     key={cs.course.courseId}
                     stats={cs}
-                    color={courseColors.get(cs.course.courseId) ?? '#6366f1'}
+                    color={courseColors.get(cs.course.courseId) ?? 'var(--tip)'}
                     onSelect={handleTileSelect}
                     isSelected={cs.course.courseId === focusedCourseId}
                     idx={idx}
@@ -570,7 +570,7 @@ export function StatsDashboard({
               >
                 <FocusedCourseDetail
                   stats={focused}
-                  color={courseColors.get(focused.course.courseId) ?? '#6366f1'}
+                  color={courseColors.get(focused.course.courseId) ?? 'var(--tip)'}
                   onClose={closeFocused}
                   onRequestModules={onRequestModules}
                 />

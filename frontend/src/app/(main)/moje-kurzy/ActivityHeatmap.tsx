@@ -33,14 +33,14 @@ function toIsoDate(d: Date): string {
 
 function intensityColor(count: number, dimmed = false): string {
   if (dimmed) {
-    if (count === 0) return '#F8F9FA';
-    return '#E5E7EB';
+    if (count === 0) return 'var(--muted)';
+    return 'var(--border)';
   }
-  if (count === 0) return '#EAECF0';
+  if (count === 0) return 'var(--border)';
   if (count === 1) return '#C7B8E6';
-  if (count === 2) return '#8B5BA8';
-  if (count <= 4) return '#6366F1';
-  return '#4F46E5';
+  if (count === 2) return 'var(--gradient-r)';
+  if (count <= 4) return 'var(--tip)';
+  return 'var(--tip)';
 }
 
 // === STATS COMPUTATION =====================================================
@@ -335,17 +335,17 @@ export function ActivityHeatmap() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div className="bg-card rounded-xl border border-border shadow-sm p-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <Calendar size={16} className="text-purple-600" />
-          <h3 className="text-sm font-semibold text-gray-900">Tvoje aktivita</h3>
+          <Calendar size={16} className="text-gradient-r" />
+          <h3 className="text-sm font-semibold text-foreground">Tvoje aktivita</h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Year tabs */}
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <div className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5">
             {yearOptions.map((y) => (
               <button
                 key={y}
@@ -353,8 +353,8 @@ export function ActivityHeatmap() {
                 onClick={() => setSelectedYear(y)}
                 className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
                   selectedYear === y
-                    ? 'bg-white text-purple-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-card text-gradient-r shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {y}
@@ -363,12 +363,12 @@ export function ActivityHeatmap() {
           </div>
 
           {/* View mode toggle */}
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <div className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('year')}
               className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'year' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                viewMode === 'year' ? 'bg-card text-gradient-r shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Rok
@@ -377,7 +377,7 @@ export function ActivityHeatmap() {
               type="button"
               onClick={() => setViewMode('month')}
               className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
-                viewMode === 'month' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                viewMode === 'month' ? 'bg-card text-gradient-r shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Měsíc
@@ -392,7 +392,7 @@ export function ActivityHeatmap() {
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
-            className="p-1.5 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+            className="p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground"
             aria-label="Předchozí měsíc"
           >
             <ChevronLeft size={14} />
@@ -400,7 +400,7 @@ export function ActivityHeatmap() {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="h-9 px-3 text-sm text-gray-900 bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-200"
+            className="h-9 px-3 text-sm text-foreground bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
           >
             {MONTH_LABELS_LONG.map((label, i) => (
               <option key={i} value={i}>
@@ -408,11 +408,11 @@ export function ActivityHeatmap() {
               </option>
             ))}
           </select>
-          <span className="text-sm text-gray-500">{selectedYear}</span>
+          <span className="text-sm text-muted-foreground">{selectedYear}</span>
           <button
             type="button"
             onClick={() => shiftMonth(1)}
-            className="p-1.5 rounded-md border border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
+            className="p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground"
             aria-label="Další měsíc"
           >
             <ChevronRight size={14} />
@@ -423,9 +423,9 @@ export function ActivityHeatmap() {
       {/* Grid */}
       <div className="relative" data-heatmap-tooltip-root>
         {loading ? (
-          <div className="h-40 bg-gray-50 rounded-md animate-pulse" />
+          <div className="h-40 bg-muted/50 rounded-md animate-pulse" />
         ) : error ? (
-          <div className="h-40 flex items-center justify-center text-sm text-red-500">
+          <div className="h-40 flex items-center justify-center text-sm text-destructive">
             Nepodařilo se načíst aktivitu
           </div>
         ) : viewMode === 'year' ? (
@@ -446,23 +446,23 @@ export function ActivityHeatmap() {
         {/* Tooltip */}
         {hover && (
           <div
-            className="pointer-events-none absolute z-10 bg-gray-900 text-white text-xs rounded-md px-2.5 py-1.5 shadow-lg max-w-[280px]"
+            className="pointer-events-none absolute z-10 bg-foreground text-primary-foreground text-xs rounded-md px-2.5 py-1.5 shadow-lg max-w-[280px]"
             style={{ left: hover.x, top: hover.y, transform: 'translate(-50%, -100%)' }}
           >
             <div className="font-semibold whitespace-nowrap">
               {hover.cell.date.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             {hover.cell.count === 0 ? (
-              <div className="text-gray-300">Žádná aktivita</div>
+              <div className="text-muted-foreground">Žádná aktivita</div>
             ) : (
               <>
                 {hover.cell.titles.map((t, idx) => (
-                  <div key={idx} className="text-gray-200">
+                  <div key={idx} className="text-muted">
                     {t}
                   </div>
                 ))}
                 {hover.cell.count > hover.cell.titles.length && (
-                  <div className="text-gray-400 italic">
+                  <div className="text-muted-foreground italic">
                     +{hover.cell.count - hover.cell.titles.length} dalších
                   </div>
                 )}
@@ -476,19 +476,19 @@ export function ActivityHeatmap() {
       {!loading && !error && (
         <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile
-            icon={<Flame size={16} className="text-orange-500" />}
+            icon={<Flame size={16} className="text-brand-accent" />}
             label="Aktuální série"
             value={`${stats.currentStreak} ${czechDayWord(stats.currentStreak)}`}
             tone="orange"
           />
           <StatTile
-            icon={<Trophy size={16} className="text-purple-600" />}
+            icon={<Trophy size={16} className="text-gradient-r" />}
             label="Nejdelší série"
             value={`${stats.longestStreak} ${czechDayWord(stats.longestStreak)}`}
             tone="purple"
           />
           <StatTile
-            icon={<Calendar size={16} className="text-indigo-500" />}
+            icon={<Calendar size={16} className="text-tip" />}
             label="Aktivních dnů"
             value={`${stats.activeDays}`}
             hint={`${stats.totalEvents} ${czechEventWord(stats.totalEvents)}`}
@@ -505,10 +505,10 @@ export function ActivityHeatmap() {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-2 mt-4 text-[10px] text-gray-500 justify-end">
+      <div className="flex items-center gap-2 mt-4 text-[10px] text-muted-foreground justify-end">
         <span>Méně</span>
         {[0, 1, 2, 3, 5].map((n) => (
-          <span key={n} className="w-3 h-3 rounded-sm" style={{ backgroundColor: intensityColor(n) }} />
+          <span key={n} className="size-3 rounded-sm" style={{ backgroundColor: intensityColor(n) }} />
         ))}
         <span>Více</span>
       </div>
@@ -532,9 +532,9 @@ function YearGrid({
   const weeks = grid.length;
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      <div className="flex flex-col gap-[3px] pt-[18px] flex-shrink-0">
+      <div className="flex flex-col gap-[3px] pt-[18px] shrink-0">
         {DAY_LABELS_SHORT.map((lbl, i) => (
-          <div key={i} className={`h-3 text-[10px] leading-3 w-5 ${i % 2 === 0 ? 'text-gray-400' : 'text-transparent'}`}>
+          <div key={i} className={`h-3 text-[10px] leading-3 w-5 ${i % 2 === 0 ? 'text-muted-foreground' : 'text-transparent'}`}>
             {i % 2 === 0 ? lbl : ''}
           </div>
         ))}
@@ -545,7 +545,7 @@ function YearGrid({
           {monthMarkers.map((m) => (
             <span
               key={`${m.col}-${m.label}`}
-              className="absolute text-[10px] text-gray-500 font-medium"
+              className="absolute text-[10px] text-muted-foreground font-medium"
               style={{ left: `${m.col * 15}px`, top: 0 }}
             >
               {m.label}
@@ -560,7 +560,7 @@ function YearGrid({
                 <button
                   key={cell.iso}
                   type="button"
-                  className="w-3 h-3 rounded-sm transition-transform hover:scale-125 hover:ring-2 hover:ring-purple-300 cursor-default"
+                  className="size-3 rounded-sm transition-transform hover:scale-125 hover:ring-2 hover:ring-gradient-r/30 cursor-default"
                   style={{ backgroundColor: intensityColor(cell.count, !cell.inRange) }}
                   onMouseEnter={(e) => onHover(cell, e)}
                   onMouseLeave={onLeave}
@@ -588,7 +588,7 @@ function MonthGrid({
     <div className="max-w-md mx-auto">
       <div className="grid grid-cols-7 gap-2 mb-2">
         {DAY_LABELS_SHORT.map((d) => (
-          <div key={d} className="text-[11px] text-center text-gray-500 font-medium">
+          <div key={d} className="text-[11px] text-center text-muted-foreground font-medium">
             {d}
           </div>
         ))}
@@ -599,7 +599,7 @@ function MonthGrid({
             key={cell.iso}
             type="button"
             className={`relative aspect-square rounded-md flex items-start justify-end p-1 text-[10px] font-medium transition-transform hover:scale-105 ${
-              cell.inRange ? 'text-gray-700' : 'text-gray-300'
+              cell.inRange ? 'text-foreground' : 'text-muted-foreground'
             }`}
             style={{
               backgroundColor: intensityColor(cell.count, !cell.inRange),
@@ -611,8 +611,8 @@ function MonthGrid({
             <span>{cell.date.getDate()}</span>
             {cell.count > 0 && (
               <span
-                className={`absolute bottom-1 left-1 w-1.5 h-1.5 rounded-full ${
-                  cell.count >= 3 ? 'bg-white' : 'bg-purple-800'
+                className={`absolute bottom-1 left-1 size-1.5 rounded-full ${
+                  cell.count >= 3 ? 'bg-card' : 'bg-gradient-r'
                 }`}
               />
             )}
@@ -637,27 +637,27 @@ function StatTile({
   tone: 'orange' | 'purple' | 'indigo' | 'emerald';
 }) {
   const borderClass = {
-    orange: 'border-orange-100 bg-orange-50/40',
-    purple: 'border-purple-100 bg-purple-50/40',
-    indigo: 'border-indigo-100 bg-indigo-50/40',
-    emerald: 'border-emerald-100 bg-emerald-50/40',
+    orange: 'border-brand-accent/30 bg-brand-accent/10/40',
+    purple: 'border-gradient-r/30 bg-gradient-r/10/40',
+    indigo: 'border-tip/30 bg-tip/10/40',
+    emerald: 'border-success/30 bg-success/10/40',
   }[tone];
 
   return (
     <div className={`rounded-lg border ${borderClass} p-3`}>
       <div className="flex items-center gap-1.5 mb-1">
         {icon}
-        <span className="text-[11px] font-medium text-gray-600 uppercase tracking-wider">{label}</span>
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
-      <div className="text-base font-bold text-gray-900 leading-tight">{value}</div>
-      {hint && <div className="text-[11px] text-gray-500 mt-0.5">{hint}</div>}
+      <div className="text-base font-bold text-foreground leading-tight">{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
     </div>
   );
 }
 
 function TrendIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-success">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 7-7" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M14 8h6v6" />
     </svg>

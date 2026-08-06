@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
+
 export interface FilterOption {
   value: string;
   label: string;
@@ -15,7 +23,7 @@ interface FilterSelectProps {
   includeEmpty?: boolean;
 }
 
-/** Jednoduchý select pro filtry veřejné databáze i Mojí sbírky. */
+/** Select pro filtry veřejné databáze i Mojí sbírky — nad kitovým `Select`. */
 export function FilterSelect({
   value,
   onChange,
@@ -24,19 +32,29 @@ export function FilterSelect({
   disabled = false,
   includeEmpty = true,
 }: FilterSelectProps) {
+  // Base UI Select potřebuje `items`; placeholder = položka s `value: null`.
+  const items = [
+    ...(includeEmpty ? [{ label: placeholder, value: null as string | null }] : []),
+    ...options.map((option) => ({ label: option.label, value: option.value })),
+  ];
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
+    <Select
+      items={items}
+      value={value === "" ? null : value}
+      onValueChange={(next) => onChange(next == null ? "" : String(next))}
       disabled={disabled}
-      className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
     >
-      {includeEmpty && <option value="">{placeholder}</option>}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label={placeholder}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value ?? "none"} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

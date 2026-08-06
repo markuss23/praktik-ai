@@ -180,8 +180,8 @@ export function PublicDatabaseClient() {
     <div className="space-y-8">
       <section>
         <div className="mb-2">
-          <h2 className="text-xl font-bold text-black">Procházej kategorie</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-xl font-bold text-foreground">Procházej kategorie</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Vyber si oblast, která tě zajímá. V každé kategorii najdeš studijní materiály
             připravené k procvičení.
           </p>
@@ -200,8 +200,8 @@ export function PublicDatabaseClient() {
                 aria-pressed={isActive}
                 className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
                   isActive
-                    ? "bg-purple-100 border-purple-200 text-purple-700"
-                    : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
+                    ? "bg-gradient-r/20 border-gradient-r/30 text-gradient-r"
+                    : "bg-card border-border text-foreground hover:bg-muted/50"
                 }`}
               >
                 {category.label}
@@ -214,16 +214,16 @@ export function PublicDatabaseClient() {
       <section>
         <div className="flex flex-col gap-3 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="text-lg font-bold text-black">
+            <h2 className="text-lg font-bold text-foreground">
               Materiály{" "}
-              <span className="text-gray-400 font-semibold">
+              <span className="text-muted-foreground font-semibold">
                 ({loading ? "…" : sorted.length})
               </span>
             </h2>
             <div className="relative w-full sm:w-72">
               <Search
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 strokeWidth={1.75}
               />
               <input
@@ -231,7 +231,7 @@ export function PublicDatabaseClient() {
                 placeholder="Hledat"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+                className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30"
               />
             </div>
           </div>
@@ -266,7 +266,7 @@ export function PublicDatabaseClient() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
               >
                 <RotateCcw size={14} strokeWidth={1.75} />
                 Resetovat
@@ -278,21 +278,21 @@ export function PublicDatabaseClient() {
         {loading ? (
           <MaterialGridSkeleton count={PAGE_SIZE} columns={2} />
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <p className="text-sm text-red-700 mb-3">
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+            <p className="text-sm text-destructive mb-3">
               Materiály se nepodařilo načíst: {error}
             </p>
             <button
               type="button"
               onClick={() => setReloadKey((k) => k + 1)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
             >
               <RotateCcw size={15} strokeWidth={1.75} />
               Zkusit znovu
             </button>
           </div>
         ) : sorted.length === 0 ? (
-          <p className="text-sm text-gray-500 bg-white border border-gray-200 rounded-md p-6 text-center">
+          <p className="text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             Pro zvolený filtr nebyly nalezeny žádné materiály.
           </p>
         ) : (
@@ -340,7 +340,7 @@ function Pagination({
   const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
   const btnBase =
-    "inline-flex items-center justify-center min-w-9 h-9 px-2 rounded-md border text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center min-size-9 px-2 rounded-md border text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <nav
@@ -352,12 +352,12 @@ function Pagination({
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
         aria-label="Předchozí stránka"
-        className={`${btnBase} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}
+        className={`${btnBase} border-border bg-card text-foreground hover:bg-muted/50`}
       >
         <ChevronLeft size={16} strokeWidth={1.75} />
       </button>
 
-      {start > 1 && <span className="px-1 text-gray-400">…</span>}
+      {start > 1 && <span className="px-1 text-muted-foreground">…</span>}
 
       {pages.map((p) => (
         <button
@@ -367,22 +367,22 @@ function Pagination({
           aria-current={p === page ? "page" : undefined}
           className={`${btnBase} ${
             p === page
-              ? "bg-purple-100 border-purple-200 text-purple-700"
-              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              ? "bg-gradient-r/20 border-gradient-r/30 text-gradient-r"
+              : "border-border bg-card text-foreground hover:bg-muted/50"
           }`}
         >
           {p}
         </button>
       ))}
 
-      {end < totalPages && <span className="px-1 text-gray-400">…</span>}
+      {end < totalPages && <span className="px-1 text-muted-foreground">…</span>}
 
       <button
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
         aria-label="Další stránka"
-        className={`${btnBase} border-gray-200 bg-white text-gray-700 hover:bg-gray-50`}
+        className={`${btnBase} border-border bg-card text-foreground hover:bg-muted/50`}
       >
         <ChevronRight size={16} strokeWidth={1.75} />
       </button>

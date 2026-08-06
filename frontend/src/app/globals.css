@@ -30,6 +30,7 @@
   /* Figma alert palette (697:1823) */
   --destructive: oklch(0.5507 0.2224 23.35); /* Error   #D5002A */
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
+  --warning-foreground: oklch(0.145 0 0); /* tmavý text na amber ploše */
   --success: oklch(0.6777 0.1137 154.05); /* Succes  #59AC77 */
   --tip: oklch(0.4981 0.2645 270.9); /* Tip     #383BF5 */
 
@@ -81,6 +82,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-tip: var(--tip);
   --color-brand-accent: var(--brand-accent);
@@ -496,6 +498,8 @@ body.module-fullscreen footer {
   --destructive: oklch(0.704 0.191 23.35); /* Error   #D5002A */
 
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
+
+  --warning-foreground: oklch(0.145 0 0); /* amber zůstává světlý i v dark */
 
   --success: oklch(0.72 0.1137 154.05); /* Succes  #59AC77 */
 

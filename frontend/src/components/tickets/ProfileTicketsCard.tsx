@@ -48,20 +48,20 @@ export function ProfileTicketsCard({
   }, []);
 
   return (
-    <section className="bg-white rounded-xl shadow-sm p-6">
+    <section className="bg-card rounded-xl shadow-sm p-6">
       <Link
         href={ROUTES.MY_TICKETS}
         className="flex items-center gap-2 mb-5 group"
         aria-label="Přejít na Moje tikety"
       >
-        <TicketIcon className="w-5 h-5 text-gray-700" />
-        <h3 className="text-base font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+        <TicketIcon className="size-5 text-foreground" />
+        <h3 className="text-base font-bold text-foreground group-hover:text-gradient-r transition-colors">
           Moje tikety
         </h3>
         {openCount > 0 && (
           <span
             title={`Nevyřešené tikety: ${openCount}`}
-            className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-50 px-1.5 text-xs font-medium text-red-600"
+            className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive/10 px-1.5 text-xs font-medium text-destructive"
           >
             {openCount}
           </span>
@@ -69,9 +69,9 @@ export function ProfileTicketsCard({
       </Link>
 
       {loading ? (
-        <p className="text-sm text-gray-500 py-4 text-center">Načítání tiketů…</p>
+        <p className="text-sm text-muted-foreground py-4 text-center">Načítání tiketů…</p>
       ) : tickets.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4 text-center">
+        <p className="text-sm text-muted-foreground py-4 text-center">
           Zatím nemáte žádné tikety.
         </p>
       ) : (

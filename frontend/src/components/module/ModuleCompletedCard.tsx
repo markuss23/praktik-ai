@@ -18,7 +18,7 @@ function rng(seed: number): number {
 
 /** Konfety padající shora dolů s rotací. */
 function ConfettiSprinkle({ count = 30 }: { count?: number }) {
-  const palette = ['#85C8A1', '#857AD2', '#B1475C', '#F4B860', '#7BAEE0'];
+  const palette = ['#85C8A1', 'var(--gradient-r)', 'var(--gradient-l)', 'var(--warning)', '#7BAEE0'];
   const items = useMemo(() => {
     return Array.from({ length: count }).map((_, i) => {
       const b = i * 11 + 3;
@@ -84,13 +84,13 @@ export function ModuleCompletedCard({
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 240, damping: 22 }}
-      className="relative bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100"
+      className="relative bg-card rounded-2xl shadow-lg overflow-hidden border border-border"
     >
       <ConfettiSprinkle />
 
       <div className="relative px-6 sm:px-10 pt-12 pb-8 flex flex-col items-center text-center">
         {/* Animovaný kruh s ikonou */}
-        <div className="relative w-32 h-32 flex items-center justify-center mb-5">
+        <div className="relative size-32 flex items-center justify-center mb-5">
           <motion.span
             aria-hidden
             className="absolute inset-0 rounded-full border-2 border-dashed"
@@ -100,13 +100,13 @@ export function ModuleCompletedCard({
             transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
           />
           <motion.div
-            className="w-24 h-24 rounded-full flex items-center justify-center"
+            className="size-24 rounded-full flex items-center justify-center"
             style={{ backgroundColor: 'rgba(133, 200, 161, 0.15)' }}
             initial={{ scale: 0, rotate: -30 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 280, damping: 14, delay: 0.2 }}
           >
-            <PartyPopper className="w-10 h-10" style={{ color: '#0F2F1F' }} strokeWidth={1.7} />
+            <PartyPopper className="size-10" style={{ color: '#0F2F1F' }} strokeWidth={1.7} />
           </motion.div>
         </div>
 
@@ -114,7 +114,7 @@ export function ModuleCompletedCard({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.5 }}
-          className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold tracking-[0.15em] text-white uppercase mb-4"
+          className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold tracking-[0.15em] text-primary-foreground uppercase mb-4"
           style={{ backgroundColor: '#85C8A1' }}
         >
           Modul splněn
@@ -124,7 +124,7 @@ export function ModuleCompletedCard({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.6 }}
-          className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3"
+          className="text-2xl sm:text-3xl font-bold text-foreground mb-3"
         >
           Modul {moduleNumber} dokončen!
         </motion.h3>
@@ -133,7 +133,7 @@ export function ModuleCompletedCard({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.7 }}
-          className="text-sm sm:text-base text-gray-500 max-w-md mb-6 break-words"
+          className="text-sm sm:text-base text-muted-foreground max-w-md mb-6 break-words"
         >
           Právě jste dokončili modul „{moduleTitle}". Skvělá práce!
         </motion.p>
@@ -145,8 +145,8 @@ export function ModuleCompletedCard({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onContinue}
-          className="w-full max-w-md text-white font-semibold py-3.5 px-6 rounded-xl transition-shadow hover:shadow-lg"
-          style={{ backgroundColor: '#5BB079' }}
+          className="w-full max-w-md text-primary-foreground font-semibold py-3.5 px-6 rounded-xl transition-shadow hover:shadow-lg"
+          style={{ backgroundColor: 'var(--success)' }}
         >
           {ctaLabel}
         </motion.button>

@@ -23,11 +23,11 @@ export function PageFooterActions({
   continueDisabled = false,
 }: PageFooterActionsProps) {
   return (
-    <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-white">
+    <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-card">
       <button
         type="button"
         onClick={onBack}
-        className="text-gray-600 hover:text-gray-800 transition-colors text-sm font-medium px-2"
+        className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium px-2"
       >
         {backLabel}
       </button>
@@ -36,8 +36,8 @@ export function PageFooterActions({
         disabled={continueDisabled}
         className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm ${
           continueDisabled
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-green-600 text-white hover:bg-green-700'
+            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+            : 'bg-primary text-primary-foreground hover:bg-primary/80'
         }`}
       >
         {continueIcon || <ArrowRight size={16} />}

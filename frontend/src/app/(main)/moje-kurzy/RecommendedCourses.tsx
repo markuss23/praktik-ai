@@ -37,17 +37,17 @@ export function RecommendedCourses() {
     <section className="mt-12">
       <div className="flex items-end justify-between mb-5">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Sparkles size={22} className="text-purple-600" />
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <Sparkles size={22} className="text-gradient-r" />
             Mohlo by tě zajímat
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Kurzy podle tvého zájmu, do kterých ještě nejsi zapsaný/á.
           </p>
         </div>
         <Link
           href="/courses"
-          className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-purple-700 hover:text-purple-900"
+          className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-gradient-r hover:text-gradient-r"
         >
           Všechny kurzy
           <ArrowRight size={14} />
@@ -59,7 +59,7 @@ export function RecommendedCourses() {
           {Array.from({ length: LIMIT }, (_, i) => (
             <div
               key={i}
-              className="bg-white rounded-lg border border-gray-200 h-[530px] animate-pulse"
+              className="bg-card rounded-lg border border-border h-[530px] animate-pulse"
             />
           ))}
         </div>
@@ -83,7 +83,7 @@ export function RecommendedCourses() {
       <div className="sm:hidden mt-4">
         <Link
           href="/courses"
-          className="inline-flex items-center gap-1 text-sm font-medium text-purple-700"
+          className="inline-flex items-center gap-1 text-sm font-medium text-gradient-r"
         >
           Všechny kurzy
           <ArrowRight size={14} />

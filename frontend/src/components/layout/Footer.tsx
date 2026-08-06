@@ -5,7 +5,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white mt-auto" style={{ borderTop: '12px solid transparent', borderImage: 'linear-gradient(90deg, #857AD2 0%, #B1475C 100%) 1' }}>
+    <footer className="bg-card mt-auto" style={{ borderTop: '12px solid transparent', borderImage: 'linear-gradient(90deg, var(--gradient-r) 0%, var(--gradient-l) 100%) 1' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px] py-12 sm:py-16 lg:py-20" style={{ maxWidth: '1440px', width: '100%' }}>
         <div className="flex flex-col mx-auto gap-8 sm:gap-12 lg:gap-12" style={{ maxWidth: '1240px', width: '100%' }}>
           {/* Main Content Grid */}
@@ -20,31 +20,31 @@ export function Footer() {
                 height={83}
                 className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px]"
               />
-              <span className="text-lg sm:text-xl font-bold text-black">PRAKTIK-AI</span>
+              <span className="text-lg sm:text-xl font-bold text-foreground">PRAKTIK-AI</span>
             </div>
           </div>
 
           {/* Navigation */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Navigace</h3>
-            <ul className="space-y-2 text-sm text-gray-600">
+            <h3 className="font-semibold text-foreground">Navigace</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/" className="hover:text-gray-900 transition-colors">
+                <Link href="/" className="hover:text-foreground transition-colors">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/moje-kurzy" className="hover:text-gray-900 transition-colors">
+                <Link href="/moje-kurzy" className="hover:text-foreground transition-colors">
                   Moje kurzy
                 </Link>
               </li>
               <li>
-                <Link href="/odmeny" className="hover:text-gray-900 transition-colors">
+                <Link href="/odmeny" className="hover:text-foreground transition-colors">
                   Odměny
                 </Link>
               </li>
               <li>
-                <Link href="/tutor" className="hover:text-gray-900 transition-colors">
+                <Link href="/tutor" className="hover:text-foreground transition-colors">
                   Tutor
                 </Link>
               </li>
@@ -52,7 +52,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-4 hidden">
-            <h3 className="font-semibold text-gray-900">Sociální media</h3>
+            <h3 className="font-semibold text-foreground">Sociální media</h3>
             <div className="flex gap-4">
               {/* Reserved: Facebook, Instagram, YouTube, LinkedIn */}
             </div>
@@ -88,12 +88,12 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2" style={{ width: '100%', minHeight: '24px' }}>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             © {currentYear} All rights reserved
           </p>
           <Link
             href="/ochrana-udaju"
-            className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
+            className="text-sm text-muted-foreground underline hover:text-foreground transition-colors"
           >
             Ochrana údajů
           </Link>

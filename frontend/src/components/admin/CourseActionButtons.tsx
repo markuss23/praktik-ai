@@ -18,7 +18,7 @@ export function EditActionButton({ onClick, title = 'Editovat', iconSize = 16 }:
   return (
     <button
       onClick={onClick}
-      className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+      className="p-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 transition-colors"
       title={title}
     >
       <Pencil size={iconSize} />
@@ -38,10 +38,10 @@ export function PublishActionButton({
   return (
     <button
       onClick={onClick}
-      className={`p-2 text-white rounded-md transition-colors ${
+      className={`p-2 text-primary-foreground rounded-md transition-colors ${
         isPublished
-          ? 'bg-orange-500 hover:bg-orange-600'
-          : 'bg-green-500 hover:bg-green-600'
+          ? 'bg-brand-accent hover:bg-brand-accent/80'
+          : 'bg-primary hover:bg-primary/80'
       }`}
       title={title ?? (isPublished ? 'Zrušit publikování' : 'Publikovat')}
     >
@@ -57,7 +57,7 @@ export function DeleteActionButton({ onClick, title = 'Smazat', iconSize = 16 }:
   return (
     <button
       onClick={onClick}
-      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+      className="p-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/80 transition-colors"
       title={title}
     >
       <Trash2 size={iconSize} />
@@ -79,12 +79,12 @@ export function ApproveActionButton({
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className={`p-2 text-white rounded-md transition-colors ${
+      className={`p-2 text-primary-foreground rounded-md transition-colors ${
         isLoading
-          ? 'bg-amber-400 cursor-wait'
+          ? 'bg-warning cursor-wait'
           : isApproved
-            ? 'bg-amber-500 hover:bg-amber-600'
-            : 'bg-teal-600 hover:bg-teal-700'
+            ? 'bg-warning hover:bg-warning/80'
+            : 'bg-primary hover:bg-primary/80'
       }`}
       title={isApproved ? 'Zrušit schválení (zpět na Vygenerováno)' : 'Schválit kurz a generovat embeddingy'}
     >

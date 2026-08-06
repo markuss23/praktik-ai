@@ -13,14 +13,14 @@ import { QuickStats } from './QuickStats';
 import { RecommendedCourses } from './RecommendedCourses';
 
 function HeroSkeleton() {
-  return <div className="rounded-2xl bg-gray-200 animate-pulse h-[260px]" />;
+  return <div className="rounded-2xl bg-muted animate-pulse h-[260px]" />;
 }
 
 function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-200 h-[450px] animate-pulse" />
+        <div key={i} className="bg-card rounded-xl border border-border h-[450px] animate-pulse" />
       ))}
     </div>
   );
@@ -28,12 +28,12 @@ function GridSkeleton() {
 
 function LoginPrompt() {
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm p-8 sm:p-10 text-center">
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-50 text-purple-600 mb-4">
+    <div className="max-w-xl mx-auto bg-card rounded-xl border border-border shadow-sm p-8 sm:p-10 text-center">
+      <div className="inline-flex items-center justify-center size-14 rounded-full bg-gradient-r/10 text-gradient-r mb-4">
         <GraduationCap size={28} />
       </div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">Nejprve se přihlaste</h2>
-      <p className="text-gray-600 mb-6">
+      <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">Nejprve se přihlaste</h2>
+      <p className="text-muted-foreground mb-6">
         Pro zobrazení vašich zapsaných kurzů je potřeba být přihlášen.
       </p>
     </div>
@@ -42,18 +42,18 @@ function LoginPrompt() {
 
 function EmptyState() {
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm p-8 sm:p-10 text-center">
-      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 mb-4">
+    <div className="max-w-xl mx-auto bg-card rounded-xl border border-border shadow-sm p-8 sm:p-10 text-center">
+      <div className="inline-flex items-center justify-center size-14 rounded-full bg-success/10 text-success mb-4">
         <Sparkles size={28} />
       </div>
-      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+      <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
         Zatím nejste zapsán/a do žádného kurzu
       </h2>
-      <p className="text-gray-600 mb-6">Prohlédněte si nabídku kurzů a začněte se učit.</p>
+      <p className="text-muted-foreground mb-6">Prohlédněte si nabídku kurzů a začněte se učit.</p>
       <Link
         href="/courses"
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
-        style={{ backgroundColor: '#00C896' }}
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-primary-foreground rounded-md shadow-sm transition-colors"
+        style={{ backgroundColor: 'var(--primary)' }}
       >
         <BookOpen size={16} strokeWidth={2} />
         Procházet kurzy
@@ -147,13 +147,13 @@ export default function MojeKurzyPage() {
   return (
     <div
       className="py-8 sm:py-12 lg:py-14"
-      style={{ backgroundColor: '#F0F0F0', minHeight: 'calc(100vh - 80px)' }}
+      style={{ backgroundColor: 'var(--muted)', minHeight: 'calc(100vh - 80px)' }}
     >
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
         <div className="mb-6 sm:mb-8">
-          <p className="text-sm text-gray-500">Home / Moje kurzy</p>
-          <h1 className="text-2xl sm:text-3xl font-bold text-black mt-2">Moje kurzy</h1>
-          <p className="text-sm text-gray-600 mt-1">Tvůj učební prostor — pokračuj, kde jsi skončil.</p>
+          <p className="text-sm text-muted-foreground">Home / Moje kurzy</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mt-2">Moje kurzy</h1>
+          <p className="text-sm text-muted-foreground mt-1">Tvůj učební prostor — pokračuj, kde jsi skončil.</p>
         </div>
 
         {isInitialLoading ? (
@@ -164,9 +164,9 @@ export default function MojeKurzyPage() {
         ) : !isAuthenticated ? (
           <LoginPrompt />
         ) : error ? (
-          <div className="max-w-xl mx-auto bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <p className="text-red-700 font-medium">Nepodařilo se načíst vaše kurzy.</p>
-            <p className="text-sm text-red-600 mt-1">Zkuste obnovit stránku.</p>
+          <div className="max-w-xl mx-auto bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+            <p className="text-destructive font-medium">Nepodařilo se načíst vaše kurzy.</p>
+            <p className="text-sm text-destructive mt-1">Zkuste obnovit stránku.</p>
           </div>
         ) : enrollments.length === 0 ? (
           <>
@@ -191,9 +191,9 @@ export default function MojeKurzyPage() {
 
             <section>
               {filtered.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-                  <p className="text-gray-700 font-medium">Žádný kurz neodpovídá filtru</p>
-                  <p className="text-sm text-gray-500 mt-1">Zkuste upravit hledání nebo vybrat jiný stav.</p>
+                <div className="bg-card rounded-xl border border-border p-10 text-center">
+                  <p className="text-foreground font-medium">Žádný kurz neodpovídá filtru</p>
+                  <p className="text-sm text-muted-foreground mt-1">Zkuste upravit hledání nebo vybrat jiný stav.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

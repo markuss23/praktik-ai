@@ -1,8 +1,7 @@
 'use client';
 
-import { X } from "lucide-react";
 import { Course } from "@/api";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+import { Alert, AlertDescription, Button, Input, Label, Modal } from "@/components/ui";
 
 interface ModuleModalProps {
   isOpen: boolean;
@@ -20,6 +19,8 @@ interface ModuleModalProps {
   onChange: (data: any) => void;
 }
 
+const FORM_ID = "module-modal-form";
+
 export function ModuleModal({
   isOpen,
   mode,
@@ -31,84 +32,52 @@ export function ModuleModal({
   onSubmit,
   onChange,
 }: ModuleModalProps) {
-  useModalDismiss(isOpen, onClose);
-  if (!isOpen) return null;
+  const parentCourse = courses.find((course) => course.courseId === formData.courseId);
 
   return (
-    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-black">
-            {mode === 'create' ? 'Vytvořit nový modul' : 'Editovat modul'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
-        
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={mode === 'create' ? 'Vytvořit nový modul' : 'Editovat modul'}
+      maxWidth="max-w-2xl"
+      footer={
+        <>
+          <Button type="button" variant="outline" size="lg" disabled={loading} onClick={onClose}>
+            Zrušit
+          </Button>
+          <Button type="submit" form={FORM_ID} size="lg" disabled={loading || formData.courseId === 0}>
+            {loading ? 'Ukládání…' : mode === 'create' ? 'Vytvořit modul' : 'Uložit změny'}
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={onSubmit} className="flex flex-col gap-5">
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-            {error}
+          <Alert variant="error">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {mode === 'create' && (
+          <div className="flex flex-col gap-1.5">
+            {/* Kurz je daný kontextem, ze kterého se modal otevírá — jen se zobrazuje. */}
+            <Label htmlFor="module-course">Kurz</Label>
+            <Input id="module-course" value={parentCourse?.title ?? ''} disabled readOnly />
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
-          {mode === 'create' && (
-            <div>
-              <label htmlFor="module-course" className="block text-sm font-medium text-gray-700 mb-2">
-                Kurz
-              </label>
-              <select
-                id="module-course"
-                value={formData.courseId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-gray-50 cursor-not-allowed"
-                disabled
-              >
-                {courses
-                  .filter((course) => course.courseId === formData.courseId)
-                  .map((course) => (
-                    <option key={course.courseId} value={course.courseId}>
-                      {course.title}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="module-title" className="block text-sm font-medium text-gray-700 mb-2">
-              Název modulu *
-            </label>
-            <input
-              type="text"
-              id="module-title"
-              required
-              value={formData.title}
-              onChange={(e) => onChange({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              placeholder="např. Co je prompt a jak funguje AI"
-            />
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="submit"
-              disabled={loading || formData.courseId === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Ukládání...' : (mode === 'create' ? 'Vytvořit modul' : 'Uložit změny')}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-            >
-              Zrušit
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="module-title">Název modulu *</Label>
+          <Input
+            type="text"
+            id="module-title"
+            required
+            value={formData.title}
+            onChange={(e) => onChange({ ...formData, title: e.target.value })}
+            placeholder="např. Co je prompt a jak funguje AI"
+          />
+        </div>
+      </form>
+    </Modal>
   );
 }

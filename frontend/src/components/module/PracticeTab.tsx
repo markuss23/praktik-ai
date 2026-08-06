@@ -241,8 +241,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-gray-800">Procvičování</h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <h3 className="text-xl font-bold text-foreground">Procvičování</h3>
+        <p className="text-sm text-muted-foreground mt-1">
           Odpovězte na otázky a ověřte si své znalosti z příručky.
         </p>
       </div>
@@ -260,9 +260,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           >
             <div className="space-y-8">
               {practiceQuestions.map((q, qIdx) => (
-                <div key={q.questionId} className="pb-6 border-b border-gray-100 last:border-b-0">
-                  <p className="font-semibold text-gray-800 mb-3">
-                    <span className="text-purple-600 mr-2">{qIdx + 1}.</span>
+                <div key={q.questionId} className="pb-6 border-b border-border last:border-b-0">
+                  <p className="font-semibold text-foreground mb-3">
+                    <span className="text-gradient-r mr-2">{qIdx + 1}.</span>
                     {q.question}
                   </p>
 
@@ -273,8 +273,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                           key={opt.optionId}
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                             staticAnswers[q.questionId] === opt.optionId
-                              ? 'border-purple-300 bg-purple-50'
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              ? 'border-gradient-r/30 bg-gradient-r/10'
+                              : 'border-border hover:border-border hover:bg-muted/50'
                           }`}
                         >
                           <input
@@ -283,9 +283,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                             value={opt.optionId}
                             checked={staticAnswers[q.questionId] === opt.optionId}
                             onChange={() => handleStaticAnswerChange(q.questionId, opt.optionId)}
-                            className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+                            className="size-4 text-gradient-r focus:ring-gradient-r/30"
                           />
-                          <span className="text-sm text-gray-700">{opt.text}</span>
+                          <span className="text-sm text-foreground">{opt.text}</span>
                         </label>
                       ))}
                     </div>
@@ -298,7 +298,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         onChange={(e) => handleStaticAnswerChange(q.questionId, e.target.value)}
                         placeholder="Napište svou odpověď..."
                         rows={3}
-                        className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 resize-none"
+                        className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none"
                       />
                     </div>
                   )}
@@ -307,14 +307,14 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             </div>
 
             {practiceQuestions.length > 0 && (
-              <div className="flex justify-end mt-8 pt-6 border-t border-gray-100">
+              <div className="flex justify-end mt-8 pt-6 border-t border-border">
                 <button
                   onClick={handleStaticSubmit}
-                  className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#8B5BA8' }}
+                  className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                  style={{ backgroundColor: 'var(--gradient-r)' }}
                 >
                   Odevzdat
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </button>
@@ -335,14 +335,14 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
           >
             {/* Score header */}
             <div className="text-center mb-8">
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${staticPassed ? 'bg-green-50' : 'bg-red-50'}`}>
-                {staticPassed ? <CheckCircle className="w-12 h-12 text-green-500" /> : <XCircle className="w-12 h-12 text-red-400" />}
+              <div className={`size-24 rounded-full flex items-center justify-center mx-auto mb-4 ${staticPassed ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                {staticPassed ? <CheckCircle className="size-12 text-success" /> : <XCircle className="size-12 text-destructive" />}
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-1">Vyhodnocení</h3>
-              <p className={`text-lg font-semibold ${staticPassed ? 'text-green-600' : 'text-red-500'}`}>
+              <h3 className="text-2xl font-bold text-foreground mb-1">Vyhodnocení</h3>
+              <p className={`text-lg font-semibold ${staticPassed ? 'text-success' : 'text-destructive'}`}>
                 {staticScore.correct}/{staticScore.total} správně ({staticPercentage}%)
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {staticPassed ? 'Gratulujeme! Úspěšně jste prošli procvičováním.' : 'Bohužel jste neprošli. Zkuste to znovu.'}
               </p>
             </div>
@@ -352,26 +352,26 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
               {staticScore.results.map((r, idx) => (
                 <div
                   key={r.questionId}
-                  className={`p-4 rounded-lg border ${r.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                  className={`p-4 rounded-lg border ${r.isCorrect ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex-grow">
-                      <p className="font-medium text-gray-800 text-sm">
+                    <div className="grow">
+                      <p className="font-medium text-foreground text-sm">
                         {idx + 1}. {r.question}
                       </p>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         Vaše odpověď: <span className="font-medium">{r.userAnswer || '(bez odpovědi)'}</span>
                       </p>
                       {!r.isCorrect && r.correctAnswer && !r.missingKeywords && (
-                        <p className="text-sm text-green-700 mt-1">
+                        <p className="text-sm text-success mt-1">
                           Správná odpověď: <span className="font-medium">{r.correctAnswer}</span>
                         </p>
                       )}
                       {r.matchedKeywords && r.matchedKeywords.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {r.matchedKeywords.map((kw) => (
-                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                              <CheckCircle className="w-3 h-3" /> {kw}
+                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/20 text-success">
+                              <CheckCircle className="size-3" /> {kw}
                             </span>
                           ))}
                         </div>
@@ -379,8 +379,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                       {r.missingKeywords && r.missingKeywords.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {r.missingKeywords.map((kw) => (
-                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-                              <XCircle className="w-3 h-3" /> {kw}
+                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">
+                              <XCircle className="size-3" /> {kw}
                             </span>
                           ))}
                         </div>
@@ -392,10 +392,10 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-border">
               <button
                 onClick={() => { setStaticSubmitted(false); setStaticAnswers({}); }}
-                className="text-gray-600 hover:text-gray-800 font-medium text-sm self-center sm:self-auto"
+                className="text-muted-foreground hover:text-foreground font-medium text-sm self-center sm:self-auto"
               >
                 Zkusit znovu
               </button>
@@ -406,20 +406,20 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                     <button
                       onClick={() => setPhase('ai')}
                       className="inline-flex items-center justify-center gap-2 font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 border w-full sm:w-auto text-sm sm:text-base"
-                      style={{ color: '#8B5BA8', borderColor: '#8B5BA8' }}
+                      style={{ color: 'var(--gradient-r)', borderColor: 'var(--gradient-r)' }}
                     >
                       Procvičovat dál
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
                     </button>
                     <button
                       onClick={onComplete}
-                      className="inline-flex items-center justify-center gap-2 text-white font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base"
-                      style={{ backgroundColor: '#00C896' }}
+                      className="inline-flex items-center justify-center gap-2 text-primary-foreground font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base"
+                      style={{ backgroundColor: 'var(--primary)' }}
                     >
                       Dokončit
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </button>
@@ -446,9 +446,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                 <button
                   type="button"
                   onClick={() => { setPhase('static'); setStaticSubmitted(true); }}
-                  className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="size-4" />
                   Zpět na vyhodnocení procvičování
                 </button>
               </div>
@@ -456,8 +456,8 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             {aiLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-                  <p className="text-sm text-gray-500">Načítání otázek...</p>
+                  <Loader2 className="size-8 animate-spin text-gradient-r" />
+                  <p className="text-sm text-muted-foreground">Načítání otázek...</p>
                 </div>
               </div>
             ) : (
@@ -472,10 +472,10 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
-                        className="pb-6 border-b border-gray-100 last:border-b-0"
+                        className="pb-6 border-b border-border last:border-b-0"
                       >
-                        <p className="font-semibold text-gray-800 mb-3">
-                          <span className="text-purple-600 mr-2">{idx + 1}.</span>
+                        <p className="font-semibold text-foreground mb-3">
+                          <span className="text-gradient-r mr-2">{idx + 1}.</span>
                           {q.generatedQuestion}
                         </p>
 
@@ -489,12 +489,12 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                                   q.evaluation
                                     ? q.userInput === opt.text
                                       ? q.evaluation.isCorrect
-                                        ? 'border-green-300 bg-green-50'
-                                        : 'border-red-300 bg-red-50'
-                                      : 'border-gray-200 opacity-60'
+                                        ? 'border-success/30 bg-success/10'
+                                        : 'border-destructive/30 bg-destructive/10'
+                                      : 'border-border opacity-60'
                                     : q.userInput === opt.text
-                                      ? 'border-purple-300 bg-purple-50'
-                                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                      ? 'border-gradient-r/30 bg-gradient-r/10'
+                                      : 'border-border hover:border-border hover:bg-muted/50'
                                 }`}
                               >
                                 <input
@@ -503,9 +503,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                                   checked={q.userInput === opt.text}
                                   onChange={() => handleAiOptionSelect(idx, opt.text)}
                                   disabled={!!q.evaluation}
-                                  className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+                                  className="size-4 text-gradient-r focus:ring-gradient-r/30"
                                 />
-                                <span className="text-sm text-gray-700">{opt.text}</span>
+                                <span className="text-sm text-foreground">{opt.text}</span>
                               </label>
                             ))}
                           </div>
@@ -519,7 +519,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                               onChange={(e) => handleAiInputChange(idx, e.target.value)}
                               placeholder="Napište svou odpověď..."
                               rows={3}
-                              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 resize-none"
+                              className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none"
                             />
                           </div>
                         )}
@@ -531,32 +531,32 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.25 }}
                             className={`ml-6 mt-3 p-4 rounded-lg border ${
-                              q.evaluation.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                              q.evaluation.isCorrect ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'
                             }`}
                           >
                             <div className="flex items-start gap-2">
                               {q.evaluation.isCorrect ? (
-                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                <CheckCircle className="size-5 text-success shrink-0 mt-0.5" />
                               ) : (
-                                <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                                <XCircle className="size-5 text-destructive shrink-0 mt-0.5" />
                               )}
                               <div>
-                                <p className={`text-sm font-medium ${q.evaluation.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                <p className={`text-sm font-medium ${q.evaluation.isCorrect ? 'text-success' : 'text-destructive'}`}>
                                   {q.evaluation.isCorrect ? 'Správně!' : 'Nesprávně'}
                                 </p>
                                 {q.questionType === 'open' && (
-                                  <p className="text-sm text-gray-600 mt-1">
+                                  <p className="text-sm text-muted-foreground mt-1">
                                     Vaše odpověď: <span className="font-medium">{q.userInput}</span>
                                   </p>
                                 )}
                                 {q.evaluation.aiResponse && (
-                                  <p className="text-sm text-gray-600 mt-1">{q.evaluation.aiResponse}</p>
+                                  <p className="text-sm text-muted-foreground mt-1">{q.evaluation.aiResponse}</p>
                                 )}
                                 {!q.evaluation.isCorrect && (
                                   <button
                                     onClick={() => handleAiRetry(idx)}
                                     className="text-sm font-medium mt-2 hover:underline"
-                                    style={{ color: '#8B5BA8' }}
+                                    style={{ color: 'var(--gradient-r)' }}
                                   >
                                     Zkusit znovu
                                   </button>
@@ -572,12 +572,12 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                             <button
                               onClick={() => handleAiSubmit(idx)}
                               disabled={!q.userInput.trim() || q.submitting}
-                              className="inline-flex items-center gap-2 text-white font-medium py-2 px-5 rounded-md text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{ backgroundColor: '#8B5BA8' }}
+                              className="inline-flex items-center gap-2 text-primary-foreground font-medium py-2 px-5 rounded-md text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ backgroundColor: 'var(--gradient-r)' }}
                             >
                               {q.submitting ? (
                                 <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <Loader2 className="size-4 animate-spin" />
                                   Vyhodnocuji...
                                 </>
                               ) : (
@@ -603,24 +603,24 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         transition={{ duration: 0.2 }}
                         className="flex items-center gap-3"
                       >
-                        <span className="text-sm text-gray-500">Typ otázky:</span>
+                        <span className="text-sm text-muted-foreground">Typ otázky:</span>
                         <button
                           onClick={() => handleGenerate('open')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-sm font-medium transition-all hover:bg-purple-100"
-                          style={{ color: '#8B5BA8' }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20"
+                          style={{ color: 'var(--gradient-r)' }}
                         >
                           Otevřená
                         </button>
                         <button
                           onClick={() => handleGenerate('closed')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-sm font-medium transition-all hover:bg-purple-100"
-                          style={{ color: '#8B5BA8' }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20"
+                          style={{ color: 'var(--gradient-r)' }}
                         >
                           Uzavřená
                         </button>
                         <button
                           onClick={() => setShowTypeSelector(false)}
-                          className="text-sm text-gray-400 hover:text-gray-600 ml-1"
+                          className="text-sm text-muted-foreground hover:text-muted-foreground ml-1"
                         >
                           Zrušit
                         </button>
@@ -634,16 +634,16 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         transition={{ duration: 0.2 }}
                         onClick={() => setShowTypeSelector(true)}
                         disabled={generating}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 font-medium text-sm transition-all hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50 disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 border-dashed border-border text-muted-foreground font-medium text-sm transition-all hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 disabled:opacity-50"
                       >
                         {generating ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="size-4 animate-spin" />
                             Generuji otázku...
                           </>
                         ) : (
                           <>
-                            <Plus className="w-4 h-4" />
+                            <Plus className="size-4" />
                             Přidat otázku
                           </>
                         )}
@@ -655,20 +655,20 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                 {/* No AI questions prompt */}
                 {aiQuestions.length === 0 && !generating && (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 mb-2">Zatím nemáte žádné další otázky k procvičování.</p>
-                    <p className="text-sm text-gray-400">Klikněte na tlačítko výše a vygenerujte si otázku.</p>
+                    <p className="text-muted-foreground mb-2">Zatím nemáte žádné další otázky k procvičování.</p>
+                    <p className="text-sm text-muted-foreground">Klikněte na tlačítko výše a vygenerujte si otázku.</p>
                   </div>
                 )}
 
                 {/* Dokončit button (always visible in AI phase if static was passed or skipped) */}
-                <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
+                <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
                   <button
                     onClick={onComplete}
-                    className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-                    style={{ backgroundColor: '#00C896' }}
+                    className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                    style={{ backgroundColor: 'var(--primary)' }}
                   >
                     Dokončit
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
