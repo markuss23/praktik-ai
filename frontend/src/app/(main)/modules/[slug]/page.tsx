@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getModule, getCourse, getModules, getCourseProgress, markModuleVisited } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
-import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock } from "lucide-react";
+import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert, PageSpinner } from "@/components/ui";
+import { Alert, AlertTitle, AlertDescription, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
@@ -205,10 +205,14 @@ export default function ModulePage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
         <div className="w-full max-w-lg px-4">
-          <Alert variant="error" title="Nepodařilo se načíst data modulu.">
-            {error === 'Nepodařilo se načíst data modulu.'
-              ? 'Zkontrolujte, zda jste přihlášeni, a zkuste to znovu.'
-              : (error || 'Modul nebyl nalezen.')}
+          <Alert variant="error">
+            <XCircle />
+            <AlertTitle>Nepodařilo se načíst data modulu.</AlertTitle>
+            <AlertDescription>
+              {error === 'Nepodařilo se načíst data modulu.'
+                ? 'Zkontrolujte, zda jste přihlášeni, a zkuste to znovu.'
+                : (error || 'Modul nebyl nalezen.')}
+            </AlertDescription>
           </Alert>
           <div className="text-center mt-4">
             <Link href="/" className="text-purple-600 hover:underline text-sm">← Zpět na přehled</Link>
