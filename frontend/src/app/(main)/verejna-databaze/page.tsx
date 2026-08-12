@@ -12,6 +12,7 @@ import {
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
 import { MaterialGridSkeleton } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
 import { PublicCollectionsClient } from "./PublicCollectionsClient";
@@ -27,9 +28,12 @@ export default function PublicDatabasePage() {
 
 function PublicDatabasePageInner() {
   const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
-  const activeTab: DatabaseTab =
+  const requestedTab: DatabaseTab =
     tabParam === "mine" ? "mine" : tabParam === "collections" ? "collections" : "public";
+  const activeTab: DatabaseTab =
+    requestedTab === "mine" && !isAuthenticated ? "public" : requestedTab;
 
   const [myMaterials, setMyMaterials] = useState<Material[]>([]);
   const [folders, setFolders] = useState<MaterialFolder[]>([]);
@@ -37,8 +41,8 @@ function PublicDatabasePageInner() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Data načítáme jen pro záložku „Moje sbírka". Veřejná databáze si data
-  // (vč. filtrů, řazení a stránkování) řeší sama v PublicDatabaseClient.
+  // Data načítáme jen pro záložku „Moje sbírka" a jen pro přihlášené uživatele.
+  // Veřejná databáze si data (vč. filtrů, řazení a stránkování) řeší sama v PublicDatabaseClient.
   useEffect(() => {
     if (activeTab !== "mine") return;
     let cancelled = false;
@@ -114,7 +118,7 @@ function PublicDatabasePageInner() {
   return (
     <PageShell>
       <div className="flex justify-end mb-4">
-        <TabSwitcher active={activeTab} />
+        <TabSwitcher active={activeTab} isAuthenticated={isAuthenticated} />
       </div>
       {content}
     </PageShell>

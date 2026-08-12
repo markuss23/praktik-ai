@@ -9,10 +9,18 @@ const TAB_DEFINITIONS: { id: DatabaseTab; label: string; href: string }[] = [
   { id: "mine", label: "Moje sbírka", href: `${ROUTES.PUBLIC_DATABASE}?tab=mine` },
 ];
 
-export function TabSwitcher({ active }: { active: DatabaseTab }) {
+export function TabSwitcher({
+  active,
+  isAuthenticated,
+}: {
+  active: DatabaseTab;
+  isAuthenticated: boolean;
+}) {
+  const tabs = TAB_DEFINITIONS.filter((tab) => tab.id !== "mine" || isAuthenticated);
+
   return (
     <div className="inline-flex items-center rounded-md border border-border bg-card p-1 shadow-sm">
-      {TAB_DEFINITIONS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
           <Link

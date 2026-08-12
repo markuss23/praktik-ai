@@ -25,19 +25,15 @@ from api.src.publicDB.collections.controllers import (
 )
 
 router = APIRouter(prefix="/collections", tags=["Collections"])
+public_router = APIRouter(prefix="/collections", tags=["Collections"])
 
 
-@router.get(
-    "/public",
-    operation_id="get_public_collections",
-    dependencies=[require_role("user")],
-)
+@public_router.get("/public", operation_id="get_public_collections")
 async def list_public_collections(
     db: SessionSqlSessionDependency,
-    user: CurrentUser,
     text_search: TEXT_SEARCH_ANNOTATION = None,
 ) -> list[PubCollectionDetail]:
-    return get_public_collections(db, user, text_search)
+    return get_public_collections(db, text_search)
 
 
 @router.get("", operation_id="get_my_collections", dependencies=[require_role("user")])
