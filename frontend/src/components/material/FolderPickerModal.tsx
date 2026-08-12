@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Folder, FolderPlus, X } from "lucide-react";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+import { Folder, FolderPlus } from "lucide-react";
+
+import { Button, Modal } from "@/components/ui";
 import type { MaterialFolder } from "./types";
 import { FolderNameModal } from "./FolderNameModal";
 
@@ -30,10 +31,6 @@ export function FolderPickerModal({
   const [error, setError] = useState<string | null>(null);
   const [nameModalOpen, setNameModalOpen] = useState(false);
 
-  useModalDismiss(isOpen, () => {
-    if (!submitting && !nameModalOpen) onClose();
-  });
-
   useEffect(() => {
     if (isOpen) {
       setSelectedId(initialFolderId);
@@ -41,8 +38,6 @@ export function FolderPickerModal({
       setSubmitting(false);
     }
   }, [isOpen, initialFolderId]);
-
-  if (!isOpen) return null;
 
   const handleConfirm = async () => {
     if (!selectedId) {
@@ -69,84 +64,65 @@ export function FolderPickerModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-sm mx-4 shadow-xl border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-black">Vyberte složku</h3>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="p-1 hover:bg-gray-100 rounded text-gray-500"
-              aria-label="Zavřít"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {onCreateFolder && (
-              <button
-                type="button"
-                onClick={() => setNameModalOpen(true)}
-                disabled={submitting}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-purple-300 text-purple-700 bg-purple-50/40 text-sm font-medium hover:bg-purple-50 transition-colors disabled:opacity-60"
-              >
-                <FolderPlus size={16} strokeWidth={1.75} />
-                Nová složka
-              </button>
-            )}
-
-            {folders.length === 0 ? (
-              <p className="text-xs text-gray-500 px-1 py-2">
-                Zatím nemáš žádné složky.
-              </p>
-            ) : (
-              folders.map((folder) => {
-                const isActive = folder.id === selectedId;
-                return (
-                  <button
-                    key={folder.id}
-                    type="button"
-                    onClick={() => setSelectedId(folder.id)}
-                    aria-pressed={isActive}
-                    disabled={submitting}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors disabled:opacity-60 ${
-                      isActive
-                        ? "bg-purple-50 border-purple-300 text-purple-800"
-                        : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Folder size={16} strokeWidth={1.75} />
-                    <span className="truncate">{folder.name}</span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
-
-          <div className="flex justify-between items-center gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-            >
+      <Modal
+        isOpen={isOpen}
+        onClose={() => {
+          if (!submitting && !nameModalOpen) onClose();
+        }}
+        title="Vyberte složku"
+        maxWidth="max-w-sm"
+        footer={
+          <>
+            <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={onClose}>
               Zrušit akci
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={submitting || !selectedId}
-              className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-            >
+            </Button>
+            <Button type="button" size="lg" disabled={submitting || !selectedId} onClick={handleConfirm}>
               {submitting ? "Ukládání…" : "Přidat do složky"}
-            </button>
-          </div>
+            </Button>
+          </>
+        }
+      >
+        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+          {onCreateFolder && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              disabled={submitting}
+              onClick={() => setNameModalOpen(true)}
+              className="w-full justify-start border-dashed"
+            >
+              <FolderPlus data-icon="inline-start" strokeWidth={1.75} />
+              Nová složka
+            </Button>
+          )}
+
+          {folders.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-muted-foreground">Zatím nemáš žádné složky.</p>
+          ) : (
+            folders.map((folder) => {
+              const isActive = folder.id === selectedId;
+              return (
+                <Button
+                  key={folder.id}
+                  type="button"
+                  variant={isActive ? "secondary" : "outline"}
+                  size="lg"
+                  aria-pressed={isActive}
+                  disabled={submitting}
+                  onClick={() => setSelectedId(folder.id)}
+                  className="w-full justify-start"
+                >
+                  <Folder data-icon="inline-start" strokeWidth={1.75} />
+                  <span className="truncate">{folder.name}</span>
+                </Button>
+              );
+            })
+          )}
         </div>
-      </div>
+
+        {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+      </Modal>
 
       {onCreateFolder && (
         <FolderNameModal

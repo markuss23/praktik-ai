@@ -5,9 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getModule, getCourse, getModules, getCourseProgress, markModuleVisited } from "@/lib/api-client";
 import type { Module, Course } from "@/api";
-import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock } from "lucide-react";
+import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert, PageSpinner } from "@/components/ui";
+import { Alert, AlertTitle, AlertDescription, PageSpinner } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
@@ -194,7 +194,7 @@ export default function ModulePage() {
   // Loading state
   if (loading && !transitioning) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--muted)' }}>
         <PageSpinner message="Načítání modulu…" />
       </div>
     );
@@ -203,15 +203,19 @@ export default function ModulePage() {
   // Error state
   if (error || !module) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
         <div className="w-full max-w-lg px-4">
-          <Alert variant="error" title="Nepodařilo se načíst data modulu.">
-            {error === 'Nepodařilo se načíst data modulu.'
-              ? 'Zkontrolujte, zda jste přihlášeni, a zkuste to znovu.'
-              : (error || 'Modul nebyl nalezen.')}
+          <Alert variant="error">
+            <XCircle />
+            <AlertTitle>Nepodařilo se načíst data modulu.</AlertTitle>
+            <AlertDescription>
+              {error === 'Nepodařilo se načíst data modulu.'
+                ? 'Zkontrolujte, zda jste přihlášeni, a zkuste to znovu.'
+                : (error || 'Modul nebyl nalezen.')}
+            </AlertDescription>
           </Alert>
           <div className="text-center mt-4">
-            <Link href="/" className="text-purple-600 hover:underline text-sm">← Zpět na přehled</Link>
+            <Link href="/" className="text-gradient-r hover:underline text-sm">← Zpět na přehled</Link>
           </div>
         </div>
       </div>
@@ -280,7 +284,7 @@ export default function ModulePage() {
       label: 'Příručka',
       sublabel: 'učebnice a metodická příručka',
       completed: handbookCompleted,
-      icon: <BookOpenText className="w-5 h-5" />,
+      icon: <BookOpenText className="size-5" />,
     },
     {
       key: 'procvicovani',
@@ -288,7 +292,7 @@ export default function ModulePage() {
       sublabel: 'Zkus si svoje znalosti v praxi',
       completed: practiceCompleted,
       locked: !handbookCompleted,
-      icon: <Dumbbell className="w-5 h-5" />,
+      icon: <Dumbbell className="size-5" />,
     },
     {
       key: 'test',
@@ -296,7 +300,7 @@ export default function ModulePage() {
       sublabel: 'Ověření znalostí testem',
       completed: assessmentCompleted,
       locked: !practiceCompleted,
-      icon: <ClipboardCheck className="w-5 h-5" />,
+      icon: <ClipboardCheck className="size-5" />,
     },
   ];
 
@@ -305,16 +309,16 @@ export default function ModulePage() {
        vnější scrollování — to obstará jen vnitřní content area. */
     <div
       className="flex flex-col lg:h-[calc(100dvh-70px)]"
-      style={{ backgroundColor: '#F0F0F0' }}
+      style={{ backgroundColor: 'var(--muted)' }}
     >
       {/* Breadcrumb — pevná hlavička, nescrolluje. */}
-      <div className="px-4 sm:px-6 lg:px-[100px] py-4 flex-shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
-        <p className="text-sm text-gray-500 truncate">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+      <div className="px-4 sm:px-6 lg:px-[100px] py-4 shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+        <p className="text-sm text-muted-foreground truncate">
+          <Link href="/" className="hover:text-foreground">Home</Link>
           {' / '}
-          <Link href={`/courses/${course?.courseId}`} className="hover:text-gray-700">{course?.title}</Link>
+          <Link href={`/courses/${course?.courseId}`} className="hover:text-foreground">{course?.title}</Link>
           {' / '}
-          <span className="text-gray-700">{module.title}</span>
+          <span className="text-foreground">{module.title}</span>
         </p>
       </div>
 
@@ -325,13 +329,13 @@ export default function ModulePage() {
 
           {/* Left Sidebar — uvnitř fixní kolony se může vlastním overflow-auto
               scrollovat, aby AI tutor a karty modulu nepřetékaly mimo viewport. */}
-          <div className="lg:w-72 flex-shrink-0 lg:overflow-y-auto no-scrollbar">
+          <div className="lg:w-72 shrink-0 lg:overflow-y-auto no-scrollbar">
             <div className="space-y-4">
               {/* Module tabs card */}
-              <div className="bg-white rounded-lg p-5" style={{ border: '1px solid #e5e7eb' }}>
+              <div className="bg-card rounded-lg p-5" style={{ border: '1px solid var(--border)' }}>
                 <div className="mb-4">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Modul {currentIndex + 1}</span>
-                  <h2 className="text-lg font-bold text-gray-900 mt-1">{module.title}</h2>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Modul {currentIndex + 1}</span>
+                  <h2 className="text-lg font-bold text-foreground mt-1">{module.title}</h2>
                 </div>
 
                 <div className="space-y-1">
@@ -346,25 +350,25 @@ export default function ModulePage() {
                           ? 'border'
                           : tab.locked
                             ? 'cursor-not-allowed opacity-50'
-                            : 'hover:bg-gray-50'
+                            : 'hover:bg-muted/50'
                       }`}
                       style={activeTab === tab.key ? { backgroundColor: 'rgba(138, 56, 245, 0.2)', borderColor: 'rgba(138, 56, 245, 0.3)' } : undefined}
                       disabled={tab.locked}
                     >
-                      <span className="mt-0.5 text-black">
+                      <span className="mt-0.5 text-foreground">
                         {tab.completed ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <CheckCircle className="size-5 text-success" />
                         ) : tab.locked ? (
-                          <Lock className="w-5 h-5 text-gray-400" />
+                          <Lock className="size-5 text-muted-foreground" />
                         ) : (
                           tab.icon
                         )}
                       </span>
                       <div>
-                        <div className="text-sm font-semibold text-black">
+                        <div className="text-sm font-semibold text-foreground">
                           {tab.label}
                         </div>
-                        <div className="text-xs text-black" style={{ opacity: 0.5 }}>
+                        <div className="text-xs text-foreground" style={{ opacity: 0.5 }}>
                           {tab.sublabel}
                         </div>
                       </div>
@@ -383,7 +387,7 @@ export default function ModulePage() {
           {/* Main Content — vlastní scroll na úrovni karty obsahu, aby
               breadcrumb a sidebar zůstaly fixní a posouvalo se jen pole lekce.
               pb-12 dává tlačítkům na konci obsahu prostor nad spodním okrajem. */}
-          <div ref={scrollAreaRef} className="flex-grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar pb-12">
+          <div ref={scrollAreaRef} className="grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar pb-12">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeModuleId}
@@ -392,15 +396,15 @@ export default function ModulePage() {
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 /* Příručka se zobrazuje jako samostatné bílé listy na šedém pozadí. */
-                className={activeTab === 'prirucka' ? 'rounded-lg' : 'bg-white rounded-lg p-6 sm:p-10'}
-                style={activeTab === 'prirucka' ? undefined : { border: '1px solid #e5e7eb' }}
+                className={activeTab === 'prirucka' ? 'rounded-lg' : 'bg-card rounded-lg p-6 sm:p-10'}
+                style={activeTab === 'prirucka' ? undefined : { border: '1px solid var(--border)' }}
               >
                 {/* Transition loading overlay */}
                 {transitioning && (
                   <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-                      <p className="text-sm text-gray-500">Načítání dalšího modulu...</p>
+                      <div className="size-8 border-3 border-gradient-r/30 border-t-purple-600 rounded-full animate-spin" />
+                      <p className="text-sm text-muted-foreground">Načítání dalšího modulu...</p>
                     </div>
                   </div>
                 )}
@@ -423,7 +427,7 @@ export default function ModulePage() {
                       <>
                         {totalBlocks > 1 && (
                           <div className="mb-4">
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               Část {currentBlockIndex + 1} z {totalBlocks}
                             </span>
                           </div>
@@ -439,11 +443,11 @@ export default function ModulePage() {
                             disabled={currentBlockIndex === 0}
                             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
                               currentBlockIndex === 0
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                ? 'text-muted-foreground cursor-not-allowed'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                             </svg>
                             Předchozí
@@ -451,19 +455,19 @@ export default function ModulePage() {
 
                           <button
                             onClick={handleContinue}
-                            className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-                            style={{ backgroundColor: '#00C896' }}
+                            className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                            style={{ backgroundColor: 'var(--primary)' }}
                           >
                             {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
                           </button>
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-16 text-gray-400">
-                        <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="text-center py-16 text-muted-foreground">
+                        <svg className="size-16 mx-auto mb-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>

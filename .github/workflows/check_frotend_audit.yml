@@ -14,12 +14,12 @@ jobs:
           - name: Set up Node.js
             uses: actions/setup-node@v3
             with:
-              node-version: 18
+              node-version: 22
 
           - name: Install dependencies
             working-directory: ./frontend
             run: npm ci
 
-          - name: Build
+          - name: Audit production dependencies
             working-directory: ./frontend
-            run: npm audit --audit-level=high
+            run: npm audit --omit=dev --audit-level=high

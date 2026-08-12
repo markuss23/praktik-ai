@@ -163,34 +163,34 @@ export default function CoursePage() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Kurz nebyl nalezen.'}</p>
-          <Link href="/" className="text-purple-600 hover:underline">← Zpět na přehled</Link>
+          <p className="text-destructive mb-4">{error || 'Kurz nebyl nalezen.'}</p>
+          <Link href="/" className="text-gradient-r hover:underline">← Zpět na přehled</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#F0F0F0' }} className="min-h-screen">
+    <div style={{ backgroundColor: 'var(--muted)' }} className="min-h-screen">
       {/* Breadcrumb */}
       <div className="px-4 sm:px-6 lg:px-[100px] py-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <p className="text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+        <p className="text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">Home</Link>
           {' / '}
           <span>kurzy</span>
           {' / '}
-          <span className="text-gray-700">{course.title}</span>
+          <span className="text-foreground">{course.title}</span>
         </p>
       </div>
 
       {/* Course Header */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-black break-words min-w-0">{course.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground break-words min-w-0">{course.title}</h1>
           {isAuthenticated && (
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <AnimatePresence mode="wait">
                 {enrollment ? (
                   // TODO: "Opustit kurz" button temporarily disabled
@@ -201,9 +201,9 @@ export default function CoursePage() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-success bg-success/10 border border-success/30 whitespace-nowrap"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="size-4" />
                       Zapsáno!
                     </motion.div>
                   ) : null
@@ -212,8 +212,8 @@ export default function CoursePage() {
                     key="enroll-btn"
                     onClick={handleEnroll}
                     disabled={enrollLoading}
-                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
-                    style={{ backgroundColor: '#00C896' }}
+                    className="flex items-center gap-2 px-5 py-2.5 text-primary-foreground rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--primary)' }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     initial={{ opacity: 0, y: -5 }}
@@ -223,13 +223,13 @@ export default function CoursePage() {
                   >
                     {enrollLoading ? (
                       <motion.div
-                        className="w-4 h-4 rounded-full"
+                        className="size-4 rounded-full"
                         style={{ border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }}
                         animate={{ rotate: 360 }}
                         transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                       />
                     ) : (
-                      <LogIn className="w-4 h-4" />
+                      <LogIn className="size-4" />
                     )}
                     {enrollLoading ? 'Zpracování...' : 'Zapsat se do kurzu'}
                   </motion.button>
@@ -239,7 +239,7 @@ export default function CoursePage() {
           )}
         </div>
         {course.description && (
-          <p className="text-gray-600 mt-3 max-w-3xl break-words">{course.description}</p>
+          <p className="text-muted-foreground mt-3 max-w-3xl break-words">{course.description}</p>
         )}
       </div>
 
@@ -247,14 +247,14 @@ export default function CoursePage() {
       {modules.length > 3 && (
         <div className="px-4 sm:px-6 lg:px-[100px] pb-6" style={{ maxWidth: '1440px', margin: '0 auto' }}>
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <input
               type="text"
               value={moduleSearch}
               onChange={(e) => setModuleSearch(e.target.value)}
               placeholder="Hledat modul…"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              style={{ backgroundColor: '#F0F0F0' }}
+              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent"
+              style={{ backgroundColor: 'var(--muted)' }}
             />
           </div>
         </div>
@@ -266,28 +266,28 @@ export default function CoursePage() {
           {modules.length === 0 ? (
             <motion.div
               key="modules-empty"
-              className="bg-white rounded-lg border border-gray-200 p-8 sm:p-10 text-center"
+              className="bg-card rounded-lg border border-border p-8 sm:p-10 text-center"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
             >
-              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <BookOpen className="w-6 h-6 text-gray-400" />
+              <div className="mx-auto size-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                <BookOpen className="size-6 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <h3 className="text-lg font-semibold text-foreground mb-1">
                 V tomto kurzu zatím nejsou moduly
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Obsah ještě nebyl vygenerován nebo publikován. Zkuste se vrátit později — nebo se
                 podívejte na další kurzy.
               </p>
               {/* 
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-purple-600 hover:text-purple-700"
+                className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-gradient-r hover:text-gradient-r"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                 </svg>
                 Zpět na přehled kurzů
@@ -297,7 +297,7 @@ export default function CoursePage() {
           ) : filteredModules.length === 0 && moduleSearch ? (
             <motion.p
               key="no-results"
-              className="text-center text-gray-500 py-12"
+              className="text-center text-muted-foreground py-12"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -345,27 +345,27 @@ export default function CoursePage() {
 
                   const cardContent = (
                     <div
-                      className={`bg-white rounded-lg flex flex-col transition-all duration-300 overflow-hidden ${
+                      className={`bg-card rounded-lg flex flex-col transition-all duration-300 overflow-hidden ${
                         isAccessible ? 'hover:shadow-lg' : ''
                       } ${isLocked ? 'opacity-60' : ''}`}
                       style={{
-                        border: isPassed ? '2px solid #00C896' : '1px solid #e5e7eb',
+                        border: isPassed ? '2px solid var(--primary)' : '1px solid var(--border)',
                         padding: '24px',
                         minHeight: '260px',
                       }}
                     >
                       {/* Header row */}
                       <div className="flex items-start justify-between mb-1">
-                        <span className="text-sm text-gray-500">Modul {index + 1}</span>
+                        <span className="text-sm text-muted-foreground">Modul {index + 1}</span>
                         {isPassed && (
-                          <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
-                            <CheckCircle className="w-4 h-4" />
+                          <span className="flex items-center gap-1.5 text-sm font-medium text-success">
+                            <CheckCircle className="size-4" />
                             Dokončeno
                           </span>
                         )}
                         {isCurrent && !isPassed && (
-                          <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#8B5BA8' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--gradient-r)' }}>
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
@@ -373,8 +373,8 @@ export default function CoursePage() {
                           </span>
                         )}
                         {isLocked && !isPassed && !isCurrent && (
-                          <span className="flex items-center gap-1.5 text-sm text-gray-400">
-                            <Lock className="w-4 h-4" />
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Lock className="size-4" />
                             {!isEnrolled ? 'Zapište se' : `Splňte modul ${index}`}
                           </span>
                         )}
@@ -385,8 +385,8 @@ export default function CoursePage() {
                         className="text-xl font-bold mb-3 break-words"
                         style={{
                           background: isLocked && !isPassed
-                            ? '#9CA3AF'
-                            : 'linear-gradient(90deg, #B1475C, #857AD2)',
+                            ? 'var(--muted-foreground)'
+                            : 'linear-gradient(90deg, var(--gradient-l), var(--gradient-r))',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
@@ -398,17 +398,17 @@ export default function CoursePage() {
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">
                         {/* 
-                        <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                          <BookOpen className="w-5 h-5" />
+                        <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                          <BookOpen className="size-5" />
                           <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
                         </div>
                         */}
                         {isAccessible && !isPassed && (
                           <span
-                            className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
-                            style={{ backgroundColor: isCurrent ? '#00C896' : '#8B5BA8' }}
+                            className="text-primary-foreground font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
+                            style={{ backgroundColor: isCurrent ? 'var(--primary)' : 'var(--gradient-r)' }}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
                             {isCurrent ? 'Pokračovat' : 'Začít modul'}
@@ -416,7 +416,7 @@ export default function CoursePage() {
                         )}
                         {isPassed && (
                           <span
-                            className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-green-700 bg-green-50"
+                            className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-success bg-success/10"
                           >
                             Opakovat
                           </span>
@@ -467,8 +467,8 @@ export default function CoursePage() {
 
       {/* Bottom Navigation 
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
           </svg>
           Zpět na přehled kurzů

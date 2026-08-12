@@ -26,12 +26,12 @@ export function GenerateEmbeddingsButton({
     <button
       onClick={onClick}
       disabled={isDone || isLoading}
-      className={`p-2 text-white rounded-md transition-colors ${
+      className={`p-2 text-primary-foreground rounded-md transition-colors ${
         isDone
-          ? 'bg-blue-300 cursor-not-allowed'
+          ? 'bg-tip cursor-not-allowed'
           : isLoading
-            ? 'bg-blue-400 cursor-wait'
-            : 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-tip cursor-wait'
+            : 'bg-tip hover:bg-tip/80'
       }`}
       title={isDone ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
     >

@@ -79,7 +79,7 @@ export function ScrollToBottomButton({ targetRef }: ScrollToBottomButtonProps) {
           onClick={scrollToBottom}
           aria-label="Sjet na konec stránky"
           title="Sjet na konec"
-          className="fixed bottom-6 right-5 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-600 border border-gray-200 shadow-lg hover:text-purple-700 hover:shadow-xl transition-colors"
+          className="fixed bottom-6 right-5 z-30 flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground border border-border shadow-lg hover:text-gradient-r hover:shadow-xl transition-colors"
         >
           <motion.span
             animate={{ y: [0, -3, 0] }}

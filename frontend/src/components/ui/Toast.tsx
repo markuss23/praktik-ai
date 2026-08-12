@@ -130,10 +130,10 @@ const VARIANT_STYLES: Record<
   ToastVariant,
   { ring: string; bg: string; icon: React.ComponentType<{ className?: string }> }
 > = {
-  success: { ring: 'border-emerald-200', bg: 'bg-emerald-50 text-emerald-900', icon: CheckCircle },
-  error: { ring: 'border-red-200', bg: 'bg-red-50 text-red-900', icon: AlertTriangle },
-  warning: { ring: 'border-amber-200', bg: 'bg-amber-50 text-amber-900', icon: AlertTriangle },
-  info: { ring: 'border-blue-200', bg: 'bg-blue-50 text-blue-900', icon: Info },
+  success: { ring: 'border-success/30', bg: 'bg-success/10 text-success', icon: CheckCircle },
+  error: { ring: 'border-destructive/30', bg: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
+  warning: { ring: 'border-warning/30', bg: 'bg-warning/10 text-warning', icon: AlertTriangle },
+  info: { ring: 'border-tip/30', bg: 'bg-tip/10 text-tip', icon: Info },
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
@@ -148,7 +148,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       transition={{ duration: 0.2, ease: 'easeOut' }}
       className={`pointer-events-auto w-full ${v.bg} border ${v.ring} shadow-lg rounded-lg px-4 py-3 flex items-start gap-3`}
     >
-      <Icon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+      <Icon className="size-5 mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         {toast.title && <p className="text-sm font-semibold mb-0.5">{toast.title}</p>}
         <p className="text-sm leading-snug break-words">{toast.message}</p>
@@ -157,9 +157,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Zavřít upozornění"
-        className="p-1 -m-1 rounded hover:bg-black/5 transition-colors flex-shrink-0"
+        className="p-1 -m-1 rounded hover:bg-black/5 transition-colors shrink-0"
       >
-        <X className="w-4 h-4 opacity-60" />
+        <X className="size-4 opacity-60" />
       </button>
     </motion.div>
   );

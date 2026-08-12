@@ -8,6 +8,8 @@ import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getCourses, listResources } from '@/lib/api-client';
 import { Status } from '@/api';
+import { Button, Drawer, DrawerClose, DrawerContent } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 // Custom DOM event, kterým komponenty hlásí změnu stavu kurzu (schválení,
 // zamítnutí, odeslání ke kontrole apod.). Sidebar si na něj sedne, aby badge
@@ -102,88 +104,105 @@ export function AdminSidebar() {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
+  // Obsah je stejný pro desktopový sticky sidebar i pro mobilní Drawer.
+  const sidebarInner = (
+    <>
+      <div className="p-6">
+        <h1 className="text-xl font-bold">PRAKTIK-AI</h1>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          // /admin (Kurzy) is only active on exact /admin path (incl. query params)
+          const active = item.href === '/admin'
+            ? pathname === '/admin'
+            : isActive(item.href);
+          const badge = 'badge' in item ? (item as { badge?: number }).badge : undefined;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'mb-0.5 flex items-center gap-3 rounded-md px-4 py-3 transition-colors',
+                active
+                  ? 'bg-gradient-r text-primary-foreground'
+                  : 'text-primary-foreground/60 hover:bg-primary-foreground/10 hover:text-primary-foreground',
+              )}
+            >
+              <Icon size={20} />
+              <span className="flex-1">{item.label}</span>
+              {badge !== undefined && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-accent px-1 text-xs font-bold text-primary-foreground">
+                  {badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User info at bottom */}
+      {currentUser && (
+        <div className="border-t border-primary-foreground/20 px-4 pt-4 pb-6">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-r text-sm font-semibold text-primary-foreground">
+              {(currentUser.displayName ?? currentUser.email ?? 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-primary-foreground">
+                {currentUser.displayName ?? 'Uživatel'}
+              </p>
+              <p className="truncate text-xs text-primary-foreground/60">{currentUser.email}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
       {/* Mobile header with hamburger */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-black text-white px-4 py-3 flex items-center justify-between">
+      <div className="fixed top-0 right-0 left-0 z-[var(--z-header)] flex items-center justify-between bg-black px-4 py-3 text-primary-foreground lg:hidden">
         <h1 className="text-lg font-bold">PRAKTIK-AI</h1>
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-2 hover:bg-gray-800 rounded-md transition-colors"
-          aria-label={isOpen ? 'Zavřít menu' : 'Otevřít menu'}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsOpen(true)}
+          aria-label="Otevřít menu"
+          className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
         >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+          <Menu />
+        </Button>
       </div>
 
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {/* Mobile sidebar — kitový Drawer (overlay, stacking i gesta řeší Base UI) */}
+      <Drawer open={isOpen} onOpenChange={setIsOpen} swipeDirection="left">
+        <DrawerContent
+          className="bg-black text-primary-foreground lg:hidden"
+          aria-label="Administrace — navigace"
+        >
+          <DrawerClose
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Zavřít menu"
+                className="absolute top-4 right-3 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              />
+            }
+          >
+            <X />
+          </DrawerClose>
+          {sidebarInner}
+        </DrawerContent>
+      </Drawer>
 
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed lg:sticky inset-y-0 left-0 z-50
-          w-64 bg-black text-white flex flex-col lg:h-screen lg:top-0
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
-        <div className="p-6">
-          <h1 className="text-xl font-bold">PRAKTIK-AI</h1>
-        </div>
-
-        <nav className="flex-1 px-4 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            // /admin (Kurzy) is only active on exact /admin path (incl. query params)
-            const active = item.href === '/admin'
-              ? pathname === '/admin'
-              : isActive(item.href);
-            const badge = 'badge' in item ? (item as { badge?: number }).badge : undefined;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors mb-0.5 ${
-                  active
-                    ? 'bg-purple-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <Icon size={20} />
-                <span className="flex-1">{item.label}</span>
-                {badge !== undefined && (
-                  <span className="bg-orange-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User info at bottom */}
-        {currentUser && (
-          <div className="px-4 pb-6 pt-4 border-t border-gray-800">
-            <div className="flex items-center gap-3 px-2 py-2">
-              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                {(currentUser.displayName ?? currentUser.email ?? 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="text-white text-sm font-medium truncate">
-                  {currentUser.displayName ?? 'Uživatel'}
-                </p>
-                <p className="text-gray-400 text-xs truncate">{currentUser.email}</p>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Desktop sidebar */}
+      <div className="sticky top-0 hidden h-screen w-64 flex-col bg-black text-primary-foreground lg:flex">
+        {sidebarInner}
       </div>
     </>
   );

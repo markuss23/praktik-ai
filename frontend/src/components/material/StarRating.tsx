@@ -20,7 +20,7 @@ export function StarRating({ rating, reviewsCount, size = 16 }: StarRatingProps)
             <Star
               key={value}
               size={size}
-              className={filled ? "text-yellow-400" : "text-gray-300"}
+              className={filled ? "text-warning" : "text-muted-foreground"}
               fill={filled ? "currentColor" : "none"}
               strokeWidth={1.5}
             />
@@ -28,7 +28,7 @@ export function StarRating({ rating, reviewsCount, size = 16 }: StarRatingProps)
         })}
       </div>
       {typeof reviewsCount === "number" && (
-        <span className="text-xs text-gray-500">({reviewsCount})</span>
+        <span className="text-xs text-muted-foreground">({reviewsCount})</span>
       )}
     </div>
   );
@@ -72,12 +72,12 @@ export function StarRatingInput({
             onFocus={() => setHovered(star)}
             onBlur={() => setHovered(null)}
             onClick={() => onChange(star)}
-            className="p-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="p-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Star
               size={size}
               className={`transition-colors ${
-                filled ? "text-yellow-400" : "text-gray-300"
+                filled ? "text-warning" : "text-muted-foreground"
               }`}
               fill={filled ? "currentColor" : "none"}
               strokeWidth={1.5}

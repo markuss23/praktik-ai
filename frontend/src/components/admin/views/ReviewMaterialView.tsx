@@ -12,10 +12,11 @@ import {
   listResourceComments,
   createResourceComment,
   deleteResourceComment,
+  downloadResourceFile,
   type ResourceComment,
 } from '@/lib/api-client';
 import { mapPubResourceToMaterial } from '@/components/material/api';
-import type { Material } from '@/components/material/types';
+import type { Material, MaterialAttachment } from '@/components/material/types';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { REVIEW_COUNT_EVENT } from '@/components/admin/AdminSidebar';
@@ -68,6 +69,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
   const [actionLoading, setActionLoading] = useState<null | 'approve' | 'return'>(null);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [approvedTransition, setApprovedTransition] = useState(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +142,20 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
     }
   };
 
+  const handleDownloadAttachment = async (attachment: MaterialAttachment) => {
+    if (attachment.resourceId == null || attachment.fileId == null) return;
+    setDownloadingFileId(attachment.fileId);
+    setError(null);
+    try {
+      await downloadResourceFile(attachment.resourceId, attachment.fileId, attachment.name);
+    } catch (err) {
+      console.error('Failed to download attachment:', err);
+      setError(err instanceof Error ? err.message : 'Soubor se nepodařilo stáhnout.');
+    } finally {
+      setDownloadingFileId(null);
+    }
+  };
+
   const togglePublic = async () => {
     if (!resource) return;
     setVisibilityLoading(true);
@@ -190,8 +206,8 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => router.push('/admin/review')} className="text-purple-600 hover:underline">
+          <p className="text-destructive mb-4">{error}</p>
+          <button onClick={() => router.push('/admin/review')} className="text-gradient-r hover:underline">
             ← Zpět na přehled
           </button>
         </div>
@@ -202,27 +218,27 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
   if (!resource || !material) return null;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-100 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
         <div className="min-w-0">
-          <p className="text-xs text-gray-500 mb-0.5">
-            <button onClick={() => router.push('/admin/review')} className="hover:text-gray-700">
+          <p className="text-xs text-muted-foreground mb-0.5">
+            <button onClick={() => router.push('/admin/review')} className="hover:text-foreground">
               Ke schválení
             </button>
             {' / '}
-            <span className="text-gray-700 truncate">{resource.title}</span>
+            <span className="text-foreground truncate">{resource.title}</span>
           </p>
-          <h1 className="text-xl font-bold text-black">Materiál ke schválení</h1>
+          <h1 className="text-xl font-bold text-foreground">Materiál ke schválení</h1>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           {/* Rozhodnutí garanta (jen u čekajících materiálů) */}
           {canReview && (
             <>
               <button
                 onClick={() => submitReview(ReviewVerdict.NeedsRevision)}
                 disabled={actionLoading !== null}
-                className="flex items-center gap-2 px-4 py-2 border border-amber-300 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 border border-warning/30 text-warning rounded-lg text-sm font-medium hover:bg-warning/10 transition-colors disabled:opacity-50"
               >
                 <ThumbsDown size={16} />
                 {actionLoading === 'return' ? 'Vracím…' : 'Vrátit k přepracování'}
@@ -230,7 +246,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
               <button
                 onClick={() => submitReview(ReviewVerdict.Approved)}
                 disabled={actionLoading !== null}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-50"
               >
                 <ThumbsUp size={16} />
                 {actionLoading === 'approve' ? 'Schvaluji…' : 'Schválit materiál'}
@@ -240,15 +256,15 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
           {/* Stavové odznaky */}
           {isApproved && (
             <>
-              <span className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
+              <span className="flex items-center gap-1.5 px-3 py-2 bg-success/10 text-success rounded-lg text-sm font-medium border border-success/30">
                 <CheckCircle size={15} />
                 Schváleno
               </span>
               <span
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border ${
                   resource.isPublic
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-gray-50 text-gray-600 border-gray-200'
+                    ? 'bg-tip/10 text-tip border-tip/30'
+                    : 'bg-muted/50 text-muted-foreground border-border'
                 }`}
               >
                 {resource.isPublic ? <Globe size={15} /> : <EyeOff size={15} />}
@@ -257,7 +273,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
             </>
           )}
           {isRejected && (
-            <span className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium border border-amber-200">
+            <span className="flex items-center gap-1.5 px-3 py-2 bg-warning/10 text-warning rounded-lg text-sm font-medium border border-warning/30">
               <RotateCcw size={15} />
               Vráceno autorovi
             </span>
@@ -268,21 +284,21 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
       {/* Main 2-column layout */}
       <div className="flex-1 flex overflow-hidden p-4 gap-4">
         {/* Center: material content */}
-        <div className="flex-1 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 bg-card rounded-lg border border-border flex flex-col overflow-hidden min-w-0">
           <div className="flex-1 overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold text-black mb-2">{resource.title}</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">{resource.title}</h2>
             {material.description && (
-              <p className="text-sm text-gray-600 mb-5 whitespace-pre-wrap">{material.description}</p>
+              <p className="text-sm text-muted-foreground mb-5 whitespace-pre-wrap">{material.description}</p>
             )}
 
             {/* Metadata */}
             {material.targets && material.targets.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {material.targets.map((target, index) => (
                     <div key={`${target.label}-${index}`} className="flex flex-col gap-1">
-                      <span className="text-xs text-gray-500">{target.label}</span>
-                      <span className="text-sm font-semibold text-gray-900">{target.value}</span>
+                      <span className="text-xs text-muted-foreground">{target.label}</span>
+                      <span className="text-sm font-semibold text-foreground">{target.value}</span>
                     </div>
                   ))}
                 </div>
@@ -290,70 +306,70 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
             )}
 
             {/* Attachments */}
-            <h3 className="text-lg font-bold text-black mb-3">Přílohy</h3>
+            <h3 className="text-lg font-bold text-foreground mb-3">Přílohy</h3>
             {material.attachments && material.attachments.length > 0 ? (
               <ul className="space-y-2">
                 {material.attachments.map((attachment) => (
                   <li
                     key={attachment.id}
-                    className="flex items-center justify-between bg-white border border-gray-200 rounded-md px-4 py-3"
+                    className="flex items-center justify-between bg-card border border-border rounded-md px-4 py-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 text-gray-700 flex-shrink-0">
+                      <span className="inline-flex items-center justify-center size-9 rounded-md bg-muted text-foreground shrink-0">
                         <FileText size={18} strokeWidth={1.75} />
                       </span>
-                      <p className="text-sm font-medium text-gray-900 truncate">{attachment.name}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <span className="text-xs text-gray-500">{attachment.format}</span>
-                      {attachment.url ? (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className="text-xs text-muted-foreground">{attachment.format}</span>
+                      {attachment.resourceId != null && attachment.fileId != null ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(attachment)}
+                          disabled={downloadingFileId === attachment.fileId}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
                         >
                           <Download size={14} strokeWidth={1.75} />
-                          Stáhnout
-                        </a>
+                          {downloadingFileId === attachment.fileId ? 'Stahuji…' : 'Stáhnout'}
+                        </button>
                       ) : (
-                        <span className="text-xs text-gray-400">Bez souboru</span>
+                        <span className="text-xs text-muted-foreground">Bez souboru</span>
                       )}
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">Materiál nemá žádné přílohy.</p>
+              <p className="text-sm text-muted-foreground">Materiál nemá žádné přílohy.</p>
             )}
           </div>
         </div>
 
         {/* Right: comments panel */}
-        <div className="w-72 flex-shrink-0 bg-white rounded-lg border border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-black">
+        <div className="w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <h2 className="text-sm font-semibold text-foreground">
               Komentáře{comments.length > 0 && ` (${comments.length})`}
             </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {comments.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">Zatím žádné komentáře</p>
+              <p className="text-xs text-muted-foreground text-center py-4">Zatím žádné komentáře</p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.commentId} className="bg-gray-100 rounded-xl px-3.5 py-2.5">
+                <div key={comment.commentId} className="bg-muted rounded-xl px-3.5 py-2.5">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-semibold text-gray-800 text-xs">
+                    <span className="font-semibold text-foreground text-xs">
                       {comment.authorDisplayName ?? 'Garant'}
                     </span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[11px] text-gray-400">{timeAgo(comment.createdAt)}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] text-muted-foreground">{timeAgo(comment.createdAt)}</span>
                       {canDeleteComment(comment.authorId) && (
                         <button
                           onClick={() => handleDeleteComment(comment.commentId)}
                           disabled={deletingCommentId === comment.commentId}
-                          className="p-0.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                          className="p-0.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                           aria-label="Smazat komentář"
                         >
                           <Trash2 size={11} />
@@ -361,7 +377,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                       )}
                     </div>
                   </div>
-                  <p className="text-gray-700 text-xs leading-relaxed whitespace-pre-wrap">{comment.comment}</p>
+                  <p className="text-foreground text-xs leading-relaxed whitespace-pre-wrap">{comment.comment}</p>
                 </div>
               ))
             )}
@@ -369,7 +385,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
 
           {/* Akční zóna: u čekajících přidání komentáře, u schválených publikace/skrytí */}
           {canReview ? (
-            <div className="p-3 border-t border-gray-200 flex-shrink-0 space-y-2">
+            <div className="p-3 border-t border-border shrink-0 space-y-2">
               <div className="flex gap-2">
                 <textarea
                   value={commentText}
@@ -382,33 +398,33 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                       handleAddComment();
                     }
                   }}
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none"
+                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none"
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={!commentText.trim() || commentSubmitting}
-                  className="self-end p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                  className="self-end p-2 bg-gradient-r text-primary-foreground rounded-full hover:bg-gradient-r/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                   aria-label="Odeslat komentář"
                 >
                   <Send size={14} />
                 </button>
               </div>
-              {commentError && <p className="text-xs text-red-600">{commentError}</p>}
-              {error && <p className="text-xs text-red-600">{error}</p>}
+              {commentError && <p className="text-xs text-destructive">{commentError}</p>}
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
           ) : canManageVisibility ? (
-            <div className="p-3 border-t border-gray-200 flex-shrink-0 space-y-2">
-              <p className="text-xs text-gray-500">
+            <div className="p-3 border-t border-border shrink-0 space-y-2">
+              <p className="text-xs text-muted-foreground">
                 {resource.isPublic
                   ? 'Materiál je publikovaný ve veřejné databázi.'
                   : 'Materiál je schválený, ale zatím není publikovaný.'}
               </p>
-              {error && <p className="text-xs text-red-600">{error}</p>}
+              {error && <p className="text-xs text-destructive">{error}</p>}
               {resource.isPublic ? (
                 <button
                   onClick={togglePublic}
                   disabled={visibilityLoading}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border text-foreground rounded-lg text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
                   <EyeOff size={13} />
                   {visibilityLoading ? 'Skrývám…' : 'Skrýt z databáze'}
@@ -417,7 +433,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                 <button
                   onClick={togglePublic}
                   disabled={visibilityLoading}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-tip text-primary-foreground rounded-lg text-xs font-medium hover:bg-tip/80 transition-colors disabled:opacity-50"
                 >
                   <Globe size={13} />
                   {visibilityLoading ? 'Publikuji…' : 'Publikovat do databáze'}
@@ -425,8 +441,8 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
               )}
             </div>
           ) : (
-            <div className="p-3 border-t border-gray-200">
-              <p className="text-xs text-gray-400 text-center">
+            <div className="p-3 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center">
                 {isApproved
                   ? 'Materiál je schválený – komentáře jsou uzavřeny.'
                   : isRejected
@@ -443,20 +459,20 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
         {approvedTransition && (
           <motion.div
             key="approved-transition"
-            className="fixed inset-0 z-[60] flex items-center justify-center"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
             <motion.div
-              className="absolute inset-0 bg-white/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-card/80 backdrop-blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             />
             <motion.div
-              className="relative flex flex-col items-center gap-4 px-10 py-8 rounded-2xl bg-white shadow-xl border border-green-100"
+              className="relative flex flex-col items-center gap-4 px-10 py-8 rounded-2xl bg-card shadow-xl border border-success/30"
               initial={{ scale: 0.85, opacity: 0, y: 8 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: -8 }}
@@ -466,13 +482,13 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                 initial={{ scale: 0, rotate: -30 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', stiffness: 280, damping: 14, delay: 0.1 }}
-                className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center"
+                className="size-16 rounded-full bg-success/20 flex items-center justify-center"
               >
-                <CheckCircle size={36} className="text-green-600" />
+                <CheckCircle size={36} className="text-success" />
               </motion.div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">Materiál schválen</p>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-lg font-semibold text-foreground">Materiál schválen</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   {canManageVisibility
                     ? 'Nyní jej můžete publikovat nebo skrýt.'
                     : 'Vracím vás na přehled…'}

@@ -180,12 +180,12 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
 
   const ratingForm = (
     <div
-      className={`bg-white border rounded-lg p-4 view-fade-in ${
-        editing ? "border-purple-200" : "border-gray-200"
+      className={`bg-card border rounded-lg p-4 view-fade-in ${
+        editing ? "border-gradient-r/30" : "border-border"
       }`}
     >
       {editing && (
-        <p className="text-xs font-medium text-purple-700 mb-2">
+        <p className="text-xs font-medium text-gradient-r mb-2">
           Úprava tvého hodnocení
         </p>
       )}
@@ -206,10 +206,10 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
         rows={3}
         maxLength={2000}
         disabled={submitting}
-        className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 resize-y focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
+        className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60"
       />
 
-      {formError && <p className="mt-2 text-xs text-red-600">{formError}</p>}
+      {formError && <p className="mt-2 text-xs text-destructive">{formError}</p>}
 
       <div className="flex items-center justify-end gap-2 mt-3">
         {editing && (
@@ -217,7 +217,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
             type="button"
             onClick={cancelEdit}
             disabled={submitting}
-            className="px-4 py-2 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
+            className="px-4 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
           >
             Zrušit
           </button>
@@ -226,7 +226,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 disabled:opacity-60"
         >
           {submitting ? "Odesílám…" : editing ? "Uložit změny" : "Odeslat komentář"}
         </button>
@@ -236,29 +236,29 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
 
   // Vlastní hodnocení — připnutá zvýrazněná karta s akcemi (upravit / smazat)
   const myRatingCard = myRating && (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 view-fade-in hover:shadow-md transition-shadow">
+    <div className="bg-card border border-border rounded-lg p-4 view-fade-in hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-bold text-gray-900 truncate">
+            <p className="text-sm font-bold text-foreground truncate">
               {myRating.userDisplayName ?? "Uživatel"}
             </p>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
               Tvůj komentář
             </span>
             {justSaved && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 save-status-pop">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-success save-status-pop">
                 <Check size={13} strokeWidth={2} />
                 Uloženo
               </span>
             )}
           </div>
-          <p className="text-[11px] text-gray-400 mt-0.5">
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             {formatRatingDate(myRating.createdAt)}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <StarRating rating={myRating.score} size={14} />
           <button
             type="button"
@@ -266,7 +266,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
             disabled={deleting}
             aria-label="Upravit hodnocení"
             title="Upravit hodnocení"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-60"
+            className="inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60"
           >
             <Pencil size={16} strokeWidth={1.75} />
           </button>
@@ -276,36 +276,36 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
             disabled={deleting}
             aria-label="Smazat hodnocení"
             title="Smazat hodnocení"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-60"
+            className="inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60"
           >
             <Trash2 size={16} strokeWidth={1.75} />
           </button>
         </div>
       </div>
       {myRating.comment && (
-        <p className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
+        <p className="text-sm text-foreground mt-2 whitespace-pre-line break-words">
           {myRating.comment}
         </p>
       )}
       {formError && !editing && (
-        <p className="mt-2 text-xs text-red-600">{formError}</p>
+        <p className="mt-2 text-xs text-destructive">{formError}</p>
       )}
     </div>
   );
 
   return (
     <section className="mt-10">
-      <h2 className="text-lg font-bold text-black mb-3">
+      <h2 className="text-lg font-bold text-foreground mb-3">
         Hodnocení{" "}
-        <span className="text-gray-400 font-semibold">({loading ? "…" : count})</span>
+        <span className="text-muted-foreground font-semibold">({loading ? "…" : count})</span>
       </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 items-start">
         {/* Průměrné hodnocení */}
-        <div className="bg-white border border-gray-200 rounded-lg p-5 flex flex-col items-center justify-center gap-2 text-center">
+        <div className="bg-card border border-border rounded-lg p-5 flex flex-col items-center justify-center gap-2 text-center">
           <span
             key={averageLabel}
-            className="text-3xl font-bold text-black save-status-pop"
+            className="text-3xl font-bold text-foreground save-status-pop"
           >
             {averageLabel}
           </span>
@@ -315,14 +315,14 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
         <div className="space-y-3">
           {/* Nepřihlášený: výzva k přihlášení */}
           {!authLoading && !isAuthenticated && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <p className="text-sm text-gray-600">
+            <div className="bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
                 Hodnotit a komentovat mohou jen přihlášení uživatelé.
               </p>
               <button
                 type="button"
                 onClick={login}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors self-start sm:self-auto"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors self-start sm:self-auto"
               >
                 <LogIn size={15} strokeWidth={1.75} />
                 Přihlásit se
@@ -343,7 +343,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
           {loading ? (
             <RatingListSkeleton />
           ) : loadError ? (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md p-3">
               {loadError}
             </p>
           ) : count === 0 ? null : (
@@ -352,22 +352,22 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
                 {otherRatings.map((rating, index) => (
                   <li
                     key={rating.ratingId}
-                    className="bg-white border border-gray-200 rounded-lg p-4 row-fade-in hover:shadow-md transition-shadow"
+                    className="bg-card border border-border rounded-lg p-4 row-fade-in hover:shadow-md transition-shadow"
                     style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">
+                        <p className="text-sm font-bold text-foreground truncate">
                           {rating.userDisplayName ?? "Uživatel"}
                         </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
                           {formatRatingDate(rating.createdAt)}
                         </p>
                       </div>
                       <StarRating rating={rating.score} size={14} />
                     </div>
                     {rating.comment && (
-                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
+                      <p className="text-sm text-foreground mt-2 whitespace-pre-line break-words">
                         {rating.comment}
                       </p>
                     )}

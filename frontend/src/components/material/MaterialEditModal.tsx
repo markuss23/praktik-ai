@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, X, FileText, Trash2 } from "lucide-react";
+import { Plus, FileText, Trash2 } from "lucide-react";
 import {
   catalogsApi,
   getResource,
@@ -13,8 +13,23 @@ import {
 } from "@/lib/api-client";
 import type { CourseSubject, CourseTarget, PubResource, PubResourceFile } from "@/api";
 import { Difficulty, EduLevel } from "@/api";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  Modal,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@/components/ui";
 
 interface MaterialEditModalProps {
   isOpen: boolean;
@@ -38,6 +53,8 @@ interface FormState {
   description: string;
 }
 
+const FORM_ID = "material-edit-form";
+
 export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: MaterialEditModalProps) {
   const [form, setForm] = useState<FormState | null>(null);
   const [allowForks, setAllowForks] = useState<boolean>(false);
@@ -51,10 +68,6 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useModalDismiss(isOpen, () => {
-    if (!submitting) onClose();
-  });
 
   useEffect(() => {
     if (!isOpen || resourceId == null) return;
@@ -111,8 +124,6 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       cancelled = true;
     };
   }, [isOpen, resourceId]);
-
-  if (!isOpen) return null;
 
   const handleFilePick = (picked: FileList | null) => {
     if (!picked) return;
@@ -204,248 +215,271 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
 
   const visibleExistingFiles = existingFiles.filter((f) => !filesToDelete.has(f.fileId));
 
-  return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl border border-gray-200"
-      >
-        <div className="flex items-center justify-between p-6 pb-4">
-          <h3 className="text-xl font-bold text-black">Upravit materiál</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="p-1 hover:bg-gray-100 rounded text-gray-500"
-            aria-label="Zavřít"
-          >
-            <X size={20} />
-          </button>
-        </div>
+  // Base UI Select: placeholder je položka s `value: null` v `items`.
+  const subjectItems = [
+    { label: "Kategorie", value: null },
+    ...subjects.map((s) => ({ label: s.name, value: String(s.subjectId) })),
+  ];
+  const targetItems = [
+    { label: "Cílová skupina", value: null },
+    ...targets.map((t) => ({ label: t.name, value: String(t.targetId) })),
+  ];
+  const difficultyItems = [
+    { label: "Obtížnost", value: null },
+    ...DIFFICULTY_ORDER.map((value) => ({ label: DIFFICULTY_LABELS[value], value })),
+  ];
 
-        {loading || !form ? (
-          <div className="px-6 pb-6">
-            <p className="text-sm text-gray-500">Načítání…</p>
-            {error && (
-              <p className="mt-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
-                {error}
-              </p>
+  const isReady = !loading && form !== null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
+      title="Upravit materiál"
+      maxWidth="max-w-xl"
+      footer={
+        isReady ? (
+          <>
+            <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={onClose}>
+              Zrušit
+            </Button>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="lg"
+              disabled={submitting || (form?.title.trim().length ?? 0) < 3}
+            >
+              {submitting ? "Ukládání…" : "Uložit změny"}
+            </Button>
+          </>
+        ) : undefined
+      }
+    >
+      {!isReady || !form ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted-foreground">Načítání…</p>
+          {error && (
+            <Alert variant="error">
+              <AlertDescription className="text-xs">{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+      ) : (
+        <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {comments.length > 0 && (
+            <Alert variant="warning">
+              <AlertTitle className="text-xs">Komentáře od garanta</AlertTitle>
+              <AlertDescription>
+                <ul className="flex flex-col gap-2">
+                  {comments.map((c) => (
+                    <li key={c.commentId} className="text-xs">
+                      <span className="font-medium">{c.authorDisplayName ?? "Garant"}:</span>{" "}
+                      <span className="whitespace-pre-wrap">{c.comment}</span>
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Input
+            type="text"
+            required
+            value={form.title}
+            onChange={(e) => setForm((s) => (s ? { ...s, title: e.target.value } : s))}
+            placeholder="Název materiálu"
+            maxLength={120}
+          />
+
+          <Select
+            items={subjectItems}
+            value={form.subjectId === "" ? null : form.subjectId}
+            onValueChange={(value) =>
+              setForm((s) => (s ? { ...s, subjectId: value == null ? "" : String(value) } : s))
+            }
+          >
+            <SelectTrigger className="w-full" aria-label="Kategorie">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {subjectItems.map((item) => (
+                <SelectItem key={item.value ?? "none"} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Select
+              items={targetItems}
+              value={form.targetId === "" ? null : form.targetId}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, targetId: value == null ? "" : String(value) } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Cílová skupina">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targetItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={EDU_LEVEL_OPTIONS}
+              value={form.educationLevel}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, educationLevel: value as EduLevel } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Úroveň vzdělání">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EDU_LEVEL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={difficultyItems}
+              value={form.difficultyLevel === "" ? null : form.difficultyLevel}
+              onValueChange={(value) =>
+                setForm((s) =>
+                  s ? { ...s, difficultyLevel: value == null ? "" : (value as Difficulty) } : s,
+                )
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Obtížnost">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {difficultyItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Stávající přílohy */}
+          {visibleExistingFiles.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-medium text-muted-foreground">Přílohy</p>
+              <ul className="flex flex-col gap-1">
+                {visibleExistingFiles.map((file) => (
+                  <li
+                    key={file.fileId}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-xs text-foreground">
+                      <FileText className="size-3.5 shrink-0" strokeWidth={1.75} />
+                      <span className="truncate">{fileLabelFromPath(file.filename)}</span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => toggleDeleteExisting(file.fileId)}
+                      disabled={submitting}
+                      aria-label={`Odebrat přílohu ${file.filename}`}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Přidání nových příloh */}
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            className="rounded-md border-2 border-dashed border-border bg-muted/40 px-4 py-8 text-center"
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={submitting}
+              className="h-auto flex-col gap-2 py-2"
+            >
+              <Plus className="size-7" strokeWidth={1.75} />
+              <span className="text-sm font-medium">Nahrát podklady</span>
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => handleFilePick(e.target.files)}
+            />
+
+            {newFiles.length > 0 && (
+              <ul className="mt-4 flex flex-col gap-1 text-left">
+                {newFiles.map((file, index) => (
+                  <li
+                    key={`${file.name}-${index}`}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-xs text-foreground">
+                      <FileText className="size-3.5 shrink-0" strokeWidth={1.75} />
+                      <span className="truncate">{file.name}</span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => removeNewFile(index)}
+                      disabled={submitting}
+                      aria-label={`Odebrat soubor ${file.name}`}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        ) : (
-          <>
-            <div className="px-6 pb-6 space-y-4">
-              {comments.length > 0 && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
-                  <p className="text-xs font-semibold text-amber-800">Komentáře od garanta</p>
-                  <ul className="space-y-2">
-                    {comments.map((c) => (
-                      <li key={c.commentId} className="text-xs text-gray-700">
-                        <span className="font-medium text-gray-800">
-                          {c.authorDisplayName ?? "Garant"}:
-                        </span>{" "}
-                        <span className="whitespace-pre-wrap">{c.comment}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
-              <input
-                type="text"
-                required
-                value={form.title}
-                onChange={(e) => setForm((s) => (s ? { ...s, title: e.target.value } : s))}
-                placeholder="Název materiálu"
-                maxLength={120}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-              />
+          <Textarea
+            value={form.description}
+            onChange={(e) => setForm((s) => (s ? { ...s, description: e.target.value } : s))}
+            placeholder="Popis"
+            rows={3}
+            maxLength={1000}
+          />
 
-              <select
-                value={form.subjectId}
-                onChange={(e) => setForm((s) => (s ? { ...s, subjectId: e.target.value } : s))}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-              >
-                <option value="">Kategorie</option>
-                {subjects.map((subject) => (
-                  <option key={subject.subjectId} value={subject.subjectId}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
+          <Label className="flex items-center gap-2 font-normal">
+            <Checkbox
+              checked={allowForks}
+              onCheckedChange={(checked) => setAllowForks(checked === true)}
+              disabled={submitting}
+            />
+            Povolit ostatním vytvářet kopie tohoto materiálu
+          </Label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <select
-                  value={form.targetId}
-                  onChange={(e) => setForm((s) => (s ? { ...s, targetId: e.target.value } : s))}
-                  className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-                >
-                  <option value="">Cílová skupina</option>
-                  {targets.map((target) => (
-                    <option key={target.targetId} value={target.targetId}>
-                      {target.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={form.educationLevel}
-                  onChange={(e) =>
-                    setForm((s) => (s ? { ...s, educationLevel: e.target.value as EduLevel } : s))
-                  }
-                  required
-                  className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-                >
-                  {EDU_LEVEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={form.difficultyLevel}
-                  onChange={(e) =>
-                    setForm((s) =>
-                      s ? { ...s, difficultyLevel: e.target.value as Difficulty | "" } : s,
-                    )
-                  }
-                  className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-                >
-                  <option value="">Obtížnost</option>
-                  {DIFFICULTY_ORDER.map((value) => (
-                    <option key={value} value={value}>
-                      {DIFFICULTY_LABELS[value]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Stávající přílohy */}
-              {visibleExistingFiles.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-gray-500">Přílohy</p>
-                  <ul className="space-y-1">
-                    {visibleExistingFiles.map((file) => (
-                      <li
-                        key={file.fileId}
-                        className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-md px-3 py-2"
-                      >
-                        <span className="flex items-center gap-2 min-w-0 text-xs text-gray-700">
-                          <FileText size={14} strokeWidth={1.75} className="flex-shrink-0" />
-                          <span className="truncate">{fileLabelFromPath(file.filename)}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => toggleDeleteExisting(file.fileId)}
-                          disabled={submitting}
-                          className="p-1 text-gray-400 hover:text-red-600"
-                          aria-label={`Odebrat přílohu ${file.filename}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Přidání nových příloh */}
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-                className="rounded-md border-2 border-dashed border-purple-300 bg-purple-50/40 px-4 py-8 text-center"
-              >
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={submitting}
-                  className="inline-flex flex-col items-center gap-2 text-purple-700 hover:text-purple-800 disabled:opacity-60"
-                >
-                  <Plus size={28} strokeWidth={1.75} />
-                  <span className="text-sm font-medium">Nahrát podklady</span>
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  hidden
-                  onChange={(e) => handleFilePick(e.target.files)}
-                />
-
-                {newFiles.length > 0 && (
-                  <ul className="mt-4 space-y-1 text-left">
-                    {newFiles.map((file, index) => (
-                      <li
-                        key={`${file.name}-${index}`}
-                        className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-md px-3 py-2"
-                      >
-                        <span className="flex items-center gap-2 min-w-0 text-xs text-gray-700">
-                          <FileText size={14} strokeWidth={1.75} className="flex-shrink-0" />
-                          <span className="truncate">{file.name}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeNewFile(index)}
-                          disabled={submitting}
-                          className="p-1 text-gray-400 hover:text-red-600"
-                          aria-label={`Odebrat soubor ${file.name}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm((s) => (s ? { ...s, description: e.target.value } : s))}
-                placeholder="Popis"
-                rows={3}
-                maxLength={1000}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
-              />
-
-              <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
-                <input
-                  type="checkbox"
-                  checked={allowForks}
-                  onChange={(e) => setAllowForks(e.target.checked)}
-                  disabled={submitting}
-                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-200"
-                />
-                Povolit ostatním vytvářet kopie tohoto materiálu
-              </label>
-
-              {error && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
-                  {error}
-                </p>
-              )}
-            </div>
-
-            <div className="flex justify-between items-center gap-3 px-6 pb-6">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 disabled:opacity-60"
-              >
-                Zrušit
-              </button>
-              <button
-                type="submit"
-                disabled={submitting || form.title.trim().length < 3}
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {submitting ? "Ukládání…" : "Uložit změny"}
-              </button>
-            </div>
-          </>
-        )}
-      </form>
-    </div>
+          {error && (
+            <Alert variant="error">
+              <AlertDescription className="text-xs">{error}</AlertDescription>
+            </Alert>
+          )}
+        </form>
+      )}
+    </Modal>
   );
 }

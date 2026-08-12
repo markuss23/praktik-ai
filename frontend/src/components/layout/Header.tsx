@@ -10,6 +10,20 @@ import { useRole } from "@/hooks/useRole";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useEffect, useState } from "react";
 
+import {
+  Button,
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  Skeleton,
+} from "@/components/ui";
+import { cn } from "@/lib/utils";
+
+/** Aktivní podtržení navigace — značkový gradient z Figmy. */
+const NAV_UNDERLINE = "absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-gradient-l to-gradient-r";
+
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user, loading, login, logout } = useAuth();
@@ -26,74 +40,41 @@ export function Header() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Close mobile menu on escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
+  const navLinkClass = (path: string) =>
+    cn(
+      "nav-link relative pb-1 transition-colors",
+      isActive(path) ? "font-bold text-foreground" : "font-medium text-foreground/70 hover:text-foreground",
+    );
 
   return (
-    <header className="bg-white sticky top-0 z-[1000]" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
-      <div className="mx-auto px-3 sm:px-6 lg:px-6 xl:px-10 py-2 lg:py-[7px]" style={{ maxWidth: '1600px', width: '100%', minHeight: '56px', height: 'auto' }}>
-        <nav className="flex items-center justify-between h-full gap-2">
+    <header className="sticky top-0 z-[var(--z-header)] rounded-b-lg border-b border-border bg-background">
+      <div className="mx-auto px-3 py-2 sm:px-6 lg:px-6 lg:py-[7px] xl:px-10" style={{ maxWidth: '1600px', width: '100%', minHeight: '56px', height: 'auto' }}>
+        <nav className="flex h-full items-center justify-between gap-2">
           {/* Logo and Brand */}
-          <Link href={ROUTES.HOME} className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
+          <Link href={ROUTES.HOME} className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
             <Image
               src="/logo.svg"
               alt="PRAKTIK-AI Logo"
               width={221}
               height={83}
-              className="w-[64px] h-[24px] sm:w-[180px] sm:h-[68px] lg:w-[221px] lg:h-[83px] flex-shrink-0"
+              className="h-[24px] w-[64px] shrink-0 sm:h-[68px] sm:w-[180px] lg:h-[83px] lg:w-[221px]"
             />
-            <span className="text-sm sm:text-lg lg:text-xl font-bold text-black whitespace-nowrap">PRAKTIK-AI</span>
+            <span className="text-sm font-bold whitespace-nowrap text-foreground sm:text-lg lg:text-xl">PRAKTIK-AI</span>
           </Link>
 
           {/* Navigation Links */}
-          <ul className="hidden md:flex items-center gap-4 lg:gap-8 whitespace-nowrap">
+          <ul className="hidden items-center gap-4 whitespace-nowrap md:flex lg:gap-8">
             <li>
-              <Link
-                href={ROUTES.HOME}
-                data-text="Home"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.HOME)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
+              <Link href={ROUTES.HOME} data-text="Home" className={navLinkClass(ROUTES.HOME)}>
                 Home
-                {isActive(ROUTES.HOME) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
+                {isActive(ROUTES.HOME) && <span className={NAV_UNDERLINE} />}
               </Link>
             </li>
             {isAuthenticated && (
               <li>
-                <Link
-                  href="/moje-kurzy"
-                  data-text="Moje kurzy"
-                  className={`nav-link relative pb-1 transition-colors ${
-                    isActive('/moje-kurzy')
-                      ? 'text-black font-bold'
-                      : 'text-gray-700 hover:text-black font-medium'
-                  }`}
-                >
+                <Link href="/moje-kurzy" data-text="Moje kurzy" className={navLinkClass('/moje-kurzy')}>
                   Moje kurzy
-                  {isActive('/moje-kurzy') && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-0.5"
-                      style={{
-                        background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                      }}
-                    />
-                  )}
+                  {isActive('/moje-kurzy') && <span className={NAV_UNDERLINE} />}
                 </Link>
               </li>
             )}
@@ -101,218 +82,154 @@ export function Header() {
               <Link
                 href={ROUTES.PUBLIC_DATABASE}
                 data-text="Veřejná databáze"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.PUBLIC_DATABASE)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
+                className={navLinkClass(ROUTES.PUBLIC_DATABASE)}
               >
                 Veřejná databáze
-                {isActive(ROUTES.PUBLIC_DATABASE) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
+                {isActive(ROUTES.PUBLIC_DATABASE) && <span className={NAV_UNDERLINE} />}
               </Link>
             </li>
             <li>
-              <Link
-                href="/odmeny"
-                data-text="Odměny"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/odmeny')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
+              <Link href="/odmeny" data-text="Odměny" className={navLinkClass('/odmeny')}>
                 Odměny
-                {isActive('/odmeny') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
+                {isActive('/odmeny') && <span className={NAV_UNDERLINE} />}
               </Link>
             </li>
             <li>
-              <Link
-                href="/tutor"
-                data-text="Tutor"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/tutor')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
+              <Link href="/tutor" data-text="Tutor" className={navLinkClass('/tutor')}>
                 Tutor
-                {isActive('/tutor') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
+                {isActive('/tutor') && <span className={NAV_UNDERLINE} />}
               </Link>
             </li>
             {can('lector') && (
-            <li>
-              <Link
-                href="/admin"
-                data-text="Admin"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/admin')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Admin
-                {isActive('/admin') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
+              <li>
+                <Link href="/admin" data-text="Admin" className={navLinkClass('/admin')}>
+                  Admin
+                  {isActive('/admin') && <span className={NAV_UNDERLINE} />}
+                </Link>
+              </li>
             )}
           </ul>
 
           {/* User Actions */}
-          <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-4">
             {isAuthenticated && (
-              <Link
-                href="/tutor"
+              <Button
+                render={<Link href="/tutor" />}
+                nativeButton={false}
+                variant="ghost"
+                size="icon"
                 aria-label="AI tutor"
                 title="AI tutor"
-                className={`hidden sm:inline-flex p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/tutor') ? 'bg-gray-100' : ''
-                }`}
+                className={cn("hidden rounded-full sm:inline-flex", isActive('/tutor') && "bg-muted")}
               >
-                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-              </Link>
+                <MessageCircle className="size-5 sm:size-6" strokeWidth={1.5} />
+              </Button>
             )}
 
             {/* Admin shortcut on mobile (md:hidden, only for lectors+) */}
             {isAuthenticated && can('lector') && (
-              <Link
-                href="/admin"
+              <Button
+                render={<Link href="/admin" />}
+                nativeButton={false}
+                variant="ghost"
+                size="icon"
                 title="Admin dashboard"
                 aria-label="Admin dashboard"
-                className={`md:hidden p-1.5 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/admin') ? 'bg-gray-100' : ''
-                }`}
+                className={cn("rounded-full md:hidden", isActive('/admin') && "bg-muted")}
               >
-                <LayoutDashboard className="w-5 h-5 text-black" strokeWidth={1.5} />
-              </Link>
+                <LayoutDashboard className="size-5" strokeWidth={1.5} />
+              </Button>
             )}
 
             {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
+              <Skeleton className="size-8 rounded-full" />
             ) : isAuthenticated ? (
               <div className="flex items-center gap-1 sm:gap-3">
-                <Link
-                  href={ROUTES.PROFILE}
-                  className={`flex items-center gap-1.5 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                    isActive(ROUTES.PROFILE) ? "bg-gray-100" : ""
-                  }`}
+                <Button
+                  render={<Link href={ROUTES.PROFILE} />}
+                  nativeButton={false}
+                  variant="ghost"
+                  className={cn("rounded-full", isActive(ROUTES.PROFILE) && "bg-muted")}
                   title={displayName ?? "Můj profil"}
                 >
-                  <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
+                  <UserRound className="size-5 sm:size-6" strokeWidth={1.5} />
                   {displayName && (
-                    <span className="hidden lg:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                    <span className="hidden max-w-[120px] truncate text-sm font-medium lg:block">
                       {displayName}
                     </span>
                   )}
-                </Link>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={logout}
                   title="Odhlásit se"
                   aria-label="Odhlásit se"
-                  className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full sm:rounded-md transition-colors"
+                  className="rounded-full text-muted-foreground hover:text-destructive sm:rounded-md"
                 >
-                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
+                  <LogOut data-icon="inline-start" strokeWidth={1.5} />
                   <span className="hidden sm:block">Odhlásit</span>
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
+              <Button
+                variant="brand"
+                size="lg"
                 onClick={login}
                 title="Přihlásit se"
                 aria-label="Přihlásit se"
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
-                style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
               >
-                <LogIn className="w-4 h-4" strokeWidth={2} />
+                <LogIn data-icon="inline-start" strokeWidth={2} />
                 <span className="hidden sm:inline">Přihlásit se</span>
                 <span className="sm:hidden">Přihlásit</span>
-              </button>
+              </Button>
             )}
 
             {/* Mobile hamburger toggle */}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
+              className="shrink-0 md:hidden"
               aria-label="Otevřít menu"
             >
-              <Menu className="w-6 h-6 text-black" strokeWidth={1.5} />
-            </button>
+              <Menu className="size-6" strokeWidth={1.5} />
+            </Button>
           </div>
         </nav>
       </div>
 
-      {/* Mobile menu drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[2000] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <span className="text-base font-bold text-black">Menu</span>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
-                aria-label="Zavřít menu"
-              >
-                <X className="w-5 h-5 text-black" strokeWidth={1.5} />
-              </button>
-            </div>
+      {/* Mobile menu — kitový Drawer, overlay i stacking řeší Base UI */}
+      <Drawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} swipeDirection="right">
+        <DrawerContent className="md:hidden" aria-label="Menu">
+          <DrawerHeader className="flex-row items-center justify-between border-b pb-4 text-left">
+            <DrawerTitle>Menu</DrawerTitle>
+            <DrawerClose render={<Button variant="ghost" size="icon-sm" aria-label="Zavřít menu" />}>
+              <X strokeWidth={1.5} />
+            </DrawerClose>
+          </DrawerHeader>
 
-            <nav className="flex-1 overflow-y-auto py-2">
-              <MobileNavLink href={ROUTES.HOME} active={isActive(ROUTES.HOME)}>Home</MobileNavLink>
-              {isAuthenticated && (
-                <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
-              )}
-              <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
-              <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
-              <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
-              {can('lector') && (
-                <MobileNavLink href="/admin" active={isActive('/admin')} icon={<LayoutDashboard className="w-4 h-4" strokeWidth={1.5} />}>
-                  Admin
-                </MobileNavLink>
-              )}
-            </nav>
-
-            {isAuthenticated && displayName && (
-              <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500 truncate">
-                {displayName}
-              </div>
+          <nav className="flex-1 overflow-y-auto py-2">
+            <MobileNavLink href={ROUTES.HOME} active={isActive(ROUTES.HOME)}>Home</MobileNavLink>
+            {isAuthenticated && (
+              <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
             )}
-          </div>
-        </div>
-      )}
+            <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
+            <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
+            <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
+            {can('lector') && (
+              <MobileNavLink href="/admin" active={isActive('/admin')} icon={<LayoutDashboard className="size-4" strokeWidth={1.5} />}>
+                Admin
+              </MobileNavLink>
+            )}
+          </nav>
+
+          {isAuthenticated && displayName && (
+            <div className="truncate border-t px-4 py-3 text-xs text-muted-foreground">
+              {displayName}
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
     </header>
   );
 }
@@ -331,11 +248,12 @@ function MobileNavLink({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 px-4 py-3 text-sm transition-colors ${
+      className={cn(
+        "flex items-center gap-2 border-l-4 py-3 pl-3 pr-4 text-sm transition-colors",
         active
-          ? 'text-black font-bold bg-gray-50 border-l-4 border-l-purple-600 pl-3'
-          : 'text-gray-700 hover:bg-gray-50 hover:text-black font-medium border-l-4 border-l-transparent pl-3'
-      }`}
+          ? "border-l-primary bg-muted/50 font-bold text-foreground"
+          : "border-l-transparent font-medium text-foreground/70 hover:bg-muted/50 hover:text-foreground",
+      )}
     >
       {icon}
       <span>{children}</span>

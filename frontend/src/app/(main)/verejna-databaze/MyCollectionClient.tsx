@@ -263,8 +263,8 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
     <div className="space-y-6">
       <section>
         <div className="mb-2">
-          <h2 className="text-xl font-bold text-black">Moje sbírka materiálů</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-xl font-bold text-foreground">Moje sbírka materiálů</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Tvé uložené a vytvořené materiály. Hotové materiály můžeš odeslat ke schválení
             a sdílet je s ostatními. Pomocí složek si materiály roztřídíš.
           </p>
@@ -275,7 +275,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         <button
           type="button"
           onClick={() => setFolderModalOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-purple-300 text-purple-700 bg-white text-sm font-medium hover:bg-purple-50 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-gradient-r/30 text-gradient-r bg-card text-sm font-medium hover:bg-gradient-r/10 transition-colors"
         >
           <FolderPlus size={16} strokeWidth={1.75} />
           Nová složka
@@ -286,8 +286,8 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           aria-pressed={activeFolderId === null}
           className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
             activeFolderId === null
-              ? "bg-gray-100 border-gray-300 text-gray-900"
-              : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+              ? "bg-muted border-border text-foreground"
+              : "bg-card border-border text-foreground hover:bg-muted/50"
           }`}
         >
           Vše
@@ -304,15 +304,15 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               aria-pressed={isActive}
               className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-purple-50 border-purple-200 text-purple-700"
-                  : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
+                  ? "bg-gradient-r/10 border-gradient-r/30 text-gradient-r"
+                  : "bg-card border-border text-foreground hover:bg-muted/50"
               }`}
             >
               <Folder size={16} strokeWidth={1.75} />
               {folder.name}
-              {folder.isPublic && <Globe size={13} strokeWidth={1.75} className="text-emerald-600" />}
+              {folder.isPublic && <Globe size={13} strokeWidth={1.75} className="text-success" />}
               {typeof folder.itemCount === "number" && (
-                <span className="text-xs text-gray-400">({folder.itemCount})</span>
+                <span className="text-xs text-muted-foreground">({folder.itemCount})</span>
               )}
             </button>
           );
@@ -321,22 +321,22 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
       {/* Lišta akcí pro aktivní složku */}
       {activeFolder && (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-4 py-3">
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 truncate">{activeFolder.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground truncate">{activeFolder.name}</h3>
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                   activeFolder.isPublic
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-gray-100 text-gray-600"
+                    ? "bg-success/10 text-success"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {activeFolder.isPublic ? "Veřejná" : "Soukromá"}
               </span>
             </div>
             {activeFolder.description && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{activeFolder.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{activeFolder.description}</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               type="button"
               onClick={handleTogglePublicFolder}
               disabled={togglingPublic}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-60"
             >
               {activeFolder.isPublic ? (
                 <EyeOff size={14} strokeWidth={1.75} />
@@ -356,7 +356,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
             <button
               type="button"
               onClick={() => setRenameTarget(activeFolder)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50"
             >
               <Pencil size={14} strokeWidth={1.75} />
               Přejmenovat
@@ -364,7 +364,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
             <button
               type="button"
               onClick={() => setDeleteTarget(activeFolder)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-red-200 bg-white text-sm font-medium text-red-600 hover:bg-red-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-destructive/30 bg-card text-sm font-medium text-destructive hover:bg-destructive/10"
             >
               <Trash2 size={14} strokeWidth={1.75} />
               Smazat
@@ -377,7 +377,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         <div className="relative w-full sm:w-64">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             strokeWidth={1.75}
           />
           <input
@@ -385,7 +385,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Hledat"
-            className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+            className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30"
           />
         </div>
 
@@ -411,7 +411,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         <button
           type="button"
           onClick={resetFilters}
-          className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          className="px-3 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
         >
           Resetovat
         </button>
@@ -440,13 +440,13 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         </div>
 
         {folderLoading && (
-          <p className="mt-4 text-sm text-gray-500 bg-white border border-gray-200 rounded-md p-6 text-center">
+          <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             Načítám obsah složky…
           </p>
         )}
 
         {!folderLoading && filtered.length === 0 && (
-          <p className="mt-4 text-sm text-gray-500 bg-white border border-gray-200 rounded-md p-6 text-center">
+          <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             {activeFolderId
               ? "Tato složka je prázdná nebo neodpovídá zvolenému filtru."
               : "Pro zvolený filtr nebyly nalezeny žádné materiály."}
@@ -501,7 +501,7 @@ function CreateMaterialCard({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center min-h-[260px] bg-purple-50/40 border-2 border-dashed border-purple-200 rounded-lg text-purple-700 hover:bg-purple-50 transition-colors w-full"
+      className="flex items-center justify-center min-h-[260px] bg-gradient-r/10/40 border-2 border-dashed border-gradient-r/30 rounded-lg text-gradient-r hover:bg-gradient-r/10 transition-colors w-full"
     >
       <div className="flex flex-col items-center gap-2">
         <Plus size={28} strokeWidth={1.5} />

@@ -188,8 +188,8 @@ export default function AssessmentTab({
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-          <p className="text-sm text-gray-500">Připravuji test...</p>
+          <Loader2 className="size-8 animate-spin text-gradient-r" />
+          <p className="text-sm text-muted-foreground">Připravuji test...</p>
         </div>
       </div>
     );
@@ -200,23 +200,23 @@ export default function AssessmentTab({
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xl font-bold text-gray-800">Test</h3>
+          <h3 className="text-xl font-bold text-foreground">Test</h3>
           {!moduleCompleted && (
             <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{
               backgroundColor: attemptsRemaining <= 1 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 91, 168, 0.1)',
-              color: attemptsRemaining <= 1 ? '#DC2626' : '#8B5BA8',
+              color: attemptsRemaining <= 1 ? 'var(--destructive)' : 'var(--gradient-r)',
             }}>
               Zbývá pokusů: {attemptsRemaining} z {maxAttempts}
             </span>
           )}
         </div>
         {/* Progress bar */}
-        <div className="h-1.5 w-full rounded-full bg-gray-200">
+        <div className="h-1.5 w-full rounded-full bg-muted">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
               width: moduleCompleted ? '100%' : `${(attemptsUsed / maxAttempts) * 100}%`,
-              backgroundColor: passed ? '#00C896' : '#8B5BA8',
+              backgroundColor: passed ? 'var(--primary)' : 'var(--gradient-r)',
             }}
           />
         </div>
@@ -224,12 +224,12 @@ export default function AssessmentTab({
 
       {/* Question text — always visible */}
       <div className="mb-6">
-        <p className="text-gray-800 font-medium leading-relaxed">{question}</p>
+        <p className="text-foreground font-medium leading-relaxed">{question}</p>
       </div>
 
       {/* Error banner */}
       {errorMsg && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
           {errorMsg}
         </div>
       )}
@@ -245,20 +245,20 @@ export default function AssessmentTab({
           >
             {/* Drobné skóre feedback nad celebration kartou */}
             {lastAttempt && (
-              <div className="p-4 rounded-lg border bg-green-50 border-green-200 mb-6">
+              <div className="p-4 rounded-lg border bg-success/10 border-success/30 mb-6">
                 <div className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="size-5 text-success shrink-0 mt-0.5" />
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold text-green-700">
+                      <span className="text-sm font-semibold text-success">
                         Skóre: {lastAttempt.aiScore}/100
                       </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">
                         Splněno
                       </span>
                     </div>
                     {lastAttempt.aiFeedback && (
-                      <p className="text-sm text-gray-600">{lastAttempt.aiFeedback}</p>
+                      <p className="text-sm text-muted-foreground">{lastAttempt.aiFeedback}</p>
                     )}
                   </div>
                 </div>
@@ -298,7 +298,7 @@ export default function AssessmentTab({
               rows={8}
               disabled={submitting}
               style={{ minHeight: 200, resize: 'vertical' }}
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300 mb-3"
+              className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 mb-3"
             />
 
             {/* Last attempt feedback */}
@@ -309,17 +309,17 @@ export default function AssessmentTab({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25 }}
                 className={`p-4 rounded-lg border mb-4 ${
-                  lastAttempt.aiScore >= PASSING_SCORE ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                  lastAttempt.aiScore >= PASSING_SCORE ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <XCircle className="size-5 text-destructive shrink-0 mt-0.5" />
                   <div>
-                    <span className="text-sm font-semibold text-red-700">
+                    <span className="text-sm font-semibold text-destructive">
                       Skóre: {lastAttempt.aiScore}/100
                     </span>
                     {lastAttempt.aiFeedback && (
-                      <p className="text-sm text-gray-600 mt-1">{lastAttempt.aiFeedback}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{lastAttempt.aiFeedback}</p>
                     )}
                   </div>
                 </div>
@@ -331,12 +331,12 @@ export default function AssessmentTab({
               <button
                 onClick={handleSubmitAnswer}
                 disabled={!userAnswer.trim() || submitting || userAnswer.trim() === lastSubmittedAnswer}
-                className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#8B5BA8' }}
+                className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: 'var(--gradient-r)' }}
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                     Vyhodnocuji...
                   </>
                 ) : (
@@ -358,15 +358,15 @@ export default function AssessmentTab({
           >
             {/* Last feedback */}
             {lastAttempt && (
-              <div className="p-4 rounded-lg border bg-red-50 border-red-200 mb-6">
+              <div className="p-4 rounded-lg border bg-destructive/10 border-destructive/30 mb-6">
                 <div className="flex items-start gap-2">
-                  <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <XCircle className="size-5 text-destructive shrink-0 mt-0.5" />
                   <div>
-                    <span className="text-sm font-semibold text-red-700">
+                    <span className="text-sm font-semibold text-destructive">
                       Skóre: {lastAttempt.aiScore}/100
                     </span>
                     {lastAttempt.aiFeedback && (
-                      <p className="text-sm text-gray-600 mt-1">{lastAttempt.aiFeedback}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{lastAttempt.aiFeedback}</p>
                     )}
                   </div>
                 </div>
@@ -374,15 +374,15 @@ export default function AssessmentTab({
             )}
 
             <div className="text-center py-6">
-              <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-800 mb-1">Vyčerpali jste všechny pokusy</h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <XCircle className="size-16 text-destructive mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-foreground mb-1">Vyčerpali jste všechny pokusy</h3>
+              <p className="text-sm text-muted-foreground mb-6">
                 Pro pokračování musíte opakovat celý modul znovu.
               </p>
               <button
                 onClick={onRestartModule}
-                className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
-                style={{ backgroundColor: '#8B5BA8' }}
+                className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                style={{ backgroundColor: 'var(--gradient-r)' }}
               >
                 Opakovat modul
               </button>

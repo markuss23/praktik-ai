@@ -57,7 +57,7 @@ const cardHover = {
 
 export function ProjectAboutSection() {
   return (
-    <section className="bg-white py-12 sm:py-16">
+    <section className="bg-card py-12 sm:py-16">
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
         {/* O projektu */}
         <motion.article
@@ -66,13 +66,13 @@ export function ProjectAboutSection() {
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
           whileHover={cardHover}
-          className="bg-white border border-gray-200 rounded-2xl p-8 sm:p-10 shadow-sm hover:shadow-md transition-shadow"
+          className="bg-card border border-border rounded-2xl p-8 sm:p-10 shadow-sm hover:shadow-md transition-shadow"
         >
-          <p className="text-2xl font-semibold tracking-[0.2em] text-emerald-700 mb-4">O PROJEKTU</p>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight mb-4">
+          <p className="text-2xl font-semibold tracking-[0.2em] text-success mb-4">O PROJEKTU</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-tight mb-4">
             Vzdělávání, které se učí společně s vámi
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 max-w-3xl mb-8">
+          <p className="text-sm sm:text-base text-muted-foreground max-w-3xl mb-8">
             Praktik-AI spojuje pedagogické zkušenosti s generativní umělou inteligencí a vytváří
             prostředí, které se přizpůsobuje každému studentovi. Žádné šablony — jen výuka, která
             dává smysl.
@@ -88,8 +88,8 @@ export function ProjectAboutSection() {
                 transition={{ duration: 0.35, delay: 0.05 * i, ease: 'easeOut' }}
                 className="flex flex-col"
               >
-                <span className="text-3xl sm:text-4xl font-bold text-emerald-600">{h.value}</span>
-                <span className="text-xs sm:text-sm text-gray-500 mt-1">{h.label}</span>
+                <span className="text-3xl sm:text-4xl font-bold text-success">{h.value}</span>
+                <span className="text-xs sm:text-sm text-muted-foreground mt-1">{h.label}</span>
               </motion.div>
             ))}
           </div>
@@ -104,8 +104,8 @@ export function ProjectAboutSection() {
           className="mt-8 rounded-2xl p-8 sm:p-10"
           style={{ backgroundColor: '#E5F4EA' }}
         >
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Cíle projektu</h3>
-          <p className="text-sm sm:text-base text-gray-700 max-w-3xl mb-8">
+          <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-3">Cíle projektu</h3>
+          <p className="text-sm sm:text-base text-foreground max-w-3xl mb-8">
             Hlavním cílem projektu je vývoj a pilotní ověření inovativního systému pro
             personalizované vzdělávání s využitím pokročilé analytiky a generativní umělé
             inteligence. Projekt se zaměřuje na vytvoření adaptivního prostředí, které reaguje na
@@ -121,14 +121,14 @@ export function ProjectAboutSection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.35, delay: 0.05 * i, ease: 'easeOut' }}
                 whileHover={cardHover}
-                className="bg-white rounded-xl p-5 border border-emerald-100/60 hover:shadow-md transition-shadow flex gap-4"
+                className="bg-card rounded-xl p-5 border border-success/30/60 hover:shadow-md transition-shadow flex gap-4"
               >
-                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+                <div className="shrink-0 size-9 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                   {g.n}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="font-semibold text-gray-900 text-sm sm:text-base mb-1">{g.title}</h4>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{g.desc}</p>
+                  <h4 className="font-semibold text-foreground text-sm sm:text-base mb-1">{g.title}</h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{g.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -142,7 +142,7 @@ export function ProjectAboutSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-xl sm:text-2xl font-bold text-gray-900 mb-4"
+            className="text-xl sm:text-2xl font-bold text-foreground mb-4"
           >
             Výstup projektu
           </motion.h3>
@@ -155,10 +155,10 @@ export function ProjectAboutSection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.35, delay: 0.05 * i, ease: 'easeOut' }}
                 whileHover={cardHover}
-                className="bg-white rounded-xl p-5 sm:p-6 border border-gray-200 hover:shadow-md transition-shadow"
+                className="bg-card rounded-xl p-5 sm:p-6 border border-border hover:shadow-md transition-shadow"
               >
-                <h4 className="font-semibold text-gray-900 text-sm sm:text-base mb-2">{o.title}</h4>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{o.desc}</p>
+                <h4 className="font-semibold text-foreground text-sm sm:text-base mb-2">{o.title}</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{o.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -171,7 +171,7 @@ export function ProjectAboutSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
-            className="text-xl sm:text-2xl font-bold text-gray-900 mb-4"
+            className="text-xl sm:text-2xl font-bold text-foreground mb-4"
           >
             Přínos a výzkum
           </motion.h3>
@@ -183,7 +183,7 @@ export function ProjectAboutSection() {
               transition={{ duration: 0.45, ease: 'easeOut' }}
               className="flex flex-col gap-4"
             >
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+              <p className="text-sm sm:text-base text-foreground leading-relaxed">
                 Projekt přináší unikátní spojení pedagogických věd a moderních technologií
                 zpracování přirozeného jazyka (NLP). Výzkumná část se soustředí na měření dopadu
                 personalizované zpětné vazby generované AI na motivaci a úspěšnost studentů.
@@ -194,15 +194,15 @@ export function ProjectAboutSection() {
                   backgroundColor: '#E5F4EA',
                   transition: { duration: 0.2 },
                 }}
-                className="rounded-xl p-5 border border-emerald-100"
+                className="rounded-xl p-5 border border-success/30"
                 style={{ backgroundColor: '#F0F8F2' }}
               >
-                <p className="text-sm sm:text-base text-gray-800 italic leading-relaxed">
+                <p className="text-sm sm:text-base text-foreground italic leading-relaxed">
                   „Naším cílem není nahradit učitele, ale poskytnout mu nástroj, který mu uvolní
                   ruce od rutinních činností a umožní mu věnovat se individuálnímu rozvoji každého
                   žáka."
                 </p>
-                <footer className="mt-3 text-xs text-gray-500">— tým Praktik-AI</footer>
+                <footer className="mt-3 text-xs text-muted-foreground">— tým Praktik-AI</footer>
               </motion.blockquote>
             </motion.div>
 

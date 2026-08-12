@@ -6,7 +6,8 @@ import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-cli
 import { Course as CourseType } from '@/api';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { LoadingState, ErrorState, DeleteConfirmModal } from '@/components/admin';
+import { LoadingState, ErrorState } from '@/components/admin';
+import { ConfirmModal } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRole } from '@/hooks/useRole';
@@ -146,10 +147,10 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   if (courseData && !canEdit) {
     return (
       <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
           Nemáte oprávnění editovat tento kurz. Editovat může pouze vlastník kurzu nebo superadmin.
         </div>
-        <button onClick={goBack} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+        <button onClick={goBack} className="mt-4 px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80">
           Zpět
         </button>
       </div>
@@ -158,35 +159,35 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   return (
     <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat kurz</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-foreground">Editovat kurz</h1>
 
       {error && (
-        <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+        <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-white p-4 sm:p-6 rounded-lg shadow">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-card p-4 sm:p-6 rounded-lg shadow">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">Název kurzu *</label>
+          <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">Název kurzu *</label>
           <input
             type="text"
             id="title"
             required
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
+            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
             placeholder="např. Kurz promptování - začátečníci"
           />
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">Popis kurzu</label>
+          <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">Popis kurzu</label>
           <textarea
             id="description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
+            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
             placeholder="Stručný popis kurzu..."
             rows={4}
           />
@@ -196,11 +197,11 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         {!catalogsLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Blok</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Blok</label>
               <select
                 value={formData.courseBlockId}
                 onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
               >
                 {blocks.map((b) => (
                   <option key={b.blockId} value={b.blockId}>{b.name}</option>
@@ -208,11 +209,11 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cílová skupina</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Cílová skupina</label>
               <select
                 value={formData.courseTargetId}
                 onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
               >
                 {targets.map((t) => (
                   <option key={t.targetId} value={t.targetId}>{t.name}</option>
@@ -220,11 +221,11 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Předmět</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Předmět</label>
               <select
                 value={formData.courseSubjectId}
                 onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
               >
                 {subjects.map((s) => (
                   <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
@@ -237,60 +238,60 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         {/* Modules Section */}
         {modules.length > 0 && (
           <div className="pt-4 border-t">
-            <h2 className="text-lg font-semibold text-black mb-4">Moduly kurzu ({modules.length})</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Moduly kurzu ({modules.length})</h2>
             <div className="space-y-3">
               {modules.map((module, index) => (
-                <div key={module.moduleId} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={module.moduleId} className="border border-border rounded-lg overflow-hidden">
                   <div
-                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
                     onClick={() => toggleModule(module.moduleId)}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                       {editingModule === module.moduleId ? (
                         <input
                           type="text"
                           value={editModuleData.title}
                           onChange={(e) => setEditModuleData({ title: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="px-2 py-1 border border-gray-300 rounded text-black text-sm"
+                          className="px-2 py-1 border border-border rounded text-foreground text-sm"
                         />
                       ) : (
-                        <span className="font-medium text-black">{module.title}</span>
+                        <span className="font-medium text-foreground">{module.title}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {editingModule === module.moduleId ? (
                         <>
-                          <button onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                          <button onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className="p-1 text-success hover:bg-success/20 rounded">
                             <Save size={16} />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                          <button onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className="p-1 text-destructive hover:bg-destructive/20 rounded">
                             <X size={16} />
                           </button>
                         </>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className="p-1 text-gray-600 hover:bg-gray-200 rounded">
+                        <button onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className="p-1 text-muted-foreground hover:bg-muted rounded">
                           <Edit2 size={16} />
                         </button>
                       )}
                       {expandedModules.has(module.moduleId) ? (
-                        <ChevronUp size={20} className="text-gray-500" />
+                        <ChevronUp size={20} className="text-muted-foreground" />
                       ) : (
-                        <ChevronDown size={20} className="text-gray-500" />
+                        <ChevronDown size={20} className="text-muted-foreground" />
                       )}
                     </div>
                   </div>
                   {expandedModules.has(module.moduleId) && (
-                    <div className="p-4 bg-white border-t space-y-4">
+                    <div className="p-4 bg-card border-t space-y-4">
                       {module.learnBlocks && module.learnBlocks.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Učební bloky ({module.learnBlocks.length})</h4>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Učební bloky ({module.learnBlocks.length})</h4>
                           <div className="space-y-2">
                             {module.learnBlocks.map((block, bIndex) => (
-                              <div key={bIndex} className="p-3 bg-blue-50 rounded border border-blue-100">
-                                <div className="text-xs text-blue-600 mb-1">Blok #{bIndex + 1}</div>
-                                <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                              <div key={bIndex} className="p-3 bg-tip/10 rounded border border-tip/30">
+                                <div className="text-xs text-tip mb-1">Blok #{bIndex + 1}</div>
+                                <div className="text-sm text-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
                                   {block.content}
                                 </div>
                               </div>
@@ -301,26 +302,26 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
                       {module.practiceQuestions && module.practiceQuestions.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Otázky ({module.practiceQuestions.length})</h4>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Otázky ({module.practiceQuestions.length})</h4>
                           <div className="space-y-2">
                             {module.practiceQuestions.map((q, qIndex) => (
-                              <div key={qIndex} className="p-3 bg-green-50 rounded border border-green-100">
-                                <div className="text-sm text-gray-700">
+                              <div key={qIndex} className="p-3 bg-success/10 rounded border border-success/30">
+                                <div className="text-sm text-foreground">
                                   <div className="font-medium">{qIndex + 1}. {q.question}</div>
-                                  <div className="text-xs text-gray-500 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
                                   </div>
                                   {q.questionType === 'closed' && q.closedOptions && (
-                                    <div className="mt-1 text-xs text-gray-600">
+                                    <div className="mt-1 text-xs text-muted-foreground">
                                       {q.closedOptions.map((opt, oIndex) => (
-                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
+                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-success font-medium' : ''}>
                                           {String.fromCharCode(65 + oIndex)}. {opt.text}
                                         </div>
                                       ))}
                                     </div>
                                   )}
                                   {q.questionType === 'open' && q.exampleAnswer && (
-                                    <div className="mt-1 text-xs text-gray-600">
+                                    <div className="mt-1 text-xs text-muted-foreground">
                                       Příklad odpovědi: {q.exampleAnswer}
                                     </div>
                                   )}
@@ -333,7 +334,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
                       {(!module.learnBlocks || module.learnBlocks.length === 0) &&
                        (!module.practiceQuestions || module.practiceQuestions.length === 0) && (
-                        <p className="text-sm text-gray-500 italic">Tento modul nemá žádný obsah.</p>
+                        <p className="text-sm text-muted-foreground italic">Tento modul nemá žádný obsah.</p>
                       )}
                     </div>
                   )}
@@ -347,18 +348,18 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           <button
             type="submit"
             disabled={loading}
-            className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
+            className="px-4 sm:px-6 py-2 bg-tip text-primary-foreground rounded-md hover:bg-tip/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
           </button>
-          <button type="button" onClick={goBack} className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base">
+          <button type="button" onClick={goBack} className="px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base">
             Zpět
           </button>
           {isSuperAdmin && (
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 sm:ml-auto text-sm sm:text-base"
+              className="px-4 sm:px-6 py-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/80 sm:ml-auto text-sm sm:text-base"
             >
               Smazat kurz
             </button>
@@ -366,15 +367,16 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         </div>
       </form>
 
-      {showDeleteConfirm && (
-        <DeleteConfirmModal
-          isOpen={showDeleteConfirm}
-          isModule={false}
-          deleting={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        variant="danger"
+        title="Potvrdit smazání"
+        message="Opravdu chcete smazat tento kurz a všechny jeho moduly? Tato akce je nevratná."
+        confirmLabel="Ano, smazat"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

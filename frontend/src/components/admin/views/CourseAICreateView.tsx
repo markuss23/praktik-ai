@@ -5,6 +5,7 @@ import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from '
 import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
+import { Button, Modal } from '@/components/ui';
 import { CourseBlock, CourseTarget, CourseSubject, Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -386,7 +387,7 @@ export function CourseAICreateView() {
 
   return (
     <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <CoursePageHeader
           breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
           title="Popis kurzu"
@@ -397,16 +398,16 @@ export function CourseAICreateView() {
 
       <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
         {error && (
-          <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+          <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
+        <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Název kurzu */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Název kurzu
               </label>
               <input
@@ -416,29 +417,29 @@ export function CourseAICreateView() {
                 maxLength={120}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
                 placeholder="Výběr zrn kávy"
               />
-              <span className="text-xs text-gray-400 mt-1">{formData.title.length}/120</span>
+              <span className="text-xs text-muted-foreground mt-1">{formData.title.length}/120</span>
             </div>
 
             {/* Katalogové údaje */}
             {catalogsLoading ? (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
                 <span>Načítám katalogy...</span>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Tematický blok
                   </label>
                   <select
                     required
                     value={formData.courseBlockId}
                     onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
                   >
                     <option value={0} disabled>Vyberte blok...</option>
                     {blocks.map((b) => (
@@ -447,14 +448,14 @@ export function CourseAICreateView() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Cílová skupina
                   </label>
                   <select
                     required
                     value={formData.courseTargetId}
                     onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
                   >
                     <option value={0} disabled>Vyberte skupinu...</option>
                     {targets.map((t) => (
@@ -463,14 +464,14 @@ export function CourseAICreateView() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Obor
                   </label>
                   <select
                     required
                     value={formData.courseSubjectId}
                     onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
                   >
                     <option value={0} disabled>Vyberte obor...</option>
                     {subjects.map((s) => (
@@ -483,7 +484,7 @@ export function CourseAICreateView() {
 
             {/* Popis kurzu */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Popis kurzu
               </label>
               <textarea
@@ -493,16 +494,16 @@ export function CourseAICreateView() {
                 maxLength={500}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black resize-none"
+                className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground resize-none"
                 placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn..."
               />
-              <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
+              <span className="text-xs text-muted-foreground mt-1">{formData.description.length}/500</span>
             </div>
 
             {/* Počet modulů + Doporučená obtížnost + Délka kurzu */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Počet modulů
                 </label>
                 <div className="flex items-center gap-2">
@@ -511,7 +512,7 @@ export function CourseAICreateView() {
                     aria-label="Snížit počet modulů"
                     disabled={formData.moduleCount <= 1}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className="size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     -
                   </button>
@@ -524,25 +525,25 @@ export function CourseAICreateView() {
                       const val = parseInt(e.target.value) || 1;
                       setFormData({ ...formData, moduleCount: Math.min(12, Math.max(1, val)) });
                     }}
-                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                    className="w-16 px-2 py-2 border border-border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
                   />
                   <button
                     type="button"
                     aria-label="Zvýšit počet modulů"
                     disabled={formData.moduleCount >= 12}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.min(12, formData.moduleCount + 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className="size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     +
                   </button>
-                  <span className="text-xs text-gray-500 ml-1">
+                  <span className="text-xs text-muted-foreground ml-1">
                     max 12
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Doporučená obtížnost
                 </label>
                 <select
@@ -550,7 +551,7 @@ export function CourseAICreateView() {
                   onChange={(e) =>
                     setFormData({ ...formData, difficulty: e.target.value as Difficulty })
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
+                  className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
                 >
                   {DIFFICULTY_ORDER.map((d: Difficulty) => (
                     <option key={d} value={d}>
@@ -561,7 +562,7 @@ export function CourseAICreateView() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Délka kurzu (minuty)
                 </label>
                 <input
@@ -570,7 +571,7 @@ export function CourseAICreateView() {
                   max="300"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
                   placeholder={String(formData.moduleCount * 20)}
                 />
               </div>
@@ -579,7 +580,7 @@ export function CourseAICreateView() {
 
             {/* Nahrát podklady */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Nahrát podklady
               </label>
 
@@ -589,20 +590,20 @@ export function CourseAICreateView() {
                   {files.map((f) => (
                     <div
                       key={f.name}
-                      className="inline-flex items-center gap-2 max-w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm"
+                      className="inline-flex items-center gap-2 max-w-full px-3 py-1.5 bg-muted/50 border border-border rounded-md text-sm"
                     >
-                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-gray-700 truncate max-w-[180px]" title={f.name}>{f.name}</span>
-                      <span className="text-gray-400 flex-shrink-0 text-xs">
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-foreground truncate max-w-[180px]" title={f.name}>{f.name}</span>
+                      <span className="text-muted-foreground shrink-0 text-xs">
                         {(f.size / 1024).toFixed(0)} KB
                       </span>
                       <button
                         type="button"
                         onClick={() => removeFile(f.name)}
-                        className="p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        className="p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
                         title="Odebrat soubor"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="size-3.5" />
                       </button>
                     </div>
                   ))}
@@ -617,15 +618,15 @@ export function CourseAICreateView() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors ${
                   dragActive
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    ? 'border-gradient-r/30 bg-gradient-r/10'
+                    : 'border-border hover:border-border hover:bg-muted/50'
                 }`}
               >
-                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-purple-500' : 'text-gray-400'}`} size={32} />
-                <p className="text-sm font-medium text-gray-700 mb-1">
+                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-gradient-r' : 'text-muted-foreground'}`} size={32} />
+                <p className="text-sm font-medium text-foreground mb-1">
                   Přetáhněte soubory sem nebo klikněte pro výběr
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Markdown (.md) a Word (.docx) — lze vybrat více souborů najednou
                 </p>
                 <input
@@ -645,7 +646,7 @@ export function CourseAICreateView() {
                 type="button"
                 onClick={goToCourses}
                 disabled={loading}
-                className="text-gray-600 hover:text-gray-800 transition-colors text-sm disabled:opacity-50"
+                className="text-muted-foreground hover:text-foreground transition-colors text-sm disabled:opacity-50"
               >
                 Zpět
               </button>
@@ -653,7 +654,7 @@ export function CourseAICreateView() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
-                className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 <span>{loading ? getStepMessage() : 'Pokračovat'}</span>
@@ -670,7 +671,7 @@ export function CourseAICreateView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40" />
             <motion.div
@@ -678,13 +679,13 @@ export function CourseAICreateView() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+              className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
             >
               <div className="flex items-center gap-3">
-                <Loader2 size={20} className="text-purple-600 animate-spin" />
-                <h3 className="text-lg font-bold text-gray-900">Nahrávání podkladů</h3>
+                <Loader2 size={20} className="text-gradient-r animate-spin" />
+                <h3 className="text-lg font-bold text-foreground">Nahrávání podkladů</h3>
               </div>
-              <p className="text-sm text-gray-600 mt-2">Soubory se nahrávají na server...</p>
+              <p className="text-sm text-muted-foreground mt-2">Soubory se nahrávají na server...</p>
             </motion.div>
           </motion.div>
         )}
@@ -695,7 +696,7 @@ export function CourseAICreateView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40" />
             <motion.div
@@ -703,32 +704,32 @@ export function CourseAICreateView() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6"
+              className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6"
               role="dialog"
               aria-modal="true"
               aria-label="Průběh generování kurzu"
             >
               <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-900">AI generuje váš kurz</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-bold text-foreground">AI generuje váš kurz</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Toto může trvat několik minut. Prosím neopouštějte stránku.
                 </p>
               </div>
 
               {/* Progress bar */}
               <div className="mb-4">
-                <div className="flex items-center justify-between text-xs text-gray-600 mb-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                   <span className="flex items-center gap-1.5 font-medium">
-                    <Loader2 size={12} className="animate-spin text-purple-600" />
+                    <Loader2 size={12} className="animate-spin text-gradient-r" />
                     {progress.label}
                   </span>
                   <span className="tabular-nums">
                     {Math.min(progress.step, progress.total)} / {progress.total}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-purple-500 to-green-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-gradient-r to-primary rounded-full"
                     initial={{ width: 0 }}
                     animate={{
                       width: `${Math.round((Math.min(progress.step, progress.total) / progress.total) * 100)}%`,
@@ -753,16 +754,16 @@ export function CourseAICreateView() {
                     <li
                       key={n}
                       className={`flex items-center gap-2 ${
-                        done ? 'text-gray-500' : active ? 'text-gray-900 font-medium' : 'text-gray-400'
+                        done ? 'text-muted-foreground' : active ? 'text-foreground font-medium' : 'text-muted-foreground'
                       }`}
                     >
-                      <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                      <span className="size-5 flex items-center justify-center shrink-0">
                         {done ? (
-                          <Check size={14} className="text-green-600" />
+                          <Check size={14} className="text-success" />
                         ) : active ? (
-                          <Loader2 size={14} className="animate-spin text-purple-600" />
+                          <Loader2 size={14} className="animate-spin text-gradient-r" />
                         ) : (
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                          <span className="size-1.5 bg-muted rounded-full" />
                         )}
                       </span>
                       <span>{label}</span>
@@ -774,48 +775,36 @@ export function CourseAICreateView() {
           </motion.div>
         )}
 
-        {generationError && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-black/40"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
-              role="alertdialog"
-              aria-modal="true"
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                  <AlertTriangle size={20} className="text-red-500" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-gray-900">Generování kurzu selhalo</h3>
-                  <p className="text-sm text-gray-600 mt-1 break-words">{generationError}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end">
-                <button
-                  onClick={() => {
-                    setGenerationError(null);
-                    goToCourses();
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors"
-                >
-                  Přejít na kurzy
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
       </AnimatePresence>
+
+      {/* Chyba generování — kitový Modal */}
+      <Modal
+        isOpen={generationError !== null}
+        onClose={() => {
+          setGenerationError(null);
+          goToCourses();
+        }}
+        title="Generování kurzu selhalo"
+        maxWidth="max-w-md"
+        footer={
+          <Button
+            size="lg"
+            onClick={() => {
+              setGenerationError(null);
+              goToCourses();
+            }}
+          >
+            Přejít na kurzy
+          </Button>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 rounded-lg bg-destructive/20 p-2">
+            <AlertTriangle className="size-5 text-destructive" />
+          </div>
+          <p className="text-sm break-words text-muted-foreground">{generationError}</p>
+        </div>
+      </Modal>
     </div>
   );
 }

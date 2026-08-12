@@ -1,6 +1,10 @@
 'use client';
 
-import { useModalDismiss } from '@/hooks/useModalDismiss';
+import { AlertTriangle, HelpCircle, Loader2 } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
+import { Button } from '../ui-kit/button';
+import { Modal } from './Modal';
 
 export type ConfirmVariant = 'primary' | 'danger' | 'warning';
 
@@ -16,14 +20,23 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-const variantClasses: Record<ConfirmVariant, string> = {
-  primary: 'bg-indigo-600 hover:bg-indigo-700',
-  danger: 'bg-red-600 hover:bg-red-700',
-  warning: 'bg-amber-500 hover:bg-amber-600',
+/** Mapování projektové varianty na kitové tlačítko + barvu ikony. */
+const VARIANTS: Record<
+  ConfirmVariant,
+  { button: 'default' | 'destructive' | 'warning'; icon: typeof AlertTriangle; iconClass: string }
+> = {
+  primary: { button: 'default', icon: HelpCircle, iconClass: 'bg-primary/10 text-primary' },
+  danger: {
+    button: 'destructive',
+    icon: AlertTriangle,
+    iconClass: 'bg-destructive/10 text-destructive',
+  },
+  warning: { button: 'warning', icon: AlertTriangle, iconClass: 'bg-warning/15 text-warning' },
 };
 
 /**
- * Reusable confirmation modal for significant / hard-to-reverse actions.
+ * Potvrzovací dialog pro významné / obtížně vratné akce.
+ * Staví na `Modal` (tedy kitovém `Dialog`) a kitovém `Button`.
  */
 export function ConfirmModal({
   isOpen,
@@ -36,32 +49,41 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
-  useModalDismiss(isOpen, onCancel);
-  if (!isOpen) return null;
+  const { button, icon: Icon, iconClass } = VARIANTS[variant];
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-200">
-        <h2 className="text-xl font-bold mb-4 text-black break-words">{title}</h2>
-        <p className="text-gray-700 mb-6 break-words">{message}</p>
-        <div className="flex gap-4">
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`flex-1 px-6 py-2 text-white rounded-md transition-colors disabled:bg-gray-400 ${variantClasses[variant]}`}
-          >
-            {loading ? 'Zpracovávám...' : confirmLabel}
-          </button>
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
-          >
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!loading) onCancel();
+      }}
+      title={title}
+      maxWidth="max-w-md"
+      footer={
+        <>
+          <Button variant="outline" size="lg" disabled={loading} onClick={onCancel}>
             {cancelLabel}
-          </button>
+          </Button>
+          <Button variant={button} size="lg" disabled={loading} onClick={onConfirm}>
+            {loading ? (
+              <>
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+                Zpracovávám…
+              </>
+            ) : (
+              confirmLabel
+            )}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-md', iconClass)}>
+          <Icon className="size-5" />
         </div>
+        <p className="pt-1.5 text-sm break-words text-muted-foreground">{message}</p>
       </div>
-    </div>
+    </Modal>
   );
 }
 

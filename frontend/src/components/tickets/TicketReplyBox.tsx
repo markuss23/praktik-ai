@@ -52,9 +52,9 @@ export function TicketReplyBox({
   return (
     <form
       onSubmit={handleSend}
-      className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
+      className="bg-card rounded-xl border border-border shadow-sm p-5"
     >
-      <h3 className="text-base font-semibold text-gray-900 mb-3">Vaše odpověď</h3>
+      <h3 className="text-base font-semibold text-foreground mb-3">Vaše odpověď</h3>
 
       <textarea
         value={text}
@@ -62,11 +62,11 @@ export function TicketReplyBox({
         placeholder="Napište nám, s čím vám můžeme pomoci..."
         rows={4}
         disabled={submitting || disabled}
-        className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 resize-y focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
+        className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60"
       />
 
-      {disabledNotice && <p className="mt-2 text-xs text-gray-500">{disabledNotice}</p>}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {disabledNotice && <p className="mt-2 text-xs text-muted-foreground">{disabledNotice}</p>}
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
 
       <div className="flex items-center justify-between gap-3 mt-4">
         {!hideResolve && onResolve ? (
@@ -74,7 +74,7 @@ export function TicketReplyBox({
             type="button"
             onClick={() => void run(onResolve)}
             disabled={submitting || disabled}
-            className="px-4 py-2 rounded-md border border-purple-300 bg-white text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-60"
+            className="px-4 py-2 rounded-md border border-gradient-r/30 bg-card text-sm font-medium text-gradient-r hover:bg-gradient-r/10 transition-colors disabled:opacity-60"
           >
             Označit jako vyřešené
           </button>
@@ -84,7 +84,7 @@ export function TicketReplyBox({
         <button
           type="submit"
           disabled={submitting || disabled || text.trim().length < 1}
-          className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-60"
         >
           {submitting ? "Odesílám…" : "Odeslat komentář"}
         </button>

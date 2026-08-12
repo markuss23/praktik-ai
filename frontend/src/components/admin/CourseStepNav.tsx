@@ -36,9 +36,9 @@ export function CourseStepNav({ current, onNavigate, disabled = false }: CourseS
   };
 
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-card border-b border-border">
       <div className="px-4 sm:px-6 py-2 flex items-center gap-2">
-        <span className="hidden sm:inline text-xs font-medium text-gray-400 mr-1">Fáze tvorby:</span>
+        <span className="hidden sm:inline text-xs font-medium text-muted-foreground mr-1">Fáze tvorby:</span>
         <nav className="flex items-center gap-1">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
@@ -46,7 +46,7 @@ export function CourseStepNav({ current, onNavigate, disabled = false }: CourseS
             const isPending = pending === step.key;
             return (
               <div key={step.key} className="flex items-center">
-                {index > 0 && <span className="text-gray-300 mx-1">›</span>}
+                {index > 0 && <span className="text-muted-foreground mx-1">›</span>}
                 <button
                   type="button"
                   onClick={() => !isActive && handleClick(step.key)}
@@ -54,8 +54,8 @@ export function CourseStepNav({ current, onNavigate, disabled = false }: CourseS
                   aria-current={isActive ? 'step' : undefined}
                   className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-purple-100 text-purple-700 cursor-default'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50'
+                      ? 'bg-gradient-r/20 text-gradient-r cursor-default'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50'
                   }`}
                 >
                   {isPending ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}

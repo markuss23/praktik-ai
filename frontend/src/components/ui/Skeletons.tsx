@@ -2,11 +2,11 @@
 
 import { motion } from 'motion/react';
 
-const pulse = 'animate-pulse bg-gray-200 rounded';
+import { Skeleton } from '../ui-kit/skeleton';
 
-// Reusable shimmer block
+// Zkratka pro jeden blok — geometrie se předává přes className, vzhled drží kit.
 function S({ className }: { className: string }) {
-  return <div className={`${pulse} ${className}`} />;
+  return <Skeleton className={className} />;
 }
 
 /**
@@ -38,10 +38,10 @@ export function AdminDashboardSkeleton() {
         <S className="h-10 w-64 rounded-md" />
         <S className="h-10 w-32 rounded-md" />
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-gray-100">
-            <S className="h-5 w-5 rounded" />
+          <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-border">
+            <S className="size-5 rounded" />
             <S className="h-5 flex-1 max-w-[280px]" />
             <S className="h-5 w-20" />
             <S className="h-6 w-24 rounded-full" />
@@ -59,23 +59,23 @@ export function AdminDashboardSkeleton() {
 export function AuthSkeleton() {
   return (
     <motion.div
-      className="min-h-screen flex items-center justify-center bg-gray-50"
+      className="min-h-screen flex items-center justify-center bg-muted/50"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       <div className="text-center">
         <motion.div
-          className="w-14 h-14 rounded-full mx-auto mb-5"
+          className="size-14 rounded-full mx-auto mb-5"
           style={{
-            border: '3px solid #e5e7eb',
-            borderTopColor: '#8B5BA8',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--gradient-r)',
           }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         />
         <motion.p
-          className="text-gray-500 font-medium"
+          className="text-muted-foreground font-medium"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -100,7 +100,7 @@ export function ReviewCardsSkeleton() {
       <S className="h-4 w-32 mb-4" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-4 animate-pulse">
+          <div key={i} className="bg-card rounded-xl border border-border p-5 flex flex-col gap-4 animate-pulse">
             <S className="h-5 w-20 rounded-full" />
             <div>
               <S className="h-5 w-3/4 mb-2" />
@@ -120,7 +120,7 @@ export function ReviewCardsSkeleton() {
 export function AiMentorSkeleton() {
   return (
     <motion.div
-      className="flex-1 p-6 lg:p-8 bg-gray-100 min-h-full"
+      className="flex-1 p-6 lg:p-8 bg-muted min-h-full"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -128,10 +128,10 @@ export function AiMentorSkeleton() {
       <S className="h-8 w-40 mb-6" />
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
+          <div key={i} className="bg-card rounded-xl border border-border p-6 animate-pulse">
             <div className="flex items-center justify-between mb-4">
               <S className="h-6 w-48" />
-              <S className="h-6 w-6 rounded" />
+              <S className="size-6 rounded" />
             </div>
             {i === 1 && (
               <>
@@ -161,17 +161,17 @@ export function PageSpinner({ message }: { message?: string }) {
     >
       <div className="flex flex-col items-center gap-4">
         <motion.div
-          className="w-10 h-10 rounded-full"
+          className="size-10 rounded-full"
           style={{
-            border: '3px solid #e5e7eb',
-            borderTopColor: '#8B5BA8',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--gradient-r)',
           }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         />
         {message && (
           <motion.span
-            className="text-gray-400 text-sm"
+            className="text-muted-foreground text-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
@@ -191,7 +191,7 @@ export function CourseDetailSkeleton() {
   return (
     <motion.div
       className="min-h-screen"
-      style={{ backgroundColor: '#F0F0F0' }}
+      style={{ backgroundColor: 'var(--muted)' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -204,10 +204,10 @@ export function CourseDetailSkeleton() {
           <S className="h-10 w-40 rounded-md" />
           <S className="h-10 w-32 rounded-md" />
         </div>
-        <div className="bg-white rounded-xl p-6 space-y-4">
+        <div className="bg-card rounded-xl p-6 space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-4 py-3 border-b border-gray-100">
-              <S className="h-8 w-8 rounded-full" />
+            <div key={i} className="flex items-center gap-4 py-3 border-b border-border">
+              <S className="size-8 rounded-full" />
               <S className="h-5 flex-1 max-w-[300px]" />
               <S className="h-6 w-20 rounded-full ml-auto" />
             </div>
@@ -252,7 +252,7 @@ export function RatingListSkeleton() {
   return (
     <div className="space-y-3" aria-hidden="true">
       {[1, 2].map((i) => (
-        <div key={i} className="bg-white border border-gray-200 rounded-lg p-4">
+        <div key={i} className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
               <S className="h-3.5 w-32" />
@@ -260,7 +260,7 @@ export function RatingListSkeleton() {
             </div>
             <S className="h-3.5 w-20" />
           </div>
-          <S className="h-3 w-3/4 mt-3" />
+          <S className="size-3/4 mt-3" />
         </div>
       ))}
     </div>
@@ -283,7 +283,7 @@ export function MaterialGridSkeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-white rounded-lg border border-gray-200 flex flex-col h-full animate-pulse"
+          className="bg-card rounded-lg border border-border flex flex-col h-full animate-pulse"
         >
           <div className="p-5 flex flex-col gap-3 flex-1">
             <S className="h-5 w-3/4" />
@@ -294,10 +294,10 @@ export function MaterialGridSkeleton({
               <S className="h-6 w-16 rounded-md" />
             </div>
           </div>
-          <div className="border-t border-gray-100" />
+          <div className="border-t border-border" />
           <div className="flex items-center justify-between px-5 py-4">
             <S className="h-4 w-24" />
-            <S className="h-9 w-9 rounded-md" />
+            <S className="size-9 rounded-md" />
           </div>
         </div>
       ))}
@@ -318,15 +318,15 @@ export function ProfileSkeleton() {
     >
       <div className="flex flex-col items-center gap-4">
         <motion.div
-          className="w-10 h-10 rounded-full"
+          className="size-10 rounded-full"
           style={{
-            border: '3px solid #e5e7eb',
-            borderTopColor: '#8B5BA8',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--gradient-r)',
           }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         />
-        <span className="text-gray-400 text-sm">Načítání profilu…</span>
+        <span className="text-muted-foreground text-sm">Načítání profilu…</span>
       </div>
     </motion.div>
   );
