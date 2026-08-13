@@ -551,3 +551,18 @@ body.module-fullscreen footer {
     @apply font-sans;
   }
 }
+
+/* Sjednocený focus nativních polí.
+   Bez vlastního focus stylu kreslil prohlížeč svůj tmavý outline, jinde se
+   po appce potkávaly fialové a modré ringy. Všechno stahujeme na šedý prstenec
+   z --ring, tedy stejný vzhled, jaký má <Input> z ui-kitu.
+   Pravidlo je záměrně mimo @layer — nevrstvená pravidla přebíjejí utility
+   třídy, takže přeplácne i focus:ring-purple-200 apod. Komponenty z ui-kitu
+   mají data-slot a řeší si focus samy, proto jsou z výběru vyjmuté. */
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:not([data-slot]):focus-visible,
+select:not([data-slot]):focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}

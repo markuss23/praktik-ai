@@ -58,9 +58,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui-kit/dialog";
+import { Input } from "@/components/ui-kit/input";
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from "@/components/ui-kit/segmented-control";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui-kit/tabs";
+import { Textarea } from "@/components/ui-kit/textarea";
 import { Toaster, toast } from "@/components/ui-kit/toast";
 import { Row, Section, ThemeToggle } from "@/components/ui-kit/Showcase";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import { czechPlural } from "@/lib/utils";
 
 /** Popisky pro `<Select items>` — bez „vše", aby se uplatnil placeholder. */
 const DIFFICULTY_ITEMS: Record<string, string> = Object.fromEntries(
@@ -97,6 +110,8 @@ function UiKitContent() {
   const [status, setStatus] = useState<BadgeStatusVariant>("new");
   const [difficulty, setDifficulty] = useState<string | null>(null);
   const [sort, setSort] = useState<string>("newest");
+  const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [tab, setTab] = useState<"courses" | "materials">("courses");
 
   return (
     <main className="bg-background text-foreground min-h-screen">
@@ -377,6 +392,158 @@ function UiKitContent() {
         </Section>
 
         <Section
+          title="Segmented control"
+          description="Sjednocený přepínač nad shadcn ToggleGroup (Base UI). Dvě i více možností, vždy zůstane jedna aktivní. solid = filtry, soft = přepínání sekcí."
+        >
+          <Row label="solid">
+            <SegmentedControl size="sm" value={range} onValueChange={setRange}>
+              <SegmentedControlItem value="7d">7 dní</SegmentedControlItem>
+              <SegmentedControlItem value="30d">30 dní</SegmentedControlItem>
+              <SegmentedControlItem value="90d">90 dní</SegmentedControlItem>
+              <SegmentedControlItem value="all">Vše</SegmentedControlItem>
+            </SegmentedControl>
+            <span className="text-muted-foreground text-xs">
+              vybráno: <code>{range}</code>
+            </span>
+          </Row>
+
+          <Row label="soft">
+            <SegmentedControl variant="soft" value={tab} onValueChange={setTab}>
+              <SegmentedControlItem value="courses">Kurzy</SegmentedControlItem>
+              <SegmentedControlItem value="materials">
+                Materiály
+              </SegmentedControlItem>
+            </SegmentedControl>
+            <span className="text-muted-foreground text-xs">
+              vybráno: <code>{tab}</code>
+            </span>
+          </Row>
+
+          <Row label="size">
+            <SegmentedControl size="sm" defaultValue="courses">
+              <SegmentedControlItem value="courses">Kurzy</SegmentedControlItem>
+              <SegmentedControlItem value="materials">
+                Materiály
+              </SegmentedControlItem>
+            </SegmentedControl>
+            <SegmentedControl defaultValue="courses">
+              <SegmentedControlItem value="courses">Kurzy</SegmentedControlItem>
+              <SegmentedControlItem value="materials">
+                Materiály
+              </SegmentedControlItem>
+            </SegmentedControl>
+          </Row>
+
+          <Row label="celá šířka" className="block">
+            <SegmentedControl
+              variant="soft"
+              defaultValue="courses"
+              className="w-full"
+            >
+              <SegmentedControlItem value="courses" className="flex-1">
+                Kurzy
+              </SegmentedControlItem>
+              <SegmentedControlItem value="materials" className="flex-1">
+                Materiály
+              </SegmentedControlItem>
+            </SegmentedControl>
+          </Row>
+
+          <Row label="disabled">
+            <SegmentedControl size="sm" defaultValue="30d" disabled>
+              <SegmentedControlItem value="7d">7 dní</SegmentedControlItem>
+              <SegmentedControlItem value="30d">30 dní</SegmentedControlItem>
+              <SegmentedControlItem value="90d">90 dní</SegmentedControlItem>
+            </SegmentedControl>
+          </Row>
+        </Section>
+
+        <Section
+          title="Input & Textarea"
+          description="Pole z shadcn (Base UI). Focus je šedý prstenec z --ring — a stejný vzhled nově dostávají i nestylované <input>/<select>/<textarea> v celé appce, viz pravidlo v globals.css."
+        >
+          <Row label="input">
+            <Input placeholder="Název kurzu" className="max-w-xs" />
+            <Input defaultValue="test" className="max-w-xs" />
+          </Row>
+
+          <Row label="stavy">
+            <Input placeholder="Disabled" disabled className="max-w-xs" />
+            <Input placeholder="Invalid" aria-invalid className="max-w-xs" />
+          </Row>
+
+          <Row label="textarea" className="block">
+            <Textarea
+              placeholder="Stručný popis kurzu…"
+              className="max-w-md"
+              rows={3}
+            />
+          </Row>
+
+          <Row label="nativní <input>" className="block">
+            {/* Bez jediné focus třídy — prstenec přidává globální pravidlo. */}
+            <input
+              type="text"
+              defaultValue="test"
+              className="w-full max-w-md rounded-lg border px-2.5 py-1 text-sm"
+            />
+          </Row>
+        </Section>
+
+        <Section
+          title="Tabs"
+          description="Base UI tabs ve variantě line — podtržení aktivní záložky. Pro přepínání seznamů, počet se přidává jako Badge vedle názvu."
+        >
+          <Row label="line + počty" className="block">
+            <Tabs defaultValue="unresolved" className="max-w-md">
+              <TabsList variant="line" className="w-full justify-start border-b">
+                <TabsTrigger value="unresolved" className="flex-none">
+                  Nevyřešené
+                  <Badge variant="meta" className="px-1.5">
+                    1
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="resolved" className="flex-none">
+                  Vyřešené
+                  <Badge variant="meta" className="px-1.5">
+                    0
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="unresolved" className="py-3">
+                <p className="text-muted-foreground">
+                  Jedna nevyřešená připomínka.
+                </p>
+              </TabsContent>
+              <TabsContent value="resolved" className="py-3">
+                <p className="text-muted-foreground">
+                  Žádné vyřešené připomínky.
+                </p>
+              </TabsContent>
+            </Tabs>
+          </Row>
+
+          <Row label="default" className="block">
+            <Tabs defaultValue="content" className="max-w-md">
+              <TabsList>
+                <TabsTrigger value="content">Obsah</TabsTrigger>
+                <TabsTrigger value="tests">Testy</TabsTrigger>
+                <TabsTrigger value="settings">Nastavení</TabsTrigger>
+              </TabsList>
+              <TabsContent value="content" className="py-3">
+                <p className="text-muted-foreground">Moduly kurzu.</p>
+              </TabsContent>
+              <TabsContent value="tests" className="py-3">
+                <p className="text-muted-foreground">Otázky a varianty.</p>
+              </TabsContent>
+              <TabsContent value="settings" className="py-3">
+                <p className="text-muted-foreground">Publikace a přístupy.</p>
+              </TabsContent>
+            </Tabs>
+          </Row>
+        </Section>
+
+        <Section
           title="Select"
           description="Base UI select — popup se šířkou triggeru a zarovnáním na vybranou položku (jako nativní select). Náhrada za <select> ve filtrech."
         >
@@ -610,6 +777,73 @@ function UiKitContent() {
                 </CardStat>
               </CardFooter>
             </Card>
+          </Row>
+        </Section>
+
+        <Section
+          title="Card — Obsah ke schválení (admin /admin/review)"
+          description="Karta ze seznamu obsahu ke schválení. Stav jako Badge, název, počet modulů a autor; položky ke kontrole mají navíc CTA přes celou šířku. Karty drží stejnou výšku, tlačítko je zarovnané dolů."
+        >
+          <Row label="ke kontrole" className="block">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { title: "Diskurzní konektory v češtině", modules: 4 },
+                { title: "HIstoriografie", modules: 3 },
+                { title: "Franz Kafka", modules: 3 },
+                { title: "Základy statistiky pro studium a výzkum", modules: 3 },
+              ].map((course) => (
+                <Card size="sm" key={course.title} className="h-full">
+                  <CardMeta>
+                    <Badge variant="new">Ke kontrole</Badge>
+                  </CardMeta>
+                  <CardHeader>
+                    <CardTitle>{course.title}</CardTitle>
+                    <CardStat>
+                      <BookMarked />
+                      {course.modules}{" "}
+                      {czechPlural(course.modules, "modul", "moduly", "modulů")}
+                    </CardStat>
+                    <p className="text-muted-foreground truncate text-xs">
+                      Autor: Lucie Zušťáková
+                    </p>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    <Button size="sm" className="w-full">
+                      <ArrowRight data-icon="inline-start" />
+                      Začít kurz
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </Row>
+
+          <Row label="schváleno" className="block">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { title: "Git a verzování kódu – od základů ke spolupráci", modules: 5 },
+                { title: "Jak efektivně využívat NotebookLM ke studiu", modules: 3 },
+                { title: "Kava", modules: 12 },
+                { title: "Test kurz Garant - manuální zadání", modules: 1 },
+              ].map((course) => (
+                <Card size="sm" key={course.title} className="h-full">
+                  <CardMeta>
+                    <Badge variant="resolved">Schváleno</Badge>
+                  </CardMeta>
+                  <CardHeader>
+                    <CardTitle>{course.title}</CardTitle>
+                    <CardStat>
+                      <BookMarked />
+                      {course.modules}{" "}
+                      {czechPlural(course.modules, "modul", "moduly", "modulů")}
+                    </CardStat>
+                    <p className="text-muted-foreground truncate text-xs">
+                      Autor: Radun Silver v CS2
+                    </p>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
           </Row>
         </Section>
 
