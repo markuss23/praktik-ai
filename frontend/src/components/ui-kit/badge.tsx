@@ -17,6 +17,9 @@ const badgeVariants = cva(
         resolved: "bg-success/15 text-success [a]:hover:bg-success/25",
         closed:
           "bg-foreground/15 text-foreground/50 [a]:hover:bg-foreground/25",
+        // Neutral meta pill from the card designs (2120:3147 / 1874:4585):
+        // #E9E9E9 fill, regular weight, plain text — "86 minut", "Začátečník".
+        meta: "bg-foreground/10 font-normal text-foreground [a]:hover:bg-foreground/20",
       },
     },
     defaultVariants: {
@@ -49,5 +52,8 @@ function Badge({
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 
+/** Ticket states only — `meta` is a decorative pill, never a status value. */
+type BadgeStatusVariant = Exclude<BadgeVariant, "meta">
+
 export { Badge, badgeVariants }
-export type { BadgeVariant }
+export type { BadgeVariant, BadgeStatusVariant }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   ArrowRight,
+  BookMarked,
   Check,
   CircleCheck,
   CircleX,
@@ -20,7 +22,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui-kit/alert";
-import { Badge, type BadgeVariant } from "@/components/ui-kit/badge";
+import { Badge, type BadgeStatusVariant } from "@/components/ui-kit/badge";
 import { StatusSelect } from "@/components/ui-kit/status-select";
 import { Button } from "@/components/ui-kit/button";
 import {
@@ -30,8 +32,22 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
+  CardImage,
+  CardMeta,
+  CardProgress,
+  CardStat,
   CardTitle,
 } from "@/components/ui-kit/card";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui-kit/select";
 import {
   Dialog,
   DialogClose,
@@ -44,6 +60,30 @@ import {
 } from "@/components/ui-kit/dialog";
 import { Toaster, toast } from "@/components/ui-kit/toast";
 import { Row, Section, ThemeToggle } from "@/components/ui-kit/Showcase";
+import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+
+/** Popisky pro `<Select items>` — bez „vše", aby se uplatnil placeholder. */
+const DIFFICULTY_ITEMS: Record<string, string> = Object.fromEntries(
+  DIFFICULTY_ORDER.map((difficulty) => [
+    difficulty,
+    DIFFICULTY_LABELS[difficulty],
+  ])
+);
+
+/** Filtr obtížnosti z administrace kurzů — `null` je „vše". */
+const DIFFICULTY_FILTER_ITEMS: { label: string; value: string | null }[] = [
+  { label: "Obtížnost: vše", value: null },
+  ...DIFFICULTY_ORDER.map((difficulty) => ({
+    label: DIFFICULTY_LABELS[difficulty],
+    value: difficulty as string,
+  })),
+];
+
+const SORT_ITEMS = {
+  newest: "Nejnovější",
+  oldest: "Nejstarší",
+  title: "Podle názvu",
+};
 
 export default function UiKitPage() {
   return (
@@ -54,7 +94,9 @@ export default function UiKitPage() {
 }
 
 function UiKitContent() {
-  const [status, setStatus] = useState<BadgeVariant>("new");
+  const [status, setStatus] = useState<BadgeStatusVariant>("new");
+  const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [sort, setSort] = useState<string>("newest");
 
   return (
     <main className="bg-background text-foreground min-h-screen">
@@ -335,27 +377,167 @@ function UiKitContent() {
         </Section>
 
         <Section
-          title="Card"
-          description="Sloty: Header / Title / Description / Action / Content / Footer."
+          title="Select"
+          description="Base UI select — popup se šířkou triggeru a zarovnáním na vybranou položku (jako nativní select). Náhrada za <select> ve filtrech."
         >
-          <Row label="default" className="block">
+          <Row label="obtížnost">
+            <Select
+              items={DIFFICULTY_FILTER_ITEMS}
+              value={difficulty}
+              onValueChange={(next) => setDifficulty(next as string | null)}
+            >
+              <SelectTrigger className="w-56" aria-label="Obtížnost">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {DIFFICULTY_FILTER_ITEMS.map((item) => (
+                    <SelectItem key={item.value ?? "all"} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <span className="text-muted-foreground text-xs">
+              vybráno: <code>{difficulty ?? "vše"}</code>
+            </span>
+          </Row>
+
+          <Row label="size">
+            <Select
+              items={SORT_ITEMS}
+              value={sort}
+              onValueChange={(next) => setSort(next as string)}
+            >
+              <SelectTrigger size="sm" aria-label="Řazení (sm)">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={SORT_ITEMS}
+              value={sort}
+              onValueChange={(next) => setSort(next as string)}
+            >
+              <SelectTrigger aria-label="Řazení">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="se skupinami">
+            <Select items={DIFFICULTY_ITEMS}>
+              <SelectTrigger className="w-56" aria-label="Obtížnost podle úrovně">
+                <SelectValue placeholder="Vyberte obtížnost" />
+              </SelectTrigger>
+              {/* Skupiny se štítky se nezarovnávají na vybranou položku —
+                  popup se otevře pod triggerem. */}
+              <SelectContent alignItemWithTrigger={false} align="start">
+                <SelectGroup>
+                  <SelectLabel>Základní</SelectLabel>
+                  {DIFFICULTY_ORDER.slice(0, 3).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {DIFFICULTY_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>Pokročilé</SelectLabel>
+                  {DIFFICULTY_ORDER.slice(3).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {DIFFICULTY_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="stavy">
+            <Select items={SORT_ITEMS} value="newest" disabled>
+              <SelectTrigger aria-label="Řazení (disabled)">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {Object.entries(SORT_ITEMS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            <Select items={DIFFICULTY_ITEMS}>
+              <SelectTrigger aria-invalid aria-label="Obtížnost (invalid)">
+                <SelectValue placeholder="Vyberte obtížnost" />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false} align="start">
+                <SelectGroup>
+                  {DIFFICULTY_ORDER.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {DIFFICULTY_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Row>
+        </Section>
+
+        <Section
+          title="Card"
+          description="Kurzová karta podle Figma (2120:3141): cover 590×226, gradientový titulek, šedé meta pilulky, linka a patička. Sloty: Image / Header / Title / Description / Action / Content / Meta / Stat / Progress / Footer."
+        >
+          <Row label="kurz" className="block">
             <Card className="max-w-sm">
+              <CardImage>
+                <Image
+                  src="/courseai2.png"
+                  alt=""
+                  fill
+                  sizes="384px"
+                  className="object-cover"
+                />
+              </CardImage>
               <CardHeader>
-                <CardTitle>Úvod do neuronových sítí</CardTitle>
-                <CardDescription>8 modulů · 4 hodiny</CardDescription>
-                <CardAction>
-                  <Button size="icon-sm" variant="ghost" aria-label="Možnosti">
-                    <Plus />
-                  </Button>
-                </CardAction>
+                <CardTitle gradient>Jak komunikovat s AI?</CardTitle>
+                <CardDescription>
+                  V kurzu Jak komunikovat s AI se dozvíte, jak psát jasné a
+                  účinné zadání, aby vám AI dávala přesné a praktické odpovědi k
+                  vaší práci.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Kurz vás provede základy strojového učení od perceptronu až po
-                  trénování vlastního modelu.
-                </p>
-              </CardContent>
+              <CardMeta>
+                <Badge variant="meta">86 minut</Badge>
+                <Badge variant="meta">Začátečník</Badge>
+              </CardMeta>
               <CardFooter>
+                <CardStat>
+                  <BookMarked />
+                  0/4 modulů
+                </CardStat>
                 <Button size="sm">
                   <ArrowRight data-icon="inline-start" />
                   Začít kurz
@@ -364,17 +546,69 @@ function UiKitContent() {
             </Card>
           </Row>
 
+          <Row label="kurz s postupem" className="block">
+            <Card className="max-w-sm">
+              <CardImage>
+                <Image
+                  src="/courseai2.png"
+                  alt=""
+                  fill
+                  sizes="384px"
+                  className="object-cover"
+                />
+              </CardImage>
+              <CardHeader>
+                <CardTitle gradient>Jak komunikovat s AI?</CardTitle>
+                <CardDescription>
+                  V kurzu Jak komunikovat s AI se dozvíte, jak psát jasné a
+                  účinné zadání, aby vám AI dávala přesné a praktické odpovědi k
+                  vaší práci.
+                </CardDescription>
+              </CardHeader>
+              <CardMeta>
+                <Badge variant="meta">86 minut</Badge>
+                <Badge variant="meta">Začátečník</Badge>
+              </CardMeta>
+              <CardFooter className="flex-col items-stretch gap-4">
+                <CardProgress value={1} max={3} />
+                <Button size="sm" className="self-end">
+                  <ArrowRight data-icon="inline-start" />
+                  Pokračovat
+                </Button>
+              </CardFooter>
+            </Card>
+          </Row>
+
+          <Row label="progress" className="block">
+            <div className="max-w-sm space-y-4 rounded-md border border-foreground/20 p-3">
+              <CardProgress value={0} max={3} />
+              <CardProgress value={2} max={4} />
+              <CardProgress value={5} max={5} hint="Dokončeno" />
+            </div>
+          </Row>
+
           <Row label='size="sm"' className="block">
             <Card size="sm" className="max-w-sm">
               <CardHeader>
                 <CardTitle>Kompaktní varianta</CardTitle>
                 <CardDescription>Menší vnitřní odsazení</CardDescription>
+                <CardAction>
+                  <Button size="icon-sm" variant="ghost" aria-label="Možnosti">
+                    <Plus />
+                  </Button>
+                </CardAction>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
                   Vhodné do postranních panelů a seznamů.
                 </p>
               </CardContent>
+              <CardFooter>
+                <CardStat>
+                  <BookMarked />
+                  8 modulů · 4 hodiny
+                </CardStat>
+              </CardFooter>
             </Card>
           </Row>
         </Section>
