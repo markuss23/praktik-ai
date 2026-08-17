@@ -958,8 +958,8 @@ class Ticket(TimestampMixin, SoftDeleteMixin, Base):
     assignee_id: Mapped[int | None] = mapped_column(
         ForeignKey("user.user_id"), nullable=True
     )
-    entity_type: Mapped[TicketEntityType | None] = mapped_column(
-        Enum(TicketEntityType, name="ticket_entity_type"), nullable=True
+    entity_type: Mapped[TicketEntityType] = mapped_column(
+        Enum(TicketEntityType, name="ticket_entity_type"), nullable=False
     )
     entity_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     # Denormalizováno pro rychlý přístup bez joinu (dashboard autora kurzu);

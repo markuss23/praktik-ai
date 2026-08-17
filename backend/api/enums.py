@@ -54,8 +54,11 @@ class AttemptStatus(enum.StrEnum):
 
 
 class TicketStatus(enum.StrEnum):
-    open = "open"
-    pending = "pending"  # čeká se na doplnění od studenta
+    open = "open"  # nový, nikdo si ho ještě nevzal
+    in_progress = "in_progress"  # staff si ticket přiřadil (assignee_id), řeší se
+    pending = (
+        "pending"  # nepoužito v aktuálním flow, zachováno kvůli DB enum kompatibilitě
+    )
     resolved = "resolved"
     closed = "closed"
 
@@ -63,13 +66,18 @@ class TicketStatus(enum.StrEnum):
 class TicketType(enum.StrEnum):
     task_session = "task_session"  # reklamace concept checku
     practice = "practice"  # reklamace practice AI evaluátoru
+    bug = "bug"  # nahlášení chyby v appce, bez vazby na konkrétní entitu
+    question = "question"  # obecný dotaz na podporu, bez vazby na konkrétní entitu
     other = "other"  # ostatní
 
 
 class TicketEntityType(enum.StrEnum):
-    """Typ entity, ke které se ticket váže (entity_id ukazuje do její tabulky)."""
+    """Typ entity, ke které se ticket váže (entity_id ukazuje do její tabulky).
+    'general' = obecný ticket bez vazby na entitu (bug/dotaz) — entity_id se
+    pro něj nevyplňuje."""
 
     module = "module"
+    general = "general"
 
 
 class EduLevel(enum.StrEnum):

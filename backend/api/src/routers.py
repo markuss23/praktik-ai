@@ -14,6 +14,7 @@ from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
 from api.src.superadmin.routers import router as superadmin_router
 from api.src.module_tickets.routers import router as module_tickets_router
+from api.src.tickets.routers import router as tickets_router
 from api.src.editor_images.routers import (
     router as editor_images_router,
     public_router as editor_images_public_router,
@@ -47,6 +48,7 @@ router.include_router(
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
 )
+router.include_router(tickets_router, dependencies=[Depends(auth.get_current_user)])
 # --
 # router.include_router(categories_router)
 # router.include_router(courses_router)
