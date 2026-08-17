@@ -25,6 +25,7 @@ from api.src.publicDB.reviews.routers import router as review_router
 from api.src.publicDB.rating.routers import router as rating_router
 from api.src.publicDB.collections.routers import router as collections_router
 from api.dependencies import auth
+from api.src.marek_assessment.routers import router as marek_assessment
 
 router = APIRouter()
 
@@ -47,6 +48,9 @@ router.include_router(
 )
 router.include_router(
     assessments_router, dependencies=[Depends(auth.get_current_user)]
+)
+router.include_router(
+    marek_assessment, dependencies=[Depends(auth.get_current_user)]
 )
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
