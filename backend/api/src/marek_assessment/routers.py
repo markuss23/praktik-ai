@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from api.dependencies import CurrentUser, require_role
+from api.enums import AssessmentContext
 from api.src.marek_assessment import controllers
 from api.database import SessionSqlSessionDependency
 from api.src.marek_assessment.schemas import (
@@ -7,6 +8,7 @@ from api.src.marek_assessment.schemas import (
     CourseAssessmentAttachRequest,
     CourseAssessmentResponse,
     CourseAssessmentSettingsUpdateRequest,
+    SessionStartResponse,
 )
 
 
@@ -48,4 +50,19 @@ def update_course_assessment_settings(
 ) -> CourseAssessmentResponse:
     return controllers.update_course_assessment_settings(
         db, user, course_assessment_id, body
+    )
+
+
+# Runtime — student spustí session, dostane první otázku
+@router.post("/courses/{course_id}/m-assessments/sessions", status_code=201)
+def start_session(
+    course_id: int,
+    context: AssessmentContext,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+    module_id: int | None = None,
+    assessment_type_code: str | None = None,
+) -> SessionStartResponse:
+    return controllers.start_session(
+        db, user, course_id, context, module_id, assessment_type_code
     )

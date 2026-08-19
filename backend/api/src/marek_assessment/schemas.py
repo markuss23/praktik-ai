@@ -40,3 +40,11 @@ class CourseAssessmentSettingsUpdateRequest(BaseModel):
     """Etapa 2 — doladění nastavení už připojeného formátu."""
 
     settings: dict
+
+
+class SessionStartResponse(BaseModel):
+    """Odpověď na start session — jen otázka k zobrazení, nic víc (zatím)."""
+
+    session_id: int
+    question: str
+    options: list[str]
