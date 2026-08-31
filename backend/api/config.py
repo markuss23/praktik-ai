@@ -27,6 +27,8 @@ class SeaweedFSSettings(BaseModel):
 
 class WikiSettings(BaseModel):
     sync_interval_hours: float = 12
+    repo_url: str = "https://github.com/markuss23/praktik-ai.wiki.git"
+    local_path: str = "../wiki_data"
 
 
 class Settings(BaseSettings):
