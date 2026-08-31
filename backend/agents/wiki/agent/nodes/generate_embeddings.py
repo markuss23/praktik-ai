@@ -29,7 +29,7 @@ def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
     )
 
     for page in pages:
-        #print(f"  - Stranka '{page.title}': generuji embedding")
+        # print(f"  - Stranka '{page.title}': generuji embedding")
 
         texts: list[str] = text_splitter.split_text(page.content)
 
@@ -45,7 +45,7 @@ def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
             for idx, text in enumerate(texts)
         ]
 
-        #print(f"    -> {len(documents)} chunku")
+        # print(f"    -> {len(documents)} chunku")
 
         vector_store.add_documents(
             documents,
