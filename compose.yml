@@ -26,6 +26,7 @@ services:
       - .env
     volumes:
       - ./backend:/code
+      - ./wiki_data:/wiki_data
     networks:
       - praktikai
     depends_on:

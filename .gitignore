@@ -27,6 +27,7 @@ logs/
 node_modules/
 .next/
 
+wiki_data/
 deploy.sh
 compose.dev.yml
 compose.test.yml
