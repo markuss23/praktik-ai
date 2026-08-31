@@ -8,7 +8,11 @@ from api.src.common.utils import check_enrollment, get_or_404
 
 # Kategorie dostupné pro libovolný entity_type navíc k jeho allowed_categories —
 # bug/dotaz dává smysl nahlásit ke konkrétní entitě (modulu...) i bez entity.
-UNIVERSAL_CATEGORIES: set[TicketType] = {TicketType.bug, TicketType.question}
+UNIVERSAL_CATEGORIES: set[TicketType] = {
+    TicketType.bug,
+    TicketType.question,
+    TicketType.other,
+}
 
 
 class TicketEntityResolver(Protocol):
@@ -40,7 +44,6 @@ class ModuleTicketResolver:
     allowed_categories = {
         TicketType.task_session,
         TicketType.practice,
-        TicketType.other,
     }
 
     def load_entity(self, db: Session, entity_id: int) -> models.Module:
@@ -56,6 +59,51 @@ class ModuleTicketResolver:
 
     def get_course_id(self, entity: models.Module) -> int:
         return entity.course_id
+
+
+class CourseTicketResolver:
+    """Ticket vázaný na celý kurz — obecná stížnost/dotaz ke
+    kurzu. Založit smí zapsaný student, nebo owner/superadmin bez zápisu."""
+
+    allowed_categories = {TicketType.course_feedback}
+
+    def load_entity(self, db: Session, entity_id: int) -> models.Course:
+        return get_or_404(db, models.Course, entity_id, detail="Kurz nenalezen")
+
+    def authorize_create(
+        self, db: Session, actor: models.User, entity: models.Course
+    ) -> None:
+        check_enrollment(db, actor, entity, bypass_for_owner=True)
+
+    def is_staff_for(self, actor: models.User, entity: models.Course) -> bool:
+        return actor.role in (UserRole.guarantor, UserRole.superadmin, UserRole.lector)
+
+    def get_course_id(self, entity: models.Course) -> int:
+        return entity.course_id
+
+
+class PubResourceTicketResolver:
+    """Ticket vázaný na veřejný materiál — nahlášení obsahového problému.
+    Založit smí kdokoliv přihlášený, žádný enrollment check (materiál je
+    veřejný). Mimo kurzy, course_id je vždy null."""
+
+    allowed_categories = {TicketType.content_issue}
+
+    def load_entity(self, db: Session, entity_id: int) -> models.PubResource:
+        return get_or_404(
+            db, models.PubResource, entity_id, detail="Materiál nenalezen"
+        )
+
+    def authorize_create(
+        self, db: Session, actor: models.User, entity: models.PubResource
+    ) -> None:
+        pass
+
+    def is_staff_for(self, actor: models.User, entity: models.PubResource) -> bool:
+        return actor.role in (UserRole.guarantor, UserRole.superadmin)
+
+    def get_course_id(self, entity: models.PubResource) -> None:
+        return None
 
 
 class GeneralTicketResolver:
@@ -79,6 +127,8 @@ class GeneralTicketResolver:
 
 RESOLVERS: dict[TicketEntityType, TicketEntityResolver] = {
     TicketEntityType.module: ModuleTicketResolver(),
+    TicketEntityType.course: CourseTicketResolver(),
+    TicketEntityType.pub_resource: PubResourceTicketResolver(),
     TicketEntityType.general: GeneralTicketResolver(),
 }
 

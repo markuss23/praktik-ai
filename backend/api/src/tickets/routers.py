@@ -22,12 +22,20 @@ from api.src.tickets.controllers import (
     delete_ticket,
 )
 
-router = APIRouter(
-    prefix="/tickets", tags=["Tickets"], dependencies=[require_role("user")]
-)
+router = APIRouter(prefix="/tickets", tags=["Tickets"])
+
+public_router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
 
-@router.get("", operation_id="list_tickets")
+# Musí být před GET /{ticket_id} na hlavním routeru — jinak by "categories"
+# FastAPI zkusil převést na int jako ticket_id a spadlo by to na 422.
+@public_router.get("/categories", operation_id="get_ticket_categories")
+def endp_get_ticket_categories() -> list[TicketCategoriesResponse]:
+    """Pro každý entity_type vrátí jeho povolené category — pro sestavení FE formuláře."""
+    return get_ticket_categories()
+
+
+@router.get("", operation_id="list_tickets", dependencies=[require_role("user")])
 def endp_list_tickets(
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
@@ -37,15 +45,9 @@ def endp_list_tickets(
     return get_tickets(db, actor=actor, course_id=course_id)
 
 
-# Musí být před GET /{ticket_id} — jinak by "categories" FastAPI zkusil
-# převést na int jako ticket_id a spadlo by to na 422.
-@router.get("/categories", operation_id="get_ticket_categories")
-def endp_get_ticket_categories() -> list[TicketCategoriesResponse]:
-    """Pro každý entity_type vrátí jeho povolené category — pro sestavení FE formuláře."""
-    return get_ticket_categories()
-
-
-@router.get("/{ticket_id}", operation_id="get_ticket")
+@router.get(
+    "/{ticket_id}", operation_id="get_ticket", dependencies=[require_role("user")]
+)
 def endp_get_ticket(
     db: SessionSqlSessionDependency,
     ticket_id: int,
@@ -55,7 +57,11 @@ def endp_get_ticket(
     return get_ticket(db, ticket_id=ticket_id, actor=actor)
 
 
-@router.get("/{ticket_id}/messages", operation_id="list_ticket_messages")
+@router.get(
+    "/{ticket_id}/messages",
+    operation_id="list_ticket_messages",
+    dependencies=[require_role("user")],
+)
 def endp_list_ticket_messages(
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
@@ -65,7 +71,7 @@ def endp_list_ticket_messages(
     return get_ticket_messages(db, actor=actor, ticket_id=ticket_id)
 
 
-@router.post("", operation_id="create_ticket")
+@router.post("", operation_id="create_ticket", dependencies=[require_role("user")])
 def endp_create_ticket(
     db: SessionSqlSessionDependency,
     data: TicketCreate,
@@ -79,7 +85,11 @@ def endp_create_ticket(
     return create_ticket(db, data=data, actor=actor)
 
 
-@router.post("/{ticket_id}/messages", operation_id="add_ticket_message")
+@router.post(
+    "/{ticket_id}/messages",
+    operation_id="add_ticket_message",
+    dependencies=[require_role("user")],
+)
 def endp_add_ticket_message(
     db: SessionSqlSessionDependency,
     ticket_id: int,
@@ -90,7 +100,11 @@ def endp_add_ticket_message(
     return add_ticket_message(db, ticket_id=ticket_id, data=data, actor=actor)
 
 
-@router.post("/{ticket_id}/claim", operation_id="claim_ticket")
+@router.post(
+    "/{ticket_id}/claim",
+    operation_id="claim_ticket",
+    dependencies=[require_role("user")],
+)
 def endp_claim_ticket(
     db: SessionSqlSessionDependency,
     ticket_id: int,
@@ -100,7 +114,11 @@ def endp_claim_ticket(
     return claim_ticket(db, ticket_id=ticket_id, actor=actor)
 
 
-@router.put("/{ticket_id}", operation_id="update_ticket_status")
+@router.put(
+    "/{ticket_id}",
+    operation_id="update_ticket_status",
+    dependencies=[require_role("user")],
+)
 def endp_update_ticket_status(
     db: SessionSqlSessionDependency,
     ticket_id: int,
@@ -113,7 +131,9 @@ def endp_update_ticket_status(
     )
 
 
-@router.delete("/{ticket_id}", operation_id="delete_ticket")
+@router.delete(
+    "/{ticket_id}", operation_id="delete_ticket", dependencies=[require_role("user")]
+)
 def endp_delete_ticket(
     db: SessionSqlSessionDependency,
     ticket_id: int,

@@ -20,12 +20,17 @@ ALTER TYPE ticket_status ADD VALUE IF NOT EXISTS 'in_progress';
 -- category pro generické tickety bez vazby na entitu (bug/dotaz)
 ALTER TYPE ticket_type ADD VALUE IF NOT EXISTS 'bug';
 ALTER TYPE ticket_type ADD VALUE IF NOT EXISTS 'question';
+-- category pro entity_type=course a entity_type=pub_resource
+ALTER TYPE ticket_type ADD VALUE IF NOT EXISTS 'course_feedback';
+ALTER TYPE ticket_type ADD VALUE IF NOT EXISTS 'content_issue';
 
 -- ─── CREATE NEW ENUM TYPE ─────────────────────────────────────
 -- 'general' = obecný ticket bez vazby na entitu (bug/dotaz), entity_id pak null.
 
 DO $$ BEGIN CREATE TYPE ticket_entity_type AS ENUM ('module', 'general'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ALTER TYPE ticket_entity_type ADD VALUE IF NOT EXISTS 'general';
+ALTER TYPE ticket_entity_type ADD VALUE IF NOT EXISTS 'course';
+ALTER TYPE ticket_entity_type ADD VALUE IF NOT EXISTS 'pub_resource';
 
 -- ─── TICKET TABLES ────────────────────────────────────────────
 
