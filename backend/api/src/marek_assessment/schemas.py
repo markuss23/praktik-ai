@@ -48,3 +48,19 @@ class SessionStartResponse(BaseModel):
     session_id: int
     question: str
     options: list[str]
+
+
+class SessionAnswerResponse(BaseModel):
+    """Odpověď na odevzdanou odpověď.
+
+    Pokud `finished` je False, `question`/`options` nesou další otázku
+    (nebo stejnou znovu, pokud odpověď byla špatně a zbývají pokusy).
+    Pokud True, session skončila a je vyplněné `score` (0-100).
+    """
+
+    session_id: int
+    is_correct: bool
+    finished: bool
+    question: str | None = None
+    options: list[str] | None = None
+    score: float | None = None

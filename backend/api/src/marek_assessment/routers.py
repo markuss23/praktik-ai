@@ -8,6 +8,7 @@ from api.src.marek_assessment.schemas import (
     CourseAssessmentAttachRequest,
     CourseAssessmentResponse,
     CourseAssessmentSettingsUpdateRequest,
+    SessionAnswerResponse,
     SessionStartResponse,
 )
 
@@ -66,3 +67,39 @@ def start_session(
     return controllers.start_session(
         db, user, course_id, context, module_id, assessment_type_code
     )
+
+
+# Runtime — zjištění rozběhnuté session studenta (practice / module assessment / course_final)
+@router.get("/courses/{course_id}/m-assessments/sessions")
+def get_current_session(
+    course_id: int,
+    context: AssessmentContext,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+    module_id: int | None = None,
+    assessment_type_code: str | None = None,
+) -> SessionStartResponse:
+    return controllers.get_current_session(
+        db, user, course_id, context, module_id, assessment_type_code
+    )
+
+
+# Runtime — student odevzdá odpověď na aktuální otázku
+@router.post("/m-assessments/sessions/{session_id}/answer")
+def submit_answer(
+    session_id: int,
+    answer: str,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> SessionAnswerResponse:
+    return controllers.submit_answer(db, user, session_id, answer)
+
+
+# Runtime — historie odevzdaných sessions studenta v rámci kurzu
+@router.get("/courses/{course_id}/m-assessments/history")
+def get_session_history(
+    course_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+):
+    return controllers.get_session_history(db, user, course_id)
