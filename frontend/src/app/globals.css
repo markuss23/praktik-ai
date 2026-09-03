@@ -40,7 +40,8 @@
   --gradient-r: oklch(0.6274 0.1301 287.77); /* gradientR #857AD2 */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Fokusový prstenec jede na brandové fialové (gradientR), ne na šedé. */
+  --ring: var(--gradient-r);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -63,6 +64,7 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-bricolage);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -511,7 +513,7 @@ body.module-fullscreen footer {
 
   --input: oklch(1 0 0 / 15%);
 
-  --ring: oklch(0.556 0 0);
+  --ring: var(--gradient-r);
 
   --chart-1: oklch(0.87 0 0);
 
@@ -549,6 +551,45 @@ body.module-fullscreen footer {
   }
   html {
     @apply font-sans;
+    /* Full-bleed sekce (viz ProjectAboutSection) se vylamují ze 1440px rámu
+       <main> pomocí 100vw. Protože 100vw počítá i šířku scrollbaru, přesahují
+       o pár px za viewport — clip je uřízne, aniž by vznikl vodorovný scroll.
+       Záměrně clip, ne hidden: nevytváří scroll kontejner, takže position:
+       sticky uvnitř stránky funguje dál. */
+    overflow-x: clip;
+  }
+}
+
+/* Organické „blob" tvary na pozadí landing sekcí — pomalý drift, čistě
+   dekorativní. Při prefers-reduced-motion stojí. */
+@keyframes blobFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-20px, 28px, 0) rotate(9deg);
+  }
+}
+@keyframes blobFloatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(16px, -22px, 0) rotate(-7deg);
+  }
+}
+.blob-float {
+  animation: blobFloat 20s ease-in-out infinite;
+}
+.blob-float-slow {
+  animation: blobFloatSlow 24s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .blob-float,
+  .blob-float-slow {
+    animation: none;
   }
 }
 

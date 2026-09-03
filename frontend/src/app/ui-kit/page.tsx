@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
   BookMarked,
   Check,
+  ChevronsDownUp,
+  ChevronsUpDown,
   CircleCheck,
   CircleX,
   Lightbulb,
   Loader2,
+  LogIn,
+  LogOut,
+  Menu,
   MessageSquareWarning,
   Plus,
   Trash2,
   TriangleAlert,
+  UserRound,
+  X,
 } from "lucide-react";
 
 import {
@@ -22,6 +29,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui-kit/alert";
+import { Accordion } from "@/components/ui-kit/accordion";
 import { Badge, type BadgeStatusVariant } from "@/components/ui-kit/badge";
 import { StatusSelect } from "@/components/ui-kit/status-select";
 import { Button } from "@/components/ui-kit/button";
@@ -38,6 +46,12 @@ import {
   CardStat,
   CardTitle,
 } from "@/components/ui-kit/card";
+import {
+  AiCover,
+  GitCover,
+  MathCover,
+  type CoverTone,
+} from "@/components/ui-kit/module-covers";
 import {
   Select,
   SelectContent,
@@ -60,6 +74,18 @@ import {
 } from "@/components/ui-kit/dialog";
 import { Input } from "@/components/ui-kit/input";
 import {
+  Navbar,
+  NavbarAction,
+  NavbarActions,
+  NavbarBar,
+  NavbarBrand,
+  NavbarCta,
+  NavbarLink,
+  NavbarMobileLink,
+  NavbarMobileNav,
+  NavbarNav,
+} from "@/components/ui-kit/navbar";
+import {
   SegmentedControl,
   SegmentedControlItem,
 } from "@/components/ui-kit/segmented-control";
@@ -73,7 +99,7 @@ import { Textarea } from "@/components/ui-kit/textarea";
 import { Toaster, toast } from "@/components/ui-kit/toast";
 import { Row, Section, ThemeToggle } from "@/components/ui-kit/Showcase";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
-import { czechPlural } from "@/lib/utils";
+import { cn, czechPlural } from "@/lib/utils";
 
 /** Popisky pro `<Select items>` — bez „vše", aby se uplatnil placeholder. */
 const DIFFICULTY_ITEMS: Record<string, string> = Object.fromEntries(
@@ -98,6 +124,325 @@ const SORT_ITEMS = {
   title: "Podle názvu",
 };
 
+/**
+ * Položky hlavní navigace. Oproti původní liště tu nejsou „Odměny" ani
+ * „Tutor" — tutor se otevírá z obsahu kurzu, ne z navigace.
+ */
+const NAV_ITEMS = [
+  { label: "Home", href: "/" },
+  { label: "Moje kurzy", href: "/moje-kurzy" },
+  { label: "Veřejná databáze", href: "/verejna-databaze" },
+  { label: "Admin", href: "/admin" },
+];
+
+/**
+ * Pořadí sekcí na stránce. `value` musí sedět s `value` na `<Section>` —
+ * plní zároveň obsah v levém sloupci i tlačítko „rozbalit vše".
+ */
+const SECTIONS = [
+  { value: "barvy", label: "Barvy" },
+  { value: "button", label: "Button" },
+  { value: "alert", label: "Alert" },
+  { value: "toast", label: "Toast" },
+  { value: "badge", label: "Badge" },
+  { value: "segmented-control", label: "Segmented control" },
+  { value: "input-textarea", label: "Input & Textarea" },
+  { value: "tabs", label: "Tabs" },
+  { value: "select", label: "Select" },
+  { value: "card", label: "Card" },
+  { value: "card-cover", label: "Card — SVG covery" },
+  { value: "card-review", label: "Card — ke schválení" },
+  { value: "dialog", label: "Dialog" },
+];
+
+/** Tóny coverů i s tokenem, ze kterého berou podklad. */
+const COVER_TONE_ITEMS: { tone: CoverTone; token: string }[] = [
+  { tone: "purple", token: "--gradient-r" },
+  { tone: "rose", token: "--gradient-l" },
+  { tone: "green", token: "--primary" },
+  { tone: "blue", token: "--tip" },
+  { tone: "orange", token: "--brand-accent" },
+];
+
+/** Motivy se v ukázce tónů střídají, ať je vidět kresba na každém podkladu. */
+const COVER_MOTIFS = [MathCover, AiCover, GitCover];
+
+/** Přilepený obsah stránky. Zvýrazňuje sekce, které jsou zrovna rozbalené. */
+function TableOfContents({
+  open,
+  onSelect,
+  className,
+}: {
+  open: string[];
+  onSelect: (value: string) => void;
+  className?: string;
+}) {
+  return (
+    <aside className={className}>
+      <nav
+        aria-label="Obsah stránky"
+        className="bg-card border-border rounded-xl border p-3 shadow-sm"
+      >
+        <p className="text-muted-foreground px-2 pb-2 font-mono text-[11px]">
+          obsah ({open.length}/{SECTIONS.length} otevřeno)
+        </p>
+        <ul className="flex flex-col gap-0.5">
+          {SECTIONS.map((section) => (
+            <li key={section.value}>
+              <button
+                type="button"
+                onClick={() => onSelect(section.value)}
+                className={cn(
+                  "w-full rounded-lg px-2 py-1.5 text-left text-sm outline-none transition-colors",
+                  "focus-visible:ring-2 focus-visible:ring-ring/35",
+                  open.includes(section.value)
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {section.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
+  );
+}
+
+/**
+ * Paleta tokenů z `globals.css`. Vzorky sahají na stejné proměnné jako
+ * komponenty, takže se po přepnutí do tmavého režimu přebarví samy.
+ */
+const PALETTE: { group: string; swatches: [string, string][] }[] = [
+  {
+    group: "brand",
+    swatches: [
+      ["--primary", "bg-primary"],
+      ["--brand-accent", "bg-brand-accent"],
+      ["--gradient-l", "bg-gradient-l"],
+      ["--gradient-r", "bg-gradient-r"],
+      ["--ring", "bg-ring"],
+    ],
+  },
+  {
+    group: "stavy",
+    swatches: [
+      ["--success", "bg-success"],
+      ["--warning", "bg-warning"],
+      ["--destructive", "bg-destructive"],
+      ["--tip", "bg-tip"],
+    ],
+  },
+  {
+    group: "povrchy",
+    swatches: [
+      ["--background", "bg-background"],
+      ["--card", "bg-card"],
+      ["--popover", "bg-popover"],
+      ["--muted", "bg-muted"],
+      ["--secondary", "bg-secondary"],
+      ["--accent", "bg-accent"],
+    ],
+  },
+  {
+    group: "text a obrysy",
+    swatches: [
+      ["--foreground", "bg-foreground"],
+      ["--muted-foreground", "bg-muted-foreground"],
+      ["--border", "bg-border"],
+      ["--input", "bg-input"],
+    ],
+  },
+  {
+    group: "grafy",
+    swatches: [
+      ["--chart-1", "bg-chart-1"],
+      ["--chart-2", "bg-chart-2"],
+      ["--chart-3", "bg-chart-3"],
+      ["--chart-4", "bg-chart-4"],
+      ["--chart-5", "bg-chart-5"],
+    ],
+  },
+];
+
+const PALETTE_TOKENS = PALETTE.flatMap(({ swatches }) =>
+  swatches.map(([token]) => token)
+);
+
+/**
+ * Dopočítá hex k tokenům. Proměnné jsou v oklch, takže je necháme spočítat
+ * prohlížeč: barvu vyplníme do plátna 1×1 a přečteme pixel. Sleduje třídu na
+ * <html>, aby se po přepnutí do tmavého režimu hodnoty přepsaly.
+ */
+function useTokenHexes() {
+  const [hexes, setHexes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    function read() {
+      const style = getComputedStyle(root);
+      const next: Record<string, string> = {};
+
+      for (const token of PALETTE_TOKENS) {
+        const value = style.getPropertyValue(token).trim();
+        if (!value) continue;
+
+        // fillStyle si při neplatné hodnotě nechá tu předchozí — sentinel
+        // proto pozná, že se barva nedala přečíst.
+        ctx!.fillStyle = "#010203";
+        ctx!.fillStyle = value;
+        if (ctx!.fillStyle === "#010203") continue;
+
+        ctx!.clearRect(0, 0, 1, 1);
+        ctx!.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = ctx!.getImageData(0, 0, 1, 1).data;
+        const channels = a === 255 ? [r, g, b] : [r, g, b, a];
+        next[token] =
+          "#" +
+          channels.map((c) => c.toString(16).padStart(2, "0")).join("");
+      }
+
+      setHexes(next);
+    }
+
+    read();
+    // Tmavý režim se přepíná třídou na <html>.
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return hexes;
+}
+
+function Swatch({
+  token,
+  utility,
+  hex,
+}: {
+  token: string;
+  utility: string;
+  hex?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div
+        className={cn("border-border h-14 rounded-lg border shadow-sm", utility)}
+      />
+      <div className="min-w-0 leading-snug">
+        <p className="text-foreground truncate font-mono text-[11px]">{token}</p>
+        <p className="text-muted-foreground truncate font-mono text-[10px]">
+          {utility}
+        </p>
+        <p className="text-foreground/70 truncate font-mono text-[10px] uppercase">
+          {hex ?? "…"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ostrá lišta v horní části stránky — přilepená, přes celou šířku, ať je
+ * vidět, jak se chová v provozu. `signedIn={false}` ukazuje stav před
+ * přihlášením.
+ */
+function AppNavbar({
+  signedIn = true,
+  className,
+}: {
+  signedIn?: boolean;
+  className?: string;
+}) {
+  const [active, setActive] = useState("/moje-kurzy");
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <Navbar className={className}>
+      <NavbarBar>
+        <NavbarBrand href="#" aria-label="PRAKTIK-AI — domů">
+          <Image
+            src="/logo.svg"
+            alt="PRAKTIK-AI"
+            width={80}
+            height={80}
+            // Značka je černá — v tmavém režimu ji překlopíme na bílou.
+            className="size-16 sm:size-20 dark:brightness-0 dark:invert"
+          />
+        </NavbarBrand>
+
+        <NavbarNav>
+          {NAV_ITEMS.map((item) => (
+            <NavbarLink
+              key={item.href}
+              href="#"
+              active={active === item.href}
+              onClick={(event) => {
+                event.preventDefault();
+                setActive(item.href);
+              }}
+            >
+              {item.label}
+            </NavbarLink>
+          ))}
+        </NavbarNav>
+
+        <NavbarActions>
+          {signedIn ? (
+            <>
+              <NavbarAction size="default" title="Můj profil">
+                <UserRound />
+                <span className="hidden lg:inline">Jan Novák</span>
+              </NavbarAction>
+              <NavbarAction aria-label="Odhlásit se" title="Odhlásit se">
+                <LogOut />
+              </NavbarAction>
+            </>
+          ) : (
+            <NavbarCta>
+              <LogIn />
+              Přihlásit se
+            </NavbarCta>
+          )}
+
+          <NavbarAction
+            className="md:hidden"
+            aria-label={mobileOpen ? "Zavřít menu" : "Otevřít menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+          >
+            {mobileOpen ? <X /> : <Menu />}
+          </NavbarAction>
+        </NavbarActions>
+      </NavbarBar>
+
+      <NavbarMobileNav open={mobileOpen}>
+        {NAV_ITEMS.map((item) => (
+          <NavbarMobileLink
+            key={item.href}
+            href="#"
+            active={active === item.href}
+            onClick={(event) => {
+              event.preventDefault();
+              setActive(item.href);
+              setMobileOpen(false);
+            }}
+          >
+            {item.label}
+          </NavbarMobileLink>
+        ))}
+      </NavbarMobileNav>
+    </Navbar>
+  );
+}
+
 export default function UiKitPage() {
   return (
     <Toaster>
@@ -112,21 +457,96 @@ function UiKitContent() {
   const [sort, setSort] = useState<string>("newest");
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [tab, setTab] = useState<"courses" | "materials">("courses");
+  // Otevřené sekce accordionu. Start jen s první, ať je stránka přehledná.
+  const [open, setOpen] = useState<string[]>([SECTIONS[0].value]);
+  const hexes = useTokenHexes();
+
+  const allOpen = open.length === SECTIONS.length;
+
+  function toggleAll() {
+    setOpen(allOpen ? [] : SECTIONS.map((section) => section.value));
+  }
+
+  /** Skok z obsahu: sekci nejdřív rozbalíme, teprve pak na ni odscrollujeme. */
+  function goToSection(value: string) {
+    setOpen((prev) => (prev.includes(value) ? prev : [...prev, value]));
+    requestAnimationFrame(() => {
+      document
+        .getElementById(value)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   return (
     <main className="bg-background text-foreground min-h-screen">
-      <div className="mx-auto max-w-4xl px-6 py-12">
-        <header className="mb-10 flex items-start justify-between gap-4">
+      <AppNavbar />
+
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <header className="mb-10 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">UI Kit</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Testovací stránka pro sjednocení stylů komponent.
             </p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={toggleAll}>
+              {allOpen ? (
+                <ChevronsDownUp data-icon="inline-start" />
+              ) : (
+                <ChevronsUpDown data-icon="inline-start" />
+              )}
+              {allOpen ? "Sbalit vše" : "Rozbalit vše"}
+            </Button>
+            <ThemeToggle />
+          </div>
         </header>
 
+        <div className="lg:grid lg:grid-cols-[14rem_1fr] lg:items-start lg:gap-10">
+          <TableOfContents
+            open={open}
+            onSelect={goToSection}
+            className="mb-8 lg:sticky lg:top-28 lg:mb-0"
+          />
+
+          <Accordion
+            multiple
+            value={open}
+            onValueChange={(value) => setOpen(value as string[])}
+            className="min-w-0"
+          >
         <Section
+          value="barvy"
+          title="Barvy"
+          description="Tokeny z globals.css. Vzorky čtou stejné proměnné jako komponenty — přepnutím na tmavý režim se přebarví."
+        >
+          {PALETTE.map(({ group, swatches }) => (
+            <Row key={group} label={group} className="block">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+                {swatches.map(([token, utility]) => (
+                  <Swatch
+                    key={token}
+                    token={token}
+                    utility={utility}
+                    hex={hexes[token]}
+                  />
+                ))}
+              </div>
+            </Row>
+          ))}
+
+          <Row label="gradient" className="block">
+            <div className="flex flex-col gap-1.5">
+              <div className="border-border h-14 rounded-lg border bg-[linear-gradient(90deg,var(--gradient-l),var(--gradient-r))] shadow-sm" />
+              <p className="text-muted-foreground font-mono text-[10px]">
+                linear-gradient(90deg, var(--gradient-l), var(--gradient-r))
+              </p>
+            </div>
+          </Row>
+        </Section>
+
+        <Section
+          value="button"
           title="Button"
           description="shadcn base-nova / @base-ui/react — varianty, velikosti a stavy."
         >
@@ -206,6 +626,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="alert"
           title="Alert"
           description="Pět variant podle Figma (697:1823). Barvy jdou přes tokeny --warning / --tip / --success / --destructive."
         >
@@ -278,6 +699,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="toast"
           title="Toast"
           description="Base UI toast přebarvený na paletu alertů — stejné ikony, tint i rádius."
         >
@@ -366,6 +788,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="badge"
           title="Badge"
           description="Stavové pilulky podle Figma (2092:4916) — tint 15 % a plná barva textu."
         >
@@ -392,6 +815,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="segmented-control"
           title="Segmented control"
           description="Sjednocený přepínač nad shadcn ToggleGroup (Base UI). Dvě i více možností, vždy zůstane jedna aktivní. solid = filtry, soft = přepínání sekcí."
         >
@@ -459,8 +883,9 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="input-textarea"
           title="Input & Textarea"
-          description="Pole z shadcn (Base UI). Focus je šedý prstenec z --ring — a stejný vzhled nově dostávají i nestylované <input>/<select>/<textarea> v celé appce, viz pravidlo v globals.css."
+          description="Pole z shadcn (Base UI). Focus je 2px prstenec v brandové fialové (--ring) — a stejný vzhled dostávají i nestylované <input>/<select>/<textarea> v celé appce, viz pravidlo v globals.css."
         >
           <Row label="input">
             <Input placeholder="Název kurzu" className="max-w-xs" />
@@ -491,6 +916,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="tabs"
           title="Tabs"
           description="Base UI tabs ve variantě line — podtržení aktivní záložky. Pro přepínání seznamů, počet se přidává jako Badge vedle názvu."
         >
@@ -544,6 +970,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="select"
           title="Select"
           description="Base UI select — popup se šířkou triggeru a zarovnáním na vybranou položku (jako nativní select). Náhrada za <select> ve filtrech."
         >
@@ -674,6 +1101,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="card"
           title="Card"
           description="Kurzová karta podle Figma (2120:3141): cover 590×226, gradientový titulek, šedé meta pilulky, linka a patička. Sloty: Image / Header / Title / Description / Action / Content / Meta / Stat / Progress / Footer."
         >
@@ -781,6 +1209,119 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="card-cover"
+          title="Card — SVG covery modulů"
+          description="Cover jako komponenta, ne bitmapa. Plochá kresba v SVG na plné značkové barvě z tokenů (--gradient-r, --primary, --tip, …) — škáluje se, váží pár kB, v tmavém režimu se přebarví sama a do karty jde místo <Image>. Podklad se přepíná přes `tone`: příbuzná témata sdílí barvu, jiný obor dostane jinou."
+        >
+          <Row label="karty modulů" className="block">
+            <div className="grid max-w-xl gap-8">
+              <Card>
+                <CardImage>
+                  <MathCover />
+                </CardImage>
+                <CardHeader>
+                  <CardTitle gradient>Matematika pro každý den</CardTitle>
+                  <CardDescription>
+                    Od procent a poměrů po čtení grafů — počítání, které se hodí
+                    v práci i doma, bez zbytečné teorie.
+                  </CardDescription>
+                </CardHeader>
+                <CardMeta>
+                  <Badge variant="meta">64 minut</Badge>
+                  <Badge variant="meta">Začátečník</Badge>
+                </CardMeta>
+                <CardFooter>
+                  <CardStat>
+                    <BookMarked />
+                    0/5 modulů
+                  </CardStat>
+                  <Button size="sm">
+                    <ArrowRight data-icon="inline-start" />
+                    Začít kurz
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card>
+                <CardImage>
+                  <AiCover tone="green" />
+                </CardImage>
+                <CardHeader>
+                  <CardTitle gradient>Základy strojového učení</CardTitle>
+                  <CardDescription>
+                    Jak se model učí z dat, co je trénink a proč se občas splete.
+                    Vysvětleno na příkladech, ne na vzorcích.
+                  </CardDescription>
+                </CardHeader>
+                <CardMeta>
+                  <Badge variant="meta">92 minut</Badge>
+                  <Badge variant="meta">Mírně pokročilý</Badge>
+                </CardMeta>
+                <CardFooter className="flex-col items-stretch gap-4">
+                  <CardProgress value={2} max={6} />
+                  <Button size="sm" className="self-end">
+                    <ArrowRight data-icon="inline-start" />
+                    Pokračovat
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card>
+                <CardImage>
+                  <GitCover tone="blue" />
+                </CardImage>
+                <CardHeader>
+                  <CardTitle gradient>Git a verzování kódu</CardTitle>
+                  <CardDescription>
+                    Od základů ke spolupráci: commity, větve, merge a pull
+                    requesty tak, aby se v historii kódu vyznal celý tým.
+                  </CardDescription>
+                </CardHeader>
+                <CardMeta>
+                  <Badge variant="meta">78 minut</Badge>
+                  <Badge variant="meta">Začátečník</Badge>
+                </CardMeta>
+                <CardFooter>
+                  <CardStat>
+                    <BookMarked />
+                    0/7 modulů
+                  </CardStat>
+                  <Button size="sm">
+                    <ArrowRight data-icon="inline-start" />
+                    Začít kurz
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </Row>
+
+          <Row label="samotný cover" className="block">
+            <div className="grid max-w-xl gap-4">
+              <MathCover className="rounded-md" />
+              <AiCover tone="green" className="rounded-md" />
+              <GitCover tone="blue" className="rounded-md" />
+            </div>
+          </Row>
+
+          <Row label="tone" className="block">
+            <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+              {COVER_TONE_ITEMS.map(({ tone, token }, i) => {
+                const Cover = COVER_MOTIFS[i % COVER_MOTIFS.length];
+                return (
+                  <figure key={tone} className="m-0 flex flex-col gap-1.5">
+                    <Cover tone={tone} className="rounded-md" />
+                    <figcaption className="text-muted-foreground font-mono text-[11px]">
+                      {tone} · {token}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          </Row>
+        </Section>
+
+        <Section
+          value="card-review"
           title="Card — Obsah ke schválení (admin /admin/review)"
           description="Karta ze seznamu obsahu ke schválení. Stav jako Badge, název, počet modulů a autor; položky ke kontrole mají navíc CTA přes celou šířku. Karty drží stejnou výšku, tlačítko je zarovnané dolů."
         >
@@ -848,6 +1389,7 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="dialog"
           title="Dialog"
           description="Postavený na @base-ui/react — portál, overlay a animace jsou součástí."
         >
@@ -894,6 +1436,8 @@ function UiKitContent() {
             </Dialog>
           </Row>
         </Section>
+          </Accordion>
+        </div>
       </div>
     </main>
   );
