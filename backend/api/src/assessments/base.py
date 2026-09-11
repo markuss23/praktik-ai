@@ -1,6 +1,6 @@
 from pydantic import ValidationError
 
-from api.src.marek_assessment.closed_questions.settings import ClosedQuestionsSettings
+from api.src.assessments.closed_questions.settings import ClosedQuestionsSettings
 
 REGISTRY: dict[str, dict] = {
     "closed_questions": {

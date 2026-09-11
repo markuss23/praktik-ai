@@ -375,9 +375,6 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     modules_count_ai_generated: Mapped[int] = mapped_column(
         Integer, nullable=False, default=3
     )
-    min_modules_to_open_final_exam: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
-    )
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     status: Mapped[Status] = mapped_column(
@@ -1292,7 +1289,7 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 #
 # Rozšiřitelný systém typů testování/procvičování v kurzech. Chování formátu
 # (uzavřené otázky, do budoucna otevřené otázky, AI procvičování...) definuje
-# registr v agents/assessments/base.py — tyto tabulky jsou jen generický
+# registr v api/src/assessments/base.py — tyto tabulky jsou jen generický
 # nosič dat, o typech samy o sobě nic nevědí.
 #
 # Tři vrstvy dat, každá se mění jinou rychlostí:
@@ -1304,7 +1301,7 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 class AssessmentType(TimestampMixin, SoftDeleteMixin, Base):
     """
     Katalog interakčních formátů. Nový formát = nový řádek v katalogu
-    (seed.py) + implementace v agents/assessments.
+    (seed.py) + implementace v api/src/assessments.
     """
 
     __tablename__ = "assessment_type"
@@ -1325,7 +1322,7 @@ class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
     a nastaví ho přes typově specifický JSONB `settings`.
 
     `settings` validuje aplikace Pydantic schématem z registru
-    (agents/assessments/base.py) před každým zápisem.
+    (api/src/assessments/base.py) před každým zápisem.
     """
 
     __tablename__ = "course_assessment"

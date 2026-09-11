@@ -1,12 +1,6 @@
-"""Pydantic schémata pro API interakčních formátů (assessments)."""
+from pydantic import BaseModel, ConfigDict
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from agents.assessments.schemas import AssessmentView, TurnInput  # noqa: F401
-from api.enums import AssessmentContext, AssessmentSessionStatus
-
-
-# ---------- Katalog formátů ----------
+from api.enums import AssessmentContext
 
 
 class AssessmentTypeResponse(BaseModel):
@@ -21,11 +15,16 @@ class AssessmentTypeResponse(BaseModel):
     default_settings: dict
 
 
-# ---------- Konfigurace na kurzu (lektor) ----------
+class CourseAssessmentAttachRequest(BaseModel):
+    """Etapa 1 — připojení formátu ke kurzu, bez nastavení (jede na default_settings)."""
+
+    assessment_type_code: str
+    context: AssessmentContext
+    module_id: int | None = None
 
 
 class CourseAssessmentResponse(BaseModel):
-    """Konfigurace jednoho formátu na kurzu."""
+    """Konfigurace formátu na kurzu."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,42 +33,35 @@ class CourseAssessmentResponse(BaseModel):
     module_id: int | None
     assessment_type_code: str
     context: AssessmentContext
-    is_enabled: bool
-    is_required: bool
     settings: dict
 
 
-class CourseAssessmentCreateRequest(BaseModel):
-    """Zapnutí formátu na kurzu."""
+class CourseAssessmentSettingsUpdateRequest(BaseModel):
+    """Etapa 2 — doladění nastavení už připojeného formátu."""
 
-    assessment_type_code: str = Field(..., description="Kód formátu z katalogu")
-    context: AssessmentContext
-    module_id: int | None = Field(
-        default=None,
-        description="Povinné pro practice/assessment, NULL pro course_final",
-    )
-    is_enabled: bool = True
-    is_required: bool = False
-    settings: dict | None = Field(
-        default=None,
-        description="Typově specifické nastavení; None = default_settings z katalogu",
-    )
+    settings: dict
 
 
-class CourseAssessmentUpdateRequest(BaseModel):
-    """Částečná úprava konfigurace (jen zaslaná pole)."""
-
-    is_enabled: bool | None = None
-    is_required: bool | None = None
-    settings: dict | None = None
-
-
-# ---------- Runtime (student) ----------
-
-
-class SessionStateResponse(BaseModel):
-    """Stav session — obálka + typovaný view (discriminated union)."""
+class SessionStartResponse(BaseModel):
+    """Odpověď na start session — jen otázka k zobrazení, nic víc (zatím)."""
 
     session_id: int
-    status: AssessmentSessionStatus
-    view: AssessmentView
+    question: str
+    options: list[str]
+
+
+class SessionAnswerResponse(BaseModel):
+    """Odpověď na odevzdanou odpověď.
+
+    Pokud `finished` je False, `question`/`options` nesou další otázku
+    (nebo stejnou znovu, pokud odpověď byla špatně a zbývají pokusy).
+    Pokud True, session skončila a jsou vyplněné `score` (0-100) a `is_passed`.
+    """
+
+    session_id: int
+    is_correct: bool
+    finished: bool
+    question: str | None = None
+    options: list[str] | None = None
+    score: float | None = None
+    is_passed: bool | None = None
