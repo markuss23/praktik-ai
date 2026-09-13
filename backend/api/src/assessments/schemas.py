@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
-from api.enums import AssessmentContext
+from api.enums import AssessmentContext, AssessmentSessionStatus
 
 
 class AssessmentTypeResponse(BaseModel):
@@ -21,6 +23,9 @@ class CourseAssessmentAttachRequest(BaseModel):
     assessment_type_code: str
     context: AssessmentContext
     module_id: int | None = None
+    is_enabled: bool = True
+    # True = student musí projít, než mu systém pustí navazující kontext
+    is_required: bool = False
 
 
 class CourseAssessmentResponse(BaseModel):
@@ -33,13 +38,17 @@ class CourseAssessmentResponse(BaseModel):
     module_id: int | None
     assessment_type_code: str
     context: AssessmentContext
+    is_enabled: bool
+    is_required: bool
     settings: dict
 
 
-class CourseAssessmentSettingsUpdateRequest(BaseModel):
-    """Etapa 2 — doladění nastavení už připojeného formátu."""
+class CourseAssessmentUpdateRequest(BaseModel):
+    """Etapa 2 — doladění už připojeného formátu. Posílá se celý objekt."""
 
     settings: dict
+    is_enabled: bool
+    is_required: bool
 
 
 class SessionStartResponse(BaseModel):
@@ -65,3 +74,20 @@ class SessionAnswerResponse(BaseModel):
     options: list[str] | None = None
     score: float | None = None
     is_passed: bool | None = None
+
+
+class SessionHistoryItem(BaseModel):
+    """Jeden běh studenta v historii kurzu.
+
+    `score`/`is_passed`/`finished_at` jsou vyplněné až u dokončené session.
+    """
+
+    session_id: int
+    assessment_type_code: str
+    context: AssessmentContext
+    module_id: int | None
+    status: AssessmentSessionStatus
+    score: float | None
+    is_passed: bool | None
+    started_at: datetime
+    finished_at: datetime | None

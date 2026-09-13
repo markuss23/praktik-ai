@@ -13,7 +13,9 @@ def find_course_assessment(
     module_id: int | None,
     assessment_type_code: str | None,
 ) -> models.CourseAssessment:
-    """Najde konfiguraci formátu podle course_id/context(/module_id/kódu).
+    """Najde aktivní konfiguraci formátu podle course_id/context(/module_id/kódu).
+
+    `is_enabled` neřeší — vypnutý formát blokuje až `start_session`.
 
     Kombinace musí mířit na právě jednu konfiguraci — jinak 404 (žádná)
     nebo 400 (víc než jedna, je potřeba upřesnit assessment_type_code).
@@ -21,6 +23,7 @@ def find_course_assessment(
     stmt = select(models.CourseAssessment).where(
         models.CourseAssessment.course_id == course_id,
         models.CourseAssessment.context == context,
+        models.CourseAssessment.is_active.is_(True),
     )
     if module_id is not None:
         stmt = stmt.where(models.CourseAssessment.module_id == module_id)

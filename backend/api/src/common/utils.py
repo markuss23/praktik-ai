@@ -80,6 +80,21 @@ def assert_course_editable(course: models.Course) -> None:
         )
 
 
+def assert_course_open_for_students(course: models.Course) -> None:
+    """Vyhodí 400 pokud kurz není aktivní, schválený a publikovaný."""
+    from api.enums import Status
+
+    if (
+        not course.is_active
+        or not course.is_published
+        or course.status != Status.approved
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Kurz není publikovaný nebo schválený.",
+        )
+
+
 def check_enrollment(
     db: Session,
     user: models.User,

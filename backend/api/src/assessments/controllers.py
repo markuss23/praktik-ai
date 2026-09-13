@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -7,13 +7,18 @@ from sqlalchemy.orm import Session
 from api import models
 from api.authorization import validate_owner_or_superadmin
 from api.enums import AssessmentContext, AssessmentSessionStatus, Status
-from api.src.common.utils import check_enrollment, get_or_404
+from api.src.common.utils import (
+    assert_course_open_for_students,
+    check_enrollment,
+    get_or_404,
+)
 from api.src.assessments.schemas import (
     AssessmentTypeResponse,
     CourseAssessmentAttachRequest,
     CourseAssessmentResponse,
-    CourseAssessmentSettingsUpdateRequest,
+    CourseAssessmentUpdateRequest,
     SessionAnswerResponse,
+    SessionHistoryItem,
     SessionStartResponse,
 )
 from api.src.assessments.base import get_format, validate_settings
@@ -45,6 +50,7 @@ def _assert_prerequisites_passed(
         models.CourseAssessment.context == prereq_context,
         models.CourseAssessment.is_required.is_(True),
         models.CourseAssessment.is_enabled.is_(True),
+        models.CourseAssessment.is_active.is_(True),
     )
     if module_id is not None:
         stmt = stmt.where(models.CourseAssessment.module_id == module_id)
@@ -78,6 +84,33 @@ def get_assessment_types(db: Session) -> list[AssessmentTypeResponse]:
         .order_by(models.AssessmentType.code)
     ).all()
     return [AssessmentTypeResponse.model_validate(row) for row in rows]
+
+
+def list_course_assessments(
+    db: Session, user: models.User, course_id: int
+) -> list[CourseAssessmentResponse]:
+    """Připojené formáty kurzu pro lektorskou editaci — včetně vypnutých.
+
+    Odpojené (soft-deleted) nevrací. Obsahuje `settings` se správnými
+    odpověďmi, proto jen pro vlastníka kurzu / superadmina.
+    """
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    validate_owner_or_superadmin(course, user, "kurz")
+
+    rows = db.scalars(
+        select(models.CourseAssessment)
+        .where(
+            models.CourseAssessment.course_id == course_id,
+            models.CourseAssessment.is_active.is_(True),
+        )
+        # course_final (module_id NULL) jde v Postgresu u ASC na konec
+        .order_by(
+            models.CourseAssessment.module_id,
+            models.CourseAssessment.context,
+            models.CourseAssessment.assessment_type_code,
+        )
+    ).all()
+    return [CourseAssessmentResponse.model_validate(row) for row in rows]
 
 
 def attach_course_assessment(
@@ -127,6 +160,8 @@ def attach_course_assessment(
         module_id=body.module_id,
         assessment_type_code=body.assessment_type_code,
         context=body.context,
+        is_enabled=body.is_enabled,
+        is_required=body.is_required,
         settings=assessment_type.default_settings,
     )
     db.add(course_assessment)
@@ -153,11 +188,11 @@ def detach_course_assessment(
     db.commit()
 
 
-def update_course_assessment_settings(
+def update_course_assessment(
     db: Session,
     user: models.User,
     course_assessment_id: int,
-    body: CourseAssessmentSettingsUpdateRequest,
+    body: CourseAssessmentUpdateRequest,
 ) -> CourseAssessmentResponse:
     course_assessment = get_or_404(
         db,
@@ -176,6 +211,8 @@ def update_course_assessment_settings(
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     course_assessment.settings = settings
+    course_assessment.is_enabled = body.is_enabled
+    course_assessment.is_required = body.is_required
     db.commit()
     db.refresh(course_assessment)
     return CourseAssessmentResponse.model_validate(course_assessment)
@@ -204,6 +241,12 @@ def start_session(
             question=current_question.question,
             options=current_question.options,
         )
+
+    # Až za rozjetou session — nedostupný kurz ani vypnutý formát
+    # neblokují dohrání rozjetého testu, jen zakládání nového.
+    assert_course_open_for_students(course_assessment.course)
+    if not course_assessment.is_enabled:
+        raise HTTPException(status_code=403, detail="Tento test je momentálně vypnutý.")
 
     if context == AssessmentContext.assessment:
         _assert_prerequisites_passed(
@@ -322,7 +365,7 @@ def submit_answer(
             else AssessmentSessionStatus.failed
         )
         session.score = round(score_ratio * 100, 1)
-        session.finished_at = datetime.now(timezone.utc)
+        session.finished_at = datetime.now(UTC)
         session.result = {
             **result,
             "current": current,
@@ -355,7 +398,9 @@ def submit_answer(
     )
 
 
-def get_session_history(db: Session, user: models.User, course_id: int) -> list[dict]:
+def get_session_history(
+    db: Session, user: models.User, course_id: int
+) -> list[SessionHistoryItem]:
     """Všechny sessions studenta na daném kurzu, nejnovější první.
 
     Nefiltruje podle is_active konfigurace — i po vypnutí/smazání formátu
@@ -380,15 +425,16 @@ def get_session_history(db: Session, user: models.User, course_id: int) -> list[
     ).all()
 
     return [
-        {
-            "session_id": session.session_id,
-            "assessment_type_code": session.assessment_type_code,
-            "context": session.course_assessment.context,
-            "module_id": session.course_assessment.module_id,
-            "status": session.status,
-            "score": session.score,
-            "is_passed": session.is_passed,
-            "finished_at": session.finished_at,
-        }
+        SessionHistoryItem(
+            session_id=session.session_id,
+            assessment_type_code=session.assessment_type_code,
+            context=session.course_assessment.context,
+            module_id=session.course_assessment.module_id,
+            status=session.status,
+            score=session.score,
+            is_passed=session.is_passed,
+            started_at=session.created_at,
+            finished_at=session.finished_at,
+        )
         for session in sessions
     ]
