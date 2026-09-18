@@ -1,0 +1,72 @@
+name: Refresh course-creation manual
+
+# Ručně spouštěný workflow, který pomocí Claude Code + Playwright MCP znovu projde
+# tvorbu kurzu na test prostředí, obnoví screenshoty v docs/manuals/jak-vytvorit-kurz/
+# a otevře PR ke kontrole. Nic se necommituje ani nepublikuje automaticky.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Proč se příručka obnovuje (uvede se v PR)"
+        required: false
+        default: "Ruční obnova screenshotů"
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: refresh-course-manual
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Chromium for Playwright MCP
+        run: npx -y playwright install --with-deps chromium
+
+      - name: Run Claude Code to walk through course creation
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Follow the instructions in docs/manuals/jak-vytvorit-kurz/REFRESH-PROMPT.md
+            exactly. Reason for this run: ${{ github.event.inputs.reason }}
+          claude_args: >-
+            --max-turns 60
+            --mcp-config .github/workflows/mcp/playwright.json
+            --allowedTools "Read,Write,Edit,Bash(printenv DOCS_ENV_URL),Bash(printenv DOCS_ENV_USERNAME),Bash(printenv DOCS_ENV_PASSWORD),mcp__playwright__*"
+        env:
+          DOCS_ENV_URL: ${{ secrets.DOCS_ENV_URL }}
+          DOCS_ENV_USERNAME: ${{ secrets.DOCS_ENV_USERNAME }}
+          DOCS_ENV_PASSWORD: ${{ secrets.DOCS_ENV_PASSWORD }}
+
+      - name: Open PR with refreshed manual
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs: refresh course-creation manual screenshots"
+          branch: docs/refresh-course-manual
+          title: "docs: refresh course-creation manual"
+          body: |
+            Automatická obnova `docs/manuals/jak-vytvorit-kurz/` přes Claude Code
+            + Playwright MCP (workflow `refresh-course-manual`).
+
+            Důvod: ${{ github.event.inputs.reason }}
+
+            Prosím zkontrolujte screenshoty (a případné textové úpravy) před mergem —
+            obsah demo kurzu i vzhled UI se mohly mezi běhy nepatrně lišit.
+          delete-branch: true
+          add-paths: |
+            docs/manuals/jak-vytvorit-kurz/**
