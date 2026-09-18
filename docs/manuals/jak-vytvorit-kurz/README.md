@@ -16,7 +16,7 @@ Po projití příručky budete umět:
 
 ## Krok 1 — Otevřete administraci kurzů
 
-aSasą
+Po přihlášení otevřete v levém menu položku **Kurzy** — dostanete se do administrace na adrese `/admin`. Zobrazí se **Přehled kurzů** se seznamem existujících kurzů; u každého je vidět vlastník, počet modulů, stav a dostupné akce, seznam lze filtrovat podle obtížnosti, stavu, bloku, cílové skupiny i předmětu. Vpravo nahoře klikněte na zelené tlačítko **Přidat kurz**.
 
 ![Admin – Přehled kurzů s tlačítkem Přidat kurz](images/01-admin-pridat-kurz.png)
 
@@ -77,7 +77,7 @@ V druhé fázi **Testy** AI ke každému modulu automaticky vygenerovala procvi�
 
 ![Tvorba obsahu testu – otázky k modulu](images/07-tvorba-testu.png)
 
-Otázky můžete upravovat, mazat i přidávat, měnit typ (uzavřená/otevřená) i správnou odpověď. Tlačítko **Uložit a pokračovat na modul X** vás posune na testy dalšího modulu; u posledního modulu je místo něj tlačítko **Dokončit**, které vede na závěrečný souhrn.
+Otázky můžete upravovat, mazat i přidávat, měnit typ (uzavřená/otevřená) i správnou odpověď. Tlačítko **Uložit a pokračovat na modul X** vás posune na testy dalšího modulu; tlačítkem **Dokončit** vedle něj přejdete rovnou na závěrečný souhrn.
 
 ## Krok 7 — Zkontrolujte souhrn kurzu
 
