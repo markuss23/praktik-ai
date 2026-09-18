@@ -16,7 +16,7 @@ Po projití příručky budete umět:
 
 ## Krok 1 — Otevřete administraci kurzů
 
-aSasą
+Po přihlášení přejděte v levém menu do sekce **Kurzy** (administrace na adrese `/admin`). Otevře se **Přehled kurzů** — tabulka všech kurzů s vlastníkem, počtem modulů, stavem a příznakem publikování. Nad tabulkou jsou filtry, kterými lze kurzy hledat podle názvu, obtížnosti, stavu, publikování, bloku, cílové skupiny i předmětu. Vpravo nahoře klikněte na tlačítko **Přidat kurz** a rozbalte jeho nabídku.
 
 ![Admin – Přehled kurzů s tlačítkem Přidat kurz](images/01-admin-pridat-kurz.png)
 
