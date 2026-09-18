@@ -72,10 +72,18 @@ tak, aby odpovídaly aktuálnímu vzhledu UI pro tvorbu kurzu pomocí AI.
 - Pokud se text tlačítek, názvy fází nebo pořadí kroků v UI změnily natolik, že
   popisky v `README.md` již neodpovídají realitě, uprav příslušné odstavce — ale
   neměň strukturu dokumentu (nadpisy, pořadí kroků) ani tón textu.
-- Pokud se nic textově nezměnilo, README.md nech beze změny (jen obrázky).
+- Než začneš upravovat obsah, přečti si aktuální `README.md` celý a zkontroluj, že
+  každý odstavec dává smysl a popisuje to, co skutečně vidíš v UI daného kroku. Pokud
+  narazíš na text, který je zjevně poškozený, nesmyslný nebo neodpovídá popisovanému
+  kroku (překlepy, náhodné znaky, vymazaný/přepsaný odstavec apod.), oprav ho — napiš
+  znovu věcný popis daného kroku na základě toho, co v UI skutečně vidíš, ve stejném
+  stylu jako okolní text. Tohle plať i tehdy, když se samotné UI oproti předchozímu
+  běhu nezměnilo.
+- Pokud po tomhle průchodu nezůstává nic k opravě (ani obrázky, ani text), README.md
+  nech beze změny.
 
 ## Na závěr
 
 Nic sám necommituj ani nepushuj — o vytvoření větve, commitu a PR se stará
-následující krok workflow (`peter-evans/create-pull-request`). Tvým jediným úkolem
-je mít v pracovním stromu aktuální soubory.
+následující krok workflow (`gh pr create` přes vestavěné GitHub CLI). Tvým jediným
+úkolem je mít v pracovním stromu aktuální soubory.
