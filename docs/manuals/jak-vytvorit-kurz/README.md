@@ -16,7 +16,7 @@ Po projití příručky budete umět:
 
 ## Krok 1 — Otevřete administraci kurzů
 
-Přihlaste se do aplikace a v horním menu klikněte na **Admin**. Otevře se sekce **Přehled kurzů** se seznamem všech kurzů v platformě. V pravém horním rohu klikněte na zelené tlačítko **Přidat kurz**.
+aSasą
 
 ![Admin – Přehled kurzů s tlačítkem Přidat kurz](images/01-admin-pridat-kurz.png)
 
