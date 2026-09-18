@@ -53,20 +53,35 @@ jobs:
           DOCS_ENV_USERNAME: ${{ secrets.DOCS_ENV_USERNAME }}
           DOCS_ENV_PASSWORD: ${{ secrets.DOCS_ENV_PASSWORD }}
 
-      - name: Open PR with refreshed manual
-        uses: peter-evans/create-pull-request@v6
-        with:
-          commit-message: "docs: refresh course-creation manual screenshots"
-          branch: docs/refresh-course-manual
-          title: "docs: refresh course-creation manual"
-          body: |
-            Automatická obnova `docs/manuals/jak-vytvorit-kurz/` přes Claude Code
-            + Playwright MCP (workflow `refresh-course-manual`).
+      - name: Commit changes and open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
 
-            Důvod: ${{ github.event.inputs.reason }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            Prosím zkontrolujte screenshoty (a případné textové úpravy) před mergem —
-            obsah demo kurzu i vzhled UI se mohly mezi běhy nepatrně lišit.
-          delete-branch: true
-          add-paths: |
-            docs/manuals/jak-vytvorit-kurz/**
+          # Only ever stage the manual's own directory, even if Claude touched
+          # something else by mistake.
+          git add docs/manuals/jak-vytvorit-kurz
+
+          if git diff --cached --quiet; then
+            echo "No changes to the manual — nothing to open a PR for."
+            exit 0
+          fi
+
+          branch="docs/refresh-course-manual-${{ github.run_id }}"
+          git checkout -b "$branch"
+          git commit -m "docs: refresh course-creation manual screenshots"
+          git push origin "$branch"
+
+          gh pr create \
+            --base dev \
+            --head "$branch" \
+            --title "docs: refresh course-creation manual" \
+            --body "Automatická obnova \`docs/manuals/jak-vytvorit-kurz/\` přes Claude Code + Playwright MCP (workflow \`refresh-course-manual\`).
+
+          Důvod: ${{ github.event.inputs.reason }}
+
+          Prosím zkontrolujte screenshoty (a případné textové úpravy) před mergem — obsah demo kurzu i vzhled UI se mohly mezi běhy nepatrně lišit."
