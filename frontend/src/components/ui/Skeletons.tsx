@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 
+import { Card, CardContent } from '../ui-kit/card';
 import { Skeleton } from '../ui-kit/skeleton';
 
 // Zkratka pro jeden blok — geometrie se předává přes className, vzhled drží kit.
@@ -20,6 +21,9 @@ function S({ className }: { className: string }) {
   ProfileSkeleton - spinner pro profil stránku
   MaterialDetailSkeleton - skeleton detailu veřejného materiálu
   RatingListSkeleton - karty hodnocení s pulse efektem (pro sekci Hodnocení)
+  ProfileStatsSkeleton - čtyři statistické dlaždice profilu
+  ProfileCoursesSkeleton - sekce Rozpracované/Dokončené kurzy na profilu
+  TicketCardsSkeleton - karty tiketů (profilová karta i stránka Moje tikety)
  */
 
 /**
@@ -328,6 +332,113 @@ export function ProfileSkeleton() {
         />
         <span className="text-muted-foreground text-sm">Načítání profilu…</span>
       </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Statistické dlaždice profilu.
+ *
+ * Drží stejnou mřížku i výšku jako ProfileStatsGrid, aby se po dotažení
+ * enrollmentů nepřelil zbytek pravého sloupce.
+ */
+export function ProfileStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-card rounded-xl shadow-sm p-5 flex flex-col items-center justify-center text-center animate-pulse"
+        >
+          <S className="h-8 w-16" />
+          <S className="h-3.5 w-24 mt-2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Sekce kurzů na profilu — nadpis a mřížka karet.
+ *
+ * Kopíruje rozvržení ProfileModulesSection (nadpis + grid 1/2/3 sloupce),
+ * takže po načtení jen prolne obsah místo skoku layoutu.
+ */
+export function ProfileCoursesSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <motion.div
+      className="flex flex-col gap-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      aria-hidden="true"
+    >
+      <S className="h-7 w-52 mb-3" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col justify-between animate-pulse"
+          >
+            <div>
+              <S className="h-3.5 w-20 mb-3" />
+              <S className="h-5 w-3/4 mb-2" />
+              <S className="h-3.5 w-full mb-1.5" />
+              <S className="h-3.5 w-5/6" />
+            </div>
+            <div className="flex items-center gap-1.5 mt-4">
+              <S className="size-3.5 rounded" />
+              <S className="h-3.5 w-16" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Karty tiketů. `layout="stack"` pro úzkou kartu na profilu,
+ * `layout="grid"` pro seznam na /moje-tikety.
+ */
+export function TicketCardsSkeleton({
+  count = 2,
+  layout = 'stack',
+}: {
+  count?: number;
+  layout?: 'stack' | 'grid';
+}) {
+  const wrapper =
+    layout === 'grid'
+      ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+      : 'flex flex-col gap-3';
+
+  return (
+    <motion.div
+      className={wrapper}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      aria-hidden="true"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} size="sm" className="h-full animate-pulse">
+          <CardContent className="flex h-full flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <S className="h-3.5 w-20" />
+              <S className="h-5 w-16 rounded-full" />
+            </div>
+            <div>
+              <S className="h-4 w-4/5 mb-1.5" />
+              <S className="h-3 w-1/2" />
+            </div>
+            <div className="mt-auto flex items-end justify-between gap-3">
+              <S className="h-3 w-24" />
+              <S className="h-9 w-32 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </motion.div>
   );
 }

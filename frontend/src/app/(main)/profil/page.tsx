@@ -15,7 +15,7 @@ import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
-import { ProfileSkeleton } from '@/components/ui';
+import { ProfileSkeleton, ProfileStatsSkeleton, ProfileCoursesSkeleton } from '@/components/ui';
 import { motion } from 'motion/react';
 
 function computeBadges(enrollments: MyEnrollment[]): Badge[] {
@@ -262,16 +262,16 @@ export default function ProfilPage() {
 
         {/* Right column */}
         <div className="flex-1 w-full flex flex-col gap-5">
-          {/* Stats grid */}
-          {!enrollmentsLoading && (
+          {/* Stats grid — skeleton drží stejnou výšku, aby sloupec neposkočil */}
+          {enrollmentsLoading ? (
+            <ProfileStatsSkeleton />
+          ) : (
             <ProfileStatsGrid stats={stats.items} />
           )}
 
           {/* Modules sections */}
           {enrollmentsLoading ? (
-            <div className="bg-card rounded-xl shadow-sm p-8 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Načítání kurzů...</p>
-            </div>
+            <ProfileCoursesSkeleton />
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}

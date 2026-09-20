@@ -124,6 +124,9 @@ export {
   MaterialDetailSkeleton,
   MaterialGridSkeleton,
   RatingListSkeleton,
+  ProfileStatsSkeleton,
+  ProfileCoursesSkeleton,
+  TicketCardsSkeleton,
 } from "./Skeletons";
 
 // Toasty jedou na vlastním providerů z `./Toast` (mountovaný v app/layout.tsx),

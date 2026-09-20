@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Ticket as TicketIcon } from "lucide-react";
+import { TicketCardsSkeleton } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 import { TicketCard } from "./TicketCard";
 import { TicketDeleteModal } from "./TicketDeleteModal";
@@ -69,7 +70,7 @@ export function ProfileTicketsCard({
       </Link>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">Načítání tiketů…</p>
+        <TicketCardsSkeleton count={2} />
       ) : tickets.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4 text-center">
           Zatím nemáte žádné tikety.
