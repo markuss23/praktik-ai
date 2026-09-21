@@ -20,7 +20,11 @@ def plan_content_node(state: AgentState) -> AgentState:
 
     cfg = get_llm_config(db, "course_planner")
     model = create_chat_llm(cfg.model, max_tokens=64000)
-    llm_structured = model.with_structured_output(CourseGenerated)
+    # method="json_schema" použije nativní strukturované výstupy Anthropic
+    # (server-side vynucené schéma), místo pouhého tool-callingu – ten model
+    # jen "navádí" a u složitě zanořených schémat (moduly -> learn_blocks/
+    # practice_questions) mohl vrátit zanořené pole jako JSON string.
+    llm_structured = model.with_structured_output(CourseGenerated, method="json_schema")
 
     modules_count = course_input.modules_count_ai_generated
     title = course_input.title
