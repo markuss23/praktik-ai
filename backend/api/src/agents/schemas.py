@@ -41,6 +41,15 @@ class GenerateEmbeddingsResponse(BaseModel):
     )
 
 
+class GenerateCourseImagesRequest(BaseModel):
+    """Request pro vygenerování a porovnání obrázků kurzu napříč modely"""
+
+    models: list[str] = Field(
+        default=["gpt-image-1", "gpt-image-1-mini"],
+        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
+    )
+
+
 class GenerateAssessmentRequest(BaseModel):
     """Request pro generování assessment otázky"""
 
