@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useEffect, useState } from "react";
-
 import {
   Button,
   Drawer,
@@ -57,6 +56,8 @@ export function Header() {
               alt="PRAKTIK-AI Logo"
               width={221}
               height={83}
+              priority
+              fetchPriority="high"
               className="h-[24px] w-[64px] shrink-0 sm:h-[68px] sm:w-[180px] lg:h-[83px] lg:w-[221px]"
             />
             <span className="text-sm font-bold whitespace-nowrap text-foreground sm:text-lg lg:text-xl">PRAKTIK-AI</span>

@@ -11,12 +11,13 @@ import {
 } from "@/components/material/api";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
-import { MaterialGridSkeleton } from "@/components/ui";
+import { MaterialGridSkeleton, Button } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
 import { PublicCollectionsClient } from "./PublicCollectionsClient";
 import { MyCollectionClient } from "./MyCollectionClient";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export default function PublicDatabasePage() {
   return (
@@ -94,14 +95,15 @@ function PublicDatabasePageInner() {
       return (
         <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
           <p className="text-sm text-destructive mb-3">Materiály se nepodařilo načíst: {error}</p>
-          <button
+          <Button
+            variant="default"
             type="button"
             onClick={() => setReloadKey((k) => k + 1)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
           >
             <RotateCcw size={15} strokeWidth={1.75} />
             Zkusit znovu
-          </button>
+          </Button>
         </div>
       );
     }

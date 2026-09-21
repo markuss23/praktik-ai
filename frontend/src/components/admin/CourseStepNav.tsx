@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { FileText, ListChecks, ClipboardCheck, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export type CourseStep = 'content' | 'tests' | 'summary';
 
@@ -47,20 +49,21 @@ export function CourseStepNav({ current, onNavigate, disabled = false }: CourseS
             return (
               <div key={step.key} className="flex items-center">
                 {index > 0 && <span className="text-muted-foreground mx-1">›</span>}
-                <button
+                <Button
+                  variant="plain"
                   type="button"
                   onClick={() => !isActive && handleClick(step.key)}
                   disabled={disabled || isActive || pending !== null}
                   aria-current={isActive ? 'step' : undefined}
-                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-gradient-r/20 text-gradient-r cursor-default'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50'
-                  }`}
+                  }`)}
                 >
                   {isPending ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
                   <span>{step.label}</span>
-                </button>
+                </Button>
               </div>
             );
           })}

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Megaphone, ChevronDown, AlertTriangle } from "lucide-react";
 import { ChangelogMarkdown } from "@/components/changelog/ChangelogMarkdown";
-
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Rozbalovací sekce s novinkami na úvodní stránce. Markdown se stahuje
 // serverově a předává jako prop, accordion řeší jen rozbalení/sbalení.
 export default function ChangelogAccordion({ markdown }: { markdown: string | null }) {
@@ -16,11 +17,12 @@ export default function ChangelogAccordion({ markdown }: { markdown: string | nu
         <div className="changelog-glow shadow-sm">
         <div className="bg-card overflow-hidden">
           {/* Hlavička / přepínač */}
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/50"
+            className={cn(BTN_KEEP_BOX, "w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/50")}
           >
             <span
               className="shrink-0 inline-flex items-center justify-center size-11 rounded-full text-primary-foreground shadow"
@@ -43,7 +45,7 @@ export default function ChangelogAccordion({ markdown }: { markdown: string | nu
                 open ? "rotate-180" : ""
               }`}
             />
-          </button>
+          </Button>
 
           {/* Rozbalovací obsah */}
           <AnimatePresence initial={false}>

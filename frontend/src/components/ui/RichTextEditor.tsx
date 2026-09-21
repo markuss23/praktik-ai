@@ -9,6 +9,17 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from './editor/ResizableImage';
 import { Modal } from './Modal';
 import { uploadEditorImage } from '@/lib/api-client';
+import { Button } from '../ui-kit/button';
+import { FilterSelect } from './FilterSelect';
+
+const HEADING_OPTIONS = [
+  { value: 'p', label: 'Odstavec' },
+  { value: 'h1', label: 'Nadpis 1' },
+  { value: 'h2', label: 'Nadpis 2' },
+  { value: 'h3', label: 'Nadpis 3' },
+];
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { Input } from '../ui-kit/input';
 import {
   Bold,
   Italic,
@@ -46,19 +57,20 @@ function ToolbarButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
+      variant="plain"
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`p-2 rounded transition-colors ${
+      className={cn(BTN_KEEP_BOX, `p-2 rounded transition-colors ${
         isActive
           ? 'bg-gradient-r/20 text-gradient-r'
           : 'hover:bg-muted text-foreground'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`)}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -128,19 +140,21 @@ function ImageDialog({
       maxWidth="max-w-lg"
       footer={
         <>
-          <button
+          <Button
+            variant="plain"
             onClick={onClose}
-            className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors")}
           >
             Zrušit
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="brand-solid"
             onClick={handleInsert}
             disabled={!url.trim() || uploading}
-            className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md transition-colors disabled:bg-muted disabled:cursor-not-allowed")}
           >
             Vložit
-          </button>
+          </Button>
         </>
       }
     >
@@ -149,17 +163,18 @@ function ImageDialog({
           <label className="block text-sm font-medium text-foreground mb-1">
             Nahrát z počítače
           </label>
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-md hover:border-gradient-r/30 hover:bg-gradient-r/10 transition-colors text-muted-foreground disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-md hover:border-gradient-r/30 hover:bg-gradient-r/10 transition-colors text-muted-foreground disabled:opacity-60")}
           >
             {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             <span className="text-sm">
               {uploading ? 'Nahrávání…' : 'Vybrat obrázek (JPG, PNG, WebP, GIF, SVG, max 10 MB)'}
             </span>
-          </button>
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -182,12 +197,12 @@ function ImageDialog({
 
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">URL obrázku</label>
-          <input
+          <Input
             type="url"
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             placeholder="https://… nebo /uploads/editor/…"
-            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+            className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
           />
         </div>
         */}
@@ -260,39 +275,42 @@ function LinkDialog({
       footer={
         <>
           {initialUrl && (
-            <button
+            <Button
+              variant="ghost-destructive"
               onClick={() => { onRemove(); onClose(); }}
-              className="mr-auto px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors flex items-center gap-1.5 text-sm"
+              className={cn(BTN_KEEP_BOX, "mr-auto px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 text-sm")}
             >
               <Trash2 size={14} /> Odstranit odkaz
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="plain"
             onClick={onClose}
-            className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors")}
           >
             Zrušit
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="brand-solid"
             onClick={handleApply}
             disabled={!url.trim()}
-            className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md transition-colors disabled:bg-muted disabled:cursor-not-allowed")}
           >
             {initialUrl ? 'Uložit' : 'Vložit'}
-          </button>
+          </Button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-1">URL</label>
-          <input
+          <Input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com"
             autoFocus
-            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+            className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
             onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
           />
         </div>
@@ -302,12 +320,12 @@ function LinkDialog({
             <label className="block text-sm font-medium text-foreground mb-1">
               Text odkazu <span className="text-muted-foreground font-normal">— co se zobrazí</span>
             </label>
-            <input
+            <Input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Zobrazený text (volitelné)"
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+              className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
               onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
             />
             <p className="text-xs text-muted-foreground mt-1">
@@ -420,22 +438,19 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
         <ToolbarDivider />
 
-        <select
-          className="px-2 py-1 text-sm border border-border rounded bg-card text-foreground min-w-[100px]"
+        <FilterSelect
+          className="px-2 py-1 data-[size=default]:h-auto text-sm border border-border rounded bg-card text-foreground min-w-[100px]"
           value={headingValue}
-          onChange={(e) => {
-            const value = e.target.value;
+          placeholder="Úroveň nadpisu"
+          includeEmpty={false}
+          options={HEADING_OPTIONS}
+          onChange={(value) => {
             if (value === 'p') editor.chain().focus().setParagraph().run();
             else if (value === 'h1') editor.chain().focus().toggleHeading({ level: 1 }).run();
             else if (value === 'h2') editor.chain().focus().toggleHeading({ level: 2 }).run();
             else if (value === 'h3') editor.chain().focus().toggleHeading({ level: 3 }).run();
           }}
-        >
-          <option value="p">Odstavec</option>
-          <option value="h1">Nadpis 1</option>
-          <option value="h2">Nadpis 2</option>
-          <option value="h3">Nadpis 3</option>
-        </select>
+        />
 
         <ToolbarDivider />
 

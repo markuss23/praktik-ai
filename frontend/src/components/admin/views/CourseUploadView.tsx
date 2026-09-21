@@ -5,7 +5,8 @@ import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
 import { createCourse, uploadCourseFile, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
 import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-
+import { Button, CatalogSelect, Input, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Nahrání souboru pro vytvoření kurzu
 export function CourseUploadView() {
   const { goToCourses, goToCourseEdit } = useAdminNavigation();
@@ -141,12 +142,13 @@ export function CourseUploadView() {
       {/* Header */}
       <div className="bg-card border-b shrink-0">
         <div className="px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4">
-          <button
+          <Button
+            variant="plain"
             onClick={goToCourses}
-            className="p-2 hover:bg-muted rounded-md transition-colors shrink-0"
+            className={cn(BTN_KEEP_BOX, "p-2 hover:bg-muted rounded-md transition-colors shrink-0")}
           >
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-bold text-foreground flex items-center gap-2">
               <Upload className="text-tip shrink-0" size={20} />
@@ -171,12 +173,12 @@ export function CourseUploadView() {
           {/* Název kurzu */}
           <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6">
             <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Název kurzu</h2>
-            <input
+            <Input
               type="text"
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
+              className={cn("h-auto", "w-full px-3 sm:px-4 py-2 sm:py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
               placeholder="např. Jak komunikovat s AI?"
             />
           </div>
@@ -184,12 +186,12 @@ export function CourseUploadView() {
           {/* Popis kurzu */}
           <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6">
             <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Popis kurzu</h2>
-            <textarea
+            <Textarea
               required
               rows={4}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground resize-none text-sm sm:text-base"
+              className={cn("field-sizing-fixed min-h-0", "w-full px-3 sm:px-4 py-2 sm:py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground resize-none text-sm sm:text-base")}
               placeholder="Stručný popis kurzu..."
             />
           </div>
@@ -206,42 +208,33 @@ export function CourseUploadView() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Tematický blok</label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseBlockId}
-                    onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm"
-                  >
-                    {blocks.map((b) => (
-                      <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
+                    options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                    aria-label="Tematický blok"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Cílová skupina</label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseTargetId}
-                    onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm"
-                  >
-                    {targets.map((t) => (
-                      <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
+                    options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                    aria-label="Cílová skupina"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Obor</label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseSubjectId}
-                    onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm"
-                  >
-                    {subjects.map((s) => (
-                      <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                    aria-label="Obor"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
                 </div>
               </div>
             )}
@@ -282,33 +275,36 @@ export function CourseUploadView() {
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="plain"
                   type="button"
                   onClick={handleRemoveFile}
-                  className="p-2 hover:bg-muted rounded-md transition-colors shrink-0"
+                  className={cn(BTN_KEEP_BOX, "p-2 hover:bg-muted rounded-md transition-colors shrink-0")}
                 >
                   <X size={20} className="text-muted-foreground" />
-                </button>
+                </Button>
               </div>
             )}
           </div>
 
           {/* Tlačítka */}
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
-            <button
+            <Button
+              variant="plain"
               type="button"
               onClick={goToCourses}
-              className="px-4 sm:px-6 py-2 text-foreground hover:bg-muted rounded-md transition-colors text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 text-foreground hover:bg-muted rounded-md transition-colors text-sm sm:text-base")}
             >
               Zpět
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="default"
               type="submit"
               disabled={loading || !file}
-              className="px-4 sm:px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base")}
             >
               {loading ? 'Vytváření...' : 'Vytvořit kurz'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

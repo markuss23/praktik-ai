@@ -7,6 +7,8 @@ import { Layers, X, Loader2 } from 'lucide-react';
 import type { Module } from '@/api';
 import { type CourseStats } from './constants';
 import { AnimatedNumber, EmptyChart, CustomTooltip } from './StatsPrimitives';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface FocusedCourseDetailProps {
   stats: CourseStats;
@@ -72,13 +74,14 @@ export function FocusedCourseDetail({ stats, color, onClose, onRequestModules }:
             </p>
           </div>
         </div>
-        <button
+        <Button
+          variant="plain"
           onClick={onClose}
-          className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+          className={cn(BTN_KEEP_BOX, "p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors")}
           title="Zavřít detail"
         >
           <X size={18} />
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

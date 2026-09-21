@@ -9,11 +9,17 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
-import { Drawer, DrawerContent } from '@/components/ui';
+import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea } from '@/components/ui';
+
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'closed', label: 'Uzavřená' },
+  { value: 'open', label: 'Otevřená' },
+];
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   Plus,
   Trash2,
@@ -277,7 +283,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
 
       for (const moduleIndex of Object.keys(questionsMap)) {
         const questionsForModule = questionsMap[Number(moduleIndex)] || [];
-        const module = modules[Number(moduleIndex)];
+        const mod = modules[Number(moduleIndex)];
 
         for (let qIndex = 0; qIndex < questionsForModule.length; qIndex++) {
           const question = questionsForModule[qIndex];
@@ -308,7 +314,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 }
               }
             }
-          } else if (module?.moduleId) {
+          } else if (mod?.moduleId) {
             createdQuestions.push({ moduleIndex: Number(moduleIndex), questionIndex: qIndex, question });
           }
         }
@@ -336,11 +342,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       }
 
       for (const { moduleIndex, questionIndex, question } of createdQuestions) {
-        const module = modules[moduleIndex];
-        if (!module?.moduleId) continue;
+        const mod = modules[moduleIndex];
+        if (!mod?.moduleId) continue;
         const correctOption = question.options.find(opt => opt.isCorrect);
         const createdQuestion = await createPracticeQuestion({
-          moduleId: module.moduleId,
+          moduleId: mod.moduleId,
           questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
           question: question.question,
           correctAnswer: correctOption?.text ?? question.correctAnswer,
@@ -389,8 +395,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     for (const moduleIndexStr of Object.keys(questionsMap)) {
       const moduleIndex = Number(moduleIndexStr);
       const questionsForModule = questionsMap[moduleIndex] || [];
-      const module = modules[moduleIndex];
-      const moduleName = module?.title || `Modul ${moduleIndex + 1}`;
+      const mod = modules[moduleIndex];
+      const moduleName = mod?.title || `Modul ${moduleIndex + 1}`;
 
       questionsForModule.forEach((question, qIndex) => {
         if (!question.question.trim()) {
@@ -510,13 +516,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         <h2 className="text-sm font-semibold text-foreground">
           Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
         </h2>
-        <button
-          className="lg:hidden p-1 hover:bg-muted rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
           onClick={() => setMobileCommentsOpen(false)}
           aria-label="Zavřít komentáře"
         >
           <X size={16} className="text-muted-foreground" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -531,18 +538,19 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                     {fb.author.displayName ?? 'Uživatel'}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => handleToggleResolve(fb)}
                       disabled={resolvingFeedback === fb.feedbackId}
-                      className={`p-0.5 rounded transition-colors ${
+                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
                         fb.isResolved
                           ? 'text-success hover:text-success'
                           : 'text-muted-foreground hover:text-success'
-                      }`}
+                      }`)}
                       title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
                     >
                       <CheckCircle size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -569,36 +577,39 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 <div className="px-3.5 pb-2.5">
                   {showReplyFor === fb.feedbackId ? (
                     <div>
-                      <textarea
+                      <Textarea
                         value={replyTexts[fb.feedbackId] ?? ''}
                         onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
                         rows={2}
                         placeholder="Napište odpověď..."
-                        className="w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none"
+                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
                       />
                       <div className="flex gap-1 mt-1">
-                        <button
+                        <Button
+                          variant="brand-solid"
                           onClick={() => handleReply(fb.feedbackId)}
                           disabled={submittingReply === fb.feedbackId}
-                          className="flex-1 py-1 bg-gradient-r text-primary-foreground rounded-lg text-xs font-medium hover:bg-gradient-r/80 disabled:opacity-50"
+                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
                         >
                           Odeslat
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => setShowReplyFor(null)}
-                          className="px-2 py-1 text-muted-foreground hover:text-foreground text-xs"
+                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
                         >
                           Zrušit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className="text-xs text-gradient-r hover:underline flex items-center gap-0.5"
+                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
                     >
                       <CornerDownRight size={11} /> Odpovědět
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -666,14 +677,15 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
           </p>
           {canResubmit && (
-            <button
+            <Button
+              variant="brand-solid"
               onClick={handleResubmit}
               disabled={resubmitLoading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-gradient-r text-primary-foreground rounded-lg text-sm font-medium hover:bg-gradient-r/80 transition-colors disabled:opacity-50"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
             >
               <ArrowUpCircle size={14} />
               {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
-            </button>
+            </Button>
           )}
         </div>
       )} */}
@@ -778,26 +790,26 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                   <div className="flex-1 min-w-0">
                     <label className="block text-sm font-semibold text-foreground mb-2">Otázka {qIndex + 1}</label>
-                    <input
+                    <Input
                       type="text"
                       value={question.question}
                       onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                      className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                       placeholder="Zadejte otázku..."
                     />
                   </div>
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                    <select
+                    <FilterSelect
                       value={question.type}
-                      onChange={(e) => updateQuestion(question.id, 'type', e.target.value as 'closed' | 'open')}
-                      className="flex-1 sm:flex-none px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm bg-card"
-                    >
-                      <option value="closed">Uzavřená</option>
-                      <option value="open">Otevřená</option>
-                    </select>
-                    <button onClick={() => removeQuestion(question.id)} className="p-2 text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0">
+                      onChange={(next) => updateQuestion(question.id, 'type', next as 'closed' | 'open')}
+                      placeholder="Typ otázky"
+                      includeEmpty={false}
+                      options={QUESTION_TYPE_OPTIONS}
+                      className="flex-1 sm:flex-none data-[size=default]:h-auto px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm bg-card"
+                    />
+                    <Button variant="ghost-destructive" onClick={() => removeQuestion(question.id)} className={cn(BTN_KEEP_BOX, "p-2 rounded transition-colors shrink-0")}>
                       <Trash2 size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -805,20 +817,21 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   <div className="space-y-2 ml-4">
                     {question.options.map((option) => (
                       <div key={option.id} className="flex items-center gap-3">
-                        <button
+                        <Button
+                          variant="plain"
                           type="button"
                           role="radio"
                           aria-checked={option.isCorrect}
                           aria-label={option.isCorrect ? 'Správná odpověď' : 'Označit jako správnou odpověď'}
                           title="Označit jako správnou odpověď"
                           onClick={() => setCorrectOption(question.id, option.id)}
-                          className={`size-4 rounded-full shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-gradient-r border-2 border-gradient-r' : 'border-2 border-border hover:border-gradient-r/30'}`}
+                          className={cn(BTN_KEEP_BOX, `size-4 rounded-full shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-gradient-r border-2 border-gradient-r' : 'border-2 border-border hover:border-gradient-r/30'}`)}
                         />
-                        <input
+                        <Input
                           type="text"
                           value={option.text}
                           onChange={(e) => updateOption(question.id, option.id, e.target.value)}
-                          className="flex-1 px-3 py-1.5 border border-border rounded focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm"
+                          className={cn("h-auto", "flex-1 px-3 py-1.5 border border-border rounded focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm")}
                           placeholder="Možnost odpovědi..."
                         />
                       </div>
@@ -834,10 +847,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 {question.type === 'open' && (
                   <div className="ml-4">
                     <label className="block text-xs text-muted-foreground mb-1">Příklad odpovědi</label>
-                    <textarea
+                    <Textarea
                       value={question.exampleAnswer || ''}
                       onChange={(e) => updateQuestion(question.id, 'exampleAnswer', e.target.value)}
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm resize-none"
+                      className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm resize-none")}
                       rows={2}
                       placeholder="Zadejte příklad správné odpovědi..."
                     />
@@ -846,35 +859,38 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
               </div>
             ))}
 
-            <button
+            <Button
+              variant="dashed"
               onClick={addQuestion}
-              className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-border rounded-lg hover:border-gradient-r/30 hover:bg-gradient-r/10 transition-colors text-muted-foreground hover:text-gradient-r w-full justify-center"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors w-full justify-center")}
             >
               <Plus size={16} />
               <span className="text-sm">Přidat otázku</span>
-            </button>
+            </Button>
           </div>
 
           <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-card">
-            <button type="button" onClick={handleBack} className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium px-2">
+            <Button variant="plain" type="button" onClick={handleBack} className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground transition-colors text-sm font-medium px-2")}>
               Zpět
-            </button>
+            </Button>
             <div className="flex items-center gap-2 sm:gap-3">
               {!isLastModule && (
-                <button
+                <Button
+                  variant="brand-solid"
                   onClick={handleNextModule}
-                  className="flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm bg-gradient-r text-primary-foreground hover:bg-gradient-r/80"
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
                 >
                   <span className="hidden sm:inline">Uložit a pokračovat na modul {selectedModuleIndex + 2}</span>
                   <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="default"
                 onClick={handleFinish}
-                className="flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm bg-primary text-primary-foreground hover:bg-primary/80"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
               >
                 <span>Dokončit</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>

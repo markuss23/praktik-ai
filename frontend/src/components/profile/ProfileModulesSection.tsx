@@ -1,17 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ConfirmModal } from '@/components/ui';
+import { ConfirmModal, Button } from '@/components/ui';
 import { getModules, getCourseProgress } from '@/lib/api-client';
 import type { MyEnrollment } from '@/api';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface ProfileModulesSectionProps {
   enrollments: MyEnrollment[];
 }
 
-async function resumeInProgress(enrollment: MyEnrollment) {
+async function resumeInProgress(
+  enrollment: MyEnrollment,
+  nav: (url: string) => void,
+) {
   try {
     const [modules, progress] = await Promise.all([
       getModules({ courseId: enrollment.courseId, includeInactive: false }),
@@ -25,21 +30,22 @@ async function resumeInProgress(enrollment: MyEnrollment) {
       return !(p?.passed);
     });
     if (next) {
-      window.location.href = `/modules/${next.moduleId}`;
+      nav(`/modules/${next.moduleId}`);
       return;
     }
   } catch {
     // fall through to course page
   }
-  window.location.href = `/courses/${enrollment.courseId}`;
+  nav(`/courses/${enrollment.courseId}`);
 }
 
 function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
+  const router = useRouter();
   const isCompleted = !!enrollment.completedAt;
 
   const handleClick = () => {
     if (isCompleted) return;
-    void resumeInProgress(enrollment);
+    void resumeInProgress(enrollment, (url) => router.push(url));
   };
 
   return (
@@ -95,12 +101,13 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
           <span>{enrollment.totalModules ?? 0} lekce</span>
         </div>
         {/* {isCompleted && (
-          <button
+          <Button
+            variant="default"
             onClick={() => onRepeatClick(enrollment)}
-            className="px-3 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/80 rounded-lg transition-colors"
+            className={cn(BTN_KEEP_BOX, "px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors")}
           >
             Zopakovat kurz
-          </button>
+          </Button>
         )} */}
       </div>
     </motion.div>
@@ -108,6 +115,7 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
 }
 
 export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProps) {
+  const router = useRouter();
   const [showInProgress, setShowInProgress] = useState(true);
   const [showCompleted, setShowCompleted] = useState(true);
   const [repeatConfirm, setRepeatConfirm] = useState<MyEnrollment | null>(null);
@@ -117,7 +125,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
 
   function handleRepeatConfirm() {
     if (repeatConfirm) {
-      window.location.href = `/courses/${repeatConfirm.courseId}`;
+      router.push(`/courses/${repeatConfirm.courseId}`);
     }
   }
 
@@ -126,9 +134,10 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
       {/* Rozpracované kurzy */}
       {inProgress.length > 0 && (
         <div>
-          <button
+          <Button
+            variant="plain"
             onClick={() => setShowInProgress(!showInProgress)}
-            className="flex items-center justify-between w-full mb-3"
+            className={cn(BTN_KEEP_BOX, "flex items-center justify-between w-full mb-3")}
           >
             <h3 className="text-lg font-bold text-foreground">Rozpracované kurzy</h3>
             {showInProgress ? (
@@ -136,7 +145,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
             ) : (
               <ChevronUp size={22} className="text-muted-foreground" />
             )}
-          </button>
+          </Button>
           <AnimatePresence>
             {showInProgress && (
               <motion.div
@@ -160,9 +169,10 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
       {/* Dokončené kurzy */}
       {completed.length > 0 && (
         <div>
-          <button
+          <Button
+            variant="plain"
             onClick={() => setShowCompleted(!showCompleted)}
-            className="flex items-center justify-between w-full mb-3"
+            className={cn(BTN_KEEP_BOX, "flex items-center justify-between w-full mb-3")}
           >
             <h3 className="text-lg font-bold text-foreground">Dokončené kurzy</h3>
             {showCompleted ? (
@@ -170,7 +180,7 @@ export function ProfileModulesSection({ enrollments }: ProfileModulesSectionProp
             ) : (
               <ChevronDown size={22} className="text-muted-foreground" />
             )}
-          </button>
+          </Button>
           <AnimatePresence>
             {showCompleted && (
               <motion.div

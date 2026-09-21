@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Trash2, Plus, ChevronUp, Upload, Info, GripVertical } from 'lucide-react';
-
+import { Button, Input } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Rubrika kurzu
 export function CourseRubric() {
   const [title, setTitle] = useState('');
@@ -123,53 +124,54 @@ export function CourseRubric() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Název kurzu</label>
-            <input
+            <Input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Např. Základy práce s AI pro učitele"
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Kategorie</label>
-            <input
+            <Input
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="Vyberte kategorii"
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-foreground mb-1">Popis kurzu</label>
-            <input
+            <Input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Krátký popis, který uvidí studenti v katalogu..."
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Garant kurzu</label>
-            <input
+            <Input
               type="text"
               value={garant}
               onChange={(e) => setGarant(e.target.value)}
               placeholder="Vyberte lektora / garanta"
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Náhled kurzu</label>
-            <button
+            <Button
+              variant="plain"
               type="button"
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-border hover:bg-muted/50 transition-colors"
+              className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-border hover:bg-muted/50 transition-colors")}
             >
               <Upload size={14} />
               <span>Nahrát obrázek</span>
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -182,35 +184,35 @@ export function CourseRubric() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Počet modulů</label>
-            <input
+            <Input
               type="number"
               min={1}
               max={20}
               value={moduleCount}
               onChange={(e) => setModuleCount(Number(e.target.value) || 1)}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Minimální počet splněných modulů pro Course Final</label>
-            <input
+            <Input
               type="number"
               min={1}
               max={moduleCount}
               value={minModulesForFinal}
               onChange={(e) => setMinModulesForFinal(Number(e.target.value) || 1)}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">Badge threshold (% úspěšnosti)</label>
-            <input
+            <Input
               type="number"
               min={0}
               max={100}
               value={badgeThreshold}
               onChange={(e) => setBadgeThreshold(Number(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
             />
           </div>
         </div>
@@ -282,33 +284,35 @@ export function CourseRubric() {
                         {String(index + 1).padStart(2, '0')}
                       </span>
                       <span className="text-sm text-foreground flex-1 min-w-0 truncate">{topic}</span>
-                      <button
+                      <Button
+                        variant="plain"
                         type="button"
                         onClick={() => removeTopic(index)}
-                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                        className={cn(BTN_KEEP_BOX, "p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0")}
                         aria-label="Odebrat téma"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={newTopic}
                       onChange={(e) => setNewTopic(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTopic(); } }}
                       placeholder="Nové téma..."
-                      className="flex-1 px-3 py-2 border border-dashed border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                      className={cn("h-auto", "flex-1 px-3 py-2 border border-dashed border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                     />
-                    <button
+                    <Button
+                      variant="dashed"
                       type="button"
                       onClick={addTopic}
-                      className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
+                      className={cn(BTN_KEEP_BOX, "flex items-center gap-1 px-3 py-2 border rounded-md text-sm transition-colors")}
                     >
                       <Plus size={14} />
                       <span>Přidat téma</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -332,42 +336,43 @@ export function CourseRubric() {
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">Téma dialogu</label>
-                  <input
+                  <Input
                     type="text"
                     value={socraticTopic}
                     onChange={(e) => setSocraticTopic(e.target.value)}
                     placeholder="Např. Role učitele v době AI"
-                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                    className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">Počet kroků (2–6)</label>
                   <div className="flex gap-1">
                     {[2, 3, 4, 5, 6].map((n) => (
-                      <button
+                      <Button
+                        variant="plain"
                         key={n}
                         type="button"
                         onClick={() => setSocraticSteps(n)}
-                        className={`size-9 rounded-md text-sm font-medium transition-colors ${
+                        className={cn(BTN_KEEP_BOX, `size-9 rounded-md text-sm font-medium transition-colors ${
                           socraticSteps === n
                             ? 'bg-[var(--foreground)] text-primary-foreground border-[var(--foreground)]'
                             : 'border border-border text-foreground hover:bg-muted/50'
-                        }`}
+                        }`)}
                       >
                         {n}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">Úvodní prompt pro AI</label>
-                <input
+                <Input
                   type="text"
                   value={socraticPrompt}
                   onChange={(e) => setSocraticPrompt(e.target.value)}
                   placeholder="AI zahájí dialog otázkou na studentův aktuální pohled na téma..."
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                  className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                 />
               </div>
               <ToggleRow
@@ -398,7 +403,7 @@ export function CourseRubric() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">Počet řádků (kritérií)</label>
-                <input
+                <Input
                   type="number"
                   min={1}
                   value={rubricCriteria.length}
@@ -414,12 +419,12 @@ export function CourseRubric() {
                       setRubricCriteria(rubricCriteria.slice(0, next));
                     }
                   }}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                  className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1">Počet sloupců (úrovně)</label>
-                <input
+                <Input
                   type="number"
                   min={1}
                   value={rubricLevels.length}
@@ -441,7 +446,7 @@ export function CourseRubric() {
                       })));
                     }
                   }}
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                  className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                 />
               </div>
               <div>
@@ -451,16 +456,17 @@ export function CourseRubric() {
                     const labels = { ai: 'AI', lector: 'Lektor', both: 'Oba' };
                     const isActive = rubricEvaluator === opt;
                     return (
-                      <button
+                      <Button
+                        variant="plain"
                         key={opt}
                         type="button"
                         onClick={() => setRubricEvaluator(opt)}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                        className={cn(BTN_KEEP_BOX, `flex-1 px-3 py-2 text-sm font-medium transition-colors ${
                           isActive ? 'bg-[var(--foreground)] text-primary-foreground' : 'bg-card text-foreground hover:bg-muted/50'
-                        }`}
+                        }`)}
                       >
                         {labels[opt]}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -538,22 +544,24 @@ export function CourseRubric() {
               </div>
 
               <div className="flex flex-wrap gap-2 mt-3">
-                <button
+                <Button
+                  variant="dashed"
                   type="button"
                   onClick={addRubricCriterion}
-                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-1 px-3 py-2 border rounded-md text-sm transition-colors")}
                 >
                   <Plus size={14} />
                   <span>Přidat kritérium</span>
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="dashed"
                   type="button"
                   onClick={addRubricLevel}
-                  className="flex items-center gap-1 px-3 py-2 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-1 px-3 py-2 border rounded-md text-sm transition-colors")}
                 >
                   <Plus size={14} />
                   <span>Přidat úroveň</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -583,12 +591,12 @@ export function CourseRubric() {
           <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
             <div>
               <label className="block text-xs font-medium text-foreground mb-1">Téma seminární práce</label>
-              <input
+              <Input
                 type="text"
                 value={artifactTopic}
                 onChange={(e) => setArtifactTopic(e.target.value)}
                 placeholder="Např. Návrh didaktické aktivity s využitím AI pro předmět dle vaší aprobace"
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm"
+                className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
               />
             </div>
 
@@ -621,26 +629,28 @@ export function CourseRubric() {
                       {section.enabled && (
                         <Switch checked={section.enabled} onChange={() => toggleArtifactSection(index)} />
                       )}
-                      <button
+                      <Button
+                        variant="plain"
                         type="button"
                         onClick={() => removeArtifactSection(index)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        className={cn(BTN_KEEP_BOX, "p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors")}
                         aria-label="Odebrat sekci"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
 
-                <button
+                <Button
+                  variant="dashed"
                   type="button"
                   onClick={addArtifactSection}
-                  className="w-full flex items-center justify-center gap-1 px-3 py-3 border border-dashed border-border rounded-md text-sm text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 transition-colors"
+                  className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-center gap-1 px-3 py-3 border rounded-md text-sm transition-colors")}
                 >
                   <Plus size={14} />
                   <span>Přidat sekci</span>
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -754,7 +764,8 @@ function Switch({
   stopPropagation?: boolean;
 }) {
   return (
-    <button
+    <Button
+      variant="plain"
       type="button"
       role="switch"
       aria-checked={checked}
@@ -762,16 +773,16 @@ function Switch({
         if (stopPropagation) e.stopPropagation();
         onChange(!checked);
       }}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:ring-offset-1 ${
+      className={cn(BTN_KEEP_BOX, `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:ring-offset-1 ${
         checked ? 'bg-[var(--foreground)]' : 'bg-muted'
-      }`}
+      }`)}
     >
       <span
         className={`inline-block size-4 transform rounded-full bg-card shadow transition-transform ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       />
-    </button>
+    </Button>
   );
 }
 

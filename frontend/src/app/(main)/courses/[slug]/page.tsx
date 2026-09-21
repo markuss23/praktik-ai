@@ -8,9 +8,10 @@ import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api
 import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseDetailSkeleton } from "@/components/ui";
+import { CourseDetailSkeleton, Input } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
+import { cn } from '@/lib/utils';
 export default function CoursePage() {
   const params = useParams();
   const router = useRouter();
@@ -248,12 +249,12 @@ export default function CoursePage() {
         <div className="px-4 sm:px-6 lg:px-[100px] pb-6" style={{ maxWidth: '1440px', margin: '0 auto' }}>
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
+            <Input
               type="text"
               value={moduleSearch}
               onChange={(e) => setModuleSearch(e.target.value)}
               placeholder="Hledat modul…"
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent"
+              className={cn("h-auto", "w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent")}
               style={{ backgroundColor: 'var(--muted)' }}
             />
           </div>
@@ -302,7 +303,7 @@ export default function CoursePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              Žádné moduly neodpovídají hledání „{moduleSearch}"
+              Žádné moduly neodpovídají hledání „{moduleSearch}&quot;
             </motion.p>
           ) : (
             <motion.div

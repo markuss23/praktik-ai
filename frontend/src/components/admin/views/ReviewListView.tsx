@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, Status } from '@/api';
 import { getCourses } from '@/lib/api-client';
-import { czechPlural } from '@/lib/utils';
-import { useRole } from '@/hooks/useRole';
+import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ReviewCardsSkeleton } from '@/components/ui';
+import { ReviewCardsSkeleton, Button, Tabs, TabsList, TabsTrigger } from '@/components/ui';
 import { fetchMaterialsForReview, fetchApprovedMaterials } from '@/components/material/api';
 import { MaterialCard } from '@/components/material/MaterialCard';
 import type { Material } from '@/components/material/types';
@@ -80,14 +79,15 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
       </div>
 
       {!isApproved && onStart && (
-        <button
+        <Button
+          variant="plain"
           onClick={(e) => { e.stopPropagation(); onStart(); }}
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-primary-foreground text-sm font-semibold transition-all hover:opacity-90"
+          className={cn(BTN_KEEP_BOX, "flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-primary-foreground text-sm font-semibold transition-all hover:opacity-90")}
           style={{ backgroundColor: 'var(--primary)' }}
         >
           <ArrowRight size={16} />
           Začít kurz
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -208,9 +208,20 @@ function CourseCarousel<T extends { courseId: number }>({
 
 type ReviewTab = 'courses' | 'materials';
 
+// Segmentovaný přepínač nad kitovými Tabs. Kit u default variantu přidává
+// aktivní stín a světlé pozadí — obojí přebíjíme stejným modifikátorem,
+// aby zůstal původní gradient-r vzhled.
+const REVIEW_TABS_LIST =
+  'rounded-md border border-border bg-card p-1 shadow-sm group-data-horizontal/tabs:h-auto';
+const REVIEW_TAB = [
+  'flex-none rounded px-4 py-1.5 text-sm font-medium',
+  'text-muted-foreground hover:text-foreground',
+  'data-active:bg-gradient-r/20 data-active:text-gradient-r',
+  'group-data-[variant=default]/tabs-list:data-active:shadow-none',
+].join(' ');
+
 export function ReviewListView() {
   const router = useRouter();
-  useRole(); // guard: only guarantors/superadmins see this page
   const { currentUser } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ReviewTab>('courses');
   const [courses, setCourses] = useState<Course[]>([]);
@@ -279,20 +290,20 @@ export function ReviewListView() {
     <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Obsah ke schválení</h1>
-        <div className="inline-flex items-center rounded-md border border-border bg-card p-1 shadow-sm">
-          <ReviewTabButton
-            active={activeTab === 'courses'}
-            onClick={() => setActiveTab('courses')}
-          >
-            Kurzy
-          </ReviewTabButton>
-          <ReviewTabButton
-            active={activeTab === 'materials'}
-            onClick={() => setActiveTab('materials')}
-          >
-            Materiály
-          </ReviewTabButton>
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as ReviewTab)}
+          className="gap-0"
+        >
+          <TabsList className={REVIEW_TABS_LIST}>
+            <TabsTrigger value="courses" className={REVIEW_TAB}>
+              Kurzy
+            </TabsTrigger>
+            <TabsTrigger value="materials" className={REVIEW_TAB}>
+              Materiály
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {activeTab === 'courses' ? (
@@ -399,29 +410,6 @@ export function ReviewListView() {
         </div>
       )}
     </div>
-  );
-}
-
-function ReviewTabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-        active ? 'bg-gradient-r/20 text-gradient-r' : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

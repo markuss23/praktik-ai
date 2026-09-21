@@ -19,7 +19,7 @@ def plan_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     cfg = get_llm_config(db, "course_planner")
-    model = create_chat_llm(cfg.model)
+    model = create_chat_llm(cfg.model, max_tokens=64000)
     llm_structured = model.with_structured_output(CourseGenerated)
 
     modules_count = course_input.modules_count_ai_generated
@@ -47,6 +47,11 @@ OBSAH K ZPRACOVÁNÍ:
 {summarize_content}"""
 
     output: CourseGenerated = llm_structured.invoke(prompt)
+
+    if not output.modules:
+        raise ValueError(
+            "LLM vrátil kurz bez modulů. Zkontroluj limit max_tokens a nastavení modelu."
+        )
 
     state["course"] = output
 

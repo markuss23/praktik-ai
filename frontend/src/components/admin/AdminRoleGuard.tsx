@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
-import { AdminDashboardSkeleton } from '@/components/ui';
+import { AdminDashboardSkeleton, Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, login } = useAuth();
@@ -36,12 +37,13 @@ export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             {!isAuthenticated && (
-              <button
+              <Button
+                variant="brand-solid"
                 onClick={login}
-                className="inline-flex items-center justify-center h-10 px-4 rounded-md bg-gradient-r text-primary-foreground text-sm font-medium hover:bg-gradient-r/80 transition-colors"
+                className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium transition-colors")}
               >
                 Přihlásit se
-              </button>
+              </Button>
             )}
             <Link
               href="/"

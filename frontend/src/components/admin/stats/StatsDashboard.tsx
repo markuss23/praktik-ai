@@ -13,7 +13,8 @@ import {
   X, Activity, Sparkles, Clock, ArrowRight,
 } from 'lucide-react';
 import type { Module } from '@/api';
-import { czechPlural } from '@/lib/utils';
+import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
 import {
   StatCard, ChartTile, EmptyChart, CustomTooltip,
   TimeRangeToggle, CourseFilterDropdown, StatusFilterChips, PublishFilterChips,
@@ -310,12 +311,13 @@ export function StatsDashboard({
                 onChange={setSelectedPublishStates}
               />
               {hasActiveFilters && (
-                <button
+                <Button
+                  variant="plain"
                   onClick={resetFilters}
-                  className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gradient-r transition-colors"
+                  className={cn(BTN_KEEP_BOX, "ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gradient-r transition-colors")}
                 >
                   <X size={12} /> Resetovat filtry
-                </button>
+                </Button>
               )}
             </div>
           </motion.div>
@@ -503,19 +505,21 @@ export function StatsDashboard({
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
+                    <Button
+                      variant="plain"
                       key={i}
                       onClick={() => setTilesPage(i)}
                       aria-label={`Přejít na stránku ${i + 1}`}
-                      className={`h-1.5 rounded-full transition-all ${
+                      className={cn(BTN_KEEP_BOX, `h-1.5 rounded-full transition-all ${
                         i === safePage ? 'w-6 bg-gradient-r' : 'w-1.5 bg-muted hover:bg-muted-foreground'
-                      }`}
+                      }`)}
                     />
                   ))}
                 </div>
-                <button
+                <Button
+                  variant="brand-solid"
                   onClick={goToNextPage}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-r hover:bg-gradient-r/80 text-primary-foreground rounded-lg text-xs font-medium shadow-sm transition-colors"
+                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-colors")}
                 >
                   <span>Načíst další</span>
                   <motion.span
@@ -526,7 +530,7 @@ export function StatsDashboard({
                   >
                     <ArrowRight size={13} />
                   </motion.span>
-                </button>
+                </Button>
               </div>
             )}
           </motion.div>

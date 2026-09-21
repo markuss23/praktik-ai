@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { ArrowRight, BookOpen, Clock, Play } from 'lucide-react';
 import type { MyEnrollmentExtended } from '@/lib/api-client';
 
@@ -21,7 +22,7 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
   const href = resumeModuleId ? `/modules/${resumeModuleId}` : `/courses/${enrollment.courseId}`;
 
   return (
-    <a
+    <Link
       href={href}
       className="group relative block rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
       style={{ backgroundColor: 'var(--gradient-r)' }}
@@ -99,6 +100,6 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
           </div>
         </div>
       </div>
-    </a>
+    </Link>
   );
 }

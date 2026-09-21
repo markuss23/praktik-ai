@@ -8,7 +8,8 @@ import {
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Drawer, DrawerContent, Modal } from '@/components/ui';
+import { Button, Drawer, DrawerContent, Modal, Input, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
@@ -51,22 +52,24 @@ function OutlineHeader({ onAdd, onClose }: { onAdd: () => void; onClose?: () => 
     <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
       <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
       <div className="flex items-center gap-1">
-        <button
-          className="p-1 hover:bg-muted rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
           onClick={onAdd}
           title="Přidat modul"
         >
           <Plus size={16} className="text-muted-foreground" />
-        </button>
+        </Button>
         {onClose && (
-          <button
-            className="p-1 hover:bg-muted rounded"
+          <Button
+            variant="plain"
+            className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
             onClick={onClose}
             title="Zavřít"
             aria-label="Zavřít osnovu"
           >
             <X size={16} className="text-muted-foreground" />
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -105,8 +108,9 @@ function OutlineList({
             } ${module.isTemporary ? 'bg-warning/10' : ''}`}
             onClick={() => onSelect(index)}
           >
-            <button
-              className="shrink-0 p-0.5 hover:bg-muted rounded"
+            <Button
+              variant="plain"
+              className={cn(BTN_KEEP_BOX, "shrink-0 p-0.5 hover:bg-muted rounded")}
               onClick={(e) => { e.stopPropagation(); onToggle(index); }}
             >
               {expandedOutlineItems.has(index) ? (
@@ -114,7 +118,7 @@ function OutlineList({
               ) : (
                 <ChevronUp size={14} className="text-muted-foreground" />
               )}
-            </button>
+            </Button>
             <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
               {module.title}
               {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
@@ -125,13 +129,14 @@ function OutlineList({
               </span>
             )}
             {module.isTemporary && (
-              <button
+              <Button
+                variant="plain"
                 onClick={(e) => { e.stopPropagation(); onDelete(index); }}
-                className="p-1 hover:bg-destructive/20 rounded text-destructive shrink-0"
+                className={cn(BTN_KEEP_BOX, "p-1 hover:bg-destructive/20 rounded text-destructive shrink-0")}
                 title="Odstranit modul"
               >
                 <Trash2 size={14} />
-              </button>
+              </Button>
             )}
           </div>
           {expandedOutlineItems.has(index) && moduleContents[index] && (
@@ -179,8 +184,9 @@ function ModuleItem({
       } ${module.isTemporary ? 'bg-warning/10' : ''}`}
       onClick={onSelect}
     >
-      <button
-        className="shrink-0 p-0.5 hover:bg-muted rounded"
+      <Button
+        variant="plain"
+        className={cn(BTN_KEEP_BOX, "shrink-0 p-0.5 hover:bg-muted rounded")}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
@@ -191,22 +197,23 @@ function ModuleItem({
         ) : (
           <ChevronUp size={14} className="text-muted-foreground" />
         )}
-      </button>
+      </Button>
       <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
         {module.title}
         {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
       </span>
       {module.isTemporary && onDelete && (
-        <button
+        <Button
+          variant="plain"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 hover:bg-destructive/20 rounded text-destructive shrink-0"
+          className={cn(BTN_KEEP_BOX, "p-1 hover:bg-destructive/20 rounded text-destructive shrink-0")}
           title="Odstranit modul"
         >
           <Trash2 size={14} />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -432,16 +439,16 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       const updatedContents = { ...moduleContents };
 
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
+        const mod = updatedModules[i];
         const content = updatedContents[i];
 
-        if (module.isTemporary) {
-          const createdModule = await createModule({ courseId, title: module.title });
-          updatedModules[i] = { ...module, moduleId: createdModule.moduleId, isTemporary: false };
+        if (mod.isTemporary) {
+          const createdModule = await createModule({ courseId, title: mod.title });
+          updatedModules[i] = { ...mod, moduleId: createdModule.moduleId, isTemporary: false };
 
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
-            title: module.title || `Blok ${i + 1}`,
+            title: mod.title || `Blok ${i + 1}`,
             content: content?.content || '',
           });
           updatedContents[i] = { ...content, content: content?.content || '', learnId: createdLearnBlock.learnId };
@@ -452,20 +459,20 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       setModuleContents(updatedContents);
 
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
-        if (module.isTemporary) continue;
-        await updateModule(module.moduleId, { title: module.title });
+        const mod = updatedModules[i];
+        if (mod.isTemporary) continue;
+        await updateModule(mod.moduleId, { title: mod.title });
       }
 
       const learnBlockPromises: Promise<unknown>[] = [];
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
+        const mod = updatedModules[i];
         const content = updatedContents[i];
-        if (module.isTemporary) continue;
+        if (mod.isTemporary) continue;
         if (content?.learnId) {
           learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
-              title: module.title || `Blok`,
+              title: mod.title || `Blok`,
               content: content.content,
             })
           );
@@ -531,13 +538,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         <h2 className="text-sm font-semibold text-foreground">
           Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
         </h2>
-        <button
-          className="lg:hidden p-1 hover:bg-muted rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
           onClick={() => setMobileCommentsOpen(false)}
           aria-label="Zavřít komentáře"
         >
           <X size={16} className="text-muted-foreground" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -552,18 +560,19 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                     {fb.author.displayName ?? 'Uživatel'}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => handleToggleResolve(fb)}
                       disabled={resolvingFeedback === fb.feedbackId}
-                      className={`p-0.5 rounded transition-colors ${
+                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
                         fb.isResolved
                           ? 'text-success hover:text-success'
                           : 'text-muted-foreground hover:text-success'
-                      }`}
+                      }`)}
                       title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
                     >
                       <CheckCircle size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -590,36 +599,39 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                 <div className="px-3.5 pb-2.5">
                   {showReplyFor === fb.feedbackId ? (
                     <div>
-                      <textarea
+                      <Textarea
                         value={replyTexts[fb.feedbackId] ?? ''}
                         onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
                         rows={2}
                         placeholder="Napište odpověď..."
-                        className="w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none"
+                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
                       />
                       <div className="flex gap-1 mt-1">
-                        <button
+                        <Button
+                          variant="brand-solid"
                           onClick={() => handleReply(fb.feedbackId)}
                           disabled={submittingReply === fb.feedbackId}
-                          className="flex-1 py-1 bg-gradient-r text-primary-foreground rounded-lg text-xs font-medium hover:bg-gradient-r/80 disabled:opacity-50"
+                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
                         >
                           Odeslat
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => setShowReplyFor(null)}
-                          className="px-2 py-1 text-muted-foreground hover:text-foreground text-xs"
+                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
                         >
                           Zrušit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className="text-xs text-gradient-r hover:underline flex items-center gap-0.5"
+                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
                     >
                       <CornerDownRight size={11} /> Odpovědět
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -670,14 +682,15 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
           </p>
           {canResubmit && (
-            <button
+            <Button
+              variant="brand-solid"
               onClick={handleResubmit}
               disabled={resubmitLoading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-gradient-r text-primary-foreground rounded-lg text-sm font-medium hover:bg-gradient-r/80 transition-colors disabled:opacity-50"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
             >
               <ArrowUpCircle size={14} />
               {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
-            </button>
+            </Button>
           )}
         </div>
       )} */}
@@ -764,28 +777,30 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           title="Přidat nový modul"
           footer={
             <>
-              <button
+              <Button
+                variant="plain"
                 onClick={() => { setShowAddModuleModal(false); setNewModuleTitle(''); }}
-                className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors"
+                className={cn(BTN_KEEP_BOX, "px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors")}
               >
                 Zrušit
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="brand-solid"
                 onClick={handleAddModule}
                 disabled={!newModuleTitle.trim()}
-                className="px-4 py-2 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80 transition-colors disabled:bg-muted disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md transition-colors disabled:bg-muted disabled:cursor-not-allowed")}
               >
                 Přidat
-              </button>
+              </Button>
             </>
           }
         >
-          <input
+          <Input
             type="text"
             value={newModuleTitle}
             onChange={(e) => setNewModuleTitle(e.target.value)}
             placeholder="Název modulu"
-            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+            className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddModule(); }}
           />

@@ -61,7 +61,7 @@ def generate_question(state: GeneratorState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    raw = response.content.strip()
+    raw = response.text.strip()
 
     if is_closed:
         generated_question, options = _parse_closed(raw)

@@ -11,6 +11,8 @@ import {
   getCourseProgress,
 } from '@/lib/api-client';
 import { ModuleCompletedCard } from './ModuleCompletedCard';
+import { Button, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PASSING_SCORE = 75;
 
@@ -291,14 +293,14 @@ export default function AssessmentTab({
           >
             {/* Answer textarea — větší výchozí velikost; uživatel si může
                 ručně rozšířit (vertikálně) přes resize handle v rohu. */}
-            <textarea
+            <Textarea
               value={userAnswer}
               onChange={(e) => setUserAnswer(e.target.value)}
               placeholder="Napište svou odpověď..."
               rows={8}
               disabled={submitting}
               style={{ minHeight: 200, resize: 'vertical' }}
-              className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 mb-3"
+              className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 mb-3")}
             />
 
             {/* Last attempt feedback */}
@@ -328,10 +330,11 @@ export default function AssessmentTab({
 
             {/* Action buttons */}
             <div className="flex items-center justify-end mt-4">
-              <button
+              <Button
+                variant="plain"
                 onClick={handleSubmitAnswer}
                 disabled={!userAnswer.trim() || submitting || userAnswer.trim() === lastSubmittedAnswer}
-                className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed")}
                 style={{ backgroundColor: 'var(--gradient-r)' }}
               >
                 {submitting ? (
@@ -342,7 +345,7 @@ export default function AssessmentTab({
                 ) : (
                   'Odevzdat'
                 )}
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -379,13 +382,14 @@ export default function AssessmentTab({
               <p className="text-sm text-muted-foreground mb-6">
                 Pro pokračování musíte opakovat celý modul znovu.
               </p>
-              <button
+              <Button
+                variant="plain"
                 onClick={onRestartModule}
-                className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90")}
                 style={{ backgroundColor: 'var(--gradient-r)' }}
               >
                 Opakovat modul
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}

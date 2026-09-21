@@ -5,11 +5,11 @@ import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from '
 import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader } from '@/components/admin';
-import { Button, Modal } from '@/components/ui';
+import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
 import { CourseBlock, CourseTarget, CourseSubject, Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
 const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
 
@@ -410,14 +410,14 @@ export function CourseAICreateView() {
               <label className="block text-sm font-semibold text-foreground mb-2">
                 Název kurzu
               </label>
-              <input
+              <Input
                 type="text"
                 required
                 minLength={3}
                 maxLength={120}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+                className={cn("h-auto md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                 placeholder="Výběr zrn kávy"
               />
               <span className="text-xs text-muted-foreground mt-1">{formData.title.length}/120</span>
@@ -435,49 +435,40 @@ export function CourseAICreateView() {
                   <label className="block text-sm font-semibold text-foreground mb-2">
                     Tematický blok
                   </label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseBlockId}
-                    onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
-                  >
-                    <option value={0} disabled>Vyberte blok...</option>
-                    {blocks.map((b) => (
-                      <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
+                    options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                    emptyLabel="Vyberte blok..."
+                    aria-label="Tematický blok"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
                     Cílová skupina
                   </label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseTargetId}
-                    onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
-                  >
-                    <option value={0} disabled>Vyberte skupinu...</option>
-                    {targets.map((t) => (
-                      <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
+                    options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                    emptyLabel="Vyberte skupinu..."
+                    aria-label="Cílová skupina"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
                     Obor
                   </label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseSubjectId}
-                    onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
-                  >
-                    <option value={0} disabled>Vyberte obor...</option>
-                    {subjects.map((s) => (
-                      <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                    emptyLabel="Vyberte obor..."
+                    aria-label="Obor"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
               </div>
             )}
@@ -487,14 +478,14 @@ export function CourseAICreateView() {
               <label className="block text-sm font-semibold text-foreground mb-2">
                 Popis kurzu
               </label>
-              <textarea
+              <Textarea
                 required
                 rows={6}
                 minLength={3}
                 maxLength={500}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground resize-none"
+                className={cn("field-sizing-fixed min-h-0 md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground resize-none")}
                 placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn..."
               />
               <span className="text-xs text-muted-foreground mt-1">{formData.description.length}/500</span>
@@ -507,16 +498,17 @@ export function CourseAICreateView() {
                   Počet modulů
                 </label>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="plain"
                     type="button"
                     aria-label="Snížit počet modulů"
                     disabled={formData.moduleCount <= 1}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                    className="size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className={cn(BTN_KEEP_BOX, "size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent")}
                   >
                     -
-                  </button>
-                  <input
+                  </Button>
+                  <Input
                     type="number"
                     min="1"
                     max="12"
@@ -525,17 +517,18 @@ export function CourseAICreateView() {
                       const val = parseInt(e.target.value) || 1;
                       setFormData({ ...formData, moduleCount: Math.min(12, Math.max(1, val)) });
                     }}
-                    className="w-16 px-2 py-2 border border-border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+                    className={cn("h-auto md:text-base", "w-16 px-2 py-2 border border-border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                   />
-                  <button
+                  <Button
+                    variant="plain"
                     type="button"
                     aria-label="Zvýšit počet modulů"
                     disabled={formData.moduleCount >= 12}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.min(12, formData.moduleCount + 1) })}
-                    className="size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className={cn(BTN_KEEP_BOX, "size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent")}
                   >
                     +
-                  </button>
+                  </Button>
                   <span className="text-xs text-muted-foreground ml-1">
                     max 12
                   </span>
@@ -546,32 +539,30 @@ export function CourseAICreateView() {
                 <label className="block text-sm font-semibold text-foreground mb-2">
                   Doporučená obtížnost
                 </label>
-                <select
+                <FilterSelect
                   value={formData.difficulty}
-                  onChange={(e) =>
-                    setFormData({ ...formData, difficulty: e.target.value as Difficulty })
-                  }
-                  className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
-                >
-                  {DIFFICULTY_ORDER.map((d: Difficulty) => (
-                    <option key={d} value={d}>
-                      {DIFFICULTY_LABELS[d]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setFormData({ ...formData, difficulty: next as Difficulty })}
+                  placeholder="Doporučená obtížnost"
+                  includeEmpty={false}
+                  options={DIFFICULTY_ORDER.map((d: Difficulty) => ({
+                    value: d,
+                    label: DIFFICULTY_LABELS[d],
+                  }))}
+                  className="w-full data-[size=default]:h-auto px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
                   Délka kurzu (minuty)
                 </label>
-                <input
+                <Input
                   type="number"
                   min="15"
                   max="300"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                  className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground"
+                  className={cn("h-auto md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                   placeholder={String(formData.moduleCount * 20)}
                 />
               </div>
@@ -597,14 +588,15 @@ export function CourseAICreateView() {
                       <span className="text-muted-foreground shrink-0 text-xs">
                         {(f.size / 1024).toFixed(0)} KB
                       </span>
-                      <button
+                      <Button
+                        variant="plain"
                         type="button"
                         onClick={() => removeFile(f.name)}
-                        className="p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                        className={cn(BTN_KEEP_BOX, "p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0")}
                         title="Odebrat soubor"
                       >
                         <X className="size-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -642,23 +634,25 @@ export function CourseAICreateView() {
 
             {/* Tlačítka */}
             <div className="flex justify-between items-center pt-4">
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={goToCourses}
                 disabled={loading}
-                className="text-muted-foreground hover:text-foreground transition-colors text-sm disabled:opacity-50"
+                className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground transition-colors text-sm disabled:opacity-50")}
               >
                 Zpět
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="plain"
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
-                className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors")}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 <span>{loading ? getStepMessage() : 'Pokračovat'}</span>
-              </button>
+              </Button>
             </div>
           </form>
         </div>

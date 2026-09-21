@@ -414,17 +414,33 @@ function parseMyEnrollment(raw: Record<string, unknown>): MyEnrollmentExtended {
   };
 }
 
+// Několik komponent si zápisy vyžádá naráz (profil sám + ProfileTicketsCard
+// přes listMyTickets, detail kurzu + CourseSection...). Sdílíme jen *rozběhnutý*
+// request — jakmile doběhne, reference se zahodí, takže žádná odpověď se
+// necachuje a každé nové volání jde znovu na server jako dosud.
+let _myEnrollmentsInFlight: Promise<MyEnrollmentExtended[]> | null = null;
+
 export async function getMyEnrollments(): Promise<MyEnrollmentExtended[]> {
-  const token = await getValidAccessToken();
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
-    method: 'GET',
-    headers,
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = (await res.json()) as Record<string, unknown>[];
-  return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+  if (_myEnrollmentsInFlight) return _myEnrollmentsInFlight;
+
+  _myEnrollmentsInFlight = (async () => {
+    const token = await getValidAccessToken();
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
+      method: 'GET',
+      headers,
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    const data = (await res.json()) as Record<string, unknown>[];
+    return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+  })();
+
+  try {
+    return await _myEnrollmentsInFlight;
+  } finally {
+    _myEnrollmentsInFlight = null;
+  }
 }
 
 /** Tichý tracking: označí, že uživatel právě otevřel daný modul. Server

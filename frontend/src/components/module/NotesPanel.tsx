@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useEditor, EditorContent, Editor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   NotebookText,
   X,
@@ -33,19 +35,20 @@ function ToolbarBtn({
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
+      variant="plain"
       type="button"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       title={title}
       aria-label={title}
       aria-pressed={active}
-      className={`p-1.5 rounded transition-colors ${
+      className={cn(BTN_KEEP_BOX, `p-1.5 rounded transition-colors ${
         active ? 'bg-gradient-r/20 text-gradient-r' : 'text-muted-foreground hover:bg-muted'
-      }`}
+      }`)}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -278,17 +281,18 @@ export default function NotesPanel() {
                 <h3 className="font-semibold text-foreground">Poznámky</h3>
               </div>
               <div className="flex items-center gap-1">
-                <button
+                <Button
+                  variant="plain"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => setPinned((p) => !p)}
                   aria-label={pinned ? 'Odepnout poznámky' : 'Připnout poznámky'}
                   aria-pressed={pinned}
                   title={pinned ? 'Odepnout (zavře se po opuštění myši)' : 'Připnout — zůstane otevřené'}
-                  className={`p-1.5 rounded-md transition-all ${
+                  className={cn(BTN_KEEP_BOX, `p-1.5 rounded-md transition-all ${
                     pinned
                       ? 'bg-gradient-r/20 hover:bg-gradient-r/20'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                  }`)}
                   style={pinned ? { color: 'var(--gradient-r)' } : undefined}
                 >
                   <Pin
@@ -300,15 +304,16 @@ export default function NotesPanel() {
                       transition: 'transform 0.2s ease',
                     }}
                   />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="plain"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={closePanel}
                   aria-label="Zavřít poznámky"
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className={cn(BTN_KEEP_BOX, "p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors")}
                 >
                   <X size={18} />
-                </button>
+                </Button>
               </div>
             </div>
 

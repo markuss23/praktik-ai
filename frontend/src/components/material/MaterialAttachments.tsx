@@ -6,6 +6,8 @@ import JSZip from "jszip";
 import { fetchResourceFileBlob } from "@/lib/api-client";
 import { saveBlob } from "@/lib/download";
 import type { MaterialAttachment } from "./types";
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 /** Zda přílohu vůbec lze stáhnout (reálný soubor v API, nebo přímá URL u mocků). */
 function isDownloadable(attachment: MaterialAttachment): boolean {
@@ -127,15 +129,16 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-foreground">Přílohy</h2>
         {downloadable.length > 1 && (
-          <button
+          <Button
+            variant="default"
             type="button"
             onClick={handleDownloadAll}
             disabled={downloadingAll}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-60")}
           >
             <Download size={14} strokeWidth={1.75} />
             {downloadingAll ? "Stahuji…" : "Stáhnout vše"}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -163,7 +166,8 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
                 {attachment.format}
                 {attachment.sizeLabel ? ` ${attachment.sizeLabel}` : ""}
               </span>
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={() => handleDownload(attachment)}
                 disabled={
@@ -171,15 +175,15 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
                   downloadingId === attachment.id ||
                   downloadingAll
                 }
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium transition-colors ${
+                className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium transition-colors ${
                   isDownloadable(attachment)
                     ? "text-foreground hover:bg-muted/50"
                     : "text-muted-foreground cursor-not-allowed"
-                } disabled:opacity-60`}
+                } disabled:opacity-60`)}
               >
                 <Download size={14} strokeWidth={1.75} />
                 {downloadingId === attachment.id ? "Stahuji…" : "Stáhnout"}
-              </button>
+              </Button>
             </div>
           </li>
         ))}

@@ -56,7 +56,7 @@ def rerank_documents(state: AgentState) -> dict:
         # Parse odpovědi
         ranked_indices: list[int] = [
             int(x.strip()) - 1  # Convert to 0-based
-            for x in response.content.strip().split(",")
+            for x in response.text.strip().split(",")
             if x.strip().isdigit()
         ]
 

@@ -64,7 +64,7 @@ def evaluate_answer(state: EvaluationState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    raw = response.content.strip()
+    raw = response.text.strip()
 
     # Parsování strukturované odpovědi
     score, _, feedback = _parse_evaluation(raw)

@@ -109,14 +109,14 @@ export function EnrollmentCardWithNext({ enrollment }: EnrollmentCardWithNextPro
               <span>Kurz dokončen</span>
             </Link>
           ) : (
-            <a
+            <Link
               href={href}
               className="w-full inline-flex items-center justify-center gap-2 text-primary-foreground font-semibold py-2.5 px-4 rounded-md hover:brightness-110 active:translate-y-px transition-all"
               style={{ backgroundColor: 'var(--gradient-r)' }}
             >
               <span>{ctaLabel}</span>
               <ArrowRight size={16} />
-            </a>
+            </Link>
           )}
           {!isCompleted && next && (
             <Link

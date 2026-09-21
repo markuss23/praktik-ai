@@ -12,10 +12,11 @@ import {
   type ResourceTargetOption,
 } from "@/components/material/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
-import { FilterSelect, type FilterOption } from "@/components/material/FilterSelect";
-import { MaterialGridSkeleton } from "@/components/ui";
+import { FilterSelect, type FilterOption } from "@/components/ui";
+import { MaterialGridSkeleton, Button, Input } from "@/components/ui";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS, EDU_LEVEL_ORDER } from "@/lib/edu-level";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PAGE_SIZE = 8;
 
@@ -191,21 +192,22 @@ export function PublicDatabaseClient() {
           {categories.map((category) => {
             const isActive = category.id === activeCategoryId;
             return (
-              <button
+              <Button
+                variant="plain"
                 key={category.id}
                 type="button"
                 onClick={() =>
                   setActiveCategoryId((prev) => (prev === category.id ? null : category.id))
                 }
                 aria-pressed={isActive}
-                className={`px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
+                className={cn(BTN_KEEP_BOX, `px-4 py-2 rounded-md text-sm font-medium border transition-colors ${
                   isActive
                     ? "bg-gradient-r/20 border-gradient-r/30 text-gradient-r"
                     : "bg-card border-border text-foreground hover:bg-muted/50"
-                }`}
+                }`)}
               >
                 {category.label}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -226,12 +228,12 @@ export function PublicDatabaseClient() {
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 strokeWidth={1.75}
               />
-              <input
+              <Input
                 type="search"
                 placeholder="Hledat"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30"
+                className={cn("h-auto", "w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30")}
               />
             </div>
           </div>
@@ -263,14 +265,15 @@ export function PublicDatabaseClient() {
               includeEmpty={false}
             />
             {hasActiveFilters && (
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
               >
                 <RotateCcw size={14} strokeWidth={1.75} />
                 Resetovat
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -282,14 +285,15 @@ export function PublicDatabaseClient() {
             <p className="text-sm text-destructive mb-3">
               Materiály se nepodařilo načíst: {error}
             </p>
-            <button
+            <Button
+              variant="default"
               type="button"
               onClick={() => setReloadKey((k) => k + 1)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
             >
               <RotateCcw size={15} strokeWidth={1.75} />
               Zkusit znovu
-            </button>
+            </Button>
           </div>
         ) : sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
@@ -347,45 +351,48 @@ function Pagination({
       className="flex items-center justify-center gap-1.5 mt-6"
       aria-label="Stránkování"
     >
-      <button
+      <Button
+        variant="plain"
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
         aria-label="Předchozí stránka"
-        className={`${btnBase} border-border bg-card text-foreground hover:bg-muted/50`}
+        className={cn(BTN_KEEP_BOX, `${btnBase} border-border bg-card text-foreground hover:bg-muted/50`)}
       >
         <ChevronLeft size={16} strokeWidth={1.75} />
-      </button>
+      </Button>
 
       {start > 1 && <span className="px-1 text-muted-foreground">…</span>}
 
       {pages.map((p) => (
-        <button
+        <Button
+          variant="plain"
           key={p}
           type="button"
           onClick={() => onChange(p)}
           aria-current={p === page ? "page" : undefined}
-          className={`${btnBase} ${
+          className={cn(BTN_KEEP_BOX, `${btnBase} ${
             p === page
               ? "bg-gradient-r/20 border-gradient-r/30 text-gradient-r"
               : "border-border bg-card text-foreground hover:bg-muted/50"
-          }`}
+          }`)}
         >
           {p}
-        </button>
+        </Button>
       ))}
 
       {end < totalPages && <span className="px-1 text-muted-foreground">…</span>}
 
-      <button
+      <Button
+        variant="plain"
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
         aria-label="Další stránka"
-        className={`${btnBase} border-border bg-card text-foreground hover:bg-muted/50`}
+        className={cn(BTN_KEEP_BOX, `${btnBase} border-border bg-card text-foreground hover:bg-muted/50`)}
       >
         <ChevronRight size={16} strokeWidth={1.75} />
-      </button>
+      </Button>
     </nav>
   );
 }

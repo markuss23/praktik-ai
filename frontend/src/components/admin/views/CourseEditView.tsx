@@ -7,10 +7,11 @@ import { Course as CourseType } from '@/api';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState } from '@/components/admin';
-import { ConfirmModal } from '@/components/ui';
+import { CatalogSelect, ConfirmModal, Button, Input, Textarea } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRole } from '@/hooks/useRole';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface CourseEditViewProps {
   courseId: number;
@@ -150,9 +151,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
           Nemáte oprávnění editovat tento kurz. Editovat může pouze vlastník kurzu nebo superadmin.
         </div>
-        <button onClick={goBack} className="mt-4 px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80">
+        <Button variant="plain" onClick={goBack} className={cn(BTN_KEEP_BOX, "mt-4 px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80")}>
           Zpět
-        </button>
+        </Button>
       </div>
     );
   }
@@ -170,24 +171,24 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-card p-4 sm:p-6 rounded-lg shadow">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">Název kurzu *</label>
-          <input
+          <Input
             type="text"
             id="title"
             required
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
+            className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
             placeholder="např. Kurz promptování - začátečníci"
           />
         </div>
 
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">Popis kurzu</label>
-          <textarea
+          <Textarea
             id="description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
+            className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
             placeholder="Stručný popis kurzu..."
             rows={4}
           />
@@ -198,39 +199,33 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Blok</label>
-              <select
+              <CatalogSelect
                 value={formData.courseBlockId}
-                onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
-              >
-                {blocks.map((b) => (
-                  <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                ))}
-              </select>
+                onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
+                options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                aria-label="Blok"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Cílová skupina</label>
-              <select
+              <CatalogSelect
                 value={formData.courseTargetId}
-                onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
-              >
-                {targets.map((t) => (
-                  <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                ))}
-              </select>
+                onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
+                options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                aria-label="Cílová skupina"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Předmět</label>
-              <select
+              <CatalogSelect
                 value={formData.courseSubjectId}
-                onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card"
-              >
-                {subjects.map((s) => (
-                  <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                ))}
-              </select>
+                onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                aria-label="Předmět"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
           </div>
         )}
@@ -249,12 +244,12 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                       {editingModule === module.moduleId ? (
-                        <input
+                        <Input
                           type="text"
                           value={editModuleData.title}
                           onChange={(e) => setEditModuleData({ title: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="px-2 py-1 border border-border rounded text-foreground text-sm"
+                          className={cn("h-auto", "px-2 py-1 border border-border rounded text-foreground text-sm")}
                         />
                       ) : (
                         <span className="font-medium text-foreground">{module.title}</span>
@@ -263,17 +258,17 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                     <div className="flex items-center gap-2">
                       {editingModule === module.moduleId ? (
                         <>
-                          <button onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className="p-1 text-success hover:bg-success/20 rounded">
+                          <Button variant="plain" onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className={cn(BTN_KEEP_BOX, "p-1 text-success hover:bg-success/20 rounded")}>
                             <Save size={16} />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className="p-1 text-destructive hover:bg-destructive/20 rounded">
+                          </Button>
+                          <Button variant="plain" onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className={cn(BTN_KEEP_BOX, "p-1 text-destructive hover:bg-destructive/20 rounded")}>
                             <X size={16} />
-                          </button>
+                          </Button>
                         </>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className="p-1 text-muted-foreground hover:bg-muted rounded">
+                        <Button variant="plain" onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className={cn(BTN_KEEP_BOX, "p-1 text-muted-foreground hover:bg-muted rounded")}>
                           <Edit2 size={16} />
-                        </button>
+                        </Button>
                       )}
                       {expandedModules.has(module.moduleId) ? (
                         <ChevronUp size={20} className="text-muted-foreground" />
@@ -345,24 +340,26 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-          <button
+          <Button
+            variant="tip"
             type="submit"
             disabled={loading}
-            className="px-4 sm:px-6 py-2 bg-tip text-primary-foreground rounded-md hover:bg-tip/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+            className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base")}
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
-          </button>
-          <button type="button" onClick={goBack} className="px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base">
+          </Button>
+          <Button variant="plain" type="button" onClick={goBack} className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base")}>
             Zpět
-          </button>
+          </Button>
           {isSuperAdmin && (
-            <button
+            <Button
+              variant="plain"
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 sm:px-6 py-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/80 sm:ml-auto text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/80 sm:ml-auto text-sm sm:text-base")}
             >
               Smazat kurz
-            </button>
+            </Button>
           )}
         </div>
       </form>

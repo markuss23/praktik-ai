@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Filter, ChevronDown, CheckCircle2, X, Globe } from 'lucide-react';
 import type { Course } from '@/api';
 import { RANGE_LABELS, STATUS_LABELS, STATUS_COLORS, type TimeRange, type PublishState } from './constants';
+import { Button, Input } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export function TimeRangeToggle({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
   const id = useId();
@@ -12,12 +14,13 @@ export function TimeRangeToggle({ value, onChange }: { value: TimeRange; onChang
   return (
     <div className="inline-flex bg-card border border-border rounded-lg p-1 shadow-sm">
       {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
-        <button
+        <Button
+          variant="plain"
           key={r}
           onClick={() => onChange(r)}
-          className={`relative px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+          className={cn(BTN_KEEP_BOX, `relative px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
             value === r ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          }`)}
         >
           {value === r && (
             <motion.span
@@ -27,7 +30,7 @@ export function TimeRangeToggle({ value, onChange }: { value: TimeRange; onChang
             />
           )}
           <span className="relative z-10">{RANGE_LABELS[r]}</span>
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -73,9 +76,10 @@ export function CourseFilterDropdown({
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <Button
+        variant="plain"
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-sm hover:border-gradient-r/30 transition-colors text-sm text-foreground min-w-[200px]"
+        className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-sm hover:border-gradient-r/30 transition-colors text-sm text-foreground min-w-[200px]")}
       >
         <Filter size={14} className="text-gradient-r" />
         <span className="flex-1 text-left truncate">{label}</span>
@@ -85,7 +89,7 @@ export function CourseFilterDropdown({
           </span>
         )}
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -97,12 +101,12 @@ export function CourseFilterDropdown({
             className="absolute top-full mt-2 right-0 w-80 max-h-96 bg-card border border-border rounded-xl shadow-lg z-30 flex flex-col overflow-hidden"
           >
             <div className="p-2 border-b border-border">
-              <input
+              <Input
                 type="text"
                 placeholder="Hledat kurz…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 text-foreground"
+                className={cn("h-auto", "w-full px-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 text-foreground")}
               />
             </div>
             <div className="overflow-y-auto py-1 flex-1">
@@ -111,10 +115,11 @@ export function CourseFilterDropdown({
               ) : filtered.map(c => {
                 const checked = selected.has(c.courseId);
                 return (
-                  <button
+                  <Button
+                    variant="plain"
                     key={c.courseId}
                     onClick={() => toggle(c.courseId)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gradient-r/10 transition-colors text-left"
+                    className={cn(BTN_KEEP_BOX, "w-full flex items-center gap-3 px-3 py-2 hover:bg-gradient-r/10 transition-colors text-left")}
                   >
                     <span className={`size-4 rounded border flex items-center justify-center transition-colors ${checked ? 'bg-gradient-r border-gradient-r' : 'border-border bg-card'}`}>
                       {checked && <CheckCircle2 size={11} className="text-primary-foreground" strokeWidth={3} />}
@@ -124,18 +129,19 @@ export function CourseFilterDropdown({
                       className="size-1.5 rounded-full shrink-0"
                       style={{ background: STATUS_COLORS[c.status as string] ?? 'var(--muted-foreground)' }}
                     />
-                  </button>
+                  </Button>
                 );
               })}
             </div>
             {selected.size > 0 && (
               <div className="p-2 border-t border-border bg-muted/50">
-                <button
+                <Button
+                  variant="plain"
                   onClick={() => onChange(new Set())}
-                  className="w-full inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-gradient-r py-1 transition-colors"
+                  className={cn(BTN_KEEP_BOX, "w-full inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-gradient-r py-1 transition-colors")}
                 >
                   <X size={12} /> Zrušit výběr
-                </button>
+                </Button>
               </div>
             )}
           </motion.div>

@@ -1,6 +1,8 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface GenerateEmbeddingsButtonProps {
   // Handler for generating embeddings 
@@ -23,16 +25,15 @@ export function GenerateEmbeddingsButton({
   iconSize = 16,
 }: GenerateEmbeddingsButtonProps) {
   return (
-    <button
+    <Button
+      size="icon"
       onClick={onClick}
       disabled={isDone || isLoading}
-      className={`p-2 text-primary-foreground rounded-md transition-colors ${
-        isDone
-          ? 'bg-tip cursor-not-allowed'
-          : isLoading
-            ? 'bg-tip cursor-wait'
-            : 'bg-tip hover:bg-tip/80'
-      }`}
+      className={cn(
+        BTN_KEEP_BOX,
+        'p-2 rounded-md bg-tip text-primary-foreground',
+        isDone ? 'cursor-not-allowed' : isLoading ? 'cursor-wait' : 'hover:bg-tip/80',
+      )}
       title={isDone ? 'Embeddingy vygenerovány' : 'Generovat embeddingy'}
     >
       {isLoading ? (
@@ -43,7 +44,7 @@ export function GenerateEmbeddingsButton({
       ) : (
         <Sparkles size={iconSize} />
       )}
-    </button>
+    </Button>
   );
 }
 

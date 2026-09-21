@@ -17,6 +17,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  TicketCardsSkeleton,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
@@ -222,11 +223,7 @@ export default function MojeTiketyPage() {
 
         {/* Seznam */}
         {loading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">Načítání tiketů…</p>
-            </CardContent>
-          </Card>
+          <TicketCardsSkeleton count={6} layout="grid" />
         ) : visibleTickets.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">

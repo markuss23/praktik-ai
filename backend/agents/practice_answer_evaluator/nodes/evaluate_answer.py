@@ -57,7 +57,7 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    raw = response.content.strip()
+    raw = response.text.strip()
 
     is_correct, ai_response = _parse_evaluation(raw)
     print(f"Vyhodnocení: correct={is_correct}")

@@ -135,7 +135,7 @@ export function ModuleCompletedCard({
           transition={{ duration: 0.35, delay: 0.7 }}
           className="text-sm sm:text-base text-muted-foreground max-w-md mb-6 break-words"
         >
-          Právě jste dokončili modul „{moduleTitle}". Skvělá práce!
+          Právě jste dokončili modul „{moduleTitle}&quot;. Skvělá práce!
         </motion.p>
 
         <motion.button

@@ -108,6 +108,8 @@ export {
 
 // ── Projektové komponenty ────────────────────────────────────────────────────
 export { Dropdown, SimpleBotIcon } from "./Dropdown";
+export { FilterSelect, type FilterOption } from "./FilterSelect";
+export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CourseCard } from "./CourseCard";
 export { StatusBadge, PublishBadge, ModuleActiveBadge } from "./Badge";
 export { Modal } from "./Modal";
@@ -124,6 +126,9 @@ export {
   MaterialDetailSkeleton,
   MaterialGridSkeleton,
   RatingListSkeleton,
+  ProfileStatsSkeleton,
+  ProfileCoursesSkeleton,
+  TicketCardsSkeleton,
 } from "./Skeletons";
 
 // Toasty jedou na vlastním providerů z `./Toast` (mountovaný v app/layout.tsx),

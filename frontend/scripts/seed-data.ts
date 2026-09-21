@@ -84,12 +84,12 @@ async function seedDatabase() {
 
     for (const moduleData of course1Modules) {
       console.log(`Creating module: ${moduleData.name}`);
-      const module = await createModule({
+      const mod = await createModule({
         ...moduleData,
         course_id: course1.id,
         is_active: true,
       });
-      console.log(`✅ Module created with ID: ${module.id}`);
+      console.log(`✅ Module created with ID: ${mod.id}`);
     }
 
     console.log('\n---\n');
@@ -135,12 +135,12 @@ async function seedDatabase() {
 
     for (const moduleData of course2Modules) {
       console.log(`Creating module: ${moduleData.name}`);
-      const module = await createModule({
+      const mod = await createModule({
         ...moduleData,
         course_id: course2.id,
         is_active: true,
       });
-      console.log(`✅ Module created with ID: ${module.id}`);
+      console.log(`✅ Module created with ID: ${mod.id}`);
     }
 
     console.log('\n---\n');
@@ -181,12 +181,12 @@ async function seedDatabase() {
 
     for (const moduleData of course3Modules) {
       console.log(`Creating module: ${moduleData.name}`);
-      const module = await createModule({
+      const mod = await createModule({
         ...moduleData,
         course_id: course3.id,
         is_active: true,
       });
-      console.log(`✅ Module created with ID: ${module.id}`);
+      console.log(`✅ Module created with ID: ${mod.id}`);
     }
 
     console.log('\n✨ Database seeding completed successfully!');
