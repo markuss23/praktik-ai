@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Drawer, DrawerContent } from '@/components/ui';
+import { Drawer, DrawerContent, Button, Input, Textarea } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { czechPlural } from '@/lib/utils';
+import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   ChevronDown,
   ChevronUp,
@@ -176,13 +176,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     <>
       <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
         <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
-        <button
-          className="lg:hidden p-1 hover:bg-muted rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
           onClick={() => setMobileOutlineOpen(false)}
           aria-label="Zavřít osnovu"
         >
           <X size={16} className="text-muted-foreground" />
-        </button>
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {modules.map((module, index) => (
@@ -245,21 +246,21 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Název kurzu</label>
-                <input
+                <Input
                   type="text"
                   value={editedTitle}
                   onChange={(e) => setEditedTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent text-foreground"
+                  className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent text-foreground")}
                   placeholder="Zadejte název kurzu"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Popis kurzu</label>
-                <textarea
+                <Textarea
                   value={editedDescription}
                   onChange={(e) => setEditedDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent resize-none text-foreground"
+                  className={cn("field-sizing-fixed min-h-0 md:text-base", "w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent resize-none text-foreground")}
                   placeholder="Zadejte popis kurzu"
                 />
               </div>
@@ -316,15 +317,16 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                       <span className="flex-1 min-w-0 text-sm text-foreground truncate" title={file.filename}>
                         {file.filename}
                       </span>
-                      <button
+                      <Button
+                        variant="plain"
                         type="button"
                         onClick={() => handleDownloadFile(file)}
                         disabled={downloadingFileId === file.fileId}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-r/10 text-gradient-r hover:bg-gradient-r/20 text-xs font-medium transition-colors disabled:opacity-50"
+                        className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gradient-r/10 text-gradient-r hover:bg-gradient-r/20 text-xs font-medium transition-colors disabled:opacity-50")}
                       >
                         <Download className="size-3.5" />
                         {downloadingFileId === file.fileId ? 'Stahuji...' : 'Stáhnout'}
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>

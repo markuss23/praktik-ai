@@ -3,25 +3,27 @@
 import { Course } from "@/api";
 import { Alert, AlertDescription, Button, Input, Label, Modal } from "@/components/ui";
 
-interface ModuleModalProps {
+interface ModuleFormData {
+  moduleId: number | null;
+  title: string;
+  courseId: number;
+}
+
+interface ModuleModalProps<T extends ModuleFormData> {
   isOpen: boolean;
   mode: 'create' | 'edit';
-  formData: {
-    moduleId: number | null;
-    title: string;
-    courseId: number;
-  };
+  formData: T;
   courses: Course[];
   loading: boolean;
   error: string;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onChange: (data: any) => void;
+  onChange: (data: T) => void;
 }
 
 const FORM_ID = "module-modal-form";
 
-export function ModuleModal({
+export function ModuleModal<T extends ModuleFormData>({
   isOpen,
   mode,
   formData,
@@ -31,7 +33,7 @@ export function ModuleModal({
   onClose,
   onSubmit,
   onChange,
-}: ModuleModalProps) {
+}: ModuleModalProps<T>) {
   const parentCourse = courses.find((course) => course.courseId === formData.courseId);
 
   return (

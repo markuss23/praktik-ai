@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface TicketReplyBoxProps {
   /** Odeslání komentáře; vyhozená chyba se zobrazí pod polem. */
@@ -56,13 +58,13 @@ export function TicketReplyBox({
     >
       <h3 className="text-base font-semibold text-foreground mb-3">Vaše odpověď</h3>
 
-      <textarea
+      <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Napište nám, s čím vám můžeme pomoci..."
         rows={4}
         disabled={submitting || disabled}
-        className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60"
+        className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60")}
       />
 
       {disabledNotice && <p className="mt-2 text-xs text-muted-foreground">{disabledNotice}</p>}
@@ -70,24 +72,26 @@ export function TicketReplyBox({
 
       <div className="flex items-center justify-between gap-3 mt-4">
         {!hideResolve && onResolve ? (
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => void run(onResolve)}
             disabled={submitting || disabled}
-            className="px-4 py-2 rounded-md border border-gradient-r/30 bg-card text-sm font-medium text-gradient-r hover:bg-gradient-r/10 transition-colors disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md border border-gradient-r/30 bg-card text-sm font-medium text-gradient-r hover:bg-gradient-r/10 transition-colors disabled:opacity-60")}
           >
             Označit jako vyřešené
-          </button>
+          </Button>
         ) : (
           <span />
         )}
-        <button
+        <Button
+          variant="plain"
           type="submit"
           disabled={submitting || disabled || text.trim().length < 1}
-          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-60"
+          className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-60")}
         >
           {submitting ? "Odesílám…" : "Odeslat komentář"}
-        </button>
+        </Button>
       </div>
     </form>
   );

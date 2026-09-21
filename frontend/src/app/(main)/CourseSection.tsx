@@ -1,12 +1,13 @@
 'use client';
 
-import { CourseCard } from "@/components/ui";
+import { CatalogSelect, CourseCard, Button, Input } from "@/components/ui";
 import { getCourses, getMyEnrollments, getCourseBlocks, getCourseSubjects } from "@/lib/api-client";
-import { MyEnrollment, CourseBlock, CourseSubject } from "@/api";
-import { useState, useEffect, useCallback } from "react";
+import { MyEnrollment, CourseBlock, CourseSubject, Course } from "@/api";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PAGE_SIZE = 6; // 2 řádky × 3 karty na řádek
 
@@ -45,9 +46,12 @@ function CourseCardSkeleton() {
   );
 }
 
+/** Karta čte i legacy pole `id`/`name`, která generovaný `Course` nemá. */
+type CourseListItem = Course & Partial<{ id: number | string; name: string }>;
+
 export default function CourseSection() {
   const { isAuthenticated } = useAuth();
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseListItem[]>([]);
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
@@ -102,8 +106,12 @@ export default function CourseSection() {
       .catch(() => setEnrollments([]));
   }, [isAuthenticated]);
 
-  // Debounced search + filter apply
+  // Debounced search + filter apply. První běh (mount) se nedebouncuje —
+  // jinak by homepage čekala 500 ms, než vůbec odešle první dotaz na kurzy.
+  const firstFilterRun = useRef(true);
   useEffect(() => {
+    const delay = firstFilterRun.current ? 0 : 500;
+    firstFilterRun.current = false;
     const timeout = setTimeout(() => {
       loadCourses({
         textSearch: search || undefined,
@@ -112,7 +120,7 @@ export default function CourseSection() {
       });
       // Po každé změně filtrů se vracíme na první stránku.
       setPageIndex(0);
-    }, 500);
+    }, delay);
     return () => clearTimeout(timeout);
   }, [search, selectedBlockId, selectedSubjectId, loadCourses]);
 
@@ -157,50 +165,45 @@ export default function CourseSection() {
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Najdi kurz!"
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent"
+              className={cn("h-auto", "w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent")}
               style={{ backgroundColor: 'var(--muted)' }}
             />
           </div>
 
           {/* Kategorie (Block) */}
-          <select
-            value={selectedBlockId ?? ''}
-            onChange={(e) => setSelectedBlockId(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px]"
-            style={{ backgroundColor: 'var(--muted)' }}
-          >
-            <option value="">Kategorie</option>
-            {blocks.map((b) => (
-              <option key={b.blockId} value={b.blockId}>{b.name}</option>
-            ))}
-          </select>
+          <CatalogSelect
+            value={selectedBlockId ?? 0}
+            onValueChange={(next) => setSelectedBlockId(next === 0 ? undefined : next)}
+            options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+            emptyLabel="Kategorie"
+            aria-label="Kategorie"
+            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+          />
 
           {/* Tema (Subject) */}
-          <select
-            value={selectedSubjectId ?? ''}
-            onChange={(e) => setSelectedSubjectId(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px]"
-            style={{ backgroundColor: 'var(--muted)' }}
-          >
-            <option value="">Téma</option>
-            {subjects.map((s) => (
-              <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-            ))}
-          </select>
+          <CatalogSelect
+            value={selectedSubjectId ?? 0}
+            onValueChange={(next) => setSelectedSubjectId(next === 0 ? undefined : next)}
+            options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+            emptyLabel="Téma"
+            aria-label="Téma"
+            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+          />
 
           {/* Reset */}
-          <button
+          <Button
+            variant="plain"
             onClick={handleReset}
-            className="px-5 py-2.5 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap"
+            className={cn(BTN_KEEP_BOX, "px-5 py-2.5 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap")}
             style={{ backgroundColor: 'var(--muted)' }}
           >
             Resetovat
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6">
@@ -255,12 +258,13 @@ export default function CourseSection() {
                       </p>
                     </>
                   )}
-                  <button
+                  <Button
+                    variant="plain"
                     onClick={() => loadCourses()}
-                    className="bg-destructive hover:bg-destructive/80 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors"
+                    className={cn(BTN_KEEP_BOX, "bg-destructive hover:bg-destructive/80 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors")}
                   >
                     Zkusit Znovu
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             ) : courses.length === 0 ? (
@@ -289,7 +293,7 @@ export default function CourseSection() {
                   },
                 }}
               >
-                {visibleCourses.map((course: any) => {
+                {visibleCourses.map((course) => {
                   const enrollment = enrollments.find(e => e.courseId === (course.courseId || course.id));
                   return (
                     <motion.div
@@ -302,7 +306,7 @@ export default function CourseSection() {
                     >
                       <CourseCard
                         id={String(course.courseId || course.id)}
-                        title={course.title || course.name}
+                        title={course.title || course.name || ''}
                         description={course.description || ''}
                         duration={course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60)}
                         difficulty={course.difficulty}

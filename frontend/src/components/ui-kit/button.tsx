@@ -22,6 +22,30 @@ const buttonVariants = cva(
         warning:
           "bg-warning text-warning-foreground hover:bg-warning/80 focus-visible:border-warning focus-visible:ring-warning/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // Bez vlastních barev — layout, focus a disabled chování kitu si bere
+        // komponenta, která má vlastní (značkovou) barevnost.
+        plain: "",
+        // Plná značková akce v adminu (uložit, generovat) — solidní gradient-r.
+        "brand-solid":
+          "bg-gradient-r text-primary-foreground hover:bg-gradient-r/80 focus-visible:ring-gradient-r/30",
+        // Sekundární "tip" akce (editovat kurz, pokračovat).
+        tip: "bg-tip text-primary-foreground hover:bg-tip/80 focus-visible:ring-tip/30",
+        // Destruktivní akce bez výplně — jen barva textu a jemný hover.
+        "ghost-destructive":
+          "text-destructive hover:bg-destructive/10 focus-visible:ring-destructive/20",
+        // "Přidat…" placeholder s přerušovaným rámečkem.
+        dashed:
+          "border-dashed border-border text-muted-foreground hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10",
+        // Projektové "soft" varianty — tónovaná výplň + barevný text. `destructive`
+        // výše je už tato podoba; tohle jsou zbylé tóny z admin tabulek.
+        "soft-accent":
+          "bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/20",
+        "soft-tip":
+          "bg-tip/10 text-tip hover:bg-tip/20 focus-visible:ring-tip/20",
+        "soft-success":
+          "bg-success/10 text-success hover:bg-success/20 focus-visible:ring-success/20",
+        "soft-warning":
+          "bg-warning/10 text-warning hover:bg-warning/20 focus-visible:ring-warning/20",
         // Značkové CTA — gradient z Figmy (gradientL → gradientR).
         brand:
           "bg-gradient-to-r from-gradient-l to-gradient-r text-primary-foreground shadow-sm hover:opacity-90",
@@ -40,6 +64,8 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        // Drobná akční "pilulka" v hustých admin tabulkách (px-2.5 py-1 @ text-xs).
+        pill: "h-6 gap-1 rounded-md px-2.5 text-xs",
       },
     },
     defaultVariants: {

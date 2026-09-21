@@ -17,26 +17,28 @@ import {
   Textarea,
 } from "@/components/ui";
 
-interface CourseModalProps {
+interface CourseFormData {
+  courseId: number | null;
+  title: string;
+  description: string;
+  courseBlockId?: number;
+}
+
+interface CourseModalProps<T extends CourseFormData> {
   isOpen: boolean;
   mode: 'create' | 'edit';
-  formData: {
-    courseId: number | null;
-    title: string;
-    description: string;
-    courseBlockId?: number;
-  };
+  formData: T;
   blocks?: CourseBlock[];
   loading: boolean;
   error: string;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onChange: (data: any) => void;
+  onChange: (data: T) => void;
 }
 
 const FORM_ID = "course-modal-form";
 
-export function CourseModal({
+export function CourseModal<T extends CourseFormData>({
   isOpen,
   mode,
   formData,
@@ -46,7 +48,7 @@ export function CourseModal({
   onClose,
   onSubmit,
   onChange,
-}: CourseModalProps) {
+}: CourseModalProps<T>) {
   const [validationError, setValidationError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

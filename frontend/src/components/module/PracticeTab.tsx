@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, CheckCircle, XCircle, Plus, Loader2 } from 'lucide-react';
-
 import {
   listPracticeQuestions,
   generatePracticeQuestion,
@@ -17,7 +16,8 @@ import type {
   PracticeQuestionOption,
 } from '@/api';
 import { QuestionType } from '@/api';
-
+import { Button, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Normalizace textu pro porovnávání klíčových slov:
 // odstraní diakritiku (háčky, čárky), převede na lowercase a sjednotí whitespace,
 // aby se shody nelišily kvůli velikosti písmen ani akcentům.
@@ -293,12 +293,12 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
                   {q.questionType === 'open' && (
                     <div className="ml-6">
-                      <textarea
+                      <Textarea
                         value={String(staticAnswers[q.questionId] || '')}
                         onChange={(e) => handleStaticAnswerChange(q.questionId, e.target.value)}
                         placeholder="Napište svou odpověď..."
                         rows={3}
-                        className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none"
+                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none")}
                       />
                     </div>
                   )}
@@ -308,16 +308,17 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
             {practiceQuestions.length > 0 && (
               <div className="flex justify-end mt-8 pt-6 border-t border-border">
-                <button
+                <Button
+                  variant="plain"
                   onClick={handleStaticSubmit}
-                  className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90"
+                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90")}
                   style={{ backgroundColor: 'var(--gradient-r)' }}
                 >
                   Odevzdat
                   <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                </button>
+                </Button>
               </div>
             )}
           </motion.div>
@@ -393,36 +394,39 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
             {/* Action buttons */}
             <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-border">
-              <button
+              <Button
+                variant="plain"
                 onClick={() => { setStaticSubmitted(false); setStaticAnswers({}); }}
-                className="text-muted-foreground hover:text-foreground font-medium text-sm self-center sm:self-auto"
+                className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground font-medium text-sm self-center sm:self-auto")}
               >
                 Zkusit znovu
-              </button>
+              </Button>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 {staticPassed && (
                   <>
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => setPhase('ai')}
-                      className="inline-flex items-center justify-center gap-2 font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 border w-full sm:w-auto text-sm sm:text-base"
+                      className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center gap-2 font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 border w-full sm:w-auto text-sm sm:text-base")}
                       style={{ color: 'var(--gradient-r)', borderColor: 'var(--gradient-r)' }}
                     >
                       Procvičovat dál
                       <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="plain"
                       onClick={onComplete}
-                      className="inline-flex items-center justify-center gap-2 text-primary-foreground font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base"
+                      className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center gap-2 text-primary-foreground font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base")}
                       style={{ backgroundColor: 'var(--primary)' }}
                     >
                       Dokončit
                       <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -443,14 +447,15 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             {/* Tlačítko zpět — návrat k výsledkům předem připravených otázek */}
             {hasPracticeQuestions && (
               <div className="mb-4">
-                <button
+                <Button
+                  variant="plain"
                   type="button"
                   onClick={() => { setPhase('static'); setStaticSubmitted(true); }}
-                  className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors")}
                 >
                   <ArrowLeft className="size-4" />
                   Zpět na vyhodnocení procvičování
-                </button>
+                </Button>
               </div>
             )}
             {aiLoading ? (
@@ -514,12 +519,12 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         {/* Open textarea */}
                         {q.questionType === 'open' && !q.evaluation && (
                           <div className="ml-6">
-                            <textarea
+                            <Textarea
                               value={q.userInput}
                               onChange={(e) => handleAiInputChange(idx, e.target.value)}
                               placeholder="Napište svou odpověď..."
                               rows={3}
-                              className="w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none"
+                              className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none")}
                             />
                           </div>
                         )}
@@ -553,13 +558,14 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                                   <p className="text-sm text-muted-foreground mt-1">{q.evaluation.aiResponse}</p>
                                 )}
                                 {!q.evaluation.isCorrect && (
-                                  <button
+                                  <Button
+                                    variant="plain"
                                     onClick={() => handleAiRetry(idx)}
-                                    className="text-sm font-medium mt-2 hover:underline"
+                                    className={cn(BTN_KEEP_BOX, "text-sm font-medium mt-2 hover:underline")}
                                     style={{ color: 'var(--gradient-r)' }}
                                   >
                                     Zkusit znovu
-                                  </button>
+                                  </Button>
                                 )}
                               </div>
                             </div>
@@ -569,10 +575,11 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         {/* Submit button */}
                         {!q.evaluation && (
                           <div className="ml-6 mt-3">
-                            <button
+                            <Button
+                              variant="plain"
                               onClick={() => handleAiSubmit(idx)}
                               disabled={!q.userInput.trim() || q.submitting}
-                              className="inline-flex items-center gap-2 text-primary-foreground font-medium py-2 px-5 rounded-md text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-medium py-2 px-5 rounded-md text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed")}
                               style={{ backgroundColor: 'var(--gradient-r)' }}
                             >
                               {q.submitting ? (
@@ -583,7 +590,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                               ) : (
                                 'Odevzdat'
                               )}
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </motion.div>
@@ -604,26 +611,29 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                         className="flex items-center gap-3"
                       >
                         <span className="text-sm text-muted-foreground">Typ otázky:</span>
-                        <button
+                        <Button
+                          variant="plain"
                           onClick={() => handleGenerate('open')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20"
+                          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20")}
                           style={{ color: 'var(--gradient-r)' }}
                         >
                           Otevřená
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => handleGenerate('closed')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20"
+                          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20")}
                           style={{ color: 'var(--gradient-r)' }}
                         >
                           Uzavřená
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => setShowTypeSelector(false)}
-                          className="text-sm text-muted-foreground hover:text-muted-foreground ml-1"
+                          className={cn(BTN_KEEP_BOX, "text-sm text-muted-foreground hover:text-muted-foreground ml-1")}
                         >
                           Zrušit
-                        </button>
+                        </Button>
                       </motion.div>
                     ) : (
                       <motion.button
@@ -662,16 +672,17 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
                 {/* Dokončit button (always visible in AI phase if static was passed or skipped) */}
                 <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
-                  <button
+                  <Button
+                    variant="plain"
                     onClick={onComplete}
-                    className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                    className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
                     style={{ backgroundColor: 'var(--primary)' }}
                   >
                     Dokončit
                     <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               </>
             )}

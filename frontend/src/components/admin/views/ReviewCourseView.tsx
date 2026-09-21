@@ -30,23 +30,20 @@ import {
   CornerDownRight,
   Check,
 } from 'lucide-react';
-import { PageSpinner } from '@/components/ui';
+import { PageSpinner, Button, Tabs, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
+
+// Plný (ne podtržený) aktivní stav — kitový `line` variant kreslí podtržení
+// a průhledné pozadí, obojí přebíjíme stejným modifikátorem.
+const MODULE_TAB = [
+  'flex-none gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium',
+  'text-muted-foreground hover:bg-muted',
+  'group-data-[variant=line]/tabs-list:data-active:bg-gradient-r data-active:text-primary-foreground',
+  'group-data-[variant=line]/tabs-list:data-active:after:opacity-0',
+  "[&_svg:not([class*='size-'])]:size-auto",
+].join(' ');
 
 type TabType = 'handbook' | 'practice';
-
-function timeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMin / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMin < 1) return 'Právě teď';
-  if (diffMin < 60) return `Před ${diffMin}m`;
-  if (diffHours < 24) return `Před ${diffHours}h`;
-  if (diffDays === 1) return 'Před 1 dnem';
-  return `Před ${diffDays} dny`;
-}
 
 interface ReviewCourseViewProps {
   courseId: number;
@@ -304,9 +301,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
           <p className="text-destructive mb-4">{error ?? 'Kurz nebyl nalezen.'}</p>
-          <button onClick={() => router.push('/admin/review')} className="text-gradient-r hover:underline">
+          <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "text-gradient-r hover:underline")}>
             ← Zpět na přehled
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -318,9 +315,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
         <div>
           <p className="text-xs text-muted-foreground mb-0.5">
-            <button onClick={() => router.push('/admin/review')} className="hover:text-foreground">
+            <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "hover:text-foreground")}>
               Ke schválení
-            </button>
+            </Button>
             {' / '}
             <span className="text-foreground">{course.title}</span>
           </p>
@@ -330,23 +327,25 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           {/* Guarantor: approve/reject course (only in_review) */}
           {canApprove && isInReview && (
             <>
-              <button
+              <Button
+                variant="ghost-destructive"
                 onClick={handleRejectCourse}
                 disabled={approvalLoading}
-                className="flex items-center gap-2 px-4 py-2 border border-destructive/30 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border border-destructive/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
               >
                 <ThumbsDown size={16} />
                 Zamítnout kurz
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="default"
                 onClick={handleApproveCourse}
                 disabled={approvalLoading || !allModulesApproved}
                 title={!allModulesApproved ? 'Nejprve schvalte všechny moduly' : undefined}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed")}
               >
                 <ThumbsUp size={16} />
                 Schválit kurz
-              </button>
+              </Button>
             </>
           )}
           {/* Status badges */}
@@ -372,14 +371,15 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               const modApproved = approvedModules.has(mod.moduleId);
               const modRejected = rejectedModules.has(mod.moduleId);
               return (
-                <button
+                <Button
+                  variant="plain"
                   key={mod.moduleId}
                   onClick={() => handleSelectModule(idx)}
-                  className={`w-full text-left px-3 py-3 text-sm transition-colors border-b border-border last:border-b-0 flex items-center gap-2 ${
+                  className={cn(BTN_KEEP_BOX, `w-full text-left px-3 py-3 text-sm transition-colors border-b border-border last:border-b-0 flex items-center gap-2 ${
                     selectedModuleIndex === idx
                       ? 'bg-gradient-r/10 border-l-4 border-l-purple-600 font-medium text-foreground'
                       : 'hover:bg-muted/50 text-foreground border-l-4 border-l-transparent'
-                  }`}
+                  }`)}
                 >
                   {modApproved && (
                     <span className="shrink-0 size-4 rounded-full bg-primary flex items-center justify-center">
@@ -397,7 +397,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       {feedbackCountByModule(mod.moduleId)}
                     </span>
                   )}
-                </button>
+                </Button>
               );
             })}
             {modules.length === 0 && (
@@ -413,30 +413,22 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               {selectedModule?.title ?? 'Výběr modulu'}
             </h2>
             {/* Tabs — freely switchable */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab('handbook')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'handbook'
-                    ? 'bg-gradient-r text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <BookOpenText size={14} />
-                Příručka
-              </button>
-              <button
-                onClick={() => setActiveTab('practice')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'practice'
-                    ? 'bg-gradient-r text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <Dumbbell size={14} />
-                Procvičování
-              </button>
-            </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as 'handbook' | 'practice')}
+              className="gap-0"
+            >
+              <TabsList variant="line" className="gap-2 p-0 group-data-horizontal/tabs:h-auto">
+                <TabsTrigger value="handbook" className={MODULE_TAB}>
+                  <BookOpenText size={14} />
+                  Příručka
+                </TabsTrigger>
+                <TabsTrigger value="practice" className={MODULE_TAB}>
+                  <Dumbbell size={14} />
+                  Procvičování
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
@@ -549,13 +541,14 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           {/* Footer navigation + per-module approval */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="plain"
                 onClick={handlePrevBlock}
                 disabled={activeTab !== 'handbook' || currentBlockIndex === 0}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "text-sm font-medium text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed")}
               >
                 ← Předchozí
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -573,35 +566,38 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       Modul zamítnut
                     </span>
                   ) : null}
-                  <button
+                  <Button
+                    variant="plain"
                     onClick={handleRejectModule}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors ${
+                    className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors ${
                       currentModuleRejected
                         ? 'border-destructive/30 bg-destructive/20 text-destructive'
                         : 'border-destructive/30 text-destructive hover:bg-destructive/10'
-                    }`}
+                    }`)}
                   >
                     <ThumbsDown size={13} />
                     Zamítnout modul
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="plain"
                     onClick={handleApproveModule}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       currentModuleApproved
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-primary text-primary-foreground hover:bg-primary/80'
-                    }`}
+                    }`)}
                   >
                     <ThumbsUp size={13} />
                     Schválit modul
-                  </button>
+                  </Button>
                 </>
               )}
 
-              <button
+              <Button
+                variant="plain"
                 onClick={handleContinue}
                 disabled={selectedModuleIndex >= modules.length - 1 && (activeTab === 'practice' || practiceQuestions.length === 0) && currentBlockIndex >= totalBlocks - 1}
-                className="flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed")}
                 style={{ backgroundColor: 'var(--primary)' }}
               >
                 {activeTab === 'handbook' && currentBlockIndex < totalBlocks - 1
@@ -610,7 +606,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                   ? 'Další modul'
                   : 'Dokončit'}
                 →
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -638,13 +634,14 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-[11px] text-muted-foreground">{timeAgo(fb.createdAt)}</span>
                         {canDeleteFeedback(fb.author.userId) && !fb.reply && (
-                          <button
+                          <Button
+                            variant="plain"
                             onClick={() => handleDeleteFeedback(fb.feedbackId)}
                             disabled={deletingFeedback === fb.feedbackId}
-                            className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                            className={cn(BTN_KEEP_BOX, "p-0.5 text-muted-foreground hover:text-destructive transition-colors")}
                           >
                             <Trash2 size={11} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -676,7 +673,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           {canAddFeedback && isInReview && (
             <div className="p-3 border-t border-border shrink-0">
               <div className="flex gap-2">
-                <textarea
+                <Textarea
                   value={newFeedbackText}
                   onChange={e => setNewFeedbackText(e.target.value)}
                   rows={2}
@@ -687,15 +684,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                       handleAddFeedback();
                     }
                   }}
-                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none"
+                  className={cn("field-sizing-fixed min-h-0", "flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none")}
                 />
-                <button
+                <Button
+                  variant="brand-solid"
                   onClick={handleAddFeedback}
                   disabled={!newFeedbackText.trim() || submittingFeedback}
-                  className="self-end p-2 bg-gradient-r text-primary-foreground rounded-full hover:bg-gradient-r/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  className={cn(BTN_KEEP_BOX, "self-end p-2 rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0")}
                 >
                   <Send size={14} />
-                </button>
+                </Button>
               </div>
             </div>
           )}

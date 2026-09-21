@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Flame, Trophy } from 'lucide-react';
 import { getMyActivity, type ActivityDay, type ActivityResponse } from '@/lib/api-client';
+import { Button, CatalogSelect } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type ViewMode = 'year' | 'month';
 
@@ -347,41 +349,44 @@ export function ActivityHeatmap() {
           {/* Year tabs */}
           <div className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5">
             {yearOptions.map((y) => (
-              <button
+              <Button
+                variant="plain"
                 key={y}
                 type="button"
                 onClick={() => setSelectedYear(y)}
-                className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
+                className={cn(BTN_KEEP_BOX, `px-3 h-8 text-xs font-medium rounded-md transition-colors ${
                   selectedYear === y
                     ? 'bg-card text-gradient-r shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                }`)}
               >
                 {y}
-              </button>
+              </Button>
             ))}
           </div>
 
           {/* View mode toggle */}
           <div className="inline-flex rounded-lg border border-border bg-muted/50 p-0.5">
-            <button
+            <Button
+              variant="plain"
               type="button"
               onClick={() => setViewMode('year')}
-              className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
+              className={cn(BTN_KEEP_BOX, `px-3 h-8 text-xs font-medium rounded-md transition-colors ${
                 viewMode === 'year' ? 'bg-card text-gradient-r shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              }`)}
             >
               Rok
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="plain"
               type="button"
               onClick={() => setViewMode('month')}
-              className={`px-3 h-8 text-xs font-medium rounded-md transition-colors ${
+              className={cn(BTN_KEEP_BOX, `px-3 h-8 text-xs font-medium rounded-md transition-colors ${
                 viewMode === 'month' ? 'bg-card text-gradient-r shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
+              }`)}
             >
               Měsíc
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -389,34 +394,32 @@ export function ActivityHeatmap() {
       {/* Month picker — only in month mode */}
       {viewMode === 'month' && (
         <div className="flex items-center gap-2 mb-4">
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => shiftMonth(-1)}
-            className="p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground"
+            className={cn(BTN_KEEP_BOX, "p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground")}
             aria-label="Předchozí měsíc"
           >
             <ChevronLeft size={14} />
-          </button>
-          <select
+          </Button>
+          <CatalogSelect
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="h-9 px-3 text-sm text-foreground bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
-          >
-            {MONTH_LABELS_LONG.map((label, i) => (
-              <option key={i} value={i}>
-                {label}
-              </option>
-            ))}
-          </select>
+            onValueChange={setSelectedMonth}
+            options={MONTH_LABELS_LONG.map((label, i) => ({ value: i, label }))}
+            aria-label="Měsíc"
+            className="h-9 data-[size=default]:h-9 px-3 text-sm text-foreground bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
+          />
           <span className="text-sm text-muted-foreground">{selectedYear}</span>
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => shiftMonth(1)}
-            className="p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground"
+            className={cn(BTN_KEEP_BOX, "p-1.5 rounded-md border border-border bg-card hover:bg-muted/50 text-foreground")}
             aria-label="Další měsíc"
           >
             <ChevronRight size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -557,10 +560,11 @@ function YearGrid({
           {grid.map((col, ci) => (
             <div key={ci} className="flex flex-col gap-[3px]">
               {col.map((cell) => (
-                <button
+                <Button
+                  variant="plain"
                   key={cell.iso}
                   type="button"
-                  className="size-3 rounded-sm transition-transform hover:scale-125 hover:ring-2 hover:ring-gradient-r/30 cursor-default"
+                  className={cn(BTN_KEEP_BOX, "size-3 rounded-sm transition-transform hover:scale-125 hover:ring-2 hover:ring-gradient-r/30 cursor-default")}
                   style={{ backgroundColor: intensityColor(cell.count, !cell.inRange) }}
                   onMouseEnter={(e) => onHover(cell, e)}
                   onMouseLeave={onLeave}
@@ -595,12 +599,13 @@ function MonthGrid({
       </div>
       <div className="grid grid-cols-7 gap-2">
         {rows.flat().map((cell) => (
-          <button
+          <Button
+            variant="plain"
             key={cell.iso}
             type="button"
-            className={`relative aspect-square rounded-md flex items-start justify-end p-1 text-[10px] font-medium transition-transform hover:scale-105 ${
+            className={cn(BTN_KEEP_BOX, `relative aspect-square rounded-md flex items-start justify-end p-1 text-[10px] font-medium transition-transform hover:scale-105 ${
               cell.inRange ? 'text-foreground' : 'text-muted-foreground'
-            }`}
+            }`)}
             style={{
               backgroundColor: intensityColor(cell.count, !cell.inRange),
             }}
@@ -616,7 +621,7 @@ function MonthGrid({
                 }`}
               />
             )}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

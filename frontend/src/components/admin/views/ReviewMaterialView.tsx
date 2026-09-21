@@ -32,19 +32,8 @@ import {
   Send,
   Trash2,
 } from 'lucide-react';
-import { PageSpinner } from '@/components/ui';
-
-function timeAgo(date: Date): string {
-  const now = new Date();
-  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
-  const diffHours = Math.floor(diffMin / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffMin < 1) return 'Právě teď';
-  if (diffMin < 60) return `Před ${diffMin}m`;
-  if (diffHours < 24) return `Před ${diffHours}h`;
-  if (diffDays === 1) return 'Před 1 dnem';
-  return `Před ${diffDays} dny`;
-}
+import { PageSpinner, Button, Textarea } from '@/components/ui';
+import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface ReviewMaterialViewProps {
   resourceId: number;
@@ -207,9 +196,9 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
           <p className="text-destructive mb-4">{error}</p>
-          <button onClick={() => router.push('/admin/review')} className="text-gradient-r hover:underline">
+          <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "text-gradient-r hover:underline")}>
             ← Zpět na přehled
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -223,9 +212,9 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
       <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground mb-0.5">
-            <button onClick={() => router.push('/admin/review')} className="hover:text-foreground">
+            <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "hover:text-foreground")}>
               Ke schválení
-            </button>
+            </Button>
             {' / '}
             <span className="text-foreground truncate">{resource.title}</span>
           </p>
@@ -235,22 +224,24 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
           {/* Rozhodnutí garanta (jen u čekajících materiálů) */}
           {canReview && (
             <>
-              <button
+              <Button
+                variant="plain"
                 onClick={() => submitReview(ReviewVerdict.NeedsRevision)}
                 disabled={actionLoading !== null}
-                className="flex items-center gap-2 px-4 py-2 border border-warning/30 text-warning rounded-lg text-sm font-medium hover:bg-warning/10 transition-colors disabled:opacity-50"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border border-warning/30 text-warning rounded-lg text-sm font-medium hover:bg-warning/10 transition-colors disabled:opacity-50")}
               >
                 <ThumbsDown size={16} />
                 {actionLoading === 'return' ? 'Vracím…' : 'Vrátit k přepracování'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="default"
                 onClick={() => submitReview(ReviewVerdict.Approved)}
                 disabled={actionLoading !== null}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/80 transition-colors disabled:opacity-50"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
               >
                 <ThumbsUp size={16} />
                 {actionLoading === 'approve' ? 'Schvaluji…' : 'Schválit materiál'}
-              </button>
+              </Button>
             </>
           )}
           {/* Stavové odznaky */}
@@ -323,15 +314,16 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                     <div className="flex items-center gap-4 shrink-0">
                       <span className="text-xs text-muted-foreground">{attachment.format}</span>
                       {attachment.resourceId != null && attachment.fileId != null ? (
-                        <button
+                        <Button
+                          variant="plain"
                           type="button"
                           onClick={() => handleDownloadAttachment(attachment)}
                           disabled={downloadingFileId === attachment.fileId}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
+                          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60")}
                         >
                           <Download size={14} strokeWidth={1.75} />
                           {downloadingFileId === attachment.fileId ? 'Stahuji…' : 'Stáhnout'}
-                        </button>
+                        </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">Bez souboru</span>
                       )}
@@ -366,14 +358,15 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="text-[11px] text-muted-foreground">{timeAgo(comment.createdAt)}</span>
                       {canDeleteComment(comment.authorId) && (
-                        <button
+                        <Button
+                          variant="plain"
                           onClick={() => handleDeleteComment(comment.commentId)}
                           disabled={deletingCommentId === comment.commentId}
-                          className="p-0.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                          className={cn(BTN_KEEP_BOX, "p-0.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50")}
                           aria-label="Smazat komentář"
                         >
                           <Trash2 size={11} />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -387,7 +380,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
           {canReview ? (
             <div className="p-3 border-t border-border shrink-0 space-y-2">
               <div className="flex gap-2">
-                <textarea
+                <Textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={2}
@@ -398,16 +391,17 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                       handleAddComment();
                     }
                   }}
-                  className="flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none"
+                  className={cn("field-sizing-fixed min-h-0", "flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none")}
                 />
-                <button
+                <Button
+                  variant="brand-solid"
                   onClick={handleAddComment}
                   disabled={!commentText.trim() || commentSubmitting}
-                  className="self-end p-2 bg-gradient-r text-primary-foreground rounded-full hover:bg-gradient-r/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  className={cn(BTN_KEEP_BOX, "self-end p-2 rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0")}
                   aria-label="Odeslat komentář"
                 >
                   <Send size={14} />
-                </button>
+                </Button>
               </div>
               {commentError && <p className="text-xs text-destructive">{commentError}</p>}
               {error && <p className="text-xs text-destructive">{error}</p>}
@@ -421,23 +415,25 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
               </p>
               {error && <p className="text-xs text-destructive">{error}</p>}
               {resource.isPublic ? (
-                <button
+                <Button
+                  variant="plain"
                   onClick={togglePublic}
                   disabled={visibilityLoading}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border text-foreground rounded-lg text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  className={cn(BTN_KEEP_BOX, "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-border text-foreground rounded-lg text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-50")}
                 >
                   <EyeOff size={13} />
                   {visibilityLoading ? 'Skrývám…' : 'Skrýt z databáze'}
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
+                  variant="tip"
                   onClick={togglePublic}
                   disabled={visibilityLoading}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-tip text-primary-foreground rounded-lg text-xs font-medium hover:bg-tip/80 transition-colors disabled:opacity-50"
+                  className={cn(BTN_KEEP_BOX, "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50")}
                 >
                   <Globe size={13} />
                   {visibilityLoading ? 'Publikuji…' : 'Publikovat do databáze'}
-                </button>
+                </Button>
               )}
             </div>
           ) : (

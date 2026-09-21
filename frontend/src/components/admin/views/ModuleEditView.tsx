@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { getModules, modulesApi } from '@/lib/api-client';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState } from '@/components/admin';
+import { Button, Input } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface ModuleEditViewProps {
   moduleId: number;
@@ -29,16 +31,16 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
         // Načtení modulů pro daný kurz
         if (propsCourseId) {
           const modules = await getModules({ courseId: propsCourseId });
-          const module = modules.find(m => m.moduleId === moduleId);
+          const mod = modules.find(m => m.moduleId === moduleId);
           
-          if (!module) {
+          if (!mod) {
             setError('Modul nebyl nalezen');
             return;
           }
           
-          setCourseId(module.courseId);
+          setCourseId(mod.courseId);
           setFormData({
-            title: module.title,
+            title: mod.title,
           });
         } else {
           // Záložní stav - courseId by mělo být vždy k dispozici
@@ -100,32 +102,34 @@ export function ModuleEditView({ moduleId, courseId: propsCourseId }: ModuleEdit
             <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
               Název modulu *
             </label>
-            <input
+            <Input
               type="text"
               id="title"
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base"
+              className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
               placeholder="Název modulu"
             />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-            <button
+            <Button
+              variant="tip"
               type="submit"
               disabled={loading}
-              className="px-4 sm:px-6 py-2 bg-tip text-primary-foreground rounded-md hover:bg-tip/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base")}
             >
               {loading ? 'Ukládání...' : 'Uložit změny'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="plain"
               type="button"
               onClick={goBack}
-              className="px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base")}
             >
               Zpět
-            </button>
+            </Button>
           </div>
         </form>
       </div>

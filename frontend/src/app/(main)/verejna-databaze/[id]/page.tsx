@@ -13,9 +13,10 @@ import {
 import { MaterialAttachments } from "@/components/material/MaterialAttachments";
 import { MaterialForkModal } from "@/components/material/MaterialForkModal";
 import { RatingsSection } from "@/components/material/RatingsSection";
-import { MaterialDetailSkeleton } from "@/components/ui";
+import { MaterialDetailSkeleton, Button } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import type { Material, MaterialCategory } from "@/components/material/types";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -77,14 +78,15 @@ export default function MaterialDetailPage({ params }: PageProps) {
             <p className="text-sm text-muted-foreground mb-4">
               Pro zobrazení detailu materiálu se nejprve přihlas.
             </p>
-            <button
+            <Button
+              variant="default"
               type="button"
               onClick={login}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
             >
               <LogIn size={15} strokeWidth={1.75} />
               Přihlásit se
-            </button>
+            </Button>
           </div>
         ) : loading || !material ? (
           <MaterialDetailSkeleton />
@@ -117,14 +119,15 @@ function MaterialDetail({
           <MaterialStatusBadge status={material.status} />
         </div>
         {material.allowForks && material.isPublic && (
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => setForkOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
           >
             <Copy size={14} strokeWidth={1.75} />
             Vytvořit kopii
-          </button>
+          </Button>
         )}
       </div>
 

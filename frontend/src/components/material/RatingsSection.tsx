@@ -12,8 +12,9 @@ import {
 } from "@/lib/api-client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ConfirmModal, RatingListSkeleton } from "@/components/ui";
+import { ConfirmModal, RatingListSkeleton, Button, Textarea } from "@/components/ui";
 import { StarRating, StarRatingInput } from "./StarRating";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface RatingsSectionProps {
   resourceId: number;
@@ -200,36 +201,38 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
         />
       </div>
 
-      <textarea
+      <Textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         rows={3}
         maxLength={2000}
         disabled={submitting}
-        className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60"
+        className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 disabled:opacity-60")}
       />
 
       {formError && <p className="mt-2 text-xs text-destructive">{formError}</p>}
 
       <div className="flex items-center justify-end gap-2 mt-3">
         {editing && (
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={cancelEdit}
             disabled={submitting}
-            className="px-4 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-60")}
           >
             Zrušit
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="default"
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 disabled:opacity-60"
+          className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md text-sm font-medium disabled:opacity-60")}
         >
           {submitting ? "Odesílám…" : editing ? "Uložit změny" : "Odeslat komentář"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -260,26 +263,28 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           <StarRating rating={myRating.score} size={14} />
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={startEdit}
             disabled={deleting}
             aria-label="Upravit hodnocení"
             title="Upravit hodnocení"
-            className="inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60")}
           >
             <Pencil size={16} strokeWidth={1.75} />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="plain"
             type="button"
             onClick={() => setDeleteModalOpen(true)}
             disabled={deleting}
             aria-label="Smazat hodnocení"
             title="Smazat hodnocení"
-            className="inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center size-9 rounded-md border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors disabled:opacity-60")}
           >
             <Trash2 size={16} strokeWidth={1.75} />
-          </button>
+          </Button>
         </div>
       </div>
       {myRating.comment && (
@@ -319,14 +324,15 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
               <p className="text-sm text-muted-foreground">
                 Hodnotit a komentovat mohou jen přihlášení uživatelé.
               </p>
-              <button
+              <Button
+                variant="default"
                 type="button"
                 onClick={login}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors self-start sm:self-auto"
+                className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors self-start sm:self-auto")}
               >
                 <LogIn size={15} strokeWidth={1.75} />
                 Přihlásit se
-              </button>
+              </Button>
             </div>
           )}
 

@@ -200,7 +200,7 @@ export function ProjectAboutSection() {
                 <p className="text-sm sm:text-base text-foreground italic leading-relaxed">
                   „Naším cílem není nahradit učitele, ale poskytnout mu nástroj, který mu uvolní
                   ruce od rutinních činností a umožní mu věnovat se individuálnímu rozvoji každého
-                  žáka."
+                  žáka.&quot;
                 </p>
                 <footer className="mt-3 text-xs text-muted-foreground">— tým Praktik-AI</footer>
               </motion.blockquote>

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, X, SendHorizontal, UserRound, Maximize2 } from 'lucide-react';
 import { learnBlocksChat } from '@/lib/api-client';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   Button,
   Dialog,
@@ -203,12 +204,13 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
         {/* Suggested questions — jen ve fázi prvního pozdravu */}
         {chatMessages.length <= 1 && (
           <div className={`${variant === 'modal' ? 'px-6 pb-3' : 'px-4 pb-2'} flex flex-wrap gap-1.5 bg-card`}>
-            <button
+            <Button
+              variant="plain"
               onClick={() => handleSuggestion('Jak můžu využít AI pro diferenciaci výuky?')}
-              className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground bg-card hover:bg-muted/50 transition-colors"
+              className={cn(BTN_KEEP_BOX, "text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground bg-card hover:bg-muted/50 transition-colors")}
             >
               Jak můžu využít AI pro diferenciaci výuky?
-            </button>
+            </Button>
           </div>
         )}
 
@@ -243,17 +245,18 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
               aria-label="Zpráva pro AI tutora"
               className={`grow bg-transparent ${variant === 'modal' ? 'text-base' : 'text-sm'} text-foreground placeholder:text-muted-foreground focus:outline-none min-w-0`}
             />
-            <button
+            <Button
+              variant="plain"
               onClick={handleSendChat}
               disabled={!chatMessage.trim() || isAiTyping}
               title={isAiTyping ? 'Počkejte, než AI dopíše odpověď' : undefined}
               aria-label="Odeslat zprávu"
-              className={`shrink-0 transition-all ${
+              className={cn(BTN_KEEP_BOX, `shrink-0 transition-all ${
                 chatMessage.trim() && !isAiTyping ? 'text-foreground hover:opacity-70' : 'text-muted-foreground cursor-not-allowed'
-              }`}
+              }`)}
             >
               <SendHorizontal className={variant === 'modal' ? 'size-6' : 'size-5'} />
-            </button>
+            </Button>
           </div>
         </div>
       </>
@@ -275,22 +278,24 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
             <span className="font-semibold text-foreground text-sm">AI Tutor</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <button
+            <Button
+              variant="plain"
               onClick={() => { setChatOpen(true); setExpanded(true); }}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+              className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted")}
               title="Otevřít ve velkém"
               aria-label="Otevřít AI tutora ve velkém"
             >
               <Maximize2 className="size-4" />
-            </button>
+            </Button>
             {chatOpen && (
-              <button
+              <Button
+                variant="plain"
                 onClick={() => setChatOpen(false)}
-                className="text-muted-foreground hover:text-muted-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-muted-foreground transition-colors p-1 rounded-md hover:bg-muted")}
                 aria-label="Sbalit AI tutora"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -300,9 +305,10 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
           renderChat('inline')
         ) : (
           /* Collapsed state - click to open */
-          <button
+          <Button
+            variant="plain"
             onClick={() => setChatOpen(true)}
-            className="w-full px-4 py-3 border-t border-border text-left hover:bg-muted/50 transition-colors"
+            className={cn(BTN_KEEP_BOX, "w-full px-4 py-3 border-t border-border text-left hover:bg-muted/50 transition-colors")}
           >
             <div className="flex items-start gap-2">
               <div className="size-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -313,7 +319,7 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
                 Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu?
               </p>
             </div>
-          </button>
+          </Button>
         )}
       </div>
 

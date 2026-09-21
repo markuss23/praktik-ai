@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { Button } from '../ui-kit/button';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export type ToastVariant = 'info' | 'success' | 'error' | 'warning';
 
@@ -153,14 +155,15 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
         {toast.title && <p className="text-sm font-semibold mb-0.5">{toast.title}</p>}
         <p className="text-sm leading-snug break-words">{toast.message}</p>
       </div>
-      <button
+      <Button
+        variant="plain"
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Zavřít upozornění"
-        className="p-1 -m-1 rounded hover:bg-black/5 transition-colors shrink-0"
+        className={cn(BTN_KEEP_BOX, "p-1 -m-1 rounded hover:bg-black/5 transition-colors shrink-0")}
       >
         <X className="size-4 opacity-60" />
-      </button>
+      </Button>
     </motion.div>
   );
 }

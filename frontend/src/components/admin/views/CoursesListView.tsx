@@ -4,7 +4,7 @@ import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight } from "lucide-react";
-import { CourseModal, ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components";
+import { CourseModal, ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
@@ -14,8 +14,8 @@ import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useToast, ConfirmModal, type ConfirmVariant } from "@/components/ui";
-import { czechPlural } from "@/lib/utils";
+import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input } from "@/components/ui";
+import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -707,39 +707,39 @@ export function CoursesListView() {
                               <>
                                 {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
                                 {canPublishCourse(course) && (
-                                  <button
+                                  <Button
                                     onClick={() => requestTogglePublish(course)}
-                                    className="px-2.5 py-1 rounded-md bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 font-medium whitespace-nowrap transition-colors"
+                                    size="pill" variant="soft-accent"
                                   >
                                     {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-                                  </button>
+                                  </Button>
                                 )}
                                 {canDeleteCourse(course) && (
-                                  <button
+                                  <Button
                                     onClick={() => handleDeleteClick(course.courseId)}
-                                    className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium whitespace-nowrap transition-colors"
+                                    size="pill" variant="destructive"
                                   >
                                     Smazat
-                                  </button>
+                                  </Button>
                                 )}
                               </>
                             ) : course.isPublished ? (
                               <>
                                 {/* Published (non-archived): archive (+ delete for superadmin) */}
-                                <button
+                                <Button
                                   onClick={() => requestArchive(course)}
                                   disabled={statusLoading === course.courseId}
-                                  className="px-2.5 py-1 rounded-md bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
+                                  size="pill" variant="soft-accent"
                                 >
                                   {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
-                                </button>
+                                </Button>
                                 {canDeleteCourse(course) && (
-                                  <button
+                                  <Button
                                     onClick={() => handleDeleteClick(course.courseId)}
-                                    className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium whitespace-nowrap transition-colors"
+                                    size="pill" variant="destructive"
                                   >
                                     Smazat
-                                  </button>
+                                  </Button>
                                 )}
                               </>
                             ) : (
@@ -747,61 +747,61 @@ export function CoursesListView() {
                                 {/* Edit actions - only in editable statuses (draft/generated/edited) */}
                                 {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && (
                                   <>
-                                    <button
+                                    <Button
                                       onClick={() => toggleCourseExpand(course.courseId)}
-                                      className="px-2.5 py-1 rounded-md bg-tip/10 text-tip hover:bg-tip/20 font-medium whitespace-nowrap transition-colors"
+                                      size="pill" variant="soft-tip"
                                     >
                                       Úpravy
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
                                       onClick={() => openQuickEdit(course)}
-                                      className="px-2.5 py-1 rounded-md bg-success/10 text-success hover:bg-success/20 font-medium whitespace-nowrap transition-colors"
+                                      size="pill" variant="soft-success"
                                     >
                                       Rychlé úpravy
-                                    </button>
+                                    </Button>
                                   </>
                                 )}
 
                                 {/* Submit for review - owner can submit when in editable status */}
                                 {canSubmitForReview(course) && (
-                                  <button
+                                  <Button
                                     onClick={() => requestSubmitForReview(course)}
                                     disabled={statusLoading === course.courseId}
-                                    className="px-2.5 py-1 rounded-md bg-tip/10 text-tip hover:bg-tip/20 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
+                                    size="pill" variant="soft-tip"
                                   >
                                     {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
-                                  </button>
+                                  </Button>
                                 )}
 
                                 {/* Publish - only when approved and not yet published */}
                                 {canPublishCourse(course) && course.status === Status.Approved && (
-                                  <button
+                                  <Button
                                     onClick={() => requestTogglePublish(course)}
-                                    className="px-2.5 py-1 rounded-md bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 font-medium whitespace-nowrap transition-colors"
+                                    size="pill" variant="soft-accent"
                                   >
                                     Publikovat
-                                  </button>
+                                  </Button>
                                 )}
 
                                 {/* Revert to editing - superadmin only, when approved */}
                                 {isSuperAdmin && course.status === Status.Approved && (
-                                  <button
+                                  <Button
                                     onClick={() => requestRevertToEditing(course)}
                                     disabled={statusLoading === course.courseId}
-                                    className="px-2.5 py-1 rounded-md bg-warning/10 text-warning hover:bg-warning/20 font-medium whitespace-nowrap transition-colors disabled:opacity-50"
+                                    size="pill" variant="soft-warning"
                                   >
                                     {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
-                                  </button>
+                                  </Button>
                                 )}
 
                                 {/* Delete - superadmin always; owner only when draft/generated */}
                                 {canDeleteCourse(course) && (
-                                  <button
+                                  <Button
                                     onClick={() => handleDeleteClick(course.courseId)}
-                                    className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium whitespace-nowrap transition-colors"
+                                    size="pill" variant="destructive"
                                   >
                                     Smazat
-                                  </button>
+                                  </Button>
                                 )}
                               </>
                             )}
@@ -816,54 +816,48 @@ export function CoursesListView() {
                             <div className="px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-gradient-r whitespace-nowrap">Rychlé úpravy:</span>
-                                <input
+                                <Input
                                   type="text"
                                   value={quickEditData.title}
                                   onChange={(e) => setQuickEditData(prev => ({ ...prev, title: e.target.value }))}
                                   placeholder="Název kurzu"
-                                  className="w-48 px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
+                                  className={cn("h-auto", "w-48 px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30")}
                                 />
-                                <select
+                                <CatalogSelect
                                   value={quickEditData.courseBlockId}
-                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseBlockId: Number(e.target.value) }))}
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
-                                >
-                                  {blocks.map((b) => (
-                                    <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                                  ))}
-                                </select>
-                                <select
+                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseBlockId: next }))}
+                                  options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                                  aria-label="Tematický blok"
+                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                />
+                                <CatalogSelect
                                   value={quickEditData.courseTargetId}
-                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseTargetId: Number(e.target.value) }))}
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
-                                >
-                                  {targets.map((t) => (
-                                    <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                                  ))}
-                                </select>
-                                <select
+                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseTargetId: next }))}
+                                  options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                                  aria-label="Cílová skupina"
+                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                />
+                                <CatalogSelect
                                   value={quickEditData.courseSubjectId}
-                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, courseSubjectId: Number(e.target.value) }))}
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
-                                >
-                                  {subjects.map((s) => (
-                                    <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                                  ))}
-                                </select>
+                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseSubjectId: next }))}
+                                  options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                                  aria-label="Předmět"
+                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                />
                                 <div className="flex items-center gap-2">
-                                  <button
+                                  <Button
                                     onClick={saveQuickEdit}
                                     disabled={quickEditLoading}
-                                    className="px-3 py-1.5 bg-gradient-r text-primary-foreground rounded-md text-sm hover:bg-gradient-r/80 disabled:opacity-50"
+                                    variant="plain" className="px-3 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80"
                                   >
                                     {quickEditLoading ? 'Ukládání...' : 'Uložit'}
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
                                     onClick={closeQuickEdit}
-                                    className="px-3 py-1.5 bg-muted text-foreground rounded-md text-sm hover:bg-muted/80"
+                                    variant="plain" className="px-3 bg-muted text-foreground rounded-md hover:bg-muted/80"
                                   >
                                     Zrušit
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -1042,40 +1036,40 @@ function CoursePagination({
         Stránka {page} z {totalPages}
       </span>
       <nav className="flex items-center gap-1" aria-label="Stránkování">
-        <button
+        <Button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className={`${btnBase} text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed`}
+          variant="plain" className={`${btnBase} text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed`}
           aria-label="Předchozí stránka"
         >
           <ChevronLeft size={16} />
-        </button>
+        </Button>
         {pages.map((p, i) =>
           p === 'ellipsis' ? (
             <span key={`e-${i}`} className="px-1 text-muted-foreground select-none">…</span>
           ) : (
-            <button
+            <Button
               key={p}
               onClick={() => onPageChange(p)}
               aria-current={p === page ? 'page' : undefined}
-              className={`${btnBase} ${
+              variant="plain" className={`${btnBase} ${
                 p === page
                   ? 'bg-tip text-primary-foreground'
                   : 'text-foreground hover:bg-muted'
               }`}
             >
               {p}
-            </button>
+            </Button>
           ),
         )}
-        <button
+        <Button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className={`${btnBase} text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed`}
+          variant="plain" className={`${btnBase} text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed`}
           aria-label="Další stránka"
         >
           <ChevronRight size={16} />
-        </button>
+        </Button>
       </nav>
     </div>
   );
@@ -1109,15 +1103,15 @@ function ExpandedModuleList({
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold text-foreground">Přehled modulů</h3>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={onEditCourse}
-              className="px-4 py-2 bg-tip text-primary-foreground rounded-md hover:bg-tip/80 transition-colors text-sm"
+              variant="plain" size="lg" className="px-4 bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
             >
               Editovat kurz
-            </button>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            </Button>
+            <Button onClick={onClose} variant="plain" className={cn(BTN_KEEP_BOX, "p-0 text-muted-foreground hover:text-foreground")}>
               <X size={20} />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -1134,12 +1128,12 @@ function ExpandedModuleList({
                 <ModuleActiveBadge isActive={module.isActive} />
               </div>
               <div className="flex items-center gap-1.5 text-xs shrink-0">
-                <button onClick={() => onEditModuleContent(module)} className="px-2.5 py-1 rounded-md bg-tip/10 text-tip hover:bg-tip/20 font-medium whitespace-nowrap transition-colors">Upravit</button>
-                <button onClick={() => onEditModuleName(module)} className="px-2.5 py-1 rounded-md bg-success/10 text-success hover:bg-success/20 font-medium whitespace-nowrap transition-colors">Upravit název</button>
-                <button onClick={() => onToggleModuleActive(module)} className="px-2.5 py-1 rounded-md bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 font-medium whitespace-nowrap transition-colors">
+                <Button onClick={() => onEditModuleContent(module)} size="pill" variant="soft-tip">Upravit</Button>
+                <Button onClick={() => onEditModuleName(module)} size="pill" variant="soft-success">Upravit název</Button>
+                <Button onClick={() => onToggleModuleActive(module)} size="pill" variant="soft-accent">
                   {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
-                </button>
-                <button onClick={() => onDeleteModule(module.moduleId)} className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium whitespace-nowrap transition-colors">Smazat</button>
+                </Button>
+                <Button onClick={() => onDeleteModule(module.moduleId)} size="pill" variant="destructive">Smazat</Button>
               </div>
             </div>
           ))}
@@ -1247,9 +1241,9 @@ function MobileCourseCard({
         ) : course.isPublished ? (
           <>
             {/* Published (non-archived): only archive (+ delete for superadmin) */}
-            <button onClick={onArchive} disabled={statusLoading} className="p-2 bg-brand-accent text-primary-foreground rounded-md hover:bg-brand-accent/80 transition-colors disabled:opacity-50" title="Archivovat">
+            <Button onClick={onArchive} disabled={statusLoading} variant="plain" size="icon" className={cn(BTN_KEEP_BOX, "p-2 rounded-md bg-brand-accent text-primary-foreground hover:bg-brand-accent/80")} title="Archivovat">
               <Archive size={14} />
-            </button>
+            </Button>
             {canDelete && (
               <DeleteActionButton onClick={onDelete} iconSize={14} />
             )}
@@ -1267,9 +1261,9 @@ function MobileCourseCard({
               <PublishActionButton onClick={onTogglePublish} isPublished={!!course.isPublished} iconSize={14} />
             )}
             {canDelete && course.status === Status.Approved && (
-              <button onClick={onRevertToEditing} disabled={statusLoading} className="p-2 bg-warning text-primary-foreground rounded-md hover:bg-warning/80 transition-colors disabled:opacity-50" title="Vrátit do úprav">
+              <Button onClick={onRevertToEditing} disabled={statusLoading} variant="plain" size="icon" className={cn(BTN_KEEP_BOX, "p-2 rounded-md bg-warning text-primary-foreground hover:bg-warning/80")} title="Vrátit do úprav">
                 <RotateCcw size={14} />
-              </button>
+              </Button>
             )}
             {canDelete && (
               <DeleteActionButton onClick={onDelete} iconSize={14} />
@@ -1283,9 +1277,9 @@ function MobileCourseCard({
         <div data-accordion-panel className="mt-4 bg-muted/50 rounded-lg p-3">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-foreground text-sm">Moduly</h4>
-            <button onClick={onCloseExpand} className="text-muted-foreground hover:text-foreground">
+            <Button onClick={onCloseExpand} variant="plain" className={cn(BTN_KEEP_BOX, "p-0 text-muted-foreground hover:text-foreground")}>
               <X size={18} />
-            </button>
+            </Button>
           </div>
           <div className="space-y-2">
             {modules.map((module, index) => (
@@ -1306,19 +1300,19 @@ function MobileCourseCard({
             ))}
           </div>
           {/* Možnost "Přidat modul" dočasně skryta
-          <button
+          <Button
             onClick={onAddModule}
-            className="mt-3 flex items-center justify-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 transition-colors text-sm w-full"
+            variant="plain" size="lg" className="mt-3 gap-2 px-3 w-full bg-primary text-primary-foreground rounded-md hover:bg-primary/80"
           >
             <span>Přidat modul</span>
-          </button>
+          </Button>
           */}
-          <button
+          <Button
             onClick={onEditCourse}
-            className="mt-2 flex items-center justify-center gap-2 px-3 py-2 bg-tip text-primary-foreground rounded-md hover:bg-tip/80 transition-colors text-sm w-full"
+            variant="plain" size="lg" className="mt-2 gap-2 px-3 w-full bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
           >
             Editovat kurz
-          </button>
+          </Button>
         </div>
       )}
     </div>

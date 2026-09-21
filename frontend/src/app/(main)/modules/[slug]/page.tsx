@@ -3,17 +3,18 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules, getCourseProgress, markModuleVisited } from "@/lib/api-client";
-import type { Module, Course } from "@/api";
+import { getModule, getCourse, getCourseProgress, markModuleVisited } from "@/lib/api-client";
+import type { Module, Course, ModuleCompletionStatus } from "@/api";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert, AlertTitle, AlertDescription, PageSpinner } from "@/components/ui";
+import { Alert, AlertTitle, AlertDescription, PageSpinner, Button } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
 import PaperSheets from "@/components/module/PaperSheets";
 import NotesPanel from "@/components/module/NotesPanel";
 import ScrollToBottomButton from "@/components/module/ScrollToBottomButton";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -37,20 +38,23 @@ export default function ModulePage() {
   // Transition animation
   const [transitioning, setTransitioning] = useState(false);
 
-  // Restore tab progress from sessionStorage
-  const storageKey = `module-progress-${initialModuleId}`;
-  const savedProgress = (() => {
+  // Restore tab progress from sessionStorage. Čte se jednou (lazy initializer),
+  // ne při každém renderu. Klíč zůstává initialModuleId — po přepnutí modulu
+  // uvnitř stránky se stav resetuje v navigateToModule, ne odsud.
+  const readSavedProgress = () => {
     try {
-      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
+      const raw = typeof window !== 'undefined'
+        ? sessionStorage.getItem(`module-progress-${initialModuleId}`)
+        : null;
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
-  })();
+  };
 
   // Tab & handbook navigation
-  const [activeTab, setActiveTab] = useState<TabType>(savedProgress?.activeTab ?? 'prirucka');
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(savedProgress?.currentBlockIndex ?? 0);
-  const [handbookCompleted, setHandbookCompleted] = useState(savedProgress?.handbookCompleted ?? false);
-  const [practiceCompleted, setPracticeCompleted] = useState(savedProgress?.practiceCompleted ?? false);
+  const [activeTab, setActiveTab] = useState<TabType>(() => readSavedProgress()?.activeTab ?? 'prirucka');
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(() => readSavedProgress()?.currentBlockIndex ?? 0);
+  const [handbookCompleted, setHandbookCompleted] = useState(() => readSavedProgress()?.handbookCompleted ?? false);
+  const [practiceCompleted, setPracticeCompleted] = useState(() => readSavedProgress()?.practiceCompleted ?? false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -106,27 +110,21 @@ export default function ModulePage() {
       // Fire-and-forget; nikdy nesmí rozbít načítání stránky.
       void markModuleVisited(modId);
 
-      const [courseData, modulesData] = await Promise.all([
+      // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
+      // getModules je vynechané záměrně: getCourse moduly už vrací.
+      const [courseData, progress] = await Promise.all([
         getCourse(moduleData.courseId),
-        getModules({ courseId: moduleData.courseId }),
+        getCourseProgress(moduleData.courseId).catch(() => [] as ModuleCompletionStatus[]),
       ]);
       setCourse(courseData);
-      setAllModules(
-        (courseData.modules?.length ? courseData.modules : modulesData)
-          .filter(m => m.isActive)
-      );
+      setAllModules((courseData.modules ?? []).filter(m => m.isActive));
 
       // If the user already passed this module, unlock all sections
-      try {
-        const progress = await getCourseProgress(moduleData.courseId);
-        const moduleProgress = progress.find((p) => p.moduleId === modId);
-        if (moduleProgress?.passed) {
-          setHandbookCompleted(true);
-          setPracticeCompleted(true);
-          setAssessmentCompleted(true);
-        }
-      } catch {
-        // fall back to session state
+      const moduleProgress = progress.find((p) => p.moduleId === modId);
+      if (moduleProgress?.passed) {
+        setHandbookCompleted(true);
+        setPracticeCompleted(true);
+        setAssessmentCompleted(true);
       }
     } catch (err) {
       console.error('Failed to fetch module data:', err);
@@ -340,18 +338,19 @@ export default function ModulePage() {
 
                 <div className="space-y-1">
                   {tabs.map((tab) => (
-                    <button
+                    <Button
+                      variant="plain"
                       key={tab.key}
                       onClick={() => {
                         if (!tab.locked) switchTab(tab.key);
                       }}
-                      className={`w-full text-left px-3 py-3 rounded-lg transition-colors flex items-start gap-3 ${
+                      className={cn(BTN_KEEP_BOX, `w-full text-left px-3 py-3 rounded-lg transition-colors flex items-start gap-3 ${
                         activeTab === tab.key
                           ? 'border'
                           : tab.locked
                             ? 'cursor-not-allowed opacity-50'
                             : 'hover:bg-muted/50'
-                      }`}
+                      }`)}
                       style={activeTab === tab.key ? { backgroundColor: 'rgba(138, 56, 245, 0.2)', borderColor: 'rgba(138, 56, 245, 0.3)' } : undefined}
                       disabled={tab.locked}
                     >
@@ -372,7 +371,7 @@ export default function ModulePage() {
                           {tab.sublabel}
                         </div>
                       </div>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -438,31 +437,33 @@ export default function ModulePage() {
                         </div>
 
                         <div className="flex items-center justify-between mt-6 sm:mt-8 pt-6">
-                          <button
+                          <Button
+                            variant="plain"
                             onClick={handlePrevBlock}
                             disabled={currentBlockIndex === 0}
-                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                            className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
                               currentBlockIndex === 0
                                 ? 'text-muted-foreground cursor-not-allowed'
                                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
+                            }`)}
                           >
                             <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                             </svg>
                             Předchozí
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
+                            variant="plain"
                             onClick={handleContinue}
-                            className="inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
+                            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
                             style={{ backgroundColor: 'var(--primary)' }}
                           >
                             {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
                             <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
-                          </button>
+                          </Button>
                         </div>
                       </>
                     ) : (

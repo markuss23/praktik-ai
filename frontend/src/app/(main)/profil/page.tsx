@@ -15,8 +15,9 @@ import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
-import { ProfileSkeleton, ProfileStatsSkeleton, ProfileCoursesSkeleton } from '@/components/ui';
+import { ProfileSkeleton, ProfileStatsSkeleton, ProfileCoursesSkeleton, Button } from '@/components/ui';
 import { motion } from 'motion/react';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 function computeBadges(enrollments: MyEnrollment[]): Badge[] {
   const badges: Badge[] = [];
@@ -236,15 +237,16 @@ export default function ProfilPage() {
             onEditClick={() => setEditModalOpen(true)}
           />
 
-          <button
+          <Button
+            variant="plain"
             onClick={() => setAiModalOpen(true)}
-            className="w-full bg-card rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
+            className={cn(BTN_KEEP_BOX, "w-full bg-card rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left")}
           >
             <div>
               <p className="text-sm font-semibold text-foreground">AI Nastavení</p>
               <p className="text-xs text-muted-foreground">Tón a vyjadřování</p>
             </div>
-          </button>
+          </Button>
 
           <ProfileProgressCard items={progressItems} />
 

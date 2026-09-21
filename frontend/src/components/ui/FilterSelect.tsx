@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui";
+} from "../ui-kit/select";
 
 export interface FilterOption {
   value: string;
@@ -21,9 +21,12 @@ interface FilterSelectProps {
   disabled?: boolean;
   /** Zobrazit prázdnou položku (placeholder) jako volbu „bez filtru". U řazení vypnout. */
   includeEmpty?: boolean;
+  /** Třídy pro trigger. Kitový trigger si výšku drží přes `data-[size=...]`,
+   *  takže jinou výšku je potřeba zapsat i jako `data-[size=default]:h-N`. */
+  className?: string;
 }
 
-/** Select pro filtry veřejné databáze i Mojí sbírky — nad kitovým `Select`. */
+/** Select pro filtry napříč aplikací — tenká obálka nad kitovým `Select`. */
 export function FilterSelect({
   value,
   onChange,
@@ -31,6 +34,7 @@ export function FilterSelect({
   options,
   disabled = false,
   includeEmpty = true,
+  className,
 }: FilterSelectProps) {
   // Base UI Select potřebuje `items`; placeholder = položka s `value: null`.
   const items = [
@@ -45,7 +49,7 @@ export function FilterSelect({
       onValueChange={(next) => onChange(next == null ? "" : String(next))}
       disabled={disabled}
     >
-      <SelectTrigger aria-label={placeholder}>
+      <SelectTrigger aria-label={placeholder} className={className}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

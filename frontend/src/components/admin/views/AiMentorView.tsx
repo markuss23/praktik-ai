@@ -8,7 +8,8 @@ import {
   type SystemSettingUpdate,
 } from '@/lib/api-client';
 import { Save, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { AiMentorSkeleton } from '@/components/ui';
+import { AiMentorSkeleton, Button, Input, Textarea } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export function AiMentorView() {
   const [settings, setSettings] = useState<SystemSettingResponse[]>([]);
@@ -104,10 +105,11 @@ export function AiMentorView() {
               key={setting.settingId}
               className="bg-card rounded-xl border border-border"
             >
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={() => setExpandedCard(isExpanded ? null : setting.settingId)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors rounded-xl"
+                className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors rounded-xl")}
               >
                 <h2 className="text-base font-bold text-foreground">
                   {setting.name} config
@@ -118,16 +120,17 @@ export function AiMentorView() {
                   )}
                   {isExpanded ? <ChevronUp size={18} className="text-muted-foreground" /> : <ChevronDown size={18} className="text-muted-foreground" />}
                 </div>
-              </button>
+              </Button>
 
               {isExpanded && (
                 <div className="px-6 pb-6 border-t border-border">
                   <div className="flex justify-end mt-4 mb-4">
                     {dirty && (
-                      <button
+                      <Button
+                        variant="brand-solid"
                         onClick={() => handleSave(setting)}
                         disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-r text-primary-foreground rounded-lg text-sm font-medium hover:bg-gradient-r/80 transition-colors disabled:opacity-50"
+                        className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
                       >
                         {saving ? (
                           <Loader2 size={14} className="animate-spin" />
@@ -135,7 +138,7 @@ export function AiMentorView() {
                           <Save size={14} />
                         )}
                         {saving ? 'Ukládám...' : 'Uložit'}
-                      </button>
+                      </Button>
                     )}
                   </div>
 
@@ -144,22 +147,22 @@ export function AiMentorView() {
                       <label className="block text-sm font-semibold text-foreground mb-1.5">
                         Název
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={edit?.name ?? ''}
                         onChange={e => handleChange(setting.settingId, 'name', e.target.value)}
-                        className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
+                        className={cn("h-auto", "w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30")}
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-foreground mb-1.5">
                         AI model
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={edit?.model ?? ''}
                         onChange={e => handleChange(setting.settingId, 'model', e.target.value)}
-                        className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30"
+                        className={cn("h-auto", "w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30")}
                       />
                     </div>
                   </div>
@@ -168,11 +171,11 @@ export function AiMentorView() {
                     <label className="block text-sm font-semibold text-foreground mb-1.5">
                       Prompt
                     </label>
-                    <textarea
+                    <Textarea
                       value={edit?.prompt ?? ''}
                       onChange={e => handleChange(setting.settingId, 'prompt', e.target.value)}
                       rows={6}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-y"
+                      className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-y")}
                     />
                   </div>
                 </div>

@@ -8,7 +8,8 @@ import {
   fetchPublicCollections,
 } from "@/components/material/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
-import { MaterialGridSkeleton } from "@/components/ui";
+import { MaterialGridSkeleton, Button, Input } from "@/components/ui";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export function PublicCollectionsClient() {
   const [searchInput, setSearchInput] = useState("");
@@ -69,12 +70,12 @@ export function PublicCollectionsClient() {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               strokeWidth={1.75}
             />
-            <input
+            <Input
               type="search"
               placeholder="Hledat sbírku"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30"
+              className={cn("h-auto", "w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30")}
             />
           </div>
         </div>
@@ -85,14 +86,15 @@ export function PublicCollectionsClient() {
       ) : error ? (
         <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
           <p className="text-sm text-destructive mb-3">Sbírky se nepodařilo načíst: {error}</p>
-          <button
+          <Button
+            variant="default"
             type="button"
             onClick={() => setReloadKey((k) => k + 1)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/80 transition-colors"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
           >
             <RotateCcw size={15} strokeWidth={1.75} />
             Zkusit znovu
-          </button>
+          </Button>
         </div>
       ) : collections.length === 0 ? (
         <p className="text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
@@ -121,10 +123,11 @@ function CollectionCard({
   onOpen: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant="plain"
       type="button"
       onClick={onOpen}
-      className="group text-left bg-card rounded-lg border border-border hover:shadow-md transition-shadow flex flex-col h-full p-5 gap-3"
+      className={cn(BTN_KEEP_BOX, "group text-left bg-card rounded-lg border border-border hover:shadow-md transition-shadow flex flex-col h-full p-5 gap-3")}
     >
       <div className="flex items-center gap-2 text-gradient-r">
         <Folder size={18} strokeWidth={1.75} />
@@ -141,7 +144,7 @@ function CollectionCard({
           {collection.itemCount ?? 0} materiálů
         </span>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -182,14 +185,15 @@ function CollectionDetail({
 
   return (
     <div className="space-y-6">
-      <button
+      <Button
+        variant="plain"
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors")}
       >
         <ArrowLeft size={16} strokeWidth={1.75} />
         Zpět na sbírky
-      </button>
+      </Button>
 
       <div>
         <h2 className="text-xl font-bold text-foreground">{heading}</h2>

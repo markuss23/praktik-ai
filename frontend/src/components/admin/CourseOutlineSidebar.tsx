@@ -1,6 +1,8 @@
 'use client';
 
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export interface OutlineSubItem {
   id: string;
@@ -45,23 +47,25 @@ export function CourseOutlineSidebar({
           <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
           <div className="flex items-center gap-1">
             {onAddClick && (
-              <button
-                className="p-1 hover:bg-muted rounded"
+              <Button
+                variant="plain"
+                className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
                 onClick={onAddClick}
                 title="Přidat modul"
               >
                 <Plus size={16} className="text-muted-foreground" />
-              </button>
+              </Button>
             )}
             {onClose && (
-              <button
-                className="p-1 hover:bg-muted rounded"
+              <Button
+                variant="plain"
+                className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
                 onClick={onClose}
                 title="Zavřít"
                 aria-label="Zavřít osnovu"
               >
                 <X size={16} className="text-muted-foreground" />
-              </button>
+              </Button>
             )}
           </div>
         </div>

@@ -2,6 +2,8 @@
 
 import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface CoursePageHeaderProps {
   breadcrumb: string;
@@ -62,14 +64,15 @@ export function CoursePageHeader({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-start gap-2 sm:gap-3 min-w-0">
             {onMenuClick && (
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={onMenuClick}
-                className="lg:hidden p-2 -ml-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0"
+                className={cn(BTN_KEEP_BOX, "lg:hidden p-2 -ml-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
                 aria-label="Otevřít osnovu"
               >
                 <Menu size={20} />
-              </button>
+              </Button>
             )}
             <div className="min-w-0 flex-1">
               <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1 truncate">
@@ -78,10 +81,11 @@ export function CoursePageHeader({
               <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
             </div>
             {onCommentsClick && (
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={onCommentsClick}
-                className="lg:hidden relative p-2 -mr-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0"
+                className={cn(BTN_KEEP_BOX, "lg:hidden relative p-2 -mr-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
                 aria-label="Zobrazit komentáře"
               >
                 <MessageSquare size={20} />
@@ -90,29 +94,31 @@ export function CoursePageHeader({
                     {commentsCount}
                   </span>
                 )}
-              </button>
+              </Button>
             )}
           </div>
           {showButtons && (
             <div className="flex items-center gap-2 sm:gap-3">
               {onPreview && (
-                <button
+                <Button
+                  variant="plain"
                   type="button"
                   onClick={onPreview}
-                  className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className={cn(BTN_KEEP_BOX, "text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors")}
                 >
                   Živý náhled kurzu
-                </button>
+                </Button>
               )}
               {saveStatus !== undefined ? (
                 <SaveStatusIndicator status={saveStatus} />
               ) : onSave ? (
-                <button
+                <Button
+                  variant="plain"
                   onClick={onSave}
                   disabled={saving}
-                  className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md transition-colors text-sm text-primary-foreground disabled:opacity-70 ${
+                  className={cn(BTN_KEEP_BOX, `flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md transition-colors text-sm text-primary-foreground disabled:opacity-70 ${
                     saved ? 'bg-primary hover:bg-primary/80' : 'bg-primary hover:bg-primary/80'
-                  }`}
+                  }`)}
                 >
                   {saving ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -122,7 +128,7 @@ export function CoursePageHeader({
                     <Save size={16} />
                   )}
                   <span>{saving ? 'Ukládám...' : saved ? 'Uloženo' : 'Uložit'}</span>
-                </button>
+                </Button>
               ) : null}
             </div>
           )}

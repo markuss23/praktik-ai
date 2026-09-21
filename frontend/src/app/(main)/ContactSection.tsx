@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 
+import { FilterSelect, Input, Textarea } from '@/components/ui';
+import { cn } from '@/lib/utils';
 const EMAIL_CONTACTS = [
   { label: 'E-mail', value: 'praktikai@ujep.cz' },
 ];
@@ -200,7 +202,7 @@ export function ContactSection() {
                 >
                   Jméno a příjmení <span className="text-success">*</span>
                 </label>
-                <input
+                <Input
                   id="contact-name"
                   name="name"
                   type="text"
@@ -208,7 +210,7 @@ export function ContactSection() {
                   value={form.name}
                   onChange={onChange}
                   placeholder="Jan Novák"
-                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
+                  className={cn("h-auto", "w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors")}
                 />
               </div>
 
@@ -219,7 +221,7 @@ export function ContactSection() {
                 >
                   E-mail <span className="text-success">*</span>
                 </label>
-                <input
+                <Input
                   id="contact-email"
                   name="email"
                   type="email"
@@ -227,7 +229,7 @@ export function ContactSection() {
                   value={form.email}
                   onChange={onChange}
                   placeholder="jan@email.cz"
-                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
+                  className={cn("h-auto", "w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors")}
                 />
               </div>
 
@@ -238,19 +240,14 @@ export function ContactSection() {
                 >
                   Role
                 </label>
-                <select
-                  id="contact-role"
-                  name="role"
+                <FilterSelect
                   value={form.role}
-                  onChange={onChange}
-                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setForm((prev) => ({ ...prev, role: next }))}
+                  placeholder="Role"
+                  includeEmpty={false}
+                  options={ROLE_OPTIONS.map((r) => ({ value: r, label: r }))}
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors data-[size=default]:h-10"
+                />
               </div>
 
               <div>
@@ -260,19 +257,14 @@ export function ContactSection() {
                 >
                   Téma dotazu
                 </label>
-                <select
-                  id="contact-topic"
-                  name="topic"
+                <FilterSelect
                   value={form.topic}
-                  onChange={onChange}
-                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
-                >
-                  {TOPIC_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setForm((prev) => ({ ...prev, topic: next }))}
+                  placeholder="Téma dotazu"
+                  includeEmpty={false}
+                  options={TOPIC_OPTIONS.map((t) => ({ value: t, label: t }))}
+                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors data-[size=default]:h-10"
+                />
               </div>
 
               <div className="sm:col-span-2">
@@ -282,7 +274,7 @@ export function ContactSection() {
                 >
                   Předmět <span className="text-success">*</span>
                 </label>
-                <input
+                <Input
                   id="contact-subject"
                   name="subject"
                   type="text"
@@ -290,7 +282,7 @@ export function ContactSection() {
                   value={form.subject}
                   onChange={onChange}
                   placeholder="Stručně popište téma"
-                  className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors"
+                  className={cn("h-auto", "w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors")}
                 />
               </div>
 
@@ -301,7 +293,7 @@ export function ContactSection() {
                 >
                   Zpráva <span className="text-success">*</span>
                 </label>
-                <textarea
+                <Textarea
                   id="contact-message"
                   name="message"
                   required
@@ -309,7 +301,7 @@ export function ContactSection() {
                   value={form.message}
                   onChange={onChange}
                   placeholder="Napište nám, s čím vám můžeme pomoct…"
-                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors resize-y"
+                  className={cn("field-sizing-fixed min-h-0", "w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-success/30 focus:border-success/30 transition-colors resize-y")}
                 />
               </div>
 

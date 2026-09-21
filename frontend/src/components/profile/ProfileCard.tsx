@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import { SquarePen } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface ProfileCardProps {
   name: string;
@@ -25,13 +27,14 @@ export function ProfileCard({ name, role, avatarSrc, level, onEditClick }: Profi
   return (
     <div className="bg-card rounded-xl shadow-sm p-6 flex flex-col items-center gap-3 relative">
       {/* 3-dot edit button */}
-      <button
+      <Button
+        variant="plain"
         onClick={onEditClick}
-        className="absolute top-4 right-4 p-1.5 hover:bg-muted rounded-lg transition-colors"
+        className={cn(BTN_KEEP_BOX, "absolute top-4 right-4 p-1.5 hover:bg-muted rounded-lg transition-colors")}
         aria-label="Upravit profil"
       >
         <SquarePen size={18} className="text-muted-foreground" />
-      </button>
+      </Button>
 
       {/* Avatar circle with level badge */}
       <div className="relative">
