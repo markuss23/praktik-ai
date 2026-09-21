@@ -44,7 +44,7 @@ def generate_question(state: AssessmentState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    generated_question = response.content.strip()
+    generated_question = response.text.strip()
 
     print(f"Otázka vygenerována: {generated_question[:80]}...")
 

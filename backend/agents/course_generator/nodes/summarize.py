@@ -42,14 +42,15 @@ def summarize_content_node(state: AgentState) -> AgentState:
                 {source_content}"""
 
     output: AIMessage = model.invoke(prompt)
+    summary = output.text
 
-    if not output.content.strip():
+    if not summary.strip():
         raise ValueError(
             "LLM vrátil prázdnou sumarizaci. Zkontroluj zdrojový obsah a nastavení modelu."
         )
 
-    state["summarize_content"] = output.content
-    print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(output.content)} znaků)")
-    print(f"   -> Náhled souhrnu: {output.content[:200]}...")
+    state["summarize_content"] = summary
+    print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(summary)} znaků)")
+    print(f"   -> Náhled souhrnu: {summary[:200]}...")
 
     return state
