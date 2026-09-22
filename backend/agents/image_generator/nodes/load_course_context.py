@@ -21,10 +21,19 @@ def load_course_context_node(state: ImageGeneratorState) -> ImageGeneratorState:
     if course is None:
         raise ValueError(f"Kurz s id {course_id} nebyl nalezn")
 
+    block = course.course_block
+    target = course.course_target
+    subject = course.course_subject
+
     state["course_context"] = CourseContext(
         title=course.title,
         description=course.description,
         summary=course.summary,
+        block_name=block.name if block else None,
+        block_description=block.description if block else None,
+        target_name=target.name if target else None,
+        target_description=target.description if target else None,
+        subject_name=subject.name if subject else None,
     )
 
     print(f"Načten kurz: {course.title}")
