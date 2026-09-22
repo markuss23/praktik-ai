@@ -12,10 +12,11 @@ import {
   type ResourceTargetOption,
 } from "@/components/material/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
-import { FilterSelect, type FilterOption } from "@/components/ui";
+import { FilterMultiSelect, FilterSelect, type FilterOption } from "@/components/ui";
 import { MaterialGridSkeleton, Button, Input } from "@/components/ui";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS, EDU_LEVEL_ORDER } from "@/lib/edu-level";
+import { FILE_TYPE_LABELS, FILE_TYPE_ORDER } from "@/lib/file-type";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PAGE_SIZE = 8;
@@ -37,6 +38,19 @@ const EDU_LEVEL_OPTIONS: FilterOption[] = EDU_LEVEL_ORDER.map((lvl) => ({
   value: lvl,
   label: EDU_LEVEL_LABELS[lvl],
 }));
+
+const FILE_TYPE_OPTIONS: FilterOption[] = FILE_TYPE_ORDER.map((type) => ({
+  value: type,
+  label: FILE_TYPE_LABELS[type],
+}));
+
+const RATING_OPTIONS: FilterOption[] = [
+  { value: "5", label: "5 hvězd" },
+  { value: "4", label: "4 a více" },
+  { value: "3", label: "3 a více" },
+  { value: "2", label: "2 a více" },
+  { value: "1", label: "1 a více" },
+];
 
 /** Řazení probíhá na klientu nad serverem vyfiltrovanou sadou. */
 function sortMaterials(materials: Material[], sort: SortKey): Material[] {
@@ -63,11 +77,17 @@ export function PublicDatabaseClient() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState(""); // debounced verze searchInput
-  const [eduLevel, setEduLevel] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [targetId, setTargetId] = useState("");
   const [sort, setSort] = useState<SortKey>("popular");
   const [page, setPage] = useState(1);
+
+  // Filtry vyhodnocované na klientu nad serverem vrácenou sadou — backend pro ně
+  // zatím nemá parametry (úroveň vzdělání umí jen jednu hodnotu, ostatní vůbec).
+  const [eduLevels, setEduLevels] = useState<string[]>([]);
+  const [fileType, setFileType] = useState("");
+  const [minRating, setMinRating] = useState("");
+  const [authorId, setAuthorId] = useState("");
 
   // Data
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -128,7 +148,6 @@ export function PublicDatabaseClient() {
     fetchPublicMaterials({
       textSearch: search || undefined,
       subjectId,
-      educationLevel: eduLevel || undefined,
       difficultyLevel: difficulty || undefined,
       targetId: targetId ? Number(targetId) : undefined,
     })
@@ -149,9 +168,28 @@ export function PublicDatabaseClient() {
     return () => {
       cancelled = true;
     };
-  }, [search, subjectId, eduLevel, difficulty, targetId, reloadKey]);
+  }, [search, subjectId, difficulty, targetId, reloadKey]);
 
-  const sorted = useMemo(() => sortMaterials(materials, sort), [materials, sort]);
+  // Klientské filtry nesahají na server, takže si stránkování resetujeme sami.
+  useEffect(() => {
+    setPage(1);
+  }, [eduLevels, fileType, minRating, authorId]);
+
+  const filtered = useMemo(() => {
+    const ratingFloor = minRating ? Number(minRating) : 0;
+    return materials.filter((material) => {
+      if (eduLevels.length > 0) {
+        if (!material.educationLevelValue) return false;
+        if (!eduLevels.includes(material.educationLevelValue)) return false;
+      }
+      if (fileType && !(material.fileTypes ?? []).includes(fileType)) return false;
+      if (ratingFloor > 0 && material.rating < ratingFloor) return false;
+      if (authorId && material.ownerId !== authorId) return false;
+      return true;
+    });
+  }, [materials, eduLevels, fileType, minRating, authorId]);
+
+  const sorted = useMemo(() => sortMaterials(filtered, sort), [filtered, sort]);
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = useMemo(
@@ -164,17 +202,41 @@ export function PublicDatabaseClient() {
     [targets],
   );
 
+  // Autory nabízíme podle serverem vrácené sady (`materials`), ne podle už
+  // odfiltrovaného výsledku — jinak by se nabídka po výběru smrskla na jedno jméno.
+  const authorOptions: FilterOption[] = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const material of materials) {
+      if (material.ownerId && material.authorName) {
+        byId.set(material.ownerId, material.authorName);
+      }
+    }
+    return [...byId]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "cs"));
+  }, [materials]);
+
   const hasActiveFilters = Boolean(
-    search || activeCategoryId || eduLevel || difficulty || targetId,
+    search ||
+      activeCategoryId ||
+      eduLevels.length > 0 ||
+      difficulty ||
+      targetId ||
+      fileType ||
+      minRating ||
+      authorId,
   );
 
   const resetFilters = () => {
     setSearchInput("");
     setSearch("");
     setActiveCategoryId(null);
-    setEduLevel("");
+    setEduLevels([]);
     setDifficulty("");
     setTargetId("");
+    setFileType("");
+    setMinRating("");
+    setAuthorId("");
   };
 
   return (
@@ -239,9 +301,9 @@ export function PublicDatabaseClient() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
-            <FilterSelect
-              value={eduLevel}
-              onChange={setEduLevel}
+            <FilterMultiSelect
+              values={eduLevels}
+              onChange={setEduLevels}
               placeholder="Úroveň vzdělání"
               options={EDU_LEVEL_OPTIONS}
             />
@@ -256,6 +318,25 @@ export function PublicDatabaseClient() {
               onChange={setTargetId}
               placeholder="Cílová skupina"
               options={targetOptions}
+            />
+            <FilterSelect
+              value={fileType}
+              onChange={setFileType}
+              placeholder="Typ souboru"
+              options={FILE_TYPE_OPTIONS}
+            />
+            <FilterSelect
+              value={minRating}
+              onChange={setMinRating}
+              placeholder="Hodnocení"
+              options={RATING_OPTIONS}
+            />
+            <FilterSelect
+              value={authorId}
+              onChange={setAuthorId}
+              placeholder="Autor"
+              options={authorOptions}
+              disabled={authorOptions.length === 0}
             />
             <FilterSelect
               value={sort}

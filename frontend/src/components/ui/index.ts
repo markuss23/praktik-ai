@@ -109,6 +109,7 @@ export {
 // ── Projektové komponenty ────────────────────────────────────────────────────
 export { Dropdown, SimpleBotIcon } from "./Dropdown";
 export { FilterSelect, type FilterOption } from "./FilterSelect";
+export { FilterMultiSelect } from "./FilterMultiSelect";
 export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CourseCard } from "./CourseCard";
 export { StatusBadge, PublishBadge, ModuleActiveBadge } from "./Badge";

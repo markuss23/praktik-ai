@@ -88,8 +88,13 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
     allowForks: resource.allowForks ?? false,
     isFork: resource.isFork,
     ownerId: String(resource.authorId),
+    authorName: resource.authorDisplayName ?? undefined,
     targetAudience: resource.target?.name,
     educationLevel: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
+    educationLevelValue: resource.educationLevel,
+    fileTypes: [
+      ...new Set((resource.files ?? []).map((f) => String(f.fileType ?? "other"))),
+    ],
     difficulty: resource.difficultyLevel,
     targets: [
       ...(resource.target ? [{ label: "Cílová skupina", value: resource.target.name }] : []),
