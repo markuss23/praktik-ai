@@ -16,7 +16,10 @@ DEFAULT_PROMPT = (
     "- Kompozice zleva doprava: OBJEKT (jeden uzavřený tvar, ukotví oko) -> SCHÉMA (diagram, který nese sdělení).\n"
     "- Akcentem se zvýrazní přesně JEDNA věc: jedna cesta, jeden bod, jeden výsledek.\n"
     "- Tón podle oboru: purple = matematika a exaktní obory, green = AI, data, analytika, "
-    "blue = vývoj, nástroje, verzování, rose a orange = ostatní obory. Příbuzné obory sdílí tón.\n"
+    "blue = vývoj, nástroje, verzování, rose a orange = ostatní obory. Příbuzné obory sdílí tón. "
+    "Obor ber primárně z pole PŘEDMĚT / OBOR (číselník), texty kurzu jsou až druhotné.\n"
+    "- Blok a cílová skupina určují úroveň abstrakce: pro začátečníky a mladší publikum jednodušší "
+    "schéma s méně prvky, pro pokročilé může být diagram odbornější.\n"
     "- Motiv musí být poznatelný i při šířce 200 px - žádné drobné detaily.\n\n"
     "POSTUP:\n"
     "1. Napiš jednou anglickou větou, co se v kurzu učí - mechanismus, ne název.\n"
@@ -56,7 +59,12 @@ def build_prompt_node(state: ImageGeneratorState) -> ImageGeneratorState:
 
     user_prompt = f"""KURZ: {course_context.title}
 POPIS: {course_context.description or "-"}
-SHRNUTÍ: {course_context.summary or "-"}"""
+SHRNUTÍ: {course_context.summary or "-"}
+
+ZAŘAZENÍ KURZU (číselníky):
+PŘEDMĚT / OBOR: {course_context.subject_name or "-"}
+BLOK: {course_context.block_name or "-"} - {course_context.block_description or "-"}
+CÍLOVÁ SKUPINA: {course_context.target_name or "-"} - {course_context.target_description or "-"}"""
 
     messages = [
         SystemMessage(content=cfg.prompt),

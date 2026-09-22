@@ -9,11 +9,20 @@ from sqlalchemy.orm import Session
 
 
 class CourseContext(BaseModel):
-    """Kontext kurzu načtený z DB, ze kterého se sestavuje image prompt."""
+    """Kontext kurzu načtený z DB, ze kterého se sestavuje image prompt.
+
+    Kromě textů kurzu obsahuje i číselníky (blok, cílová skupina, předmět),
+    podle kterých LLM volí obor a tón.
+    """
 
     title: str
     description: str | None
     summary: str | None
+    block_name: str | None = None
+    block_description: str | None = None
+    target_name: str | None = None
+    target_description: str | None = None
+    subject_name: str | None = None
 
 
 # ---------- Specifikace coveru (structured output z LLM) ----------

@@ -22,11 +22,14 @@ async def generate_image_openai(model_name: str, prompt: str) -> str:
         prompt: Finální image prompt.
     """
     client = AsyncOpenAI()
+    # background="opaque": u line-art promptů model s "auto" často vrací průhledný PNG,
+    # který se v prohlížečích jeví jako černé/tmavé pozadí.
     response = await client.images.generate(
         model=model_name,
         prompt=prompt,
         n=1,
         size=OPENAI_SIZE,
+        background="opaque",
     )
     image = response.data[0]
 

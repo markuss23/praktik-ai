@@ -7,17 +7,20 @@ napevno tady, aby byl prompt pro všechny porovnávané modely identický.
 from agents.image_generator.state import CoverSpec
 
 # Hexy jsou orientační hodnoty tokenů z module-covers.md (image modely tokeny neznají).
+# Slovní název barvy je před hexem schválně - image modely drží názvy barev
+# mnohem spolehlivěji než hex kódy.
 TONE_COLORS: dict[str, tuple[str, str]] = {
-    "purple": ("#857AD2", "#F87B1B"),
-    "green": ("#59AC77", "#F5C542"),
-    "blue": ("#383BF5", "#F87B1B"),
-    "rose": ("#B1475C", "#F5C542"),
-    "orange": ("#F87B1B", "#383BF5"),
+    "purple": ("soft lavender purple (#857AD2)", "bright orange (#F87B1B)"),
+    "green": ("fresh medium green (#59AC77)", "warm yellow (#F5C542)"),
+    "blue": ("vivid royal blue (#383BF5)", "bright orange (#F87B1B)"),
+    "rose": ("deep rose red (#B1475C)", "warm yellow (#F5C542)"),
+    "orange": ("bright orange (#F87B1B)", "vivid royal blue (#383BF5)"),
 }
 
 COVER_PROMPT_TEMPLATE = (
     "Flat vector cover illustration, wide landscape banner, single solid {background} "
-    "background, no gradient, no texture, no grid.\n"
+    "background filling the entire canvas, no gradient, no texture, no grid. "
+    "The background must be exactly {background} - never black, dark gray, white or any other color.\n"
     "White 3px line-art diagram showing how {mechanism}, rounded caps and joins, no filled shapes.\n"
     "Left third: {left_object}. Right two thirds: {right_schema}.\n"
     "Exactly one element highlighted in {accent} as the focal point: {accent_element}.\n"
