@@ -2,7 +2,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from api.database import SessionLocal
-from api.models import CourseBlock, CourseSubject, CourseTarget, SystemSetting
+from api.models import (
+    CourseBlock,
+    CourseRequirement,
+    CourseSubject,
+    CourseTarget,
+    SystemSetting,
+)
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -19,6 +25,24 @@ COURSE_TARGETS: list[dict[str, str]] = [
     },
     {"code": "m", "name": "Mentor", "description": "Fakultní učitel / mentor praxe"},
     {"code": "h", "name": "Host", "description": "Externí účastník"},
+]
+
+COURSE_REQUIREMENTS: list[dict[str, str]] = [
+    {
+        "code": "req.p",
+        "name": "Povinný",
+        "description": "Nutný pro pokračování v kurikulu",
+    },
+    {
+        "code": "req.d",
+        "name": "Doporučený",
+        "description": "Doporučená sekvence",
+    },
+    {
+        "code": "req.v",
+        "name": "Volitelný",
+        "description": "Doplňkový kurz",
+    },
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -263,6 +287,9 @@ def seed_db() -> None:
 
         if db.query(CourseSubject).count() == 0:
             db.add_all([CourseSubject(**row) for row in COURSE_SUBJECTS])
+
+        if db.query(CourseRequirement).count() == 0:
+            db.add_all([CourseRequirement(**row) for row in COURSE_REQUIREMENTS])
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])

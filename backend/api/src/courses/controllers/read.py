@@ -20,6 +20,7 @@ def get_courses(
     course_block_id: int | None = None,
     course_target_id: int | None = None,
     course_subject_id: int | None = None,
+    course_requirement_id: int | None = None,
     status: str | None = None,
 ) -> list[Course]:
     """Vrátí seznam kurzů. Doplňuje agregovaný počet aktivních zápisů a třídí
@@ -70,6 +71,9 @@ def get_courses(
 
     if course_subject_id is not None:
         stm = stm.where(models.Course.course_subject_id == course_subject_id)
+
+    if course_requirement_id is not None:
+        stm = stm.where(models.Course.course_requirement_id == course_requirement_id)
 
     if status is not None:
         stm = stm.where(models.Course.status == status)

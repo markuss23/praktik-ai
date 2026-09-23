@@ -41,6 +41,17 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
+    if course_data.course_requirement_id is not None and db.execute(
+        select(models.CourseRequirement).where(
+            models.CourseRequirement.requirement_id
+            == course_data.course_requirement_id,
+            models.CourseRequirement.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(
+            status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
+        )
+
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)

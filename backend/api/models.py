@@ -249,6 +249,34 @@ class CourseTarget(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_target")
 
 
+class CourseRequirement(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Povinnost kurzu (závaznost absolvování v rámci kurikula):
+    req.p - Povinný (nutný pro pokračování v kurikulu)
+    req.d - Doporučený (doporučená sekvence)
+    req.v - Volitelný (doplňkový kurz)
+    """
+
+    __tablename__ = "course_requirement"
+    __table_args__ = (
+        Index(
+            "uq_course_requirement_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    courses: Mapped[list[Course]] = relationship(back_populates="course_requirement")
+
+
 # class CourseLevel(TimestampMixin, SoftDeleteMixin, Base):
 #     """
 #     Úrovně kurzů (Cxx číslování):
@@ -399,6 +427,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_subject_id: Mapped[int | None] = mapped_column(
         ForeignKey("course_subject.subject_id"), nullable=True
     )
+    course_requirement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_requirement.requirement_id"), nullable=True
+    )
     # course_level_id: Mapped[int] = mapped_column(
     #     ForeignKey("course_level.level_id"), nullable=False
     # )
@@ -431,6 +462,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_block: Mapped[CourseBlock] = relationship(back_populates="courses")
     course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
     course_subject: Mapped[CourseSubject] = relationship(back_populates="courses")
+    course_requirement: Mapped[CourseRequirement | None] = relationship(
+        back_populates="courses"
+    )
     # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
     # course_type: Mapped[CourseType] = relationship(back_populates="courses")
 

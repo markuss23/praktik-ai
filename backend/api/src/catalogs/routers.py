@@ -2,7 +2,12 @@ from fastapi import APIRouter
 
 from api.database import SessionSqlSessionDependency
 from api.src.catalogs import schemas
-from api.src.catalogs.controllers import get_course_blocks, get_course_subjects, get_course_targets
+from api.src.catalogs.controllers import (
+    get_course_blocks,
+    get_course_requirements,
+    get_course_subjects,
+    get_course_targets,
+)
 
 router = APIRouter(prefix="/catalogs", tags=["Catalogs"])
 
@@ -20,3 +25,8 @@ async def list_course_targets(db: SessionSqlSessionDependency) -> list[schemas.C
 @router.get("/course-subjects", operation_id="list_course_subjects")
 async def list_course_subjects(db: SessionSqlSessionDependency) -> list[schemas.CourseSubject]:
     return get_course_subjects(db)
+
+
+@router.get("/course-requirements", operation_id="list_course_requirements")
+async def list_course_requirements(db: SessionSqlSessionDependency) -> list[schemas.CourseRequirement]:
+    return get_course_requirements(db)
