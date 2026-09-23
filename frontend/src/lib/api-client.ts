@@ -253,6 +253,70 @@ export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }
 
+// Wiki agent API functions
+//
+// /agents/wiki-chat a /agents/wiki-sync zatím nejsou v generovaném klientovi
+// (src/api se generuje z běžícího backendu) — voláme je přímo fetchem se
+// stejným tokenem, stejně jako course-progress níže. Po `npm run
+// generate:openapi` je lze nahradit `agentsApi.wikiChat()` / `wikiSync()`.
+
+async function agentsPost<T>(path: string, body?: unknown, fallback?: string): Promise<T> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(backendUrl(path), {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let detail = fallback ?? `Požadavek selhal (${res.status})`;
+    try {
+      const parsed = await res.json();
+      if (parsed?.detail) detail = typeof parsed.detail === 'string' ? parsed.detail : detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Dotaz na wiki agenta. Endpoint je bezstavový — historii konverzace si
+ * drží klient, backend dostane vždy jen aktuální zprávu.
+ */
+export async function wikiChat(message: string): Promise<string> {
+  const data = await agentsPost<{ answer: string }>(
+    '/api/v1/agents/wiki-chat',
+    { message },
+    'Nepodařilo se získat odpověď od AI asistenta.',
+  );
+  return data.answer;
+}
+
+export interface WikiSyncResult {
+  pagesProcessed: number;
+  message: string;
+}
+
+/**
+ * Ruční synchronizace a re-indexace wiki (jen superadmin). Na pozadí běží
+ * i periodicky — interval nastavuje `WIKI__SYNC_INTERVAL_HOURS`.
+ */
+export async function wikiSync(): Promise<WikiSyncResult> {
+  const data = await agentsPost<{ pages_processed: number; message: string }>(
+    '/api/v1/agents/wiki-sync',
+    undefined,
+    'Synchronizace wiki selhala.',
+  );
+  return { pagesProcessed: data.pages_processed, message: data.message };
+}
+
 export interface CourseGenerationProgress {
   step: number;
   total: number;

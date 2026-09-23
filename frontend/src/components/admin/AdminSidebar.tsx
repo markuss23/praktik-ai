@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot } from 'lucide-react';
+import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot, BookText } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -29,6 +29,7 @@ const LECTOR_ITEMS = [
 
 const SUPERADMIN_ITEMS = [
   { href: '/admin/ai-mentor', label: 'AI Mentor', icon: Bot },
+  { href: '/admin/wiki', label: 'Wiki agent', icon: BookText },
 ];
 
 export function AdminSidebar() {

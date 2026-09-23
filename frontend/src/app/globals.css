@@ -6,12 +6,18 @@
 
 :root {
 
+  /* Škála vrstev. Shadcn kit (Base UI) drží všechny své portály — overlay,
+     drawer, dialog, select, tooltip, menu — napevno na `z-50` a pořadí mezi
+     nimi řeší pořadím v DOM. Appka se proto musí vejít kolem té padesátky:
+     hlavička pod ni (jinak by překryla otevřený drawer/dialog), vlastní
+     nedismissovatelné overlaye nad ni. Kit soubory needitujeme — přepsal by
+     je `shadcn add`. */
   --z-base: 0;
-  --z-dropdown: 500;
-  --z-header: 1000;
-  --z-overlay: 1500;
-  --z-modal: 2000;
-  --z-toast: 2500;
+  --z-dropdown: 30;
+  --z-header: 45;
+  --z-overlay: 55;
+  --z-modal: 60;
+  --z-toast: 70;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

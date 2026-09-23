@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getModules, getMyEnrollments, MyEnrollmentExtended } from "@/lib/api-client";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   Button,
   Input,
@@ -14,7 +15,7 @@ import {
   SelectValue,
   Textarea,
 } from "@/components/ui";
-import { createTicket } from "./api";
+import { createTicket, listCourseTickets } from "./api";
 import { Ticket, TICKET_TYPE_LABELS, TicketType } from "./types";
 
 interface TicketCreateModalProps {
@@ -22,6 +23,10 @@ interface TicketCreateModalProps {
   onClose: () => void;
   /** Zavolá se po úspěšném vytvoření tiketu. */
   onCreated?: (ticket: Ticket) => void;
+  /** Předvyplněný název — např. dotaz z AI chatu při eskalaci. */
+  initialTitle?: string;
+  /** Předvyplněný popis — např. dotaz z AI chatu při eskalaci. */
+  initialReason?: string;
 }
 
 interface ModuleOption {
@@ -32,9 +37,19 @@ interface ModuleOption {
 const FORM_ID = "ticket-create-form";
 
 /** Modal „Nový dotaz" — vytvoření tiketu k modulu zapsaného kurzu. */
-export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateModalProps) {
+export function TicketCreateModal({
+  isOpen,
+  onClose,
+  onCreated,
+  initialTitle = "",
+  initialReason = "",
+}: TicketCreateModalProps) {
+  const { currentUser } = useCurrentUser();
+  const userId = currentUser?.userId;
   const [enrollments, setEnrollments] = useState<MyEnrollmentExtended[]>([]);
   const [modules, setModules] = useState<ModuleOption[]>([]);
+  /** Moduly, na kterých má uživatel nevyřešený tiket — další k nim nelze založit. */
+  const [blockedModuleIds, setBlockedModuleIds] = useState<Set<number>>(new Set());
   const [courseId, setCourseId] = useState<number | "">("");
   const [moduleId, setModuleId] = useState<number | "">("");
   const [ticketType, setTicketType] = useState<TicketType>("other");
@@ -49,8 +64,8 @@ export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateMo
     setCourseId("");
     setModuleId("");
     setTicketType("other");
-    setTitle("");
-    setReason("");
+    setTitle(initialTitle);
+    setReason(initialReason);
     setError(null);
     setSubmitting(false);
 
@@ -65,20 +80,30 @@ export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateMo
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, initialTitle, initialReason]);
 
-  // Načtení modulů vybraného kurzu.
+  // Načtení modulů vybraného kurzu + modulů, které už mají nevyřešený tiket.
   useEffect(() => {
     setModules([]);
     setModuleId("");
+    setBlockedModuleIds(new Set());
     if (courseId === "") return;
 
     let cancelled = false;
-    getModules({ courseId })
-      .then((data) => {
-        if (!cancelled) {
-          setModules(data.map((m) => ({ moduleId: m.moduleId, title: m.title })));
-        }
+    Promise.all([getModules({ courseId }), listCourseTickets(courseId)])
+      .then(([moduleData, tickets]) => {
+        if (cancelled) return;
+        setModules(moduleData.map((m) => ({ moduleId: m.moduleId, title: m.title })));
+        // Lektor/garant vidí v kurzu i cizí tikety, blokovat smí jen ty vlastní.
+        setBlockedModuleIds(
+          new Set(
+            tickets
+              .filter(
+                (t) => t.status === "open" && (userId === undefined || t.userId === userId),
+              )
+              .map((t) => t.moduleId),
+          ),
+        );
       })
       .catch(() => {
         if (!cancelled) setError("Nepodařilo se načíst moduly kurzu.");
@@ -86,7 +111,7 @@ export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateMo
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, userId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,10 +152,14 @@ export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateMo
     { label: "Vyberte kurz…", value: null },
     ...enrollments.map((e) => ({ label: e.course.title, value: e.courseId })),
   ];
+  const moduleLabel = (m: ModuleOption) =>
+    blockedModuleIds.has(m.moduleId) ? `${m.title} — máte otevřený tiket` : m.title;
   const moduleItems = [
     { label: courseId === "" ? "Nejprve vyberte kurz" : "Vyberte modul…", value: null },
-    ...modules.map((m) => ({ label: m.title, value: m.moduleId })),
+    ...modules.map((m) => ({ label: moduleLabel(m), value: m.moduleId })),
   ];
+  const allModulesBlocked =
+    modules.length > 0 && modules.every((m) => blockedModuleIds.has(m.moduleId));
   const typeItems = (Object.keys(TICKET_TYPE_LABELS) as TicketType[]).map((type) => ({
     label: TICKET_TYPE_LABELS[type],
     value: type,
@@ -191,12 +220,22 @@ export function TicketCreateModal({ isOpen, onClose, onCreated }: TicketCreateMo
             </SelectTrigger>
             <SelectContent>
               {modules.map((m) => (
-                <SelectItem key={m.moduleId} value={m.moduleId}>
-                  {m.title}
+                <SelectItem
+                  key={m.moduleId}
+                  value={m.moduleId}
+                  disabled={blockedModuleIds.has(m.moduleId)}
+                >
+                  {moduleLabel(m)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {allModulesBlocked && (
+            <p className="text-xs text-muted-foreground">
+              Ke všem modulům tohoto kurzu už máte nevyřešený tiket. Další založíte, až na ten
+              stávající odpoví lektor.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">

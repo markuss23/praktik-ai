@@ -40,6 +40,22 @@ def create_ticket(
 
     check_enrollment(db, actor, module.course)
 
+    # Na jeden modul smí mít uživatel jen jeden nevyřešený ticket. Databázový
+    # index hlídá jen dvojice se stejným ticket_type, tohle platí napříč typy.
+    open_ticket = db.scalar(
+        select(models.ModuleTicket).where(
+            models.ModuleTicket.module_id == data.module_id,
+            models.ModuleTicket.user_id == actor.user_id,
+            models.ModuleTicket.status == TicketStatus.open,
+            models.ModuleTicket.is_active.is_(True),
+        )
+    )
+    if open_ticket is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="K tomuto modulu už máte nevyřešený ticket",
+        )
+
     ticket = models.ModuleTicket(
         user_id=actor.user_id,
         module_id=data.module_id,

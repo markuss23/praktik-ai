@@ -76,6 +76,7 @@ export default function ProfilPage() {
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [sidebarTicket, setSidebarTicket] = useState<Ticket | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -251,7 +252,14 @@ export default function ProfilPage() {
           <ProfileProgressCard items={progressItems} />
 
           <ProfileTicketsCard
-            onTicketDetail={setSidebarTicket}
+            onTicketDetail={(ticket) => {
+              setSidebarTicket(ticket);
+              setHelpOpen(true);
+            }}
+            onOpenHelp={() => {
+              setSidebarTicket(null);
+              setHelpOpen(true);
+            }}
             onTicketDeleted={(deleted) =>
               setSidebarTicket((current) =>
                 current?.ticketId === deleted.ticketId ? null : current,
@@ -286,8 +294,15 @@ export default function ProfilPage() {
         </div>
       </div>
 
-      {/* Chat sidebar s konverzací tiketu */}
-      <TicketsSidebar ticket={sidebarTicket} onClose={() => setSidebarTicket(null)} />
+      {/* Nápověda a podpora — AI chat nad wiki + konverzace vybraného tiketu */}
+      <TicketsSidebar
+        ticket={sidebarTicket}
+        open={helpOpen}
+        onClose={() => {
+          setHelpOpen(false);
+          setSidebarTicket(null);
+        }}
+      />
 
       {/* Edit profile modal */}
       {(() => {

@@ -70,7 +70,12 @@ export const TicketCard = memo(function TicketCard({
           <h3 className={cn("line-clamp-2 font-medium text-foreground", large ? "text-xl" : "text-base")}>
             {ticket.title}
           </h3>
-          {meta && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{meta}</p>}
+          {meta && (
+            // `title` kvůli dlouhým názvům kurzů — řádek je oříznutý na jeden.
+            <p title={meta} className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+              {meta}
+            </p>
+          )}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-3">
