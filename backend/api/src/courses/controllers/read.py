@@ -21,6 +21,8 @@ def get_courses(
     course_target_id: int | None = None,
     course_subject_id: int | None = None,
     course_requirement_id: int | None = None,
+    course_eqf_level_id: int | None = None,
+    course_type_id: int | None = None,
     status: str | None = None,
 ) -> list[Course]:
     """Vrátí seznam kurzů. Doplňuje agregovaný počet aktivních zápisů a třídí
@@ -74,6 +76,12 @@ def get_courses(
 
     if course_requirement_id is not None:
         stm = stm.where(models.Course.course_requirement_id == course_requirement_id)
+
+    if course_eqf_level_id is not None:
+        stm = stm.where(models.Course.course_eqf_level_id == course_eqf_level_id)
+
+    if course_type_id is not None:
+        stm = stm.where(models.Course.course_type_id == course_type_id)
 
     if status is not None:
         stm = stm.where(models.Course.status == status)

@@ -249,6 +249,34 @@ class CourseTarget(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_target")
 
 
+class CourseEqfLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — EQF úroveň (Evropský rámec kvalifikací):
+    6 - Bakalářský stupeň (Bc.)
+    7 - Magisterský / navazující stupeň (Mgr., Ing.)
+    8 - Doktorský stupeň (Ph.D.)
+    """
+
+    __tablename__ = "course_eqf_level"
+    __table_args__ = (
+        Index(
+            "uq_course_eqf_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    eqf_level_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    courses: Mapped[list[Course]] = relationship(back_populates="course_eqf_level")
+
+
 class CourseRequirement(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Povinnost kurzu (závaznost absolvování v rámci kurikula):
@@ -331,36 +359,34 @@ class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_subject")
 
 
-# class CourseType(TimestampMixin, SoftDeleteMixin, Base):
-#     """
-#     Číselník typů kurzů:
-#     type.base  - Základní gramotnost
-#     type.met   - Metodický
-#     type.obor  - Oborový
-#     type.all   - Průřezový
-#     type.spec  - Specializovaný
-#     """
+class CourseType(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
+    type.obecny    - Obecný (platí pro všechny obory)
+    type.obor      - Oborový (specifický pro jeden obor)
+    type.prurezovy - Průřezový (přesahuje skupiny C)
+    type.vstupni   - Vstupní kurz skupiny (vstupní kurz pro skupinu C bloků)
+    type.spec      - Specializovaný (pro konkrétní roli)
+    """
 
-#     __tablename__ = "course_type"
-#     __table_args__ = (
-#         Index(
-#             "uq_course_type_code_active",
-#             "code",
-#             unique=True,
-#             postgresql_where=text("is_active"),
-#         ),
-#     )
+    __tablename__ = "course_type"
+    __table_args__ = (
+        Index(
+            "uq_course_type_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
 
-#     type_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     code: Mapped[str] = mapped_column(String(10), nullable=False)
-#     name: Mapped[str] = mapped_column(String(200), nullable=False)
-#     description: Mapped[str] = mapped_column(String(255), nullable=False)
+    type_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-#     courses: Mapped[list[Course]] = relationship(back_populates="course_type")
-
-#     _soft_delete_cascade: list[str] = ["courses"]
+    courses: Mapped[list[Course]] = relationship(back_populates="course_type")
 
 
 # ---------- Course / Module ----------
@@ -430,11 +456,14 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_requirement_id: Mapped[int | None] = mapped_column(
         ForeignKey("course_requirement.requirement_id"), nullable=True
     )
+    course_eqf_level_id: Mapped[int] = mapped_column(
+        ForeignKey("course_eqf_level.eqf_level_id"), nullable=False
+    )
+    course_type_id: Mapped[int] = mapped_column(
+        ForeignKey("course_type.type_id"), nullable=False
+    )
     # course_level_id: Mapped[int] = mapped_column(
     #     ForeignKey("course_level.level_id"), nullable=False
-    # )
-    # course_type_id: Mapped[int] = mapped_column(
-    #     ForeignKey("course_type.type_id"), nullable=False
     # )
 
     owner: Mapped[User] = relationship(
@@ -465,8 +494,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_requirement: Mapped[CourseRequirement | None] = relationship(
         back_populates="courses"
     )
+    course_eqf_level: Mapped[CourseEqfLevel] = relationship(back_populates="courses")
+    course_type: Mapped[CourseType] = relationship(back_populates="courses")
     # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
-    # course_type: Mapped[CourseType] = relationship(back_populates="courses")
 
     _soft_delete_cascade: list[str] = ["modules", "files", "links"]
 

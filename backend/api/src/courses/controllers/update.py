@@ -52,6 +52,22 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
             status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
         )
 
+    if db.execute(
+        select(models.CourseEqfLevel).where(
+            models.CourseEqfLevel.eqf_level_id == course_data.course_eqf_level_id,
+            models.CourseEqfLevel.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="EQF úroveň s tímto ID neexistuje")
+
+    if db.execute(
+        select(models.CourseType).where(
+            models.CourseType.type_id == course_data.course_type_id,
+            models.CourseType.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)

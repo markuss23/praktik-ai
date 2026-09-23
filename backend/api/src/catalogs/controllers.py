@@ -1,6 +1,13 @@
 from sqlalchemy.orm import Session
 
-from api.models import CourseBlock, CourseRequirement, CourseSubject, CourseTarget
+from api.models import (
+    CourseBlock,
+    CourseEqfLevel,
+    CourseRequirement,
+    CourseSubject,
+    CourseTarget,
+    CourseType,
+)
 
 
 def get_course_blocks(db: Session) -> list[CourseBlock]:
@@ -21,3 +28,11 @@ def get_course_requirements(db: Session) -> list[CourseRequirement]:
         .filter(CourseRequirement.is_active.is_(True))
         .all()
     )
+
+
+def get_course_eqf_levels(db: Session) -> list[CourseEqfLevel]:
+    return db.query(CourseEqfLevel).filter(CourseEqfLevel.is_active.is_(True)).all()
+
+
+def get_course_types(db: Session) -> list[CourseType]:
+    return db.query(CourseType).filter(CourseType.is_active.is_(True)).all()
