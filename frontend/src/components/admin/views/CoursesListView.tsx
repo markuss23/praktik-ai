@@ -25,7 +25,7 @@ type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edi
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
-  const { blocks, targets, subjects } = useCatalogData();
+  const { blocks, targets, subjects, eqfLevels, types } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
 
@@ -458,6 +458,8 @@ export function CoursesListView() {
             courseBlockId: courseFormData.courseBlockId || (existingCourse?.courseBlockId ?? 1),
             courseTargetId: existingCourse?.courseTargetId ?? 1,
             courseSubjectId: existingCourse?.courseSubjectId ?? 1,
+            courseEqfLevelId: existingCourse?.courseEqfLevelId ?? 1,
+            courseTypeId: existingCourse?.courseTypeId ?? 1,
           }
         });
       } else {
@@ -467,15 +469,19 @@ export function CoursesListView() {
           setModalLoading(false);
           return;
         }
-        // Use first available target and subject as defaults
+        // Use first available target, subject, EQF level and type as defaults
         const defaultTargetId = targets.length > 0 ? targets[0].targetId : 1;
         const defaultSubjectId = subjects.length > 0 ? subjects[0].subjectId : 1;
+        const defaultEqfLevelId = eqfLevels.length > 0 ? eqfLevels[0].eqfLevelId : 1;
+        const defaultTypeId = types.length > 0 ? types[0].typeId : 1;
         await createCourse({
           title: courseFormData.title,
           description: courseFormData.description || undefined,
           courseBlockId: courseFormData.courseBlockId,
           courseTargetId: defaultTargetId,
           courseSubjectId: defaultSubjectId,
+          courseEqfLevelId: defaultEqfLevelId,
+          courseTypeId: defaultTypeId,
         });
       }
       await loadCoursesList();
@@ -577,6 +583,8 @@ export function CoursesListView() {
           courseBlockId: quickEditData.courseBlockId,
           courseTargetId: quickEditData.courseTargetId,
           courseSubjectId: quickEditData.courseSubjectId,
+          courseEqfLevelId: existingCourse?.courseEqfLevelId ?? 1,
+          courseTypeId: existingCourse?.courseTypeId ?? 1,
         },
       });
       await loadCoursesList();

@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
-import { createCourse, uploadCourseFile, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
-import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
+import { createCourse, uploadCourseFile, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseRequirements, getCourseEqfLevels, getCourseTypes } from '@/lib/api-client';
+import { CourseBlock, CourseTarget, CourseSubject, CourseRequirement, CourseEqfLevel, CourseType } from '@/api';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { Button, CatalogSelect, Input, Textarea } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
@@ -18,6 +18,9 @@ export function CourseUploadView() {
   const [blocks, setBlocks] = useState<CourseBlock[]>([]);
   const [targets, setTargets] = useState<CourseTarget[]>([]);
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
+  const [requirements, setRequirements] = useState<CourseRequirement[]>([]);
+  const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
+  const [types, setTypes] = useState<CourseType[]>([]);
   const [catalogsLoading, setCatalogsLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -26,24 +29,35 @@ export function CourseUploadView() {
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
   });
 
   useEffect(() => {
     async function loadCatalogs() {
       try {
-        const [b, t, s] = await Promise.all([
+        const [b, t, s, r, e, ty] = await Promise.all([
           getCourseBlocks(),
           getCourseTargets(),
           getCourseSubjects(),
+          getCourseRequirements(),
+          getCourseEqfLevels(),
+          getCourseTypes(),
         ]);
         setBlocks(b);
         setTargets(t);
         setSubjects(s);
+        setRequirements(r);
+        setEqfLevels(e);
+        setTypes(ty);
         setFormData(prev => ({
           ...prev,
           courseBlockId: b.length > 0 ? b[0].blockId : 0,
           courseTargetId: t.length > 0 ? t[0].targetId : 0,
           courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
+          courseEqfLevelId: e.length > 0 ? e[0].eqfLevelId : 0,
+          courseTypeId: ty.length > 0 ? ty[0].typeId : 0,
         }));
       } catch (err) {
         console.error('Failed to load catalogs:', err);
@@ -105,6 +119,9 @@ export function CourseUploadView() {
         courseBlockId: formData.courseBlockId,
         courseTargetId: formData.courseTargetId,
         courseSubjectId: formData.courseSubjectId,
+        courseRequirementId: formData.courseRequirementId || undefined,
+        courseEqfLevelId: formData.courseEqfLevelId,
+        courseTypeId: formData.courseTypeId,
       });
       
       await uploadCourseFile(course.courseId, file);
@@ -233,6 +250,37 @@ export function CourseUploadView() {
                     onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
                     options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                     aria-label="Obor"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň</label>
+                  <CatalogSelect
+                    value={formData.courseEqfLevelId}
+                    onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
+                    options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                    aria-label="EQF úroveň"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu</label>
+                  <CatalogSelect
+                    value={formData.courseTypeId}
+                    onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
+                    options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                    aria-label="Typ kurzu"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Povinnost kurzu</label>
+                  <CatalogSelect
+                    value={formData.courseRequirementId}
+                    onValueChange={(next) => setFormData({ ...formData, courseRequirementId: next })}
+                    options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Povinnost kurzu"
                     className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
                   />
                 </div>
