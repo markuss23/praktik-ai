@@ -56,6 +56,45 @@ def create_course(
     ):
         raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
+    if (
+        course_data.course_requirement_id is not None
+        and db.execute(
+            select(models.CourseRequirement).where(
+                models.CourseRequirement.requirement_id
+                == course_data.course_requirement_id,
+                models.CourseRequirement.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
+        )
+
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == course_data.course_eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="EQF úroveň s tímto ID neexistuje"
+        )
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == course_data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
     if db.execute(
         select(models.Course).where(
             models.Course.title == course_data.title,

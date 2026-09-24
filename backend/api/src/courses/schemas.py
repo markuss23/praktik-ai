@@ -3,7 +3,14 @@ from pydantic import Field, model_validator
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
 from api.enums import Difficulty, Status
-from api.src.catalogs.schemas import CourseBlock, CourseTarget, CourseSubject
+from api.src.catalogs.schemas import (
+    CourseBlock,
+    CourseEqfLevel,
+    CourseRequirement,
+    CourseTarget,
+    CourseSubject,
+    CourseType,
+)
 
 
 class CourseBase(ORMModel):
@@ -12,6 +19,9 @@ class CourseBase(ORMModel):
     course_block_id: int
     course_target_id: int
     course_subject_id: int | None = None
+    course_requirement_id: int | None = None
+    course_eqf_level_id: int
+    course_type_id: int
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     min_modules_to_open_final_exam: int = Field(default=1, ge=1)
     duration_minutes: int | None = Field(default=None, ge=1)
@@ -68,6 +78,9 @@ class CourseCreated(ORMModel):
     course_block: CourseBlock
     course_target: CourseTarget
     course_subject: CourseSubject
+    course_requirement: CourseRequirement | None = None
+    course_eqf_level: CourseEqfLevel
+    course_type: CourseType
 
 
 class Course(CourseBase):
@@ -86,6 +99,9 @@ class Course(CourseBase):
     course_block: CourseBlock | None = None
     course_target: CourseTarget | None = None
     course_subject: CourseSubject | None = None
+    course_requirement: CourseRequirement | None = None
+    course_eqf_level: CourseEqfLevel
+    course_type: CourseType
 
     @model_validator(mode="before")
     @classmethod

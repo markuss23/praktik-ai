@@ -25,6 +25,18 @@ COURSE_SUBJECT_ID_ANNOTATION = Annotated[
     int | None, Query(description="Filter by course subject ID")
 ]
 
+COURSE_REQUIREMENT_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course requirement ID")
+]
+
+COURSE_EQF_LEVEL_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course EQF level ID")
+]
+
+COURSE_TYPE_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course type ID")
+]
+
 COURSE_STATUS_ANNOTATION = Annotated[
     str | None, Query(description="Filter by course status")
 ]

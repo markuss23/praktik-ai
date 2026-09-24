@@ -2,7 +2,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from api.database import SessionLocal
-from api.models import CourseBlock, CourseSubject, CourseTarget, SystemSetting
+from api.models import (
+    CourseBlock,
+    CourseEqfLevel,
+    CourseRequirement,
+    CourseSubject,
+    CourseTarget,
+    CourseType,
+    SystemSetting,
+)
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -19,6 +27,70 @@ COURSE_TARGETS: list[dict[str, str]] = [
     },
     {"code": "m", "name": "Mentor", "description": "Fakultní učitel / mentor praxe"},
     {"code": "h", "name": "Host", "description": "Externí účastník"},
+]
+
+COURSE_REQUIREMENTS: list[dict[str, str]] = [
+    {
+        "code": "req.p",
+        "name": "Povinný",
+        "description": "Nutný pro pokračování v kurikulu",
+    },
+    {
+        "code": "req.d",
+        "name": "Doporučený",
+        "description": "Doporučená sekvence",
+    },
+    {
+        "code": "req.v",
+        "name": "Volitelný",
+        "description": "Doplňkový kurz",
+    },
+]
+
+COURSE_EQF_LEVELS: list[dict[str, str]] = [
+    {
+        "code": "6",
+        "name": "Bakalářský stupeň",
+        "description": "Odpovídá bakalářskému studiu (Bc.)",
+    },
+    {
+        "code": "7",
+        "name": "Magisterský / navazující stupeň",
+        "description": "Nejčastější pro pedagogy UJEP (Mgr., Ing.)",
+    },
+    {
+        "code": "8",
+        "name": "Doktorský stupeň",
+        "description": "Pro specializované kurzy odborníků (Ph.D.)",
+    },
+]
+
+COURSE_TYPES: list[dict[str, str]] = [
+    {
+        "code": "type.obecny",
+        "name": "Obecný",
+        "description": "Platí pro všechny obory",
+    },
+    {
+        "code": "type.obor",
+        "name": "Oborový",
+        "description": "Specifický pro jeden obor",
+    },
+    {
+        "code": "type.prurezovy",
+        "name": "Průřezový",
+        "description": "Přesahuje skupiny C",
+    },
+    {
+        "code": "type.vstupni",
+        "name": "Vstupní kurz skupiny",
+        "description": "Vstupní kurz pro skupinu C bloků",
+    },
+    {
+        "code": "type.spec",
+        "name": "Specializovaný",
+        "description": "Pro konkrétní roli",
+    },
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -263,6 +335,15 @@ def seed_db() -> None:
 
         if db.query(CourseSubject).count() == 0:
             db.add_all([CourseSubject(**row) for row in COURSE_SUBJECTS])
+
+        if db.query(CourseRequirement).count() == 0:
+            db.add_all([CourseRequirement(**row) for row in COURSE_REQUIREMENTS])
+
+        if db.query(CourseEqfLevel).count() == 0:
+            db.add_all([CourseEqfLevel(**row) for row in COURSE_EQF_LEVELS])
+
+        if db.query(CourseType).count() == 0:
+            db.add_all([CourseType(**row) for row in COURSE_TYPES])
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
