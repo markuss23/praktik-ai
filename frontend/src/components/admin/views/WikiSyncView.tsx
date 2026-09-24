@@ -6,9 +6,7 @@ import { wikiSync } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui';
 
-// Backend stav poslední synchronizace nevystavuje (endpoint jen vrátí počet
-// zpracovaných stránek), takže si poslední ruční spuštění pamatujeme lokálně —
-// je to jen informace pro toho, kdo ho z tohoto prohlížeče spustil.
+// Backend stav poslední synchronizace nevystavuje -  jen informace pro toho, kdo ho z tohoto prohlížeče spustil.
 const LAST_SYNC_KEY = 'praktik-ai:wiki-last-sync';
 
 interface LastSync {
@@ -27,9 +25,7 @@ function readLastSync(): LastSync | null {
 }
 
 /**
- * Správa wiki agenta — ruční spuštění synchronizace a re-indexace wiki
- * (`POST /agents/wiki-sync`, jen superadmin). Bez ní wiki chat odpovídá
- * z posledních naindexovaných dat.
+ * Správa wiki agenta
  */
 export function WikiSyncView() {
   const { isSuperAdmin } = useRole();
@@ -68,18 +64,14 @@ export function WikiSyncView() {
       <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Wiki agent</h1>
       <p className="text-sm text-muted-foreground mb-6 max-w-2xl">
         Wiki chat odpovídá uživatelům z naindexovaného obsahu projektové wiki. Synchronizace stáhne
-        aktuální wiki a znovu ji naindexuje — po větších změnách v dokumentaci ji spusťte ručně.
+        aktuální wiki a znovu ji naindexuje — doporučuje se po větších změnách spustit ručně.
       </p>
 
       <div className="max-w-2xl space-y-6">
         <section className="bg-card rounded-xl border border-border p-6">
           <h2 className="text-base font-bold text-foreground mb-1">Synchronizace a re-indexace</h2>
           <p className="text-sm text-muted-foreground">
-            Na pozadí běží automaticky (interval nastavuje proměnná{' '}
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-              WIKI__SYNC_INTERVAL_HOURS
-            </code>
-            , výchozí 12 hodin). Ruční spuštění je vyhrazené superadminům.
+            Na pozadí běží automaticky (interval 12 hodin). Ruční spuštění je vyhrazené superadminům.
           </p>
 
           {lastSync && (
@@ -104,7 +96,7 @@ export function WikiSyncView() {
               </Button>
               {syncing && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Stahuje se wiki a počítají se embeddingy — u větší wiki to může trvat několik
+                  Stahuje se wiki, může to trvat několik
                   minut. Nezavírejte stránku.
                 </p>
               )}
