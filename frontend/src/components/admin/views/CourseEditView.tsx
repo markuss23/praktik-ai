@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Module } from '@/api';
 import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
-import { Course as CourseType } from '@/api';
+import { Course } from '@/api';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState } from '@/components/admin';
@@ -20,7 +20,7 @@ interface CourseEditViewProps {
 // Formulář pro editaci kurzu a jeho modulů
 export function CourseEditView({ courseId }: CourseEditViewProps) {
   const { goToCourses, goBack, goToModuleEdit } = useAdminNavigation();
-  const { blocks, targets, subjects, loading: catalogsLoading } = useCatalogData();
+  const { blocks, targets, subjects, requirements, eqfLevels, types, loading: catalogsLoading } = useCatalogData();
   const { isOwner } = useCurrentUser();
   const { isSuperAdmin } = useRole();
 
@@ -29,7 +29,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [courseData, setCourseData] = useState<CourseType | null>(null);
+  const [courseData, setCourseData] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
@@ -41,6 +41,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
   });
 
   useEffect(() => {
@@ -55,6 +58,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           courseBlockId: course.courseBlockId ?? 0,
           courseTargetId: course.courseTargetId ?? 0,
           courseSubjectId: course.courseSubjectId ?? 0,
+          courseRequirementId: course.courseRequirementId ?? 0,
+          courseEqfLevelId: course.courseEqfLevelId ?? 0,
+          courseTypeId: course.courseTypeId ?? 0,
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -116,6 +122,10 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           courseBlockId: formData.courseBlockId,
           courseTargetId: formData.courseTargetId,
           courseSubjectId: formData.courseSubjectId,
+          // 0 = „Neurčeno“; null povinnost na backendu vymaže.
+          courseRequirementId: formData.courseRequirementId || null,
+          courseEqfLevelId: formData.courseEqfLevelId,
+          courseTypeId: formData.courseTypeId,
         },
       });
       goToCourses();
@@ -224,6 +234,37 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                 onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
                 options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                 aria-label="Předmět"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">EQF úroveň</label>
+              <CatalogSelect
+                value={formData.courseEqfLevelId}
+                onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
+                options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                aria-label="EQF úroveň"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Typ kurzu</label>
+              <CatalogSelect
+                value={formData.courseTypeId}
+                onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
+                options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                aria-label="Typ kurzu"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Povinnost kurzu</label>
+              <CatalogSelect
+                value={formData.courseRequirementId}
+                onValueChange={(next) => setFormData({ ...formData, courseRequirementId: next })}
+                options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                emptyLabel="Neurčeno"
+                aria-label="Povinnost kurzu"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
               />
             </div>

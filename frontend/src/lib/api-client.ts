@@ -129,6 +129,9 @@ export async function createCourse(data: {
   courseBlockId: number;
   courseTargetId: number;
   courseSubjectId: number;
+  courseRequirementId?: number | null;
+  courseEqfLevelId: number;
+  courseTypeId: number;
   difficulty?: import('@/api').Difficulty;
 }) {
   return coursesApi.createCourse({
@@ -140,6 +143,9 @@ export async function createCourse(data: {
       courseBlockId: data.courseBlockId,
       courseTargetId: data.courseTargetId,
       courseSubjectId: data.courseSubjectId,
+      courseRequirementId: data.courseRequirementId,
+      courseEqfLevelId: data.courseEqfLevelId,
+      courseTypeId: data.courseTypeId,
       difficulty: data.difficulty,
     },
   });
@@ -387,6 +393,18 @@ export async function getCourseTargets() {
 
 export async function getCourseSubjects() {
   return catalogsApi.listCourseSubjects();
+}
+
+export async function getCourseRequirements() {
+  return catalogsApi.listCourseRequirements();
+}
+
+export async function getCourseEqfLevels() {
+  return catalogsApi.listCourseEqfLevels();
+}
+
+export async function getCourseTypes() {
+  return catalogsApi.listCourseTypes();
 }
 
 //  Activities API functions 

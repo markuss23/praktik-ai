@@ -6,7 +6,7 @@ import { wikiSync } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { Button } from '@/components/ui';
 
-// Backend stav poslední synchronizace nevystavuje, je to jen informace pro toho, kdo ho z tohoto prohlížeče spustil.
+// Backend stav poslední synchronizace nevystavuje -  jen informace pro toho, kdo ho z tohoto prohlížeče spustil.
 const LAST_SYNC_KEY = 'praktik-ai:wiki-last-sync';
 
 interface LastSync {
@@ -63,14 +63,15 @@ export function WikiSyncView() {
     <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8 bg-muted min-h-full">
       <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Wiki agent</h1>
       <p className="text-sm text-muted-foreground mb-6 max-w-2xl">
-        Synchronizace stáhne aktuální wiki a znovu ji naindexuje.
+        Wiki chat odpovídá uživatelům z naindexovaného obsahu projektové wiki. Synchronizace stáhne
+        aktuální wiki a znovu ji naindexuje — doporučuje se po větších změnách spustit ručně.
       </p>
 
       <div className="max-w-2xl space-y-6">
         <section className="bg-card rounded-xl border border-border p-6">
           <h2 className="text-base font-bold text-foreground mb-1">Synchronizace a re-indexace</h2>
           <p className="text-sm text-muted-foreground">
-            Na pozadí běží automaticky (interval 12 hodin).
+            Na pozadí běží automaticky (interval 12 hodin). Ruční spuštění je vyhrazené superadminům.
           </p>
 
           {lastSync && (
@@ -95,7 +96,7 @@ export function WikiSyncView() {
               </Button>
               {syncing && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Stahuje se... může trvat několik
+                  Stahuje se wiki, může to trvat několik
                   minut. Nezavírejte stránku.
                 </p>
               )}

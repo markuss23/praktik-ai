@@ -131,6 +131,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       courseBlockId: course.courseBlockId,
       courseTargetId: course.courseTargetId,
       courseSubjectId: course.courseSubjectId,
+      courseEqfLevelId: course.courseEqfLevelId,
+      courseTypeId: course.courseTypeId,
     });
   };
 
