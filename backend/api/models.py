@@ -194,10 +194,10 @@ class AuditLog(Base):
 
 class CourseBlock(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Tématické bloky pro kurzy:
-    A - Kontext a Transformace (AI principy, redesign výuky)
-    B - Aplikace
-    C - Oborové kurzy
+    Číselník — Blok (tematické bloky kurzů):
+    blok.a - Kontext (porozumění principům AI)
+    blok.b - Transformace (redesign výuky a hodnocení)
+    blok.c - Aplikace (oborové kurzy)
     """
 
     __tablename__ = "course_block"
@@ -444,8 +444,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         server_default=Difficulty.slightly_advanced.value,
     )
 
-    course_block_id: Mapped[int] = mapped_column(
-        ForeignKey("course_block.block_id"), nullable=False
+    course_block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_block.block_id"), nullable=True
     )
     course_target_id: Mapped[int] = mapped_column(
         ForeignKey("course_target.target_id"), nullable=False
@@ -488,7 +488,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
 
-    course_block: Mapped[CourseBlock] = relationship(back_populates="courses")
+    course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
     course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
     course_subject: Mapped[CourseSubject] = relationship(back_populates="courses")
     course_requirement: Mapped[CourseRequirement | None] = relationship(

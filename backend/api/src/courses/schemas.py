@@ -16,7 +16,7 @@ from api.src.catalogs.schemas import (
 class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
-    course_block_id: int
+    course_block_id: int | None = None
     course_target_id: int
     course_subject_id: int | None = None
     course_requirement_id: int | None = None
@@ -75,7 +75,7 @@ class CourseCreated(ORMModel):
     owner_id: int
     is_published: bool
     status: Status
-    course_block: CourseBlock
+    course_block: CourseBlock | None = None
     course_target: CourseTarget
     course_subject: CourseSubject
     course_requirement: CourseRequirement | None = None

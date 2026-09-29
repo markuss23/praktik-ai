@@ -13,9 +13,9 @@ from api.models import (
 )
 
 COURSE_BLOCKS: list[dict[str, str]] = [
-    {"code": "a", "name": "Kontext", "description": "Porozumění principům AI"},
-    {"code": "b", "name": "Transformace", "description": "Redesign výuky a hodnocení"},
-    {"code": "c", "name": "Aplikace", "description": "Oborové kurzy"},
+    {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
+    {"code": "blok.b", "name": "Transformace", "description": "Redesign výuky a hodnocení"},
+    {"code": "blok.c", "name": "Aplikace", "description": "Oborové kurzy"},
 ]
 
 COURSE_TARGETS: list[dict[str, str]] = [

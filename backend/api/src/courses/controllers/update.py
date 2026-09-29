@@ -17,7 +17,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     """Aktualizuje existující kurz (v draft nebo generated stavu)"""
     from sqlalchemy import select
 
-    if db.execute(
+    if course_data.course_block_id is not None and db.execute(
         select(models.CourseBlock).where(
             models.CourseBlock.block_id == course_data.course_block_id,
             models.CourseBlock.is_active.is_(True),

@@ -19,7 +19,8 @@ def create_course(
 ) -> CourseCreated:
     """Vytvoří nový kurz ve stavu draft"""
     if (
-        db.execute(
+        course_data.course_block_id is not None
+        and db.execute(
             select(models.CourseBlock).where(
                 models.CourseBlock.block_id == course_data.course_block_id,
                 models.CourseBlock.is_active.is_(True),
