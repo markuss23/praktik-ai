@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from api.database import SessionSqlSessionDependency
 from api.src.catalogs import schemas
 from api.src.catalogs.controllers import (
+    get_bloom_levels,
     get_course_blocks,
     get_course_eqf_levels,
     get_course_requirements,
@@ -54,3 +55,8 @@ async def list_neuro_principles(db: SessionSqlSessionDependency) -> list[schemas
 @router.get("/krauu-competences", operation_id="list_krauu_competences")
 async def list_krauu_competences(db: SessionSqlSessionDependency) -> list[schemas.KrauuCompetence]:
     return get_krauu_competences(db)
+
+
+@router.get("/bloom-levels", operation_id="list_bloom_levels")
+async def list_bloom_levels(db: SessionSqlSessionDependency) -> list[schemas.BloomLevel]:
+    return get_bloom_levels(db)

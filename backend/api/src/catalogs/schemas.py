@@ -55,3 +55,10 @@ class KrauuCompetence(ORMModel):
     code: str
     name: str
     description: str
+
+
+class BloomLevel(ORMModel):
+    bloom_id: int
+    code: str
+    name: str
+    description: str

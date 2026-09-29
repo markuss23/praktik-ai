@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.catalogs.controllers import (
+    sync_bloom_levels,
     sync_krauu_competences,
+    validate_bloom_level_ids,
     validate_krauu_competence_ids,
 )
 from api.src.common.utils import get_or_404, assert_course_editable
@@ -73,6 +75,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, course_data.bloom_level_ids)
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -82,7 +85,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     assert_course_editable(course)
 
     update_data = course_data.model_dump(
-        exclude_unset=True, exclude={"krauu_competence_ids"}
+        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids"}
     )
 
     # Auto-transition to "edited" when saving changes
@@ -100,6 +103,13 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         "course_id",
         course_id,
         course_data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.CourseBloomLevel,
+        "course_id",
+        course_id,
+        course_data.bloom_level_ids,
     )
     db.commit()
     db.refresh(course)

@@ -11,6 +11,7 @@ from api.src.catalogs.schemas import (
     CourseSubject,
     CourseType,
     KrauuCompetence,
+    BloomLevel,
 )
 
 
@@ -38,6 +39,11 @@ class CourseBase(ORMModel):
         return self
 
 
+BLOOM_IDS_FIELD = Field(
+    min_length=1,
+    description="ID Bloomových úrovní (lze vybrat více, alespoň jedna)",
+)
+
 KRAUU_IDS_FIELD = Field(
     min_length=1,
     description="ID KRAUU kompetencí (lze vybrat více, alespoň jedna; oblasti vybírat nelze)",
@@ -46,10 +52,12 @@ KRAUU_IDS_FIELD = Field(
 
 class CourseCreate(CourseBase):
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class CourseUpdate(CourseBase):
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class CourseFile(ORMModel):
@@ -111,6 +119,9 @@ class Course(CourseBase):
     course_type: CourseType
     krauu_competences: list[KrauuCompetence] = Field(
         default=[], validation_alias="krauu_competence_list"
+    )
+    bloom_levels: list[BloomLevel] = Field(
+        default=[], validation_alias="bloom_level_list"
     )
 
     @model_validator(mode="before")

@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from api.database import SessionLocal
 from api.models import (
+    BloomLevel,
     CourseBlock,
     CourseEqfLevel,
     CourseRequirement,
@@ -143,6 +144,15 @@ KRAUU_COMPETENCES: list[dict[str, str]] = [
     {"code": "6.1", "name": "Utváření profesního sebepojetí a", "description": "Systematicky pracuje na utváření profesního sebepojetí a"},
     {"code": "6.2", "name": "Odpovědná práce s informacemi a", "description": "Odpovědně pracuje s informacemi a digitálními nástroji,"},
     {"code": "6.3", "name": "Duševní zdraví a psychohygiena", "description": "Systematicky pečuje o své duševní zdraví a psychohygienu."},
+]
+
+BLOOM_LEVELS: list[dict[str, str]] = [
+    {"code": "1", "name": "Zapamatovat", "description": "vyjmenuje, popíše, identifikuje, rozpozná, zopakuje"},
+    {"code": "2", "name": "Porozumět", "description": "vysvětlí, shrne, klasifikuje, interpretuje, přeloží"},
+    {"code": "3", "name": "Aplikovat", "description": "použije, provede, řeší, demonstruje, implementuje"},
+    {"code": "4", "name": "Analyzovat", "description": "porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá"},
+    {"code": "5", "name": "Hodnotit", "description": "posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní"},
+    {"code": "6", "name": "Tvořit", "description": "navrhne, sestaví, vytvoří, zkonstruuje, naplánuje"},
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -455,6 +465,9 @@ def seed_db() -> None:
 
         if db.query(NeuroPrinciple).count() == 0:
             db.add_all([NeuroPrinciple(**row) for row in NEURO_PRINCIPLES])
+
+        if db.query(BloomLevel).count() == 0:
+            db.add_all([BloomLevel(**row) for row in BLOOM_LEVELS])
 
         if db.query(KrauuCompetence).count() == 0:
             areas: dict[str, KrauuCompetence] = {}

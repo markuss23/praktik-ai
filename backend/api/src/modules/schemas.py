@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import Field
 from api.src.common.schemas import ORMModel
 from api.src.activities.schemas import LearnBlock, PracticeQuestion
-from api.src.catalogs.schemas import KrauuCompetence, NeuroPrinciple
+from api.src.catalogs.schemas import BloomLevel, KrauuCompetence, NeuroPrinciple
 
 
 class ModuleBase(ORMModel):
@@ -15,6 +15,11 @@ class ModuleBase(ORMModel):
     )
 
 
+BLOOM_IDS_FIELD = Field(
+    min_length=1,
+    description="ID Bloomových úrovní (lze vybrat více, alespoň jedna)",
+)
+
 KRAUU_IDS_FIELD = Field(
     min_length=1,
     description="ID KRAUU kompetencí (lze vybrat více, alespoň jedna; oblasti vybírat nelze)",
@@ -24,11 +29,13 @@ KRAUU_IDS_FIELD = Field(
 class ModuleCreate(ModuleBase):
     course_id: int = Field(description="FK na course.course_id")
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class ModuleUpdate(ModuleBase):
     # is_active: bool = True
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class Module(ModuleBase):
@@ -46,6 +53,9 @@ class Module(ModuleBase):
     )
     krauu_competences: list[KrauuCompetence] = Field(
         default=[], validation_alias="krauu_competence_list"
+    )
+    bloom_levels: list[BloomLevel] = Field(
+        default=[], validation_alias="bloom_level_list"
     )
 
 

@@ -425,6 +425,31 @@ class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
     children: Mapped[list[KrauuCompetence]] = relationship(back_populates="parent")
 
 
+class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Bloomova taxonomie kognitivních cílů (6 úrovní):
+    1 Zapamatovat, 2 Porozumět, 3 Aplikovat, 4 Analyzovat, 5 Hodnotit, 6 Tvořit.
+    Používá se pro formulaci GOALS a OBJECTIVES; M2M na Course i Module.
+    """
+
+    __tablename__ = "bloom_level"
+    __table_args__ = (
+        Index(
+            "uq_bloom_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    bloom_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class CourseType(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
@@ -557,6 +582,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
     )
+    bloom_levels: Mapped[list[CourseBloomLevel]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseBloomLevel.course_id, CourseBloomLevel.is_active==True)",
+    )
 
     course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
     course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
@@ -568,11 +597,21 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_type: Mapped[CourseType] = relationship(back_populates="courses")
     # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
 
-    _soft_delete_cascade: list[str] = ["modules", "files", "links", "krauu_competences"]
+    _soft_delete_cascade: list[str] = [
+        "modules",
+        "files",
+        "links",
+        "krauu_competences",
+        "bloom_levels",
+    ]
 
     @property
     def krauu_competence_list(self) -> list[KrauuCompetence]:
         return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
 
     def get_owner_id(self) -> int:
         return self.owner_id
@@ -601,6 +640,34 @@ class CourseKrauuCompetence(SoftDeleteMixin, Base):
 
     course: Mapped[Course] = relationship(back_populates="krauu_competences")
     competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class CourseBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "course_bloom_level"
+    __table_args__ = (
+        Index("uq_course_bloom_level", "course_id", "bloom_id", unique=True),
+        Index("ix_course_bloom_level_course_id", "course_id"),
+        Index("ix_course_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
 
     def get_owner_id(self) -> int:
         return self.course.owner_id
@@ -691,17 +758,26 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleKrauuCompetence.module_id, ModuleKrauuCompetence.is_active==True)",
     )
+    bloom_levels: Mapped[list[ModuleBloomLevel]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleBloomLevel.module_id, ModuleBloomLevel.is_active==True)",
+    )
 
     _soft_delete_cascade = [
         "learn_blocks",
         "practice_questions",
         "neuro_principles",
         "krauu_competences",
+        "bloom_levels",
     ]
 
     @property
     def krauu_competence_list(self) -> list[KrauuCompetence]:
         return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
 
     @property
     def neuro_principle_list(self) -> list[NeuroPrinciple]:
@@ -771,6 +847,34 @@ class ModuleKrauuCompetence(SoftDeleteMixin, Base):
 
     module: Mapped[Module] = relationship(back_populates="krauu_competences")
     competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
+
+
+class ModuleBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "module_bloom_level"
+    __table_args__ = (
+        Index("uq_module_bloom_level", "module_id", "bloom_id", unique=True),
+        Index("ix_module_bloom_level_module_id", "module_id"),
+        Index("ix_module_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
 
     def get_owner_id(self) -> int:
         return self.module.course.owner_id
