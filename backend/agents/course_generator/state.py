@@ -33,6 +33,7 @@ class PracticeQuestionGenerated(BaseModel):
 
 class ModuleGenerated(BaseModel):
     title: str
+    perex: str
     learn_blocks: list[LearnBlockGenerated] = []
     practice_questions: list[PracticeQuestionGenerated] = []
 

@@ -40,6 +40,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
         db_module = models.Module(
             course_id=course_id,
             title=module.title,
+            perex=module.perex,
             is_active=True,
         )
         db.add(db_module)

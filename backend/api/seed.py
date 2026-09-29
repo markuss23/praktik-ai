@@ -144,6 +144,8 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
 
             title: [Výstižný název modulu, 1–200 znaků]
 
+            perex: [Krátká anotace modulu, max 255 znaků. Shrnuje v 1–2 větách, co se student v modulu naučí a proč je to užitečné. Prostý text bez formátování.]
+
             learn_blocks:
             - content: [
                 Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
