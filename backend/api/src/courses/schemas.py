@@ -101,7 +101,7 @@ class CourseCreated(ORMModel):
     status: Status
     course_block: CourseBlock | None = None
     course_target: CourseTarget
-    course_subject: CourseSubject
+    course_subject: CourseSubject | None = None
     course_requirement: CourseRequirement | None = None
     course_eqf_level: CourseEqfLevel
     course_type: CourseType
