@@ -1,4 +1,4 @@
-from sqlalchemy import Update, update
+from sqlalchemy import Update, select, update
 from sqlalchemy.orm.session import Session
 
 from agents.course_generator.state import AgentState, CourseGenerated
@@ -45,6 +45,32 @@ def save_to_db_node(state: AgentState) -> AgentState:
         )
         db.add(db_module)
         db.flush()  # Získání module_id před přidáním learn_block a practices
+
+        # Napojení neurovědního principu (LLM vrací kód, dohledáme principle_id)
+        principle_id = db.scalar(
+            select(models.NeuroPrinciple.principle_id).where(
+                models.NeuroPrinciple.code == module.neuro_principle_code,
+                models.NeuroPrinciple.is_active.is_(True),
+            )
+        )
+        if principle_id is None:
+            print(
+                f"   -> WARN: Neznámý neuro_principle_code '{module.neuro_principle_code}' "
+                f"pro modul '{module.title}', použit fallback NP-01"
+            )
+            principle_id = db.scalar(
+                select(models.NeuroPrinciple.principle_id).where(
+                    models.NeuroPrinciple.code == "NP-01",
+                    models.NeuroPrinciple.is_active.is_(True),
+                )
+            )
+        if principle_id is not None:
+            db.add(
+                models.ModuleNeuroPrinciple(
+                    module_id=db_module.module_id,
+                    principle_id=principle_id,
+                )
+            )
 
         # Uložení learn_block (max 1 na modul)
         if len(module.learn_blocks) > 1:

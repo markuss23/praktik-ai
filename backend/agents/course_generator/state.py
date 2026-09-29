@@ -34,6 +34,7 @@ class PracticeQuestionGenerated(BaseModel):
 class ModuleGenerated(BaseModel):
     title: str
     perex: str
+    neuro_principle_code: str
     learn_blocks: list[LearnBlockGenerated] = []
     practice_questions: list[PracticeQuestionGenerated] = []
 

@@ -170,6 +170,31 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
 
             perex: [Krátká anotace modulu, max 255 znaků. Shrnuje v 1–2 větách, co se student v modulu naučí a proč je to užitečné. Prostý text bez formátování.]
 
+            neuro_principle_code: [Kód PŘESNĚ JEDNOHO neurovědního principu ze seznamu níže, který se pro pedagogický design tohoto modulu hodí nejvíce. Uveď pouze kód, např. "NP-01".
+
+            SEZNAM NEUROVĚDNÍCH PRINCIPŮ (vyber jeden kód na modul):
+            NP-01 Neuroplasticita — Opakované učení mění strukturu synaptických sítí v mozku
+            NP-02 Distribuované opakování — Učení rozložené v čase vede k trvalejšímu zapamatování
+            NP-03 Aktivní vybavování — Vědomé vybavování z paměti posiluje stopu víc než pasivní
+            NP-04 Žádoucí obtíže — Mírná obtížnost a kognitivní zápas prohlubují zpracování a
+            NP-05 Prokládání — Střídání různých typů úloh podporuje rozlišování konceptů
+            NP-06 Duální kódování — Kombinace verbální a vizuální reprezentace vytváří dvě
+            NP-07 Kognitivní zátěž — Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení
+            NP-08 Elaborativní kódování — Propojení nové informace s existujícími znalostmi tvoří síť
+            NP-09 Efekt generování — Sám vytvořená informace se pamatuje lépe než pasivně
+            NP-10 Testovací efekt — Samotné testování konsoliduje dlouhodobou paměť silněji
+            NP-11 Predikční chyba — Dopaminový systém reaguje na rozdíl mezi očekáváním a
+            NP-12 Konsolidace ve spánku — Spánek přepisuje paměťové stopy z hipokampu do
+            NP-13 Pozornost a pracovní paměť — Bez selektivní pozornosti nedochází ke kódování
+            NP-14 Slučování do bloků — Sdružování informací do smysluplných bloků zvyšuje
+            NP-15 Metakognice — Schopnost přemýšlet o vlastním myšlení a sledovat
+            NP-16 Zrcadlové neurony — Pozorování postupu druhého aktivuje stejné okruhy jako
+            NP-17 Stav plynutí (flow) — Optimální poměr výzvy a dovednosti maximalizuje zapojení
+            NP-18 Okamžitá zpětná vazba — Rychlá konkrétní zpětná vazba umožní opravit chybu dřív
+            NP-19 Vtělené poznávání — Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje
+            NP-20 Schémata — Nové informace se snáze ukládají při napojení na existující
+            ]
+
             learn_blocks:
             - content: [
                 Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
