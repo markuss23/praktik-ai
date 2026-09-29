@@ -40,3 +40,10 @@ class CourseType(ORMModel):
     code: str
     name: str
     description: str
+
+
+class NeuroPrinciple(ORMModel):
+    principle_id: int
+    code: str
+    name: str
+    description: str

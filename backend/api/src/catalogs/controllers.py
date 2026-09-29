@@ -7,6 +7,7 @@ from api.models import (
     CourseSubject,
     CourseTarget,
     CourseType,
+    NeuroPrinciple,
 )
 
 
@@ -36,3 +37,7 @@ def get_course_eqf_levels(db: Session) -> list[CourseEqfLevel]:
 
 def get_course_types(db: Session) -> list[CourseType]:
     return db.query(CourseType).filter(CourseType.is_active.is_(True)).all()
+
+
+def get_neuro_principles(db: Session) -> list[NeuroPrinciple]:
+    return db.query(NeuroPrinciple).filter(NeuroPrinciple.is_active.is_(True)).all()

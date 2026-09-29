@@ -9,6 +9,7 @@ from api.src.catalogs.controllers import (
     get_course_subjects,
     get_course_targets,
     get_course_types,
+    get_neuro_principles,
 )
 
 router = APIRouter(prefix="/catalogs", tags=["Catalogs"])
@@ -42,3 +43,8 @@ async def list_course_eqf_levels(db: SessionSqlSessionDependency) -> list[schema
 @router.get("/course-types", operation_id="list_course_types")
 async def list_course_types(db: SessionSqlSessionDependency) -> list[schemas.CourseType]:
     return get_course_types(db)
+
+
+@router.get("/neuro-principles", operation_id="list_neuro_principles")
+async def list_neuro_principles(db: SessionSqlSessionDependency) -> list[schemas.NeuroPrinciple]:
+    return get_neuro_principles(db)

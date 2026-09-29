@@ -1,13 +1,18 @@
 from datetime import datetime
-from pydantic import Field
+from pydantic import Field, model_validator
 from api.src.common.schemas import ORMModel
 from api.src.activities.schemas import LearnBlock, PracticeQuestion
+from api.src.catalogs.schemas import NeuroPrinciple
 
 
 class ModuleBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     perex: str = Field(default="", max_length=255)
     max_task_attempts: int = Field(default=3, ge=1, le=20, description="Maximální počet pokusů pro splnění modulu")
+    neuro_principle_ids: list[int] = Field(
+        min_length=1,
+        description="ID neurovědních principů navázaných na modul (lze vybrat více, alespoň jeden)",
+    )
 
 
 class ModuleCreate(ModuleBase):
@@ -28,6 +33,21 @@ class Module(ModuleBase):
 
     learn_blocks: list[LearnBlock] = []
     practice_questions: list[PracticeQuestion] = []
+    neuro_principles: list[NeuroPrinciple] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_neuro_principles(cls, obj):
+        if hasattr(obj, "__dict__") and hasattr(obj, "neuro_principles"):
+            try:
+                principles = [link.principle for link in obj.neuro_principles]
+                obj.__dict__["neuro_principles"] = principles
+                obj.__dict__["neuro_principle_ids"] = [
+                    p.principle_id for p in principles
+                ]
+            except Exception:
+                pass
+        return obj
 
 
 class ModuleCompletionStatus(ORMModel):

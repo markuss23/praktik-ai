@@ -359,6 +359,35 @@ class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_subject")
 
 
+class NeuroPrinciple(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Neurovědní principy (NP-01 až NP-20):
+    20 neurovědních principů učení, dávají vědeckou oporu pedagogickému
+    designu modulu. Na modul lze navázat více principů najednou (M2M).
+    """
+
+    __tablename__ = "neuro_principle"
+    __table_args__ = (
+        Index(
+            "uq_neuro_principle_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    principle_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    modules: Mapped[list[ModuleNeuroPrinciple]] = relationship(
+        back_populates="principle"
+    )
+
+
 class CourseType(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
@@ -581,11 +610,48 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     user_practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
         back_populates="module",
     )
+    neuro_principles: Mapped[list[ModuleNeuroPrinciple]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleNeuroPrinciple.module_id, ModuleNeuroPrinciple.is_active==True)",
+    )
 
-    _soft_delete_cascade = ["learn_blocks", "practice_questions"]
+    _soft_delete_cascade = ["learn_blocks", "practice_questions", "neuro_principles"]
 
     def get_owner_id(self) -> int:
         return self.course.owner_id
+
+
+class ModuleNeuroPrinciple(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ neurovědní princip (M2M, více principů na modul)."""
+
+    __tablename__ = "module_neuro_principle"
+    __table_args__ = (
+        Index(
+            "uq_module_neuro_principle",
+            "module_id",
+            "principle_id",
+            unique=True,
+        ),
+        Index("ix_module_neuro_principle_module_id", "module_id"),
+        Index("ix_module_neuro_principle_principle_id", "principle_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    principle_id: Mapped[int] = mapped_column(
+        ForeignKey("neuro_principle.principle_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="neuro_principles")
+    principle: Mapped[NeuroPrinciple] = relationship(back_populates="modules")
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
 
 
 class CourseFile(TimestampMixin, SoftDeleteMixin, Base):

@@ -9,6 +9,7 @@ from api.models import (
     CourseSubject,
     CourseTarget,
     CourseType,
+    NeuroPrinciple,
     SystemSetting,
 )
 
@@ -91,6 +92,29 @@ COURSE_TYPES: list[dict[str, str]] = [
         "name": "Specializovaný",
         "description": "Pro konkrétní roli",
     },
+]
+
+NEURO_PRINCIPLES: list[dict[str, str]] = [
+    {"code": "NP-01", "name": "Neuroplasticita", "description": "Opakované učení mění strukturu synaptických sítí v mozku"},
+    {"code": "NP-02", "name": "Distribuované opakování", "description": "Učení rozložené v čase vede k trvalejšímu zapamatování"},
+    {"code": "NP-03", "name": "Aktivní vybavování", "description": "Vědomé vybavování z paměti posiluje stopu víc než pasivní"},
+    {"code": "NP-04", "name": "Žádoucí obtíže", "description": "Mírná obtížnost a kognitivní zápas prohlubují zpracování a"},
+    {"code": "NP-05", "name": "Prokládání", "description": "Střídání různých typů úloh podporuje rozlišování konceptů"},
+    {"code": "NP-06", "name": "Duální kódování", "description": "Kombinace verbální a vizuální reprezentace vytváří dvě"},
+    {"code": "NP-07", "name": "Kognitivní zátěž", "description": "Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení"},
+    {"code": "NP-08", "name": "Elaborativní kódování", "description": "Propojení nové informace s existujícími znalostmi tvoří síť"},
+    {"code": "NP-09", "name": "Efekt generování", "description": "Sám vytvořená informace se pamatuje lépe než pasivně"},
+    {"code": "NP-10", "name": "Testovací efekt", "description": "Samotné testování konsoliduje dlouhodobou paměť silněji"},
+    {"code": "NP-11", "name": "Predikční chyba", "description": "Dopaminový systém reaguje na rozdíl mezi očekáváním a"},
+    {"code": "NP-12", "name": "Konsolidace ve spánku", "description": "Spánek přepisuje paměťové stopy z hipokampu do"},
+    {"code": "NP-13", "name": "Pozornost a pracovní paměť", "description": "Bez selektivní pozornosti nedochází ke kódování"},
+    {"code": "NP-14", "name": "Slučování do bloků", "description": "Sdružování informací do smysluplných bloků zvyšuje"},
+    {"code": "NP-15", "name": "Metakognice", "description": "Schopnost přemýšlet o vlastním myšlení a sledovat"},
+    {"code": "NP-16", "name": "Zrcadlové neurony", "description": "Pozorování postupu druhého aktivuje stejné okruhy jako"},
+    {"code": "NP-17", "name": "Stav plynutí (flow)", "description": "Optimální poměr výzvy a dovednosti maximalizuje zapojení"},
+    {"code": "NP-18", "name": "Okamžitá zpětná vazba", "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív"},
+    {"code": "NP-19", "name": "Vtělené poznávání", "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje"},
+    {"code": "NP-20", "name": "Schémata", "description": "Nové informace se snáze ukládají při napojení na existující"},
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -346,6 +370,9 @@ def seed_db() -> None:
 
         if db.query(CourseType).count() == 0:
             db.add_all([CourseType(**row) for row in COURSE_TYPES])
+
+        if db.query(NeuroPrinciple).count() == 0:
+            db.add_all([NeuroPrinciple(**row) for row in NEURO_PRINCIPLES])
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
