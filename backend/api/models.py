@@ -559,6 +559,9 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         ForeignKey("course.course_id"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
+    perex: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="", server_default=""
+    )
     max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
 

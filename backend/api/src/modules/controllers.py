@@ -94,6 +94,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
             )
 
     module.title = module_data.title
+    module.perex = module_data.perex
     module.max_task_attempts = module_data.max_task_attempts
     db.add(module)
     db.commit()

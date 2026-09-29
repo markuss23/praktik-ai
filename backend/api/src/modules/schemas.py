@@ -6,6 +6,7 @@ from api.src.activities.schemas import LearnBlock, PracticeQuestion
 
 class ModuleBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
+    perex: str = Field(default="", max_length=255)
     max_task_attempts: int = Field(default=3, ge=1, le=20, description="Maximální počet pokusů pro splnění modulu")
 
 
