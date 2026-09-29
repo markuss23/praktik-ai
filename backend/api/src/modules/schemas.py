@@ -1,8 +1,8 @@
 from datetime import datetime
-from pydantic import Field, model_validator
+from pydantic import Field
 from api.src.common.schemas import ORMModel
 from api.src.activities.schemas import LearnBlock, PracticeQuestion
-from api.src.catalogs.schemas import NeuroPrinciple
+from api.src.catalogs.schemas import KrauuCompetence, NeuroPrinciple
 
 
 class ModuleBase(ORMModel):
@@ -15,13 +15,20 @@ class ModuleBase(ORMModel):
     )
 
 
+KRAUU_IDS_FIELD = Field(
+    min_length=1,
+    description="ID KRAUU kompetencí (lze vybrat více, alespoň jedna; oblasti vybírat nelze)",
+)
+
+
 class ModuleCreate(ModuleBase):
     course_id: int = Field(description="FK na course.course_id")
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
 
 
 class ModuleUpdate(ModuleBase):
     # is_active: bool = True
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
 
 
 class Module(ModuleBase):
@@ -33,21 +40,13 @@ class Module(ModuleBase):
 
     learn_blocks: list[LearnBlock] = []
     practice_questions: list[PracticeQuestion] = []
-    neuro_principles: list[NeuroPrinciple] = []
-
-    @model_validator(mode="before")
-    @classmethod
-    def populate_neuro_principles(cls, obj):
-        if hasattr(obj, "__dict__") and hasattr(obj, "neuro_principles"):
-            try:
-                principles = [link.principle for link in obj.neuro_principles]
-                obj.__dict__["neuro_principles"] = principles
-                obj.__dict__["neuro_principle_ids"] = [
-                    p.principle_id for p in principles
-                ]
-            except Exception:
-                pass
-        return obj
+    neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
+    neuro_principles: list[NeuroPrinciple] = Field(
+        default=[], validation_alias="neuro_principle_list"
+    )
+    krauu_competences: list[KrauuCompetence] = Field(
+        default=[], validation_alias="krauu_competence_list"
+    )
 
 
 class ModuleCompletionStatus(ORMModel):

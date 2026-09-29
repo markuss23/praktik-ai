@@ -10,6 +10,7 @@ from api.src.catalogs.schemas import (
     CourseTarget,
     CourseSubject,
     CourseType,
+    KrauuCompetence,
 )
 
 
@@ -37,12 +38,18 @@ class CourseBase(ORMModel):
         return self
 
 
+KRAUU_IDS_FIELD = Field(
+    min_length=1,
+    description="ID KRAUU kompetencí (lze vybrat více, alespoň jedna; oblasti vybírat nelze)",
+)
+
+
 class CourseCreate(CourseBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
 
 
 class CourseUpdate(CourseBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
 
 
 class CourseFile(ORMModel):
@@ -102,6 +109,9 @@ class Course(CourseBase):
     course_requirement: CourseRequirement | None = None
     course_eqf_level: CourseEqfLevel
     course_type: CourseType
+    krauu_competences: list[KrauuCompetence] = Field(
+        default=[], validation_alias="krauu_competence_list"
+    )
 
     @model_validator(mode="before")
     @classmethod

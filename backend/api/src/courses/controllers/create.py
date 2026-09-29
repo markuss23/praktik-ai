@@ -7,6 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.catalogs.controllers import (
+    sync_krauu_competences,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404
 from api.src.courses.schemas import CourseCreate, CourseCreated, CourseFile, CourseLink
 from api import enums
@@ -106,8 +110,22 @@ def create_course(
             status_code=400, detail="Kurz s tímto názvem již existuje"
         )
 
-    course = models.Course(**course_data.model_dump(), owner_id=user.user_id)
+    validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
+
+    course = models.Course(
+        **course_data.model_dump(exclude={"krauu_competence_ids"}),
+        owner_id=user.user_id,
+    )
     db.add(course)
+    db.flush()  # získání course_id před přidáním vazeb
+
+    sync_krauu_competences(
+        db,
+        models.CourseKrauuCompetence,
+        "course_id",
+        course.course_id,
+        course_data.krauu_competence_ids,
+    )
     db.commit()
     db.refresh(course)
 

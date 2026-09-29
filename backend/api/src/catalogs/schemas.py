@@ -47,3 +47,11 @@ class NeuroPrinciple(ORMModel):
     code: str
     name: str
     description: str
+
+
+class KrauuCompetence(ORMModel):
+    krauu_id: int
+    parent_id: int | None = None
+    code: str
+    name: str
+    description: str

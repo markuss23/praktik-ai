@@ -9,6 +9,7 @@ from api.src.catalogs.controllers import (
     get_course_subjects,
     get_course_targets,
     get_course_types,
+    get_krauu_competences,
     get_neuro_principles,
 )
 
@@ -48,3 +49,8 @@ async def list_course_types(db: SessionSqlSessionDependency) -> list[schemas.Cou
 @router.get("/neuro-principles", operation_id="list_neuro_principles")
 async def list_neuro_principles(db: SessionSqlSessionDependency) -> list[schemas.NeuroPrinciple]:
     return get_neuro_principles(db)
+
+
+@router.get("/krauu-competences", operation_id="list_krauu_competences")
+async def list_krauu_competences(db: SessionSqlSessionDependency) -> list[schemas.KrauuCompetence]:
+    return get_krauu_competences(db)

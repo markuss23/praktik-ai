@@ -9,6 +9,7 @@ from api.models import (
     CourseSubject,
     CourseTarget,
     CourseType,
+    KrauuCompetence,
     NeuroPrinciple,
     SystemSetting,
 )
@@ -115,6 +116,33 @@ NEURO_PRINCIPLES: list[dict[str, str]] = [
     {"code": "NP-18", "name": "Okamžitá zpětná vazba", "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív"},
     {"code": "NP-19", "name": "Vtělené poznávání", "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje"},
     {"code": "NP-20", "name": "Schémata", "description": "Nové informace se snáze ukládají při napojení na existující"},
+]
+
+KRAUU_COMPETENCES: list[dict[str, str]] = [
+    {"code": "1.0", "name": "Oblast 1 – Obsah a didaktika", "description": ""},
+    {"code": "1.1", "name": "Rozumí vyučovaným oborům a rozvíjí", "description": "Učitel/ka rozumí oborům, které vyučuje, a systematicky se"},
+    {"code": "1.2", "name": "Didakticky zprostředkovává obsah", "description": "Zprostředkovává obsah žákům v souladu s jejich"},
+    {"code": "2.0", "name": "Oblast 2 – Plánování, vedení a reflexe výuky", "description": ""},
+    {"code": "2.1", "name": "Nastavuje cíle výuky", "description": "Stanovuje srozumitelné cíle a vede k jejich nastavování i"},
+    {"code": "2.2", "name": "Poznává vzdělávací potřeby a plánuje", "description": "Plánuje výuku tak, aby každý žák mohl aktivně dosahovat"},
+    {"code": "2.3", "name": "Podporuje zvídavost a motivaci žáků", "description": "Podporuje u žáků zvídavost a motivaci k učení."},
+    {"code": "2.4", "name": "Efektivně vede výuku a zjišťuje", "description": "Vede výuku efektivně, zjišťuje porozumění a reaguje na"},
+    {"code": "2.5", "name": "Reflektuje výuku", "description": "Reflektuje vlastní výuku a vyhodnocuje dosahování cílů."},
+    {"code": "3.0", "name": "Oblast 3 – Prostředí pro učení", "description": ""},
+    {"code": "3.1", "name": "Vytváří bezpečné prostředí pro učení", "description": "Vytváří fyzicky i psychicky bezpečné prostředí pro učení."},
+    {"code": "3.2", "name": "Vede žáky k chování podporujícímu", "description": "Vede žáky k chování podporujícímu vlastní učení i"},
+    {"code": "3.3", "name": "Uspořádání fyzického a digitálního", "description": "Zajišťuje vhodné uspořádání fyzického a digitálního"},
+    {"code": "4.0", "name": "Oblast 4 – Zpětná vazba a hodnocení", "description": ""},
+    {"code": "4.1", "name": "Hodnotí na základě kritérií", "description": "Hodnotí žáky na základě jasných kritérií a vede k tomu i"},
+    {"code": "4.2", "name": "Poskytuje a přijímá zpětnou vazbu", "description": "Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá"},
+    {"code": "4.3", "name": "Vede žáky k reflexi jejich učení", "description": "Vede žáky k reflexi vlastního učení a samostatné"},
+    {"code": "5.0", "name": "Oblast 5 – Profesní spolupráce", "description": ""},
+    {"code": "5.1", "name": "Spolupracuje s kolegy a kolegyněmi", "description": "Spolupracuje s kolegy ve prospěch žáků a společného"},
+    {"code": "5.2", "name": "Spolupracuje s rodiči a širší", "description": "Spolupracuje s rodiči a širší komunitou v zájmu žáků."},
+    {"code": "6.0", "name": "Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví", "description": ""},
+    {"code": "6.1", "name": "Utváření profesního sebepojetí a", "description": "Systematicky pracuje na utváření profesního sebepojetí a"},
+    {"code": "6.2", "name": "Odpovědná práce s informacemi a", "description": "Odpovědně pracuje s informacemi a digitálními nástroji,"},
+    {"code": "6.3", "name": "Duševní zdraví a psychohygiena", "description": "Systematicky pečuje o své duševní zdraví a psychohygienu."},
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -398,6 +426,21 @@ def seed_db() -> None:
 
         if db.query(NeuroPrinciple).count() == 0:
             db.add_all([NeuroPrinciple(**row) for row in NEURO_PRINCIPLES])
+
+        if db.query(KrauuCompetence).count() == 0:
+            areas: dict[str, KrauuCompetence] = {}
+            for row in KRAUU_COMPETENCES:
+                if row["code"].endswith(".0"):
+                    area = KrauuCompetence(**row)
+                    db.add(area)
+                    areas[row["code"]] = area
+            db.flush()
+            for row in KRAUU_COMPETENCES:
+                if not row["code"].endswith(".0"):
+                    area_code = f"{row['code'].split('.')[0]}.0"
+                    db.add(
+                        KrauuCompetence(**row, parent_id=areas[area_code].krauu_id)
+                    )
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])

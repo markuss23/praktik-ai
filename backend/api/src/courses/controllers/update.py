@@ -7,6 +7,10 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.catalogs.controllers import (
+    sync_krauu_competences,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
@@ -68,6 +72,8 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
 
+    validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
+
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)
@@ -75,7 +81,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
 
     assert_course_editable(course)
 
-    update_data = course_data.model_dump(exclude_unset=True)
+    update_data = course_data.model_dump(
+        exclude_unset=True, exclude={"krauu_competence_ids"}
+    )
 
     # Auto-transition to "edited" when saving changes
     if course.status in (Status.draft, Status.generated):
@@ -85,6 +93,13 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         update(models.Course)
         .where(models.Course.course_id == course_id)
         .values(**update_data)
+    )
+    sync_krauu_competences(
+        db,
+        models.CourseKrauuCompetence,
+        "course_id",
+        course_id,
+        course_data.krauu_competence_ids,
     )
     db.commit()
     db.refresh(course)

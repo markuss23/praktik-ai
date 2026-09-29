@@ -388,6 +388,43 @@ class NeuroPrinciple(TimestampMixin, SoftDeleteMixin, Base):
     )
 
 
+class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — KRAUU kompetence (MŠMT 2023):
+    Kompetenční rámec absolventa učitelství, 18 kompetencí v 6 oblastech.
+    Oblast (kód x.0) je řádek bez rodiče, kompetence (x.y) odkazují na oblast
+    přes parent_id. Vybírají se pouze kompetence, ne oblasti (M2M na Course
+    i Module). Interní mapování — studentovi se nezobrazuje.
+    """
+
+    __tablename__ = "krauu_competence"
+    __table_args__ = (
+        Index(
+            "uq_krauu_competence_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    krauu_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="", server_default=""
+    )
+
+    parent: Mapped[KrauuCompetence | None] = relationship(
+        remote_side=[krauu_id], back_populates="children"
+    )
+    children: Mapped[list[KrauuCompetence]] = relationship(back_populates="parent")
+
+
 class CourseType(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
@@ -516,6 +553,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
+    krauu_competences: Mapped[list[CourseKrauuCompetence]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
+    )
 
     course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
     course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
@@ -527,10 +568,42 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_type: Mapped[CourseType] = relationship(back_populates="courses")
     # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
 
-    _soft_delete_cascade: list[str] = ["modules", "files", "links"]
+    _soft_delete_cascade: list[str] = ["modules", "files", "links", "krauu_competences"]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
 
     def get_owner_id(self) -> int:
         return self.owner_id
+
+
+class CourseKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "course_krauu_competence"
+    __table_args__ = (
+        Index("uq_course_krauu_competence", "course_id", "krauu_id", unique=True),
+        Index("ix_course_krauu_competence_course_id", "course_id"),
+        Index("ix_course_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
 
 
 class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
@@ -614,8 +687,29 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleNeuroPrinciple.module_id, ModuleNeuroPrinciple.is_active==True)",
     )
+    krauu_competences: Mapped[list[ModuleKrauuCompetence]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleKrauuCompetence.module_id, ModuleKrauuCompetence.is_active==True)",
+    )
 
-    _soft_delete_cascade = ["learn_blocks", "practice_questions", "neuro_principles"]
+    _soft_delete_cascade = [
+        "learn_blocks",
+        "practice_questions",
+        "neuro_principles",
+        "krauu_competences",
+    ]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
+
+    @property
+    def neuro_principle_list(self) -> list[NeuroPrinciple]:
+        return [link.principle for link in self.neuro_principles]
+
+    @property
+    def neuro_principle_id_list(self) -> list[int]:
+        return [link.principle_id for link in self.neuro_principles]
 
     def get_owner_id(self) -> int:
         return self.course.owner_id
@@ -649,6 +743,34 @@ class ModuleNeuroPrinciple(SoftDeleteMixin, Base):
 
     module: Mapped[Module] = relationship(back_populates="neuro_principles")
     principle: Mapped[NeuroPrinciple] = relationship(back_populates="modules")
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
+
+
+class ModuleKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "module_krauu_competence"
+    __table_args__ = (
+        Index("uq_module_krauu_competence", "module_id", "krauu_id", unique=True),
+        Index("ix_module_krauu_competence_module_id", "module_id"),
+        Index("ix_module_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
 
     def get_owner_id(self) -> int:
         return self.module.course.owner_id

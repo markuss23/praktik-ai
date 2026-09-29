@@ -6,6 +6,10 @@ from sqlalchemy.orm import Session
 from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion, AssessmentAttemptDetail
 from api import enums, models
+from api.src.catalogs.controllers import (
+    sync_krauu_competences,
+    validate_krauu_competence_ids,
+)
 from api.authorization import validate_owner_or_superadmin
 
 
@@ -89,8 +93,11 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     validate_owner_or_superadmin(course, user, "modul")
 
     _validate_neuro_principle_ids(db, data.neuro_principle_ids)
+    validate_krauu_competence_ids(db, data.krauu_competence_ids)
 
-    module_data = data.model_dump(exclude={"neuro_principle_ids"})
+    module_data = data.model_dump(
+        exclude={"neuro_principle_ids", "krauu_competence_ids"}
+    )
     obj = models.Module(**module_data)
     obj.is_active = True
 
@@ -98,6 +105,13 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     db.flush()  # získání module_id před přidáním principů
 
     _sync_neuro_principles(db, obj, data.neuro_principle_ids)
+    sync_krauu_competences(
+        db,
+        models.ModuleKrauuCompetence,
+        "module_id",
+        obj.module_id,
+        data.krauu_competence_ids,
+    )
 
     db.commit()
     db.refresh(obj)
@@ -142,6 +156,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
             )
 
     _validate_neuro_principle_ids(db, module_data.neuro_principle_ids)
+    validate_krauu_competence_ids(db, module_data.krauu_competence_ids)
 
     module.title = module_data.title
     module.perex = module_data.perex
@@ -149,6 +164,13 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
     db.add(module)
 
     _sync_neuro_principles(db, module, module_data.neuro_principle_ids)
+    sync_krauu_competences(
+        db,
+        models.ModuleKrauuCompetence,
+        "module_id",
+        module.module_id,
+        module_data.krauu_competence_ids,
+    )
 
     db.commit()
     db.refresh(module)
