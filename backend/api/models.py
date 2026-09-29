@@ -1101,6 +1101,12 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
         default=Difficulty.slightly_advanced,
         server_default=Difficulty.slightly_advanced.value,
     )
+    eqf_level_id: Mapped[int] = mapped_column(
+        ForeignKey("course_eqf_level.eqf_level_id"), nullable=False
+    )
+    course_type_id: Mapped[int] = mapped_column(
+        ForeignKey("course_type.type_id"), nullable=False
+    )
     status: Mapped[PubResourceStatus] = mapped_column(
         Enum(PubResourceStatus, name="pub_resource_status"),
         nullable=False,
@@ -1111,8 +1117,10 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
     is_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     author: Mapped[User] = relationship(foreign_keys=[author_id])
-    subject: Mapped[CourseSubject | None] = relationship(foreign_keys=[subject_id])
-    target: Mapped[CourseTarget | None] = relationship(foreign_keys=[target_id])
+    subject: Mapped[CourseSubject] = relationship(foreign_keys=[subject_id])
+    target: Mapped[CourseTarget] = relationship(foreign_keys=[target_id])
+    eqf_level: Mapped[CourseEqfLevel] = relationship(foreign_keys=[eqf_level_id])
+    course_type: Mapped[CourseType] = relationship(foreign_keys=[course_type_id])
     files: Mapped[list[PubResourceFile]] = relationship(
         back_populates="resource",
         primaryjoin="and_(PubResource.resource_id==PubResourceFile.resource_id, PubResourceFile.is_active==True)",

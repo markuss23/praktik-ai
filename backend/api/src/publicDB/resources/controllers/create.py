@@ -65,6 +65,28 @@ def create_resource(
             status_code=409, detail="Materiál s tímto názvem již existuje"
         )
 
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == data.eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="EQF úroveň s tímto ID neexistuje")
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
     resource_data = data.model_dump()
     resource = models.PubResource(**resource_data, author_id=user.user_id)
     db.add(resource)

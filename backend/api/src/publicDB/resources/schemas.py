@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 from api.enums import AttachType, Difficulty, EduLevel, PubResourceStatus
 from api.src.catalogs.schemas import CourseSubject, CourseTarget
 from api.src.common.schemas import ORMModel
+from api.src.catalogs.schemas import CourseEqfLevel, CourseType
 
 
 class PubResourceBase(ORMModel):
@@ -14,6 +15,8 @@ class PubResourceBase(ORMModel):
     target_id: int | None = None
     education_level: EduLevel
     difficulty_level: Difficulty = Field(default=Difficulty.slightly_advanced)
+    eqf_level_id: int
+    course_type_id: int
     allow_forks: bool = False
 
 
@@ -48,6 +51,8 @@ class PubResourceCreated(ORMModel):
     description: str | None = None
     education_level: EduLevel
     difficulty_level: Difficulty
+    eqf_level: CourseEqfLevel
+    course_type: CourseType
     status: PubResourceStatus
     author_id: int
     allow_forks: bool
@@ -99,6 +104,8 @@ class PubResource(PubResourceBase):
     files: list[PubResourceFile] = []
     subject: CourseSubject | None = None
     target: CourseTarget | None = None
+    eqf_level: CourseEqfLevel
+    course_type: CourseType
     created_at: datetime
     updated_at: datetime
 

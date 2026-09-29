@@ -46,6 +46,28 @@ def update_resource(
             status_code=400, detail="Cílová skupina s tímto ID neexistuje"
         )
 
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == resource_data.eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="EQF level s tímto ID neexistuje")
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == resource_data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
     resource = get_or_404(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
