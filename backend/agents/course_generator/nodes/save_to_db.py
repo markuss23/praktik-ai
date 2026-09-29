@@ -72,6 +72,28 @@ def save_to_db_node(state: AgentState) -> AgentState:
                 )
             )
 
+        # Napojení KRAUU kompetencí (LLM vrací kódy, dohledáme jen platné kompetence)
+        krauu_ids = set(
+            db.scalars(
+                select(models.KrauuCompetence.krauu_id).where(
+                    models.KrauuCompetence.code.in_(module.krauu_competence_codes),
+                    models.KrauuCompetence.is_active.is_(True),
+                    models.KrauuCompetence.parent_id.is_not(None),
+                )
+            ).all()
+        )
+        if not krauu_ids:
+            print(
+                f"   -> WARN: Modul '{module.title}' nemá platné KRAUU kompetence "
+                f"({module.krauu_competence_codes}), nic nenapojeno"
+            )
+        for krauu_id in krauu_ids:
+            db.add(
+                models.ModuleKrauuCompetence(
+                    module_id=db_module.module_id, krauu_id=krauu_id
+                )
+            )
+
         # Uložení learn_block (max 1 na modul)
         if len(module.learn_blocks) > 1:
             raise ValueError(

@@ -35,6 +35,7 @@ class ModuleGenerated(BaseModel):
     title: str
     perex: str
     neuro_principle_code: str
+    krauu_competence_codes: list[str] = []
     learn_blocks: list[LearnBlockGenerated] = []
     practice_questions: list[PracticeQuestionGenerated] = []
 

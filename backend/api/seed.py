@@ -223,6 +223,35 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
             NP-20 Schémata — Nové informace se snáze ukládají při napojení na existující
             ]
 
+            krauu_competence_codes: [Seznam kódů KRAUU kompetencí (MŠMT 2023) ze seznamu níže, které modul rozvíjí. Vyber 1–3 nejrelevantnější kompetence. Uváděj pouze kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".
+
+            SEZNAM KRAUU KOMPETENCÍ:
+            Oblast 1 – Obsah a didaktika:
+            1.1 Rozumí vyučovaným oborům a rozvíjí — Učitel/ka rozumí oborům, které vyučuje, a systematicky se
+            1.2 Didakticky zprostředkovává obsah — Zprostředkovává obsah žákům v souladu s jejich
+            Oblast 2 – Plánování, vedení a reflexe výuky:
+            2.1 Nastavuje cíle výuky — Stanovuje srozumitelné cíle a vede k jejich nastavování i
+            2.2 Poznává vzdělávací potřeby a plánuje — Plánuje výuku tak, aby každý žák mohl aktivně dosahovat
+            2.3 Podporuje zvídavost a motivaci žáků — Podporuje u žáků zvídavost a motivaci k učení.
+            2.4 Efektivně vede výuku a zjišťuje — Vede výuku efektivně, zjišťuje porozumění a reaguje na
+            2.5 Reflektuje výuku — Reflektuje vlastní výuku a vyhodnocuje dosahování cílů.
+            Oblast 3 – Prostředí pro učení:
+            3.1 Vytváří bezpečné prostředí pro učení — Vytváří fyzicky i psychicky bezpečné prostředí pro učení.
+            3.2 Vede žáky k chování podporujícímu — Vede žáky k chování podporujícímu vlastní učení i
+            3.3 Uspořádání fyzického a digitálního — Zajišťuje vhodné uspořádání fyzického a digitálního
+            Oblast 4 – Zpětná vazba a hodnocení:
+            4.1 Hodnotí na základě kritérií — Hodnotí žáky na základě jasných kritérií a vede k tomu i
+            4.2 Poskytuje a přijímá zpětnou vazbu — Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá
+            4.3 Vede žáky k reflexi jejich učení — Vede žáky k reflexi vlastního učení a samostatné
+            Oblast 5 – Profesní spolupráce:
+            5.1 Spolupracuje s kolegy a kolegyněmi — Spolupracuje s kolegy ve prospěch žáků a společného
+            5.2 Spolupracuje s rodiči a širší — Spolupracuje s rodiči a širší komunitou v zájmu žáků.
+            Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví:
+            6.1 Utváření profesního sebepojetí a — Systematicky pracuje na utváření profesního sebepojetí a
+            6.2 Odpovědná práce s informacemi a — Odpovědně pracuje s informacemi a digitálními nástroji,
+            6.3 Duševní zdraví a psychohygiena — Systematicky pečuje o své duševní zdraví a psychohygienu.
+            ]
+
             learn_blocks:
             - content: [
                 Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
