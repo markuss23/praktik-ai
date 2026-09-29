@@ -125,11 +125,16 @@ def get_cross_subjects(db: Session) -> list[CrossSubject]:
 def resolve_cross_subject_ids(
     db: Session, course_block_id: int | None, cross_ids: list[int]
 ) -> list[int]:
-    """Blok A/B: průřezový obor je povinný. Blok C: nezadává se (výběr se zahodí)."""
+    """Blok A/B: průřezový obor je povinný. Blok C: nesmí se zadat."""
     block_code = db.scalar(
         select(CourseBlock.code).where(CourseBlock.block_id == course_block_id)
     )
     if block_code == BLOCK_WITHOUT_CROSS_SUBJECTS:
+        if cross_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Pro kurzy Bloku C se průřezové obory nezadávají",
+            )
         return []
     if block_code in BLOCKS_REQUIRING_CROSS_SUBJECTS and not cross_ids:
         raise HTTPException(
