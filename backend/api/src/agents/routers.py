@@ -23,6 +23,7 @@ from api.src.agents.schemas import (
     GenerateCourseImagesRequest,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
+    GenerateModuleImagesRequest,
     GeneratePracticeQuestionRequest,
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
@@ -49,6 +50,7 @@ from api.src.agents.practice_controllers import (
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.image_generator.service import ImageGeneratorService
+from agents.module_image_generator.service import ModuleImageGeneratorService
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
 from agents.wiki.agent.service import sync_wiki
@@ -277,6 +279,70 @@ async def generate_course_images(
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="course_{course_id}_images.zip"'
+        },
+    )
+
+
+@router.post(
+    "/generate-module-images",
+    operation_id="generate_module_images",
+    dependencies=[require_role("lector")],
+    response_class=Response,
+    responses={200: {"content": {"application/zip": {}}}},
+)
+async def generate_module_images(
+    module_id: int,
+    body: GenerateModuleImagesRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> Response:
+    """Vygeneruje z kontextu modulu jeden image prompt a porovná ho napříč zadanými modely."""
+
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+
+    validate_owner_or_superadmin(module, user, "modul")
+
+    service = ModuleImageGeneratorService(
+        db=db, module_id=module_id, models_to_compare=body.models
+    )
+    result = await service.generate()
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        manifest = {
+            "image_spec": result.image_spec.model_dump(),
+            "image_prompt": result.image_prompt,
+            "results": [],
+        }
+
+        for r in result.results:
+            manifest["results"].append(
+                {
+                    "model_name": r.model_name,
+                    "latency_ms": r.latency_ms,
+                    "error": r.error,
+                }
+            )
+
+            if r.error is not None or r.image_url is None:
+                zip_file.writestr(
+                    f"{r.model_name}.error.txt", r.error or "unknown error"
+                )
+                continue
+
+            # image_url je data URI "data:<mime>;base64,<data>"
+            header, b64_data = r.image_url.split(",", 1)
+            mime = header.removeprefix("data:").split(";", 1)[0]
+            ext = "svg" if "svg" in mime else mime.split("/", 1)[1]
+            zip_file.writestr(f"{r.model_name}.{ext}", base64.b64decode(b64_data))
+
+        zip_file.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="module_{module_id}_images.zip"'
         },
     )
 

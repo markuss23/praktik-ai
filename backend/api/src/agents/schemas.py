@@ -45,7 +45,32 @@ class GenerateCourseImagesRequest(BaseModel):
     """Request pro vygenerování a porovnání obrázků kurzu napříč modely"""
 
     models: list[str] = Field(
-        default=["gpt-image-1", "gpt-image-1-mini"],
+        default=[
+            "gpt-image-2.5-sunburst",
+            "gpt-image-2.5-flare",
+            "gpt-image-2",
+            "gpt-image-1.5",
+            "gpt-image-1",
+            "gpt-image-1-mini",
+            "chatgpt-image-latest",
+        ],
+        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
+    )
+
+
+class GenerateModuleImagesRequest(BaseModel):
+    """Request pro vygenerování a porovnání obrázků modulu napříč modely"""
+
+    models: list[str] = Field(
+        default=[
+            "gpt-image-2.5-sunburst",
+            "gpt-image-2.5-flare",
+            "gpt-image-2",
+            "gpt-image-1.5",
+            "gpt-image-1",
+            "gpt-image-1-mini",
+            "chatgpt-image-latest",
+        ],
         description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
     )
 
