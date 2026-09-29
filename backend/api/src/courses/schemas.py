@@ -12,6 +12,7 @@ from api.src.catalogs.schemas import (
     CourseType,
     KrauuCompetence,
     BloomLevel,
+    CrossSubject,
 )
 
 
@@ -50,12 +51,20 @@ KRAUU_IDS_FIELD = Field(
 )
 
 
+CROSS_SUBJECT_IDS_FIELD = Field(
+    default=[],
+    description="ID průřezových oborů (povinné pro Bloky A a B, u Bloku C se nezadává)",
+)
+
+
 class CourseCreate(CourseBase):
+    cross_subject_ids: list[int] = CROSS_SUBJECT_IDS_FIELD
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
     bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class CourseUpdate(CourseBase):
+    cross_subject_ids: list[int] = CROSS_SUBJECT_IDS_FIELD
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
     bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
@@ -122,6 +131,9 @@ class Course(CourseBase):
     )
     bloom_levels: list[BloomLevel] = Field(
         default=[], validation_alias="bloom_level_list"
+    )
+    cross_subjects: list[CrossSubject] = Field(
+        default=[], validation_alias="cross_subject_list"
     )
 
     @model_validator(mode="before")

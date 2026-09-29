@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.catalogs.controllers import (
+    resolve_cross_subject_ids,
     sync_bloom_levels,
+    sync_cross_subjects,
     sync_krauu_competences,
     validate_bloom_level_ids,
     validate_krauu_competence_ids,
@@ -114,10 +116,13 @@ def create_course(
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
     validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    cross_subject_ids = resolve_cross_subject_ids(
+        db, course_data.course_block_id, course_data.cross_subject_ids
+    )
 
     course = models.Course(
         **course_data.model_dump(
-            exclude={"krauu_competence_ids", "bloom_level_ids"}
+            exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"}
         ),
         owner_id=user.user_id,
     )
@@ -137,6 +142,9 @@ def create_course(
         "course_id",
         course.course_id,
         course_data.bloom_level_ids,
+    )
+    sync_cross_subjects(
+        db, models.CourseCrossSubject, "course_id", course.course_id, cross_subject_ids
     )
     db.commit()
     db.refresh(course)

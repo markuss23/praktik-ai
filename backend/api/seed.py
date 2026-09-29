@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from api.database import SessionLocal
 from api.models import (
+    CrossSubject,
     BloomLevel,
     CourseBlock,
     CourseEqfLevel,
@@ -153,6 +154,29 @@ BLOOM_LEVELS: list[dict[str, str]] = [
     {"code": "4", "name": "Analyzovat", "description": "porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá"},
     {"code": "5", "name": "Hodnotit", "description": "posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní"},
     {"code": "6", "name": "Tvořit", "description": "navrhne, sestaví, vytvoří, zkonstruuje, naplánuje"},
+]
+
+CROSS_SUBJECTS: list[dict[str, str]] = [
+    {"code": "O001", "name": "AI gramotnost – technický základ", "description": "Jak fungují jazykové modely, tokeny, kontextové okno, pravděpodobnostní povaha výstupu."},
+    {"code": "O002", "name": "AI gramotnost – kritické posuzování výstupů", "description": "Rozpoznávání halucinací, ověřování faktů, srovnávání nástrojů a výstupů."},
+    {"code": "O003", "name": "Etika a odpovědné využití AI", "description": "Etické principy práce s AI ve vzdělávání, hranice akceptovatelného použití, transparentnost."},
+    {"code": "O004", "name": "Ochrana dat a soukromí ve výuce", "description": "GDPR, citlivá data žáků, bezpečné nakládání s informacemi v AI nástrojích."},
+    {"code": "O005", "name": "Rozvoj kritického myšlení", "description": "Vedení žáků ke kritickému uvažování, argumentaci, posuzování zdrojů — s podporou i navzdory AI."},
+    {"code": "O006", "name": "Metakognice a seberízené učení", "description": "Reflexe vlastního učení, uvědomování si procesu poznávání, strategie učení."},
+    {"code": "O007", "name": "Plánování výuky a tvorba scénářů", "description": "Návrh výukových jednotek, cíle, aktivity, role AI ve scénáři, časové rozvržení."},
+    {"code": "O008", "name": "Didaktická transformace obsahu", "description": "Převod oborového obsahu do podoby srozumitelné pro žáky daného stupně."},
+    {"code": "O009", "name": "Diferenciace a inkluze (žáci se SVP)", "description": "Práce s heterogenní třídou, individuální vzdělávací plány, AI jako podpora diferenciace."},
+    {"code": "O010", "name": "Hodnocení a zpětná vazba", "description": "Formativní i sumativní hodnocení, kvalitní zpětná vazba, rubriky, AI jako asistent hodnocení."},
+    {"code": "O011", "name": "Tvorba zadání a úloh (AI-resistant + AI-supported)", "description": "Design zadání odolných vůči zneužití AI a zároveň zadání využívajících AI jako nástroj učení."},
+    {"code": "O012", "name": "Práce s prekoncepty a miskoncepty", "description": "Diagnostika a práce s chybnými představami žáků, AI jako nástroj odhalování miskonceptů."},
+    {"code": "O013", "name": "Prostředí pro učení a klima třídy", "description": "Bezpečné prostředí, pravidla práce s AI ve třídě, kultura ne/používání AI."},
+    {"code": "O014", "name": "Motivace a vedení žáků", "description": "Vnitřní motivace, vedení diskuse, zapojování žáků, AI jako nástroj individualizace motivace."},
+    {"code": "O015", "name": "Komunikace s rodiči a zákonnými zástupci", "description": "Vysvětlování role AI ve výuce rodičům, řešení obav, společná dohoda o pravidlech."},
+    {"code": "O016", "name": "Profesní spolupráce a kolegiální učení", "description": "Sdílení dobré praxe, peer review, budování AI-gramotné školy jako celku."},
+    {"code": "O017", "name": "Mentoring a uvádění začínajících", "description": "Provázení nastupujících kolegů, mentorský dialog, integrace"},
+    {"code": "O018", "name": "Profesní sebepojetí a reflexe vlastní", "description": "Vlastní identita učitele v éře AI, reflektivní praxe, profesní"},
+    {"code": "O019", "name": "Duševní zdraví a wellbeing učitele", "description": "Práce s kognitivní zátěží, využití AI pro snížení"},
+    {"code": "O020", "name": "Tvořivost a designové myšlení ve", "description": "Tvořivé využití AI při návrhu výukových materiálů, design"},
 ]
 
 SYSTEM_SETTINGS: list[dict[str, str]] = [
@@ -476,6 +500,9 @@ def seed_db() -> None:
 
         if db.query(NeuroPrinciple).count() == 0:
             db.add_all([NeuroPrinciple(**row) for row in NEURO_PRINCIPLES])
+
+        if db.query(CrossSubject).count() == 0:
+            db.add_all([CrossSubject(**row) for row in CROSS_SUBJECTS])
 
         if db.query(BloomLevel).count() == 0:
             db.add_all([BloomLevel(**row) for row in BLOOM_LEVELS])

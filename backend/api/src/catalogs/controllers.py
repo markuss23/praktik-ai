@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.models import (
+    CrossSubject,
     BloomLevel,
     CourseBlock,
     CourseEqfLevel,
@@ -106,6 +107,59 @@ def sync_krauu_competences(
     db: Session, link_model, owner_column: str, owner_id: int, krauu_ids: list[int]
 ) -> None:
     sync_m2m_links(db, link_model, owner_column, owner_id, "krauu_id", krauu_ids)
+
+
+BLOCK_WITHOUT_CROSS_SUBJECTS = "blok.c"
+BLOCKS_REQUIRING_CROSS_SUBJECTS = ("blok.a", "blok.b")
+
+
+def get_cross_subjects(db: Session) -> list[CrossSubject]:
+    return (
+        db.query(CrossSubject)
+        .filter(CrossSubject.is_active.is_(True))
+        .order_by(CrossSubject.code)
+        .all()
+    )
+
+
+def resolve_cross_subject_ids(
+    db: Session, course_block_id: int | None, cross_ids: list[int]
+) -> list[int]:
+    """Blok A/B: průřezový obor je povinný. Blok C: nezadává se (výběr se zahodí)."""
+    block_code = db.scalar(
+        select(CourseBlock.code).where(CourseBlock.block_id == course_block_id)
+    )
+    if block_code == BLOCK_WITHOUT_CROSS_SUBJECTS:
+        return []
+    if block_code in BLOCKS_REQUIRING_CROSS_SUBJECTS and not cross_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="Pro kurzy Bloků A a B je nutné zadat alespoň jeden průřezový obor",
+        )
+    if cross_ids:
+        found = set(
+            db.execute(
+                select(CrossSubject.cross_id).where(
+                    CrossSubject.cross_id.in_(cross_ids),
+                    CrossSubject.is_active.is_(True),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        missing = set(cross_ids) - found
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Průřezové obory s ID {sorted(missing)} neexistují",
+            )
+    return cross_ids
+
+
+def sync_cross_subjects(
+    db: Session, link_model, owner_column: str, owner_id: int, cross_ids: list[int]
+) -> None:
+    sync_m2m_links(db, link_model, owner_column, owner_id, "cross_id", cross_ids)
 
 
 def get_bloom_levels(db: Session) -> list[BloomLevel]:

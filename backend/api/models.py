@@ -450,6 +450,31 @@ class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
     description: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
+class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Průřezové obory pro Bloky A a B (O001–O020):
+    třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
+    M2M na Course.
+    """
+
+    __tablename__ = "cross_subject"
+    __table_args__ = (
+        Index(
+            "uq_cross_subject_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    cross_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class CourseType(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
@@ -586,6 +611,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseBloomLevel.course_id, CourseBloomLevel.is_active==True)",
     )
+    cross_subjects: Mapped[list[CourseCrossSubject]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseCrossSubject.course_id, CourseCrossSubject.is_active==True)",
+    )
 
     course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
     course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
@@ -603,6 +632,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         "links",
         "krauu_competences",
         "bloom_levels",
+        "cross_subjects",
     ]
 
     @property
@@ -612,6 +642,10 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     @property
     def bloom_level_list(self) -> list[BloomLevel]:
         return [link.bloom_level for link in self.bloom_levels]
+
+    @property
+    def cross_subject_list(self) -> list[CrossSubject]:
+        return [link.cross_subject for link in self.cross_subjects]
 
     def get_owner_id(self) -> int:
         return self.owner_id
@@ -668,6 +702,34 @@ class CourseBloomLevel(SoftDeleteMixin, Base):
 
     course: Mapped[Course] = relationship(back_populates="bloom_levels")
     bloom_level: Mapped[BloomLevel] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class CourseCrossSubject(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ průřezový obor (M2M)."""
+
+    __tablename__ = "course_cross_subject"
+    __table_args__ = (
+        Index("uq_course_cross_subject", "course_id", "cross_id", unique=True),
+        Index("ix_course_cross_subject_course_id", "course_id"),
+        Index("ix_course_cross_subject_cross_id", "cross_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    cross_id: Mapped[int] = mapped_column(
+        ForeignKey("cross_subject.cross_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="cross_subjects")
+    cross_subject: Mapped[CrossSubject] = relationship()
 
     def get_owner_id(self) -> int:
         return self.course.owner_id

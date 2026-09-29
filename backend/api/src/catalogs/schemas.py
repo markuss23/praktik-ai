@@ -62,3 +62,10 @@ class BloomLevel(ORMModel):
     code: str
     name: str
     description: str
+
+
+class CrossSubject(ORMModel):
+    cross_id: int
+    code: str
+    name: str
+    description: str

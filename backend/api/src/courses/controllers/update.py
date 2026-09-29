@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.src.catalogs.controllers import (
+    resolve_cross_subject_ids,
     sync_bloom_levels,
+    sync_cross_subjects,
     sync_krauu_competences,
     validate_bloom_level_ids,
     validate_krauu_competence_ids,
@@ -76,6 +78,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
     validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    cross_subject_ids = resolve_cross_subject_ids(
+        db, course_data.course_block_id, course_data.cross_subject_ids
+    )
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -85,7 +90,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     assert_course_editable(course)
 
     update_data = course_data.model_dump(
-        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids"}
+        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"}
     )
 
     # Auto-transition to "edited" when saving changes
@@ -110,6 +115,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         "course_id",
         course_id,
         course_data.bloom_level_ids,
+    )
+    sync_cross_subjects(
+        db, models.CourseCrossSubject, "course_id", course_id, cross_subject_ids
     )
     db.commit()
     db.refresh(course)
