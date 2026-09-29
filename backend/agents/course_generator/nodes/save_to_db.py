@@ -94,6 +94,27 @@ def save_to_db_node(state: AgentState) -> AgentState:
                 )
             )
 
+        # Napojení úrovní Bloomovy taxonomie (LLM vrací kódy, dohledáme jen platné)
+        bloom_ids = set(
+            db.scalars(
+                select(models.BloomLevel.bloom_id).where(
+                    models.BloomLevel.code.in_(module.bloom_level_codes),
+                    models.BloomLevel.is_active.is_(True),
+                )
+            ).all()
+        )
+        if not bloom_ids:
+            print(
+                f"   -> WARN: Modul '{module.title}' nemá platné Bloomovy úrovně "
+                f"({module.bloom_level_codes}), nic nenapojeno"
+            )
+        for bloom_id in bloom_ids:
+            db.add(
+                models.ModuleBloomLevel(
+                    module_id=db_module.module_id, bloom_id=bloom_id
+                )
+            )
+
         # Uložení learn_block (max 1 na modul)
         if len(module.learn_blocks) > 1:
             raise ValueError(

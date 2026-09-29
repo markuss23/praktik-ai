@@ -262,6 +262,17 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
             6.3 Duševní zdraví a psychohygiena — Systematicky pečuje o své duševní zdraví a psychohygienu.
             ]
 
+            bloom_level_codes: [Seznam kódů úrovní Bloomovy taxonomie kognitivních cílů ze seznamu níže, kterým odpovídají výukové cíle modulu (podle toho, co student po modulu umí). Vyber 1–3 nejrelevantnější úrovně. Uváděj pouze číselné kódy, např. "2", "3".
+
+            SEZNAM ÚROVNÍ BLOOMOVY TAXONOMIE:
+            1 Zapamatovat — vyjmenuje, popíše, identifikuje, rozpozná, zopakuje
+            2 Porozumět — vysvětlí, shrne, klasifikuje, interpretuje, přeloží
+            3 Aplikovat — použije, provede, řeší, demonstruje, implementuje
+            4 Analyzovat — porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá
+            5 Hodnotit — posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní
+            6 Tvořit — navrhne, sestaví, vytvoří, zkonstruuje, naplánuje
+            ]
+
             learn_blocks:
             - content: [
                 Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
