@@ -2,8 +2,8 @@
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
+import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
@@ -14,7 +14,7 @@ import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input } from "@/components/ui";
+import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
 import {
   courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
@@ -25,6 +25,16 @@ import { readApiErrorDetail } from "@/lib/api-error";
 const PAGE_SIZE = 10;
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
+
+/** editaci jen ve stavech koncept/vygenerovaný/editovaný */
+function getCourseEditLockReason(course: Course): string | null {
+  const status = course.status as string;
+  if (status === Status.Draft || status === Status.Generated || status === Status.Edited) return null;
+  if (status === Status.InReview) return 'Kurz čeká na schválení. Během schvalování ho nelze upravovat.';
+  if (status === Status.Archived) return 'Kurz je archivovaný, proto ho nelze upravovat.';
+  if (course.isPublished) return 'Kurz je schválený a publikovaný, proto ho nelze upravovat.';
+  return 'Kurz je schválený, proto ho nelze upravovat. Upravit ho půjde až po vrácení do úprav.';
+}
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
@@ -1129,6 +1139,34 @@ function CoursePagination({
   );
 }
 
+function LockedEditCourseButton({ reason, className }: { reason: string; className?: string }) {
+  const reasonId = useId();
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        delay={150}
+        closeOnClick={false}
+        render={
+          // focusableWhenDisabled: aria-disabled místo disabled, aby hover i fokus tooltip otevřely
+          <Button
+            disabled
+            focusableWhenDisabled
+            aria-describedby={reasonId}
+            variant="plain" size="lg"
+            className={cn("gap-2 bg-muted text-muted-foreground rounded-md cursor-not-allowed", className)}
+          />
+        }
+      >
+        <Lock size={16} />
+        Editovat kurz
+        <span id={reasonId} className="sr-only">{reason}</span>
+      </TooltipTrigger>
+      {/* Popup je v portálu mimo panel — bez data-accordion-keep by klik do něj panel zavřel */}
+      <TooltipContent data-accordion-keep>{reason}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface ExpandedModuleListProps {
   course: Course;
   modules: Module[];
@@ -1142,6 +1180,7 @@ interface ExpandedModuleListProps {
 }
 
 function ExpandedModuleList({
+  course,
   modules,
   onEditCourse,
   onClose,
@@ -1151,18 +1190,23 @@ function ExpandedModuleList({
   onDeleteModule,
   // onAddModule, // možnost "Přidat modul" dočasně skryta
 }: ExpandedModuleListProps) {
+  const lockReason = getCourseEditLockReason(course);
   return (
     <div className="p-6">
       <div className="bg-card rounded-lg shadow-sm">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold text-foreground">Přehled modulů</h3>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={onEditCourse}
-              variant="plain" size="lg" className="px-4 bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
-            >
-              Editovat kurz
-            </Button>
+            {lockReason ? (
+              <LockedEditCourseButton reason={lockReason} className="px-4" />
+            ) : (
+              <Button
+                onClick={onEditCourse}
+                variant="plain" size="lg" className="px-4 bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
+              >
+                Editovat kurz
+              </Button>
+            )}
             <Button onClick={onClose} variant="plain" className={cn(BTN_KEEP_BOX, "p-0 text-muted-foreground hover:text-foreground")}>
               <X size={20} />
             </Button>
@@ -1181,14 +1225,17 @@ function ExpandedModuleList({
               <div className="w-32 shrink-0">
                 <ModuleActiveBadge isActive={module.isActive} />
               </div>
-              <div className="flex items-center gap-1.5 text-xs shrink-0">
-                <Button onClick={() => onEditModuleContent(module)} size="pill" variant="soft-tip">Upravit</Button>
-                <Button onClick={() => onEditModuleName(module)} size="pill" variant="soft-success">Upravit název</Button>
-                <Button onClick={() => onToggleModuleActive(module)} size="pill" variant="soft-accent">
-                  {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
-                </Button>
-                <Button onClick={() => onDeleteModule(module.moduleId)} size="pill" variant="destructive">Smazat</Button>
-              </div>
+              {/* Zamčený kurz: backend úpravy modulů odmítne, důvod ukazuje tlačítko nahoře */}
+              {!lockReason && (
+                <div className="flex items-center gap-1.5 text-xs shrink-0">
+                  <Button onClick={() => onEditModuleContent(module)} size="pill" variant="soft-tip">Upravit</Button>
+                  <Button onClick={() => onEditModuleName(module)} size="pill" variant="soft-success">Upravit název</Button>
+                  <Button onClick={() => onToggleModuleActive(module)} size="pill" variant="soft-accent">
+                    {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
+                  </Button>
+                  <Button onClick={() => onDeleteModule(module.moduleId)} size="pill" variant="destructive">Smazat</Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1261,6 +1308,7 @@ function MobileCourseCard({
 }: MobileCourseCardProps) {
   const moduleCount = course.modulesCount || 0;
   const statusStr = course.status as string;
+  const lockReason = getCourseEditLockReason(course);
 
   return (
     <div className="p-3 min-w-0">
@@ -1344,11 +1392,13 @@ function MobileCourseCard({
                     <p className="text-xs text-muted-foreground mt-0.5">Modul {index + 1}</p>
                     <ModuleActiveBadge isActive={module.isActive} size="sm" />
                   </div>
-                  <CourseActionButtons className="shrink-0">
-                    <EditActionButton onClick={() => onEditModule(module)} title="Editovat" iconSize={12} />
-                    <PublishActionButton onClick={() => onToggleModuleActive(module)} isPublished={!!module.isActive} title={module.isActive ? 'Deaktivovat' : 'Aktivovat'} iconSize={12} />
-                    <DeleteActionButton onClick={() => onDeleteModule(module.moduleId)} title="Smazat" iconSize={12} />
-                  </CourseActionButtons>
+                  {!lockReason && (
+                    <CourseActionButtons className="shrink-0">
+                      <EditActionButton onClick={() => onEditModule(module)} title="Editovat" iconSize={12} />
+                      <PublishActionButton onClick={() => onToggleModuleActive(module)} isPublished={!!module.isActive} title={module.isActive ? 'Deaktivovat' : 'Aktivovat'} iconSize={12} />
+                      <DeleteActionButton onClick={() => onDeleteModule(module.moduleId)} title="Smazat" iconSize={12} />
+                    </CourseActionButtons>
+                  )}
                 </div>
               </div>
             ))}
@@ -1361,12 +1411,16 @@ function MobileCourseCard({
             <span>Přidat modul</span>
           </Button>
           */}
-          <Button
-            onClick={onEditCourse}
-            variant="plain" size="lg" className="mt-2 gap-2 px-3 w-full bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
-          >
-            Editovat kurz
-          </Button>
+          {lockReason ? (
+            <LockedEditCourseButton reason={lockReason} className="mt-2 px-3 w-full" />
+          ) : (
+            <Button
+              onClick={onEditCourse}
+              variant="plain" size="lg" className="mt-2 gap-2 px-3 w-full bg-tip text-primary-foreground rounded-md hover:bg-tip/80"
+            >
+              Editovat kurz
+            </Button>
+          )}
         </div>
       )}
     </div>
