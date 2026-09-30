@@ -8,7 +8,7 @@ import {
   uploadResourceFile,
   getResource,
 } from "@/lib/api-client";
-import type { CourseSubject, CourseTarget, PubResource } from "@/api";
+import type { CourseEqfLevel, CourseSubject, CourseTarget, CourseType, PubResource } from "@/api";
 import { Difficulty, EduLevel } from "@/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import {
@@ -43,6 +43,8 @@ interface FormState {
   title: string;
   subjectId: string;
   targetId: string;
+  eqfLevelId: string;
+  courseTypeId: string;
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
   description: string;
@@ -53,6 +55,8 @@ const INITIAL_FORM: FormState = {
   title: "",
   subjectId: "",
   targetId: "",
+  eqfLevelId: "",
+  courseTypeId: "",
   educationLevel: EduLevel.Higher,
   difficultyLevel: "",
   description: "",
@@ -66,6 +70,8 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
   const [files, setFiles] = useState<File[]>([]);
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
   const [targets, setTargets] = useState<CourseTarget[]>([]);
+  const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
+  const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,11 +86,18 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
 
     let cancelled = false;
     setLoadingCatalogs(true);
-    Promise.all([catalogsApi.listCourseSubjects(), catalogsApi.listCourseTargets()])
-      .then(([subjectsData, targetsData]) => {
+    Promise.all([
+      catalogsApi.listCourseSubjects(),
+      catalogsApi.listCourseTargets(),
+      catalogsApi.listCourseEqfLevels(),
+      catalogsApi.listCourseTypes(),
+    ])
+      .then(([subjectsData, targetsData, eqfData, typesData]) => {
         if (cancelled) return;
         setSubjects(subjectsData);
         setTargets(targetsData);
+        setEqfLevels(eqfData);
+        setCourseTypes(typesData);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -135,6 +148,14 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
       setError("Vyberte úroveň vzdělání.");
       return;
     }
+    if (!form.eqfLevelId) {
+      setError("Vyberte EQF úroveň.");
+      return;
+    }
+    if (!form.courseTypeId) {
+      setError("Vyberte typ materiálu.");
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -144,6 +165,8 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
         description: description || null,
         subjectId: form.subjectId ? Number(form.subjectId) : null,
         targetId: form.targetId ? Number(form.targetId) : null,
+        eqfLevelId: Number(form.eqfLevelId),
+        courseTypeId: Number(form.courseTypeId),
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
         allowForks: form.allowForks,
@@ -174,6 +197,14 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
   const targetItems = [
     { label: "Cílová skupina", value: null },
     ...targets.map((t) => ({ label: t.name, value: String(t.targetId) })),
+  ];
+  const eqfItems = [
+    { label: "EQF úroveň", value: null },
+    ...eqfLevels.map((l) => ({ label: `${l.code} – ${l.name}`, value: String(l.eqfLevelId) })),
+  ];
+  const courseTypeItems = [
+    { label: "Typ", value: null },
+    ...courseTypes.map((t) => ({ label: t.name, value: String(t.typeId) })),
   ];
   const difficultyItems = [
     { label: "Obtížnost", value: null },
@@ -275,6 +306,44 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
             </SelectTrigger>
             <SelectContent>
               {difficultyItems.map((item) => (
+                <SelectItem key={item.value ?? "none"} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Select
+            items={eqfItems}
+            value={form.eqfLevelId === "" ? null : form.eqfLevelId}
+            disabled={loadingCatalogs}
+            onValueChange={(value) => setForm((s) => ({ ...s, eqfLevelId: value == null ? "" : String(value) }))}
+          >
+            <SelectTrigger className="w-full" aria-label="EQF úroveň">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {eqfItems.map((item) => (
+                <SelectItem key={item.value ?? "none"} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            items={courseTypeItems}
+            value={form.courseTypeId === "" ? null : form.courseTypeId}
+            disabled={loadingCatalogs}
+            onValueChange={(value) => setForm((s) => ({ ...s, courseTypeId: value == null ? "" : String(value) }))}
+          >
+            <SelectTrigger className="w-full" aria-label="Typ">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {courseTypeItems.map((item) => (
                 <SelectItem key={item.value ?? "none"} value={item.value}>
                   {item.label}
                 </SelectItem>

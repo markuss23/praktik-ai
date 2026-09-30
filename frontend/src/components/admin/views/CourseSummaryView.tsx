@@ -3,10 +3,16 @@
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Drawer, DrawerContent, Button, Input, Textarea } from '@/components/ui';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, CourseCategoryFields, type CreationTab, type CourseStep } from '@/components/admin';
+import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
+import { useCatalogData } from '@/hooks/useCatalogData';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
+import {
+  courseCategoryValues, courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories,
+  type CourseCategoryValues,
+} from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 import {
   ChevronDown,
   ChevronUp,
@@ -32,6 +38,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set());
   const [editedTitle, setEditedTitle] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [editedCategories, setEditedCategories] = useState<CourseCategoryValues>({
+    krauuCompetenceIds: [],
+    bloomLevelIds: [],
+    crossSubjectIds: [],
+  });
+  // Chyba uložení se ukazuje u formuláře — `error` přepíná celý pohled na ErrorState.
+  const [saveError, setSaveError] = useState('');
+  const { blocks, krauuCompetences, bloomLevels, crossSubjects, loading: catalogsLoading } = useCatalogData();
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [courseFiles, setCourseFiles] = useState<CourseFileItem[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
@@ -45,6 +59,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         setModules(courseData.modules || []);
         setEditedTitle(courseData.title || '');
         setEditedDescription(courseData.description || '');
+        setEditedCategories(courseCategoryValues(courseData));
         // Rozbalit všechny moduly
         setExpandedOutlineItems(new Set((courseData.modules || []).map((_, i) => i)));
       } catch (err) {
@@ -112,8 +127,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     try {
       await saveCourseChanges();
     } catch (err) {
-      console.error('Failed to save course:', err);
-      setError('Nepodařilo se uložit kurz');
+      await reportSaveError(err);
       return;
     }
     if (step === 'content') goToCourseContent(courseId);
@@ -123,17 +137,30 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [savingOnly, setSavingOnly] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
+  const crossRule = crossSubjectsRule(blocks, course?.courseBlockId);
+
   const saveCourseChanges = async () => {
     if (!course) return;
-    await updateCourse(courseId, {
+    const categoryError = validateCourseCategories(editedCategories, crossRule);
+    if (categoryError) {
+      setActiveTab('general');
+      throw new Error(categoryError);
+    }
+    setSaveError('');
+    await updateCourse(courseId, courseToUpdate(course, {
       title: editedTitle,
       description: editedDescription,
-      courseBlockId: course.courseBlockId,
-      courseTargetId: course.courseTargetId,
-      courseSubjectId: course.courseSubjectId,
-      courseEqfLevelId: course.courseEqfLevelId,
-      courseTypeId: course.courseTypeId,
-    });
+      ...editedCategories,
+      crossSubjectIds: crossSubjectIdsFor(crossRule, editedCategories.crossSubjectIds),
+    }));
+  };
+
+  const reportSaveError = async (err: unknown) => {
+    console.error('Failed to save course:', err);
+    setSaveError(
+      (await readApiErrorDetail(err))
+        ?? (err instanceof Error && err.message ? err.message : 'Nepodařilo se uložit kurz'),
+    );
   };
 
   const handleSave = async () => {
@@ -144,8 +171,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2000);
     } catch (err) {
-      console.error('Failed to save course:', err);
-      setError('Nepodařilo se uložit kurz');
+      await reportSaveError(err);
     } finally {
       setSavingOnly(false);
     }
@@ -159,8 +185,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       await saveCourseChanges();
       goToCourses();
     } catch (err) {
-      console.error('Failed to save course:', err);
-      setError('Nepodařilo se uložit kurz');
+      await reportSaveError(err);
     } finally {
       setSaving(false);
     }
@@ -244,6 +269,12 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           <div key={activeTab} className="flex-1 overflow-y-auto p-6 space-y-6 view-fade-in">
             {activeTab === 'general' && (
             <>
+            {saveError && (
+              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
+                {saveError}
+              </div>
+            )}
+
             {/* Editable Course Info */}
             <div className="space-y-4">
               <div>
@@ -266,6 +297,20 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                   placeholder="Zadejte popis kurzu"
                 />
               </div>
+              {!catalogsLoading && (
+                <CourseCategoryFields
+                  values={editedCategories}
+                  onChange={setEditedCategories}
+                  krauuCompetences={krauuCompetences}
+                  bloomLevels={bloomLevels}
+                  crossSubjects={crossSubjects}
+                  crossRule={crossRule}
+                  // Starší kurzy tyto kategorie nemají — rovnou ukážeme, co je třeba doplnit.
+                  showErrors
+                  labelClassName="block text-sm font-medium text-foreground mb-1"
+                  triggerClassName="w-full px-3 py-2 border border-border rounded-lg text-sm text-foreground bg-card data-[size=default]:h-auto"
+                />
+              )}
             </div>
 
             {/* Statistics - compact inline */}
@@ -280,7 +325,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
               </div>
               <div className="divide-y divide-border">
                 {modules.map((module, index) => (
-                  <div key={module.moduleId} className="p-3 flex items-center gap-3">
+                  <div key={module.moduleId} className="p-3 flex items-start gap-3">
                     <div className="shrink-0 size-6 bg-muted rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium text-foreground">{index + 1}</span>
                     </div>
@@ -289,6 +334,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                       <p className="text-xs text-muted-foreground">
                         {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
                       </p>
+                      {module.perex && (
+                        <p className="text-xs text-muted-foreground mt-1 break-words">{module.perex}</p>
+                      )}
+                      <ModuleCategories module={module} className="mt-2" />
                     </div>
                   </div>
                 ))}

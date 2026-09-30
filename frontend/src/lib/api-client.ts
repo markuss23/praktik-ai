@@ -17,6 +17,7 @@ import {
   LearnBlockCreate,
   LearnBlockUpdate,
   ModuleCreate,
+  ModuleUpdate,
   PracticeQuestionCreate,
   PracticeQuestionUpdate,
   PracticeOptionCreate,
@@ -126,13 +127,16 @@ export async function createCourse(data: {
   description?: string;
   modulesCountAiGenerated?: number;
   durationMinutes?: number;
-  courseBlockId: number;
+  courseBlockId?: number | null;
   courseTargetId: number;
-  courseSubjectId: number;
+  courseSubjectId?: number | null;
   courseRequirementId?: number | null;
   courseEqfLevelId: number;
   courseTypeId: number;
   difficulty?: import('@/api').Difficulty;
+  krauuCompetenceIds: number[];
+  bloomLevelIds: number[];
+  crossSubjectIds?: number[];
 }) {
   return coursesApi.createCourse({
     courseCreate: {
@@ -147,6 +151,9 @@ export async function createCourse(data: {
       courseEqfLevelId: data.courseEqfLevelId,
       courseTypeId: data.courseTypeId,
       difficulty: data.difficulty,
+      krauuCompetenceIds: data.krauuCompetenceIds,
+      bloomLevelIds: data.bloomLevelIds,
+      crossSubjectIds: data.crossSubjectIds,
     },
   });
 }
@@ -179,9 +186,7 @@ export async function createModule(data: ModuleCreate) {
   return modulesApi.createModule({ moduleCreate: data });
 }
 
-export async function updateModule(moduleId: number, data: {
-  title: string;
-}) {
+export async function updateModule(moduleId: number, data: ModuleUpdate) {
   return modulesApi.updateModule({
     moduleId,
     moduleUpdate: data,
@@ -405,6 +410,22 @@ export async function getCourseEqfLevels() {
 
 export async function getCourseTypes() {
   return catalogsApi.listCourseTypes();
+}
+
+export async function getNeuroPrinciples() {
+  return catalogsApi.listNeuroPrinciples();
+}
+
+export async function getKrauuCompetences() {
+  return catalogsApi.listKrauuCompetences();
+}
+
+export async function getBloomLevels() {
+  return catalogsApi.listBloomLevels();
+}
+
+export async function getCrossSubjects() {
+  return catalogsApi.listCrossSubjects();
 }
 
 //  Activities API functions 

@@ -8,7 +8,7 @@ import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api
 import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseDetailSkeleton, Input } from "@/components/ui";
+import { CourseCategories, CourseDetailSkeleton, Input } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from '@/lib/utils';
@@ -242,6 +242,7 @@ export default function CoursePage() {
         {course.description && (
           <p className="text-muted-foreground mt-3 max-w-3xl break-words">{course.description}</p>
         )}
+        <CourseCategories course={course} className="mt-5 max-w-3xl" />
       </div>
 
       {/* Module Filter */}
@@ -395,6 +396,9 @@ export default function CoursePage() {
                       >
                         {module.title}
                       </h3>
+                      {module.perex && (
+                        <p className="text-sm text-muted-foreground mb-3 break-words">{module.perex}</p>
+                      )}
 
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">

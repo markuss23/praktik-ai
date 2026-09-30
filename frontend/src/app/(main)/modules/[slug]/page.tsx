@@ -7,7 +7,7 @@ import { getModule, getCourse, getCourseProgress, markModuleVisited } from "@/li
 import type { Module, Course, ModuleCompletionStatus } from "@/api";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert, AlertTitle, AlertDescription, PageSpinner, Button } from "@/components/ui";
+import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
@@ -334,6 +334,9 @@ export default function ModulePage() {
                 <div className="mb-4">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Modul {currentIndex + 1}</span>
                   <h2 className="text-lg font-bold text-foreground mt-1">{module.title}</h2>
+                  {module.perex && (
+                    <p className="text-sm text-muted-foreground mt-2 break-words">{module.perex}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -374,6 +377,8 @@ export default function ModulePage() {
                     </Button>
                   ))}
                 </div>
+
+                <ModuleCategories module={module} className="mt-4 pt-4 border-t border-border" />
               </div>
 
               {/* AI tutor skrytý v assessment tabu*/}

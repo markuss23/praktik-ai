@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { Module } from '@/api';
 import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
 import { Course } from '@/api';
+import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
+import {
+  courseCategoryValues, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
+  validateCourseCategories, type CourseCategoryValues,
+} from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { LoadingState, ErrorState } from '@/components/admin';
@@ -20,7 +26,10 @@ interface CourseEditViewProps {
 // Formulář pro editaci kurzu a jeho modulů
 export function CourseEditView({ courseId }: CourseEditViewProps) {
   const { goToCourses, goBack, goToModuleEdit } = useAdminNavigation();
-  const { blocks, targets, subjects, requirements, eqfLevels, types, loading: catalogsLoading } = useCatalogData();
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading,
+  } = useCatalogData();
   const { isOwner } = useCurrentUser();
   const { isSuperAdmin } = useRole();
 
@@ -35,7 +44,16 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editModuleData, setEditModuleData] = useState({ title: '' });
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    courseBlockId: number;
+    courseTargetId: number;
+    courseSubjectId: number;
+    courseRequirementId: number;
+    courseEqfLevelId: number;
+    courseTypeId: number;
+  } & CourseCategoryValues>({
     title: '',
     description: '',
     courseBlockId: 0,
@@ -44,6 +62,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     courseRequirementId: 0,
     courseEqfLevelId: 0,
     courseTypeId: 0,
+    krauuCompetenceIds: [],
+    bloomLevelIds: [],
+    crossSubjectIds: [],
   });
 
   useEffect(() => {
@@ -61,6 +82,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           courseRequirementId: course.courseRequirementId ?? 0,
           courseEqfLevelId: course.courseEqfLevelId ?? 0,
           courseTypeId: course.courseTypeId ?? 0,
+          ...courseCategoryValues(course),
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -74,6 +96,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   // Ownership guard: only owner or superadmin can edit
   const canEdit = courseData ? (isSuperAdmin || isOwner(courseData.ownerId)) : false;
+
+  const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
   const toggleModule = (moduleId: number) => {
     setExpandedModules(prev => {
@@ -96,19 +120,32 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   const saveModuleEdit = async (module: Module) => {
     try {
-      await updateModule(module.moduleId, { title: editModuleData.title });
+      await updateModule(
+        module.moduleId,
+        moduleToUpdate(
+          module,
+          moduleCategoryValues(module, courseData, neuroPrinciples),
+          { title: editModuleData.title },
+        ),
+      );
       setModules(prev => prev.map(m =>
         m.moduleId === module.moduleId ? { ...m, title: editModuleData.title } : m
       ));
       setEditingModule(null);
     } catch (err) {
-      setError('Nepodařilo se uložit modul');
+      setError((await readApiErrorDetail(err)) ?? 'Nepodařilo se uložit modul');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+
+    const categoryError = validateCourseCategories(formData, crossRule);
+    if (categoryError) {
+      setError(categoryError);
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -119,19 +156,22 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         courseUpdate: {
           title: formData.title,
           description: formData.description || undefined,
-          courseBlockId: formData.courseBlockId,
+          // 0 = „Neurčeno“; null hodnotu na backendu vymaže.
+          courseBlockId: formData.courseBlockId || null,
           courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId,
-          // 0 = „Neurčeno“; null povinnost na backendu vymaže.
+          courseSubjectId: formData.courseSubjectId || null,
           courseRequirementId: formData.courseRequirementId || null,
           courseEqfLevelId: formData.courseEqfLevelId,
           courseTypeId: formData.courseTypeId,
+          krauuCompetenceIds: formData.krauuCompetenceIds,
+          bloomLevelIds: formData.bloomLevelIds,
+          crossSubjectIds: crossSubjectIdsFor(crossRule, formData.crossSubjectIds),
         },
       });
       goToCourses();
     } catch (err) {
       console.error('Update error:', err);
-      setError(err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz');
+      setError((await readApiErrorDetail(err)) ?? (err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz'));
     } finally {
       setLoading(false);
     }
@@ -213,6 +253,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                 value={formData.courseBlockId}
                 onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
                 options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                emptyLabel="Neurčeno"
                 aria-label="Blok"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
               />
@@ -233,6 +274,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                 value={formData.courseSubjectId}
                 onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
                 options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                emptyLabel="Neurčeno"
                 aria-label="Předmět"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
               />
@@ -269,6 +311,21 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
               />
             </div>
           </div>
+        )}
+
+        {!catalogsLoading && (
+          <CourseCategoryFields
+            values={formData}
+            onChange={(next) => setFormData({ ...formData, ...next })}
+            krauuCompetences={krauuCompetences}
+            bloomLevels={bloomLevels}
+            crossSubjects={crossSubjects}
+            crossRule={crossRule}
+            // Starší kurzy tyto kategorie nemají — rovnou ukážeme, co je třeba doplnit.
+            showErrors
+            labelClassName="block text-sm font-medium text-foreground mb-2"
+            triggerClassName="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+          />
         )}
 
         {/* Modules Section */}

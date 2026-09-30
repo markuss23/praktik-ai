@@ -13,9 +13,7 @@ import { fetchMaterialsForReview, fetchApprovedMaterials } from '@/components/ma
 import { MaterialCard } from '@/components/material/MaterialCard';
 import type { Material } from '@/components/material/types';
 
-// Carousel je stránkovaný: max 5 karet na stránku, šipka posune o celou stránku
-// (nikoli po jedné kartě). Na užších viewportech se počet karet na stránku
-// automaticky zmenší, aby každá karta zůstala čitelně široká.
+// Carousel je stránkovaný, max 5 karet na stránku
 const PAGE_SIZE = 5;
 const MIN_CARD_WIDTH = 220;
 const CARD_GAP = 16;

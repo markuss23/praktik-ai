@@ -12,6 +12,8 @@ export { CourseCreationTabs, type CreationTab } from './CourseCreationTabs';
 export { CourseStepNav, type CourseStep } from './CourseStepNav';
 export { CourseRubric } from './CourseRubric';
 export { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from './CourseFilters';
+export { CourseCategoryFields } from './CourseCategoryFields';
+export { ModuleCategoryFields } from './ModuleCategoryFields';
 
 // Views - exported separately for lazy loading
 export * from './views';

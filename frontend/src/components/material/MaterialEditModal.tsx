@@ -11,7 +11,7 @@ import {
   listResourceComments,
   type ResourceComment,
 } from "@/lib/api-client";
-import type { CourseSubject, CourseTarget, PubResource, PubResourceFile } from "@/api";
+import type { CourseEqfLevel, CourseSubject, CourseTarget, CourseType, PubResource, PubResourceFile } from "@/api";
 import { Difficulty, EduLevel } from "@/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import {
@@ -48,6 +48,8 @@ interface FormState {
   title: string;
   subjectId: string;
   targetId: string;
+  eqfLevelId: string;
+  courseTypeId: string;
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
   description: string;
@@ -63,6 +65,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [subjects, setSubjects] = useState<CourseSubject[]>([]);
   const [targets, setTargets] = useState<CourseTarget[]>([]);
+  const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
+  const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
   const [comments, setComments] = useState<ResourceComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -94,17 +98,23 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       getResource(resourceId),
       catalogsApi.listCourseSubjects(),
       catalogsApi.listCourseTargets(),
+      catalogsApi.listCourseEqfLevels(),
+      catalogsApi.listCourseTypes(),
     ])
-      .then(([resource, subjectsData, targetsData]) => {
+      .then(([resource, subjectsData, targetsData, eqfData, typesData]) => {
         if (cancelled) return;
         setSubjects(subjectsData);
         setTargets(targetsData);
+        setEqfLevels(eqfData);
+        setCourseTypes(typesData);
         setExistingFiles(resource.files ?? []);
         setAllowForks(resource.allowForks ?? false);
         setForm({
           title: resource.title,
           subjectId: resource.subjectId != null ? String(resource.subjectId) : "",
           targetId: resource.targetId != null ? String(resource.targetId) : "",
+          eqfLevelId: resource.eqfLevelId != null ? String(resource.eqfLevelId) : "",
+          courseTypeId: resource.courseTypeId != null ? String(resource.courseTypeId) : "",
           educationLevel: resource.educationLevel,
           difficultyLevel: resource.difficultyLevel ?? "",
           description: resource.description ?? "",
@@ -181,6 +191,14 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       setError("Vyberte úroveň vzdělání.");
       return;
     }
+    if (!form.eqfLevelId) {
+      setError("Vyberte EQF úroveň.");
+      return;
+    }
+    if (!form.courseTypeId) {
+      setError("Vyberte typ materiálu.");
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -190,6 +208,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
         description: description || null,
         subjectId: Number(form.subjectId),
         targetId: Number(form.targetId),
+        eqfLevelId: Number(form.eqfLevelId),
+        courseTypeId: Number(form.courseTypeId),
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
         allowForks,
@@ -223,6 +243,14 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const targetItems = [
     { label: "Cílová skupina", value: null },
     ...targets.map((t) => ({ label: t.name, value: String(t.targetId) })),
+  ];
+  const eqfItems = [
+    { label: "EQF úroveň", value: null },
+    ...eqfLevels.map((l) => ({ label: `${l.code} – ${l.name}`, value: String(l.eqfLevelId) })),
+  ];
+  const courseTypeItems = [
+    { label: "Typ", value: null },
+    ...courseTypes.map((t) => ({ label: t.name, value: String(t.typeId) })),
   ];
   const difficultyItems = [
     { label: "Obtížnost", value: null },
@@ -365,6 +393,46 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
               </SelectTrigger>
               <SelectContent>
                 {difficultyItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Select
+              items={eqfItems}
+              value={form.eqfLevelId === "" ? null : form.eqfLevelId}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, eqfLevelId: value == null ? "" : String(value) } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="EQF úroveň">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {eqfItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={courseTypeItems}
+              value={form.courseTypeId === "" ? null : form.courseTypeId}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, courseTypeId: value == null ? "" : String(value) } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Typ">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {courseTypeItems.map((item) => (
                   <SelectItem key={item.value ?? "none"} value={item.value}>
                     {item.label}
                   </SelectItem>

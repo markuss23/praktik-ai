@@ -1,10 +1,10 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createCourse, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight } from "lucide-react";
-import { CourseModal, ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
+import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
@@ -16,6 +16,11 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input } from "@/components/ui";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
+import {
+  courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
+  validateCourseCategories, validateModuleCategories,
+} from "@/lib/course-categories";
+import { readApiErrorDetail } from "@/lib/api-error";
 
 const PAGE_SIZE = 10;
 
@@ -25,7 +30,7 @@ type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edi
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
-  const { blocks, targets, subjects, eqfLevels, types } = useCatalogData();
+  const { blocks, targets, subjects, neuroPrinciples } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
 
@@ -89,14 +94,17 @@ export function CoursesListView() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
 
-  // Data formuláře kurzu
-  const [courseFormData, setCourseFormData] = useState({
-    courseId: null as number | null,
-    title: '',
-    description: '',
-    isPublished: false,
-    courseBlockId: 0,
-  });
+  // Rychlé vytvoření kurzu přes modal („Manuální zadání") je vypnuté: kurz dnes
+  // potřebuje KRAUU kompetence, Bloomovu taxonomii a průřezové obory, které
+  // modal nemá a rozumný výchozí stav pro ně neexistuje. Kurz se zakládá přes
+  // AI formulář. Při obnovení vrátit i importy `createCourse` a `CourseModal`.
+  // const [courseFormData, setCourseFormData] = useState({
+  //   courseId: null as number | null,
+  //   title: '',
+  //   description: '',
+  //   isPublished: false,
+  //   courseBlockId: 0,
+  // });
 
   // Data formuláře modulu
   const [moduleFormData, setModuleFormData] = useState({
@@ -418,11 +426,12 @@ export function CoursesListView() {
 
   // Modal handlers
 
-  const openCreateCourseModal = () => {
-    setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
-    setModalError('');
-    setActiveModal('course-create');
-  };
+  // Rychlé vytvoření kurzu — vypnuto, viz `courseFormData` výše.
+  // const openCreateCourseModal = () => {
+  //   setCourseFormData({ courseId: null, title: '', description: '', isPublished: false, courseBlockId: 0 });
+  //   setModalError('');
+  //   setActiveModal('course-create');
+  // };
 
   const openCreateModuleModal = (courseId: number) => {
     setModuleFormData({ moduleId: null, title: '', courseId: courseId });
@@ -441,57 +450,58 @@ export function CoursesListView() {
     setModalError('');
   };
 
-  const handleCourseSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setModalLoading(true);
-    setModalError('');
-
-    try {
-      if (courseFormData.courseId) {
-        // Update existing course
-        const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
-        await sharedCoursesApi.updateCourse({
-          courseId: courseFormData.courseId,
-          courseUpdate: {
-            title: courseFormData.title,
-            description: courseFormData.description,
-            courseBlockId: courseFormData.courseBlockId || (existingCourse?.courseBlockId ?? 1),
-            courseTargetId: existingCourse?.courseTargetId ?? 1,
-            courseSubjectId: existingCourse?.courseSubjectId ?? 1,
-            courseEqfLevelId: existingCourse?.courseEqfLevelId ?? 1,
-            courseTypeId: existingCourse?.courseTypeId ?? 1,
-          }
-        });
-      } else {
-        // Create new course
-        if (!courseFormData.courseBlockId) {
-          setModalError('Vyberte tematický blok.');
-          setModalLoading(false);
-          return;
-        }
-        // Use first available target, subject, EQF level and type as defaults
-        const defaultTargetId = targets.length > 0 ? targets[0].targetId : 1;
-        const defaultSubjectId = subjects.length > 0 ? subjects[0].subjectId : 1;
-        const defaultEqfLevelId = eqfLevels.length > 0 ? eqfLevels[0].eqfLevelId : 1;
-        const defaultTypeId = types.length > 0 ? types[0].typeId : 1;
-        await createCourse({
-          title: courseFormData.title,
-          description: courseFormData.description || undefined,
-          courseBlockId: courseFormData.courseBlockId,
-          courseTargetId: defaultTargetId,
-          courseSubjectId: defaultSubjectId,
-          courseEqfLevelId: defaultEqfLevelId,
-          courseTypeId: defaultTypeId,
-        });
-      }
-      await loadCoursesList();
-      closeModal();
-    } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'Failed to save course');
-    } finally {
-      setModalLoading(false);
-    }
-  };
+  // Rychlé vytvoření kurzu — vypnuto, viz `courseFormData` výše.
+  // const handleCourseSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setModalLoading(true);
+  //   setModalError('');
+  //
+  //   try {
+  //     if (courseFormData.courseId) {
+  //       // Update existing course
+  //       const existingCourse = courses.find(c => c.courseId === courseFormData.courseId);
+  //       await sharedCoursesApi.updateCourse({
+  //         courseId: courseFormData.courseId,
+  //         courseUpdate: {
+  //           title: courseFormData.title,
+  //           description: courseFormData.description,
+  //           courseBlockId: courseFormData.courseBlockId || (existingCourse?.courseBlockId ?? 1),
+  //           courseTargetId: existingCourse?.courseTargetId ?? 1,
+  //           courseSubjectId: existingCourse?.courseSubjectId ?? 1,
+  //           courseEqfLevelId: existingCourse?.courseEqfLevelId ?? 1,
+  //           courseTypeId: existingCourse?.courseTypeId ?? 1,
+  //         }
+  //       });
+  //     } else {
+  //       // Create new course
+  //       if (!courseFormData.courseBlockId) {
+  //         setModalError('Vyberte tematický blok.');
+  //         setModalLoading(false);
+  //         return;
+  //       }
+  //       // Use first available target, subject, EQF level and type as defaults
+  //       const defaultTargetId = targets.length > 0 ? targets[0].targetId : 1;
+  //       const defaultSubjectId = subjects.length > 0 ? subjects[0].subjectId : 1;
+  //       const defaultEqfLevelId = eqfLevels.length > 0 ? eqfLevels[0].eqfLevelId : 1;
+  //       const defaultTypeId = types.length > 0 ? types[0].typeId : 1;
+  //       await createCourse({
+  //         title: courseFormData.title,
+  //         description: courseFormData.description || undefined,
+  //         courseBlockId: courseFormData.courseBlockId,
+  //         courseTargetId: defaultTargetId,
+  //         courseSubjectId: defaultSubjectId,
+  //         courseEqfLevelId: defaultEqfLevelId,
+  //         courseTypeId: defaultTypeId,
+  //       });
+  //     }
+  //     await loadCoursesList();
+  //     closeModal();
+  //   } catch (err) {
+  //     setModalError(err instanceof Error ? err.message : 'Failed to save course');
+  //   } finally {
+  //     setModalLoading(false);
+  //   }
+  // };
 
   const handleModuleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,10 +509,23 @@ export function CoursesListView() {
     setModalError('');
 
     try {
+      const course = courses.find(c => c.courseId === moduleFormData.courseId) ?? null;
       if (moduleFormData.moduleId) {
+        const existingModule = (courseModules[moduleFormData.courseId] ?? [])
+          .find(m => m.moduleId === moduleFormData.moduleId);
+        if (!existingModule) {
+          setModalError('Modul se nepodařilo najít. Obnovte stránku a zkuste to znovu.');
+          return;
+        }
+        const categories = moduleCategoryValues(existingModule, course, neuroPrinciples);
+        const categoryError = validateModuleCategories(categories);
+        if (categoryError) {
+          setModalError(`${categoryError} Doplňte je u modulu v editoru obsahu kurzu.`);
+          return;
+        }
         await sharedModulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
-          moduleUpdate: { title: moduleFormData.title }
+          moduleUpdate: moduleToUpdate(existingModule, categories, { title: moduleFormData.title }),
         });
         if (moduleFormData.courseId) {
           const modules = await getModules({ courseId: moduleFormData.courseId });
@@ -514,7 +537,15 @@ export function CoursesListView() {
           setModalError('Chybí kurz pro nový modul.');
           return;
         }
-        await createModule({ courseId: moduleFormData.courseId, title: moduleFormData.title });
+        // Nový modul dědí KRAUU a Bloom z kurzu, princip je výchozí NP-01 —
+        // upravit je jde v editoru obsahu kurzu.
+        const categories = moduleCategoryValues(null, course, neuroPrinciples);
+        const categoryError = validateModuleCategories(categories);
+        if (categoryError) {
+          setModalError('Kurz nemá vyplněné KRAUU kompetence a Bloomovu taxonomii, které nový modul přebírá. Doplňte je v souhrnu kurzu.');
+          return;
+        }
+        await createModule({ courseId: moduleFormData.courseId, title: moduleFormData.title, ...categories });
         const modules = await getModules({ courseId: moduleFormData.courseId });
         setCourseModules(prev => ({ ...prev, [moduleFormData.courseId]: modules }));
         await loadCoursesList();
@@ -522,7 +553,7 @@ export function CoursesListView() {
         closeModal();
       }
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'Failed to save module');
+      setModalError((await readApiErrorDetail(err)) ?? (err instanceof Error ? err.message : 'Nepodařilo se uložit modul'));
     } finally {
       setModalLoading(false);
     }
@@ -572,26 +603,37 @@ export function CoursesListView() {
 
   const saveQuickEdit = async () => {
     if (!quickEditCourseId) return;
+    const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
+    if (!existingCourse) return;
+    // Změna bloku mění pravidlo pro průřezové obory (A/B povinné, C zakázané).
+    const rule = crossSubjectsRule(blocks, quickEditData.courseBlockId || null);
+    const update = courseToUpdate(existingCourse, {
+      title: quickEditData.title,
+      // 0 = „Neurčeno“ — blok i obor jsou volitelné.
+      courseBlockId: quickEditData.courseBlockId || null,
+      courseTargetId: quickEditData.courseTargetId,
+      courseSubjectId: quickEditData.courseSubjectId || null,
+    });
+    update.crossSubjectIds = crossSubjectIdsFor(rule, update.crossSubjectIds ?? []);
+    const categoryError = validateCourseCategories(
+      { krauuCompetenceIds: update.krauuCompetenceIds, bloomLevelIds: update.bloomLevelIds, crossSubjectIds: update.crossSubjectIds },
+      rule,
+    );
+    if (categoryError) {
+      toast.error(`${categoryError} Doplňte je v souhrnu kurzu.`);
+      return;
+    }
     setQuickEditLoading(true);
     try {
-      const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
       await sharedCoursesApi.updateCourse({
         courseId: quickEditCourseId,
-        courseUpdate: {
-          title: quickEditData.title,
-          description: existingCourse?.description ?? undefined,
-          courseBlockId: quickEditData.courseBlockId,
-          courseTargetId: quickEditData.courseTargetId,
-          courseSubjectId: quickEditData.courseSubjectId,
-          courseEqfLevelId: existingCourse?.courseEqfLevelId ?? 1,
-          courseTypeId: existingCourse?.courseTypeId ?? 1,
-        },
+        courseUpdate: update,
       });
       await loadCoursesList();
       toast.success('Rychlé úpravy uloženy.');
     } catch (error) {
       console.error('Failed to quick save course:', error);
-      toast.error(error, 'Nepodařilo se uložit rychlé úpravy.');
+      toast.error((await readApiErrorDetail(error)) ?? error, 'Nepodařilo se uložit rychlé úpravy.');
     } finally {
       setQuickEditLoading(false);
     }
@@ -835,6 +877,7 @@ export function CoursesListView() {
                                   value={quickEditData.courseBlockId}
                                   onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseBlockId: next }))}
                                   options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                                  emptyLabel="Bez bloku"
                                   aria-label="Tematický blok"
                                   className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
                                 />
@@ -849,6 +892,7 @@ export function CoursesListView() {
                                   value={quickEditData.courseSubjectId}
                                   onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseSubjectId: next }))}
                                   options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                                  emptyLabel="Bez oboru"
                                   aria-label="Předmět"
                                   className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
                                 />
@@ -951,6 +995,7 @@ export function CoursesListView() {
       </div>
 
       {/* Modals */}
+      {/* Rychlé vytvoření kurzu — vypnuto, viz `courseFormData` výše.
       <CourseModal
         isOpen={activeModal === 'course-create' || activeModal === 'course-edit'}
         mode={activeModal === 'course-create' ? 'create' : 'edit'}
@@ -962,6 +1007,7 @@ export function CoursesListView() {
         onSubmit={handleCourseSubmit}
         onChange={setCourseFormData}
       />
+      */}
 
       <ModuleModal
         isOpen={activeModal === 'module-create' || activeModal === 'module-edit'}

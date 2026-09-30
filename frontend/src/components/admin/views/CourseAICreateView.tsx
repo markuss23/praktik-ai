@@ -3,13 +3,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseRequirements, getCourseEqfLevels, getCourseTypes, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
-import { CoursePageHeader } from '@/components/admin';
+import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
+import { CoursePageHeader, CourseCategoryFields } from '@/components/admin';
 import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
-import { CourseBlock, CourseTarget, CourseSubject, CourseRequirement, CourseEqfLevel, CourseType, Difficulty } from '@/api';
+import { Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import { crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 // Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
 const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
 
@@ -27,13 +30,11 @@ export function CourseAICreateView() {
   const didResumeRef = useRef(false);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
-  const [targets, setTargets] = useState<CourseTarget[]>([]);
-  const [subjects, setSubjects] = useState<CourseSubject[]>([]);
-  const [requirements, setRequirements] = useState<CourseRequirement[]>([]);
-  const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
-  const [types, setTypes] = useState<CourseType[]>([]);
-  const [catalogsLoading, setCatalogsLoading] = useState(true);
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading, error: catalogsError,
+  } = useCatalogData();
+  const [showCategoryErrors, setShowCategoryErrors] = useState(false);
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -47,7 +48,7 @@ export function CourseAICreateView() {
     courseEqfLevelId: number;
     courseTypeId: number;
     difficulty: Difficulty;
-  }>({
+  } & CourseCategoryValues>({
     title: '',
     description: '',
     moduleCount: 3,
@@ -60,6 +61,9 @@ export function CourseAICreateView() {
     courseTypeId: 0,
     // Default obtížnosti dle požadavku — mírně pokročilý.
     difficulty: Difficulty.SlightlyAdvanced,
+    krauuCompetenceIds: [],
+    bloomLevelIds: [],
+    crossSubjectIds: [],
   });
 
   // Zastavení polling timeru při unmountu
@@ -190,41 +194,25 @@ export function CourseAICreateView() {
     return () => { cancelled = true; };
   }, [startProgressPolling, clearActiveGeneration, goToCourseContent]);
 
-  // Načtení katalogů při mountu
+  // Po načtení katalogů předvyplníme povinné selecty první položkou (blok a obor
+  // jsou volitelné, zůstávají „Neurčeno“).
+  const catalogDefaultsRef = useRef(false);
   useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [b, t, s, r, e, ty] = await Promise.all([
-          getCourseBlocks(),
-          getCourseTargets(),
-          getCourseSubjects(),
-          getCourseRequirements(),
-          getCourseEqfLevels(),
-          getCourseTypes(),
-        ]);
-        setBlocks(b);
-        setTargets(t);
-        setSubjects(s);
-        setRequirements(r);
-        setEqfLevels(e);
-        setTypes(ty);
-        setFormData(prev => ({
-          ...prev,
-          courseBlockId: b.length > 0 ? b[0].blockId : 0,
-          courseTargetId: t.length > 0 ? t[0].targetId : 0,
-          courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
-          courseEqfLevelId: e.length > 0 ? e[0].eqfLevelId : 0,
-          courseTypeId: ty.length > 0 ? ty[0].typeId : 0,
-        }));
-      } catch (err) {
-        console.error('Failed to load catalogs:', err);
-        setError('Nepodařilo se načíst katalogy');
-      } finally {
-        setCatalogsLoading(false);
-      }
-    }
-    loadCatalogs();
-  }, []);
+    if (catalogsLoading || catalogDefaultsRef.current) return;
+    catalogDefaultsRef.current = true;
+    setFormData(prev => ({
+      ...prev,
+      courseTargetId: prev.courseTargetId || (targets[0]?.targetId ?? 0),
+      courseEqfLevelId: prev.courseEqfLevelId || (eqfLevels[0]?.eqfLevelId ?? 0),
+      courseTypeId: prev.courseTypeId || (types[0]?.typeId ?? 0),
+    }));
+  }, [catalogsLoading, targets, eqfLevels, types]);
+
+  useEffect(() => {
+    if (catalogsError) setError('Nepodařilo se načíst katalogy');
+  }, [catalogsError]);
+
+  const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
   const ACCEPTED_TYPES = '.md,.docx';
   const ACCEPTED_EXTENSIONS = ['md', 'docx'];
@@ -295,6 +283,13 @@ export function CourseAICreateView() {
       return;
     }
 
+    const categoryError = validateCourseCategories(formData, crossRule);
+    if (categoryError) {
+      setShowCategoryErrors(true);
+      setError(categoryError);
+      return;
+    }
+
     if (files.length === 0) {
       setError('Prosím nahrajte alespoň jeden soubor s podklady');
       return;
@@ -306,7 +301,7 @@ export function CourseAICreateView() {
     try {
       setStep('uploading');
       
-      if (formData.courseBlockId === 0 || formData.courseTargetId === 0 || formData.courseSubjectId === 0 || formData.courseEqfLevelId === 0 || formData.courseTypeId === 0) {
+      if (formData.courseTargetId === 0 || formData.courseEqfLevelId === 0 || formData.courseTypeId === 0) {
         throw new Error('Prosím vyplňte všechny katalogové údaje');
       }
 
@@ -317,22 +312,21 @@ export function CourseAICreateView() {
           description: formData.description || undefined,
           modulesCountAiGenerated: formData.moduleCount,
           durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : formData.moduleCount * 20,
-          courseBlockId: formData.courseBlockId,
+          // 0 = „Neurčeno“ — blok, obor a povinnost jsou na backendu volitelné.
+          courseBlockId: formData.courseBlockId || null,
           courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId,
+          courseSubjectId: formData.courseSubjectId || null,
           courseRequirementId: formData.courseRequirementId || undefined,
           courseEqfLevelId: formData.courseEqfLevelId,
           courseTypeId: formData.courseTypeId,
           difficulty: formData.difficulty,
+          krauuCompetenceIds: formData.krauuCompetenceIds,
+          bloomLevelIds: formData.bloomLevelIds,
+          crossSubjectIds: crossSubjectIdsFor(crossRule, formData.crossSubjectIds),
         });
       } catch (createErr: unknown) {
-        if (createErr && typeof createErr === 'object' && 'response' in createErr) {
-          const response = (createErr as { response: Response }).response;
-          if (response.status === 400) {
-            const data = await response.json();
-            throw new Error(data.detail || 'Kurz s tímto názvem již existuje');
-          }
-        }
+        const detail = await readApiErrorDetail(createErr);
+        if (detail) throw new Error(detail);
         throw createErr;
       }
 
@@ -459,7 +453,7 @@ export function CourseAICreateView() {
                     value={formData.courseBlockId}
                     onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
                     options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
-                    emptyLabel="Vyberte blok..."
+                    emptyLabel="Neurčeno"
                     aria-label="Tematický blok"
                     className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
                   />
@@ -485,7 +479,7 @@ export function CourseAICreateView() {
                     value={formData.courseSubjectId}
                     onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
                     options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
-                    emptyLabel="Vyberte obor..."
+                    emptyLabel="Neurčeno"
                     aria-label="Obor"
                     className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
                   />
@@ -530,6 +524,20 @@ export function CourseAICreateView() {
                   />
                 </div>
               </div>
+            )}
+
+            {/* Pedagogické zařazení — KRAUU, Bloom, průřezové obory */}
+            {!catalogsLoading && (
+              <CourseCategoryFields
+                values={formData}
+                onChange={(next) => setFormData({ ...formData, ...next })}
+                krauuCompetences={krauuCompetences}
+                bloomLevels={bloomLevels}
+                crossSubjects={crossSubjects}
+                crossRule={crossRule}
+                showErrors={showCategoryErrors}
+                triggerClassName="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+              />
             )}
 
             {/* Popis kurzu */}
