@@ -1494,11 +1494,92 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="resource",
         primaryjoin="and_(PubResource.resource_id==PubResourceComment.resource_id, PubResourceComment.is_active==True)",
     )
+    krauu_competences: Mapped[list[PubResourceKrauuCompetence]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceKrauuCompetence.resource_id, PubResourceKrauuCompetence.is_active==True)",
+    )
+    bloom_levels: Mapped[list[PubResourceBloomLevel]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceBloomLevel.resource_id, PubResourceBloomLevel.is_active==True)",
+    )
 
-    _soft_delete_cascade: list[str] = ["files", "ratings", "reviews", "comments"]
+    _soft_delete_cascade: list[str] = [
+        "files",
+        "ratings",
+        "reviews",
+        "comments",
+        "krauu_competences",
+        "bloom_levels",
+    ]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
 
     def get_owner_id(self) -> int:
         return self.author_id
+
+
+class PubResourceKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka veřejný materiál ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "pub_resource_krauu_competence"
+    __table_args__ = (
+        Index(
+            "uq_pub_resource_krauu_competence", "resource_id", "krauu_id", unique=True
+        ),
+        Index("ix_pub_resource_krauu_competence_resource_id", "resource_id"),
+        Index("ix_pub_resource_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubResourceBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka veřejný materiál ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "pub_resource_bloom_level"
+    __table_args__ = (
+        Index("uq_pub_resource_bloom_level", "resource_id", "bloom_id", unique=True),
+        Index("ix_pub_resource_bloom_level_resource_id", "resource_id"),
+        Index("ix_pub_resource_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
 
 
 class PubResourceFork(SoftDeleteMixin, Base):

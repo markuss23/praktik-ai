@@ -8,6 +8,12 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.authorization import validate_owner_or_superadmin
+from api.src.catalogs.controllers import (
+    sync_bloom_levels,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404
 from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
@@ -87,11 +93,28 @@ def create_resource(
     ):
         raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
 
-    resource_data = data.model_dump()
+    validate_krauu_competence_ids(db, data.krauu_competence_ids)
+    validate_bloom_level_ids(db, data.bloom_level_ids)
+
+    resource_data = data.model_dump(exclude={"krauu_competence_ids", "bloom_level_ids"})
     resource = models.PubResource(**resource_data, author_id=user.user_id)
     db.add(resource)
     db.flush()
 
+    sync_krauu_competences(
+        db,
+        models.PubResourceKrauuCompetence,
+        "resource_id",
+        resource.resource_id,
+        data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.PubResourceBloomLevel,
+        "resource_id",
+        resource.resource_id,
+        data.bloom_level_ids,
+    )
     db.commit()
     db.refresh(resource)
 
@@ -211,6 +234,8 @@ def create_resource_fork(
     resource_data["target_id"] = original.target_id
     resource_data["education_level"] = original.education_level
     resource_data["difficulty_level"] = original.difficulty_level
+    resource_data["eqf_level_id"] = original.eqf_level_id
+    resource_data["course_type_id"] = original.course_type_id
 
     forked = models.PubResource(
         **resource_data,
@@ -220,6 +245,21 @@ def create_resource_fork(
     )
     db.add(forked)
     db.flush()
+
+    sync_krauu_competences(
+        db,
+        models.PubResourceKrauuCompetence,
+        "resource_id",
+        forked.resource_id,
+        [link.krauu_id for link in original.krauu_competences],
+    )
+    sync_bloom_levels(
+        db,
+        models.PubResourceBloomLevel,
+        "resource_id",
+        forked.resource_id,
+        [link.bloom_id for link in original.bloom_levels],
+    )
 
     fork_record = models.PubResourceFork(
         original_id=resource_id,

@@ -3,7 +3,7 @@ Controllery pro čtení veřejných materiálů.
 """
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -110,6 +110,12 @@ def get_resources(
             joinedload(models.PubResource.author),
             joinedload(models.PubResource.subject),
             joinedload(models.PubResource.target),
+            selectinload(models.PubResource.krauu_competences).joinedload(
+                models.PubResourceKrauuCompetence.competence
+            ),
+            selectinload(models.PubResource.bloom_levels).joinedload(
+                models.PubResourceBloomLevel.bloom_level
+            ),
         )
         .order_by(models.PubResource.resource_id.desc())
     )

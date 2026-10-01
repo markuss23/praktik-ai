@@ -14,6 +14,12 @@ from api.src.publicDB.resources.schemas import (
     PubResourceUpdate,
 )
 from api.authorization import validate_owner_or_superadmin
+from api.src.catalogs.controllers import (
+    sync_bloom_levels,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 
 
 def update_resource(
@@ -117,13 +123,36 @@ def update_resource(
             detail="Lze upravit pouze materiály ve stavu draft nebo rejected s verdiktem needs_revision",
         )
 
-    update_data = resource_data.model_dump(exclude_unset=True)
+    validate_krauu_competence_ids(db, resource_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, resource_data.bloom_level_ids)
+
+    update_data = resource_data.model_dump(
+        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids"}
+    )
 
     db.execute(
         update(models.PubResource)
         .where(models.PubResource.resource_id == resource_id)
         .values(**update_data)
     )
+    # vazby se synchronizují pouze pokud jsou v zadané znovu od uživatele
+
+    if "krauu_competence_ids" in resource_data.model_fields_set:
+        sync_krauu_competences(
+            db,
+            models.PubResourceKrauuCompetence,
+            "resource_id",
+            resource_id,
+            resource_data.krauu_competence_ids,
+        )
+    if "bloom_level_ids" in resource_data.model_fields_set:
+        sync_bloom_levels(
+            db,
+            models.PubResourceBloomLevel,
+            "resource_id",
+            resource_id,
+            resource_data.bloom_level_ids,
+        )
     db.commit()
     db.refresh(resource)
 

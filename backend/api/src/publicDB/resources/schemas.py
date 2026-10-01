@@ -3,9 +3,15 @@ from datetime import datetime
 from pydantic import Field, model_validator
 
 from api.enums import AttachType, Difficulty, EduLevel, PubResourceStatus
-from api.src.catalogs.schemas import CourseSubject, CourseTarget
+from api.src.catalogs.schemas import (
+    BloomLevel,
+    CourseEqfLevel,
+    CourseSubject,
+    CourseTarget,
+    CourseType,
+    KrauuCompetence,
+)
 from api.src.common.schemas import ORMModel
-from api.src.catalogs.schemas import CourseEqfLevel, CourseType
 
 
 class PubResourceBase(ORMModel):
@@ -20,8 +26,20 @@ class PubResourceBase(ORMModel):
     allow_forks: bool = False
 
 
+KRAUU_IDS_FIELD = Field(
+    min_length=1,
+    description="ID KRAUU kompetencí (lze vybrat více; oblasti vybírat nelze)",
+)
+
+BLOOM_IDS_FIELD = Field(
+    min_length=1,
+    description="ID Bloomových úrovní (lze vybrat více)",
+)
+
+
 class PubResourceCreate(PubResourceBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class PubResourceCreateFork(ORMModel):
@@ -30,7 +48,8 @@ class PubResourceCreateFork(ORMModel):
 
 
 class PubResourceUpdate(PubResourceBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class PubResourceFile(ORMModel):
@@ -106,6 +125,12 @@ class PubResource(PubResourceBase):
     target: CourseTarget | None = None
     eqf_level: CourseEqfLevel
     course_type: CourseType
+    krauu_competences: list[KrauuCompetence] = Field(
+        default=[], validation_alias="krauu_competence_list"
+    )
+    bloom_levels: list[BloomLevel] = Field(
+        default=[], validation_alias="bloom_level_list"
+    )
     created_at: datetime
     updated_at: datetime
 
