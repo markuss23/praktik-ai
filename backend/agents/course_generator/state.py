@@ -56,6 +56,9 @@ class CourseInput(BaseModel):
     description: str | None
     modules_count_ai_generated: int
     duration_minutes: int | None
+    level_code: str | None = None  # kód z course_level, např. "level.1"
+    level_name: str | None = None
+    target_name: str | None = None
     files: list[str]  # cesty k souborům
 
 

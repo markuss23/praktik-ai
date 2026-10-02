@@ -182,36 +182,183 @@ CROSS_SUBJECTS: list[dict[str, str]] = [
     {"code": "O20", "name": "Tvořivost a designové myšlení ve výuce", "description": "Tvořivé využití AI při návrhu výukových materiálů, design thinking v pedagogice."},
 ]
 
+
+def _planner_catalog_fields() -> str:
+    """Popis polí modulu s číselníky (NP, KRAUU, Bloom) pro prompt course_planner."""
+    neuro = "\n".join(
+        f"{p['code']} {p['name']} — {p['description']}" for p in NEURO_PRINCIPLES
+    )
+    krauu = "\n".join(
+        f"{k['name']}:" if k["code"].endswith(".0")
+        else f"{k['code']} {k['name']} — {k['description']}"
+        for k in KRAUU_COMPETENCES
+    )
+    bloom = "\n".join(
+        f"{b['code']} {b['name']} — {b['description']}" for b in BLOOM_LEVELS
+    )
+    return (
+        "perex: [krátká anotace modulu, nejvýše 255 znaků, prostý text. V 1–2 větách řekni přímo "
+        "věcnou podstatu tématu a proč je pro cílovou skupinu užitečné. Nepopisuj modul samotný: "
+        "žádné „Modul shrnuje…“, „V tomto modulu…“, „Modul se zabývá…“, „Dozvíte se…“. "
+        "Piš neosobně nebo vykej.]\n\n"
+        "neuro_principle_code: [kód PŘESNĚ JEDNOHO neurovědního principu ze seznamu níže, který nejlépe "
+        "odpovídá pedagogickému designu modulu. Uveď jen kód, např. \"NP-01\".\n"
+        f"SEZNAM NEUROVĚDNÍCH PRINCIPŮ:\n{neuro}]\n\n"
+        "krauu_competence_codes: [1–3 nejrelevantnější kompetence KRAUU (MŠMT 2023), které modul rozvíjí. "
+        "Uváděj jen kódy kompetencí (např. \"1.1\", \"2.4\"), nikdy kódy oblastí končící \".0\".\n"
+        f"SEZNAM KRAUU KOMPETENCÍ:\n{krauu}]\n\n"
+        "bloom_level_codes: [1–3 úrovně Bloomovy taxonomie, kterým odpovídají výukové cíle modulu "
+        "(co účastník po modulu umí). Uváděj jen číselné kódy, např. \"2\", \"3\".\n"
+        f"SEZNAM ÚROVNÍ BLOOMOVY TAXONOMIE:\n{bloom}]\n\n"
+    )
+
+
+COURSE_PLANNER_PROMPT = (
+    "Na základě souhrnu vytvoř strukturovaný vzdělávací kurz v češtině.\n"
+    "\n"
+    "CHYBĚJÍCÍ POLE: Pokud některé pole vstupního bloku chybí, postupuj takto: ÚROVEŇ POKROČILOSTI = intermediate; CÍLOVÁ SKUPINA = vysokoškolští vyučující a studující učitelství, příklady z výuky a studia; MAXIMÁLNÍ DÉLKA SOUHRNU = 3 500 znaků na téma; MAXIMÁLNÍ ČAS NA VÝKLAD = 10 minut. Náročnost tématu urči vždy.\n"
+    "\n"
+    "OBECNÁ PRAVIDLA:\n"
+    "- Veškerý textový výstup (názvy, otázky, odpovědi, klíčová slova) je prostý text. Výjimkou je pole content v learn_blocks, kde se používají povolené HTML tagy.\n"
+    "- Používej pouze fakta ze souhrnu. Když fakt chybí, nevymýšlej ho; upozorni na mezeru konkrétní formulací.\n"
+    '- Nezjednodušuj nad rámec souhrnu: pro nižší úroveň zjednodušuj jazyk a stavbu výkladu, ne obsah tvrzení. Zachovej podmínky, míru nejistoty a mechanismus; kvalifikované tvrzení nepřeváděj na absolutní („omezená" ≠ „malá", „naznačuje" ≠ „prokazuje"). Analogie vždy doplň tím, kde přestává platit. Totéž platí pro otázky, možnosti i vzorové odpovědi.\n'
+    '- Ilustrační situaci (modelovou ukázku z práce skupiny) smíš vytvořit, pokud přenáší princip ze souhrnu a neobsahuje nová fakta (čísla, jména, citace, pravidla). Uveď ji slovy „Představte si…" nebo „Modelová situace:".\n'
+    "- Dodrž všechna PRAVIDLA PRO TVORBU ze souhrnu.\n"
+    "- Rozpor ve zdrojích podle typu uvedeného v souhrnu:\n"
+    '  - „nesoulad pravidel": neprezentuj ho jako spornost oboru. Uveď znění podle nejzávaznějšího zdroje (předpis > metodika > ostatní) a účastníka odkaž na ověření v plném znění. Pokud to pomůže porozumění, využij rozpor k objasnění problému (např. proč je třeba číst plné znění pravidel).\n'
+    '  - „vědecký spor": vylož obě zjištění se silou důkazu. U intermediate a advanced ho využij k objasnění problému jako otevřenou otázku oboru; u beginner uveď opatrnější závěr.\n'
+    "\n"
+    "PROBLÉMY PRO METODIKA:\n"
+    'Do výstupu nevkládej žádná hlášení, upozornění ani poznámky pro metodika. Problémy uvedené v souhrnu (řádek „Problém", oddíl PROBLÉMY PRO METODIKA) ani nesoulad parametrů (čas, počet modulů) v textu kurzu nezmiňuj; zpracuj látku co nejlépe v rámci zadaných parametrů.\n'
+    "\n"
+    "OSLOVENÍ A JAZYK:\n"
+    "- Účastníkovi vykej a označuj ho podle DEFINICE CÍLOVÉ SKUPINY.\n"
+    '- Piš genderově neutrálně: preferuj neosobní vazby a množné číslo. Vzorové odpovědi v první osobě formuluj bez příčestí minulého, pokud to jde („Zadání přeformuluji takto…").\n'
+    "\n"
+    "ÚROVEŇ POKROČILOSTI (týká se zkušenosti s AI, ne odbornosti v oboru; má přednost před obecnými pravidly stylu):\n"
+    "- beginner: kratší věty, každý pojem týkající se AI vysvětli při prvním výskytu, nejvýše 3 nové pojmy na modul (ostatní pojmy ze souhrnu vynech), nejdřív analogie a pak pojem, postupy jako číslované kroky. Zastavení: rozpoznání a vlastní příklad. Uzavřené otázky: porozumění pojmu nebo principu. Otevřená otázka: popis situace z práce účastníka (i plánované, pokud s AI zkušenost nemá).\n"
+    "- intermediate: základní pojmy jen připomeň jednou větou; těžiště v principech, důvodech a typických chybách; porovnávej postupy. Zastavení: analýza vlastního postupu. Uzavřené otázky: aplikace na situaci. Otevřená otázka: zdůvodněné rozhodnutí.\n"
+    "- advanced: vynech analogie a elementární výklad; těžiště v hraničních případech, limitech, síle důkazu a institucionálních důsledcích; pracuj s protiargumenty a s větším množstvím detailů ze souhrnu. Zastavení: kritické hodnocení nebo návrh pravidla. Uzavřené otázky: věrohodné distraktory na úrovni nuancí. Otevřená otázka: argumentace s protiargumentem.\n"
+    "\n"
+    "CÍLOVÁ SKUPINA:\n"
+    "Příklady, zastavení a otázky zasaď do typických pracovních situací z DEFINICE CÍLOVÉ SKUPINY. Pravidla používej jen ta, která se podle definice na skupinu vztahují, a jen tam, kde se jich téma kurzu týká – kurz o jiném tématu nemusí pravidla skupiny vůbec zmiňovat. Pravidla určená jiné skupině nepřenášej bez výslovné opory v souhrnu.\n"
+    "\n"
+    "DÉLKA VÝKLADU (learn_blocks = fáze F1, příručka ke čtení, 5–10 minut, 130 slov za minutu):\n"
+    "Délku výkladu modulu urči podle úrovně a náročnosti tématu uvedené v souhrnu:\n"
+    "- beginner: 5 min (600–700 slov); vysoká náročnost 6 min (700–850 slov)\n"
+    "- intermediate: 7 min (850–1 000 slov); vysoká náročnost 8 min (950–1 100 slov)\n"
+    "- advanced: 9 min (1 100–1 250 slov); vysoká náročnost 10 min (1 250–1 400 slov)\n"
+    "Rozsah z tabulky je horní mez; nepřekroč ani MAXIMÁLNÍ ČAS NA VÝKLAD. Piš tolik, kolik souhrn unese bez vymýšlení – nikdy neprodlužuj výklad vymýšlením. Delší výklad pokročilé úrovně tvoří detaily, nuance a protiargumenty, ne opakování.\n"
+    "\n"
+    "STRUKTURA MODULU:\n"
+    "title: [výstižný název, 1–200 znaků]\n"
+    "\n"
+    ""
+    + _planner_catalog_fields()
+    +
+    "learn_blocks:\n"
+    "- content: [\n"
+    "    Nový výukový text, ne shrnutí a ne opis. Pořadí:\n"
+    "    1. Proč je téma pro cílovou skupinu důležité.\n"
+    "    2. Hlavní myšlenka (u beginner s analogií, u advanced rovnou s vymezením).\n"
+    "    3. Klíčové pojmy s vysvětlením.\n"
+    "    4. Vztahy, příčiny a důsledky.\n"
+    "    5. Příklad z práce cílové skupiny.\n"
+    "    6. Nuance a časté omyly (u advanced těžiště výkladu).\n"
+    "    7. Krátké shrnutí.\n"
+    "\n"
+    "    ZASTAVENÍ: vlož 1–2 zastavení v <blockquote>, formulovaná podle úrovně, například:\n"
+    "    <blockquote>Zastavte se: Jak byste vlastními slovy vysvětlili rozdíl mezi těmito dvěma pojmy?</blockquote>\n"
+    "\n"
+    "    DOPORUČENÍ PRO AI ASISTENTA: VŽDY vlož na konec bloku konkrétní zadání, které AI asistenta použije jako oponenta, ne jako vysvětlovače. Účastník nejdřív formuluje vlastní odpověď, AI ji prověří. Zadání se váže k látce modulu a v jednotlivých modulech se neopakuje. Například:\n"
+    '    <blockquote>Napište si vlastní vysvětlení [pojem] a pak asistenta požádejte: „Tady je moje vysvětlení [pojem]. Kde je nepřesné nebo neúplné? Neopravujte ho za mě, jen ukažte místa."</blockquote>\n'
+    '    Nikdy nenavrhuj zadání typu „Vysvětli mi…" nebo „Napiš mi…".\n'
+    "\n"
+    "    POVOLENÉ HTML TAGY: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <blockquote>. Žádné jiné tagy, žádný markdown.\n"
+    "  ]\n"
+    "\n"
+    "practice_questions: PŘESNĚ 3 otázky – dvě uzavřené (question_type: closed, 3 closed_options, correct_answer doslova shodný s textem jedné z možností) a třetí otevřená (question_type: open, neprázdný example_answer, 3 open_keywords).\n"
+    "\n"
+    "PRAVIDLA PRO OTÁZKY (procvičování; platforma je hodnotí automaticky):\n"
+    "Obecně:\n"
+    "- Všechny otázky ověřují látku z learn_blocks daného modulu na úrovni podle ÚROVNĚ POKROČILOSTI; každá musí jít zodpovědět jen z výkladu modulu. Na zastavení ani doporučení pro AI asistenta se otázky nevážou.\n"
+    "- Každá ze tří otázek ověřuje něco jiného: otázka 1 klíčový pojem nebo princip, otázka 2 jeho použití nebo rozlišení v situaci, otázka 3 porozumění podle úrovně.\n"
+    "- Otázky zasaď do situací cílové skupiny. Vykej.\n"
+    "Uzavřené otázky (platforma porovnává odpověď doslova s textem možnosti):\n"
+    '- Právě jedna možnost je správná; ostatní dvě jsou podle výkladu jednoznačně nesprávné, ne jen „méně vhodné".\n'
+    "- Tři možnosti se textově liší, každá má nejvýše 250 znaků. correct_answer zkopíruj znak po znaku z textu správné možnosti.\n"
+    "- Distraktory vycházejí z typických omylů nebo mýtů uvedených ve výkladu, mají podobnou délku a stavbu jako správná odpověď; správná odpověď není nejdelší ani nejpodrobnější. Pozici správné odpovědi v otázkách střídej.\n"
+    '- Nepoužívej „všechny uvedené", „žádná z uvedených", dvojí zápor ani absolutní slova („vždy", „nikdy") jako nápovědu.\n'
+    "- beginner: porozumění pojmu nebo principu; intermediate: použití v situaci; advanced: rozlišení nuancí – distraktory jsou částečně pravdivé, ale v jednom podstatném bodě chybné.\n"
+    "Otevřená otázka (hodnotí ji AI jen podle otázky a výukového textu; vzorovou odpověď ani klíčová slova nevidí):\n"
+    "- Účastník může napsat nejvýše 500 znaků: úplná odpověď se musí vejít do 2–4 vět. Správnost musí jít posoudit jen z výkladu modulu; nežádej fakta, která ve výkladu nejsou.\n"
+    '- Všechno, co se bude hodnotit, musí být v otázce výslovně: části odpovědi vyjmenuj (nejvýše 3, např. „(1) rozhodněte, (2) zdůvodněte"); požadované pojmy pojmenuj; vlastní zkušenost žádej jen výslovně. Nežádej jména autorů, roky ani přesná čísla.\n'
+    '- Žádné otázky typu ano/ne ani „vyjmenujte".\n'
+    "- beginner: popis situace z práce účastníka s použitím pojmu z modulu; intermediate: zdůvodněné rozhodnutí v situaci; advanced: stanovisko s protiargumentem.\n"
+    "- example_answer: 2–4 věty, nejvýše 500 znaků, na úrovni kurzu, genderově neutrálně.\n"
+    "- open_keywords: 3 klíčové body, které dobrá odpověď obsahuje (myšlenka nebo pojem, každý nejvýše 60 znaků), ne vytržená slova.\n"
+    "- Počet otázek je vždy 3: 2 uzavřené, 1 otevřená."
+)
+
+
 SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "course_summarizer",
         "name": "Sumarizátor kurzu",
         "model": "gpt-5.2",
         "prompt": (
-            "Analyzuj následující obsah a vytvoř strukturovaný souhrn "
-            "optimalizovaný pro vytvoření vzdělávacího kurzu.\n\n"
-            "ZÁSADNÍ PRAVIDLO — ŽÁDNÉ HALUCINACE:\n"
-            "Veškerý obsah souhrnu musí pocházet VÝHRADNĚ z poskytnutých zdrojových materiálů. "
-            "Nepřidávej žádné informace, příklady ani vysvětlení, která nejsou explicitně ve zdrojích. "
-            "Pokud zdroje neobsahují dostatek informací pro dané téma, zkrať nebo vypusť danou část "
-            "místo vymýšlení obsahu.\n\n"
+            "Analyzuj následující obsah a vytvoř strukturovaný souhrn, ze kterého jiný model napíše vzdělávací kurz. Tento model uvidí POUZE tvůj souhrn, nikoli zdroje. Co v souhrnu chybí, v kurzu nebude.\n"
+            "\n"
+            "CHYBĚJÍCÍ POLE: Pokud některé pole vstupního bloku chybí, postupuj takto: ÚROVEŇ POKROČILOSTI = intermediate; CÍLOVÁ SKUPINA = vysokoškolští vyučující a studující učitelství, příklady z výuky a studia; MAXIMÁLNÍ DÉLKA SOUHRNU = 3 500 znaků na téma; MAXIMÁLNÍ ČAS NA VÝKLAD = 10 minut. Náročnost tématu urči vždy.\n"
+            "\n"
+            "ZÁSADNÍ PRAVIDLO – ŽÁDNÉ HALUCINACE:\n"
+            "Veškerý obsah souhrnu musí pocházet výhradně z poskytnutých zdrojů. Nepřidávej informace, příklady ani vysvětlení, které ve zdrojích nejsou. Pokud zdroje k tématu nestačí, téma zkrať; nevymýšlej.\n"
+            "\n"
+            "ROLE ZDROJŮ:\n"
+            "- Soubory s obsahem (výklad, příklady, data) zpracuj jako látku.\n"
+            "- Soubory s pokyny pro tvorbu kurzu (zápis z rozhovoru s autorem, QA report, východiska, pravidla, zakázané formulace) nezpracovávej jako látku. Závazná pravidla z nich vypiš do oddílu PRAVIDLA PRO TVORBU.\n"
+            "- Pokud je mezi zdroji hotový kurz, použij jeho výklad (F1) jako hlavní osnovu; fakta ověřuj proti ostatním zdrojům, pokud existují. Jeho capstone, artefakt, rubriku, testy a aktivity F2–F4 nezpracovávej a nehlas – platforma je zatím negeneruje. Parametry ve vstupním bloku (počet modulů, délka, úroveň, cílová skupina) mají přednost před parametry uvedenými v hotovém kurzu.\n"
+            "\n"
             "INSTRUKCE:\n"
-            "1. Rozděl obsah do PŘESNĚ tolika tematických celků, kolik je uvedeno v poli POČET MODULŮ. "
-            "Pokud obsah pokrývá méně témat, rozděl dostupný obsah na logické části tak, aby vznikl správný počet celků — bez vymýšlení nového obsahu.\n"
-            "2. Pro každý tematický celek extrahuj:\n"
-            "- Klíčové koncepty a pojmy k naučení\n"
-            "- Praktické příklady a ukázky\n"
-            "- Fakta vhodná pro testové otázky (ABC)\n\n"
-            "3. Výstup strukturuj takto:\n\n"
-            "TÉMA 1: [název tématu]\n"
-            "- Klíčové koncepty: [seznam pojmů a definic]\n"
-            "- Látka k naučení: [detailní vysvětlení]\n"
-            "- Testovatelná fakta: [konkrétní informace pro otázky]\n\n"
-            "TÉMA 2: [název tématu]\n"
-            "...\n\n"
-            "4. Zachovej odbornou terminologii a přesné definice\n"
-            "5. Maximální délka: 4000 znaků\n"
-            "6. Piš v češtině, bez markdown formátování"
+            "1. Rozděl obsah do PŘESNĚ tolika tematických celků, kolik uvádí POČET MODULŮ. Pokud obsah pokrývá méně témat, rozděl dostupnou látku na logické části bez vymýšlení nového obsahu.\n"
+            "2. Úroveň pokročilosti se týká zkušenosti účastníka s AI, ne jeho odbornosti v oboru. Látku vybírej podle ÚROVNĚ POKROČILOSTI:\n"
+            "   - beginner: základní pojmy s jednoduchou definicí, jeden mentální model na téma, návodné postupy krok za krokem.\n"
+            "   - intermediate: principy, důvody a typické chyby; srovnání postupů; pojmy s definicí.\n"
+            "   - advanced: navíc hraniční případy, limity, sporná místa, síla důkazu, institucionální a etické souvislosti; pojmy s přesnou definicí.\n"
+            '3. Příklady vybírej podle DEFINICE CÍLOVÉ SKUPINY. Pokud zdroje větví obsah podle profilu, převezmi větev skupiny (větve „Mentor / provázející učitel" i „Učitel ZŠ/SŠ" patří skupině Mentor). Pokud pro skupinu příklad chybí, napiš „příklad pro skupinu ve zdrojích chybí" a uveď nejbližší příklad z jiné větve s označením, pro koho platí.\n'
+            "4. U každého tématu urči náročnost:\n"
+            "   - nízká: nejvýše 2 nové pojmy, konkrétní a známé situace,\n"
+            "   - střední: 3–4 pojmy nebo jeden abstraktní princip,\n"
+            "   - vysoká: 5 a více pojmů, abstraktní model, právní nebo výzkumný rámec.\n"
+            "5. U každého čísla, výsledku studie nebo pravidla zachovej kontext: čeho se údaj týká (obor, populace, typ studie), odkud je (autor, rok, dokument, odstavec) a jaká je síla důkazu (recenzovaná studie, metaanalýza, preprint, názor).\n"
+            '5a. NEZJEDNODUŠUJ NAD RÁMEC ZDROJE: zachovej podmínky, míru nejistoty a mechanismus tvrzení. Kvalifikované tvrzení nepřeváděj na absolutní („omezená kapacita" ≠ „malá paměť", „naznačuje" ≠ „prokazuje", „u části dětí" ≠ „u dětí"). Když zdroj uvádí mechanismus (např. že kapacitu určuje počet celků a jejich velikost závisí na seskupení), zachovej ho.\n'
+            '6. Pokud si zdroje odporují, nerozhoduj za ně. Zapiš rozpor do řádku „Rozpor ve zdrojích" s oběma stanovisky a jejich zdrojem a označ typ: „vědecký spor" (dvě výzkumná zjištění) nebo „nesoulad pravidel" (předpisy, metodiky, interní dokumenty).\n'
+            '7. KRITICKÝ PROBLÉM zapiš do řádku „Problém" u tématu (nebo do oddílu PROBLÉMY PRO METODIKA, týká-li se celého kurzu). Kritický je jen problém, který brání správnému vytvoření kurzu:\n'
+            "   - látka tématu se nevejde do MAXIMÁLNÍHO ČASU NA VÝKLAD → navrhni rozdělení na 2 moduly (názvy a obsah obou),\n"
+            "   - látky tématu je ve zdrojích tak málo, že nestačí ani na nejkratší výklad (5 minut, asi 600 slov) → navrhni sloučení s jiným tématem nebo doplnění zdroje,\n"
+            "   - látku nelze smysluplně rozdělit do zadaného POČTU MODULŮ → navrhni jiný počet a rozvržení.\n"
+            '   Jiné nedostatky (chybějící příklad, rozpor, fakt bez kontextu) nejsou kritické: řeš je v souhrnu (poznámka, řádek „Rozpor ve zdrojích"), nehlas je.\n'
+            "\n"
+            "VÝSTUP (prostý text, řádky začínej pomlčkou, žádné jiné formátování):\n"
+            "\n"
+            "PROBLÉMY PRO METODIKA:\n"
+            '- [jen kritické problémy celého kurzu; pokud žádné nejsou, napiš „žádné"]\n'
+            "\n"
+            "TÉMA 1: [název]\n"
+            "- Náročnost: [nízká | střední | vysoká]\n"
+            "- Klíčové pojmy: [pojem – definice; …]\n"
+            "- Látka k naučení: [vysvětlení s kontextem]\n"
+            "- Testovatelná fakta: [údaj – kontext – zdroj]\n"
+            "- Příklady pro skupinu: [příklad ze zdrojů, nebo poznámka o chybějícím příkladu]\n"
+            "- Rozpor ve zdrojích: [jen pokud existuje]\n"
+            "- Problém: [jen kritický problém; typ – popis – návrh řešení]\n"
+            "\n"
+            "TÉMA 2: …\n"
+            "\n"
+            "PRAVIDLA PRO TVORBU:\n"
+            '- [závazná pravidla a zakázané formulace ze zdrojů s pokyny pro tvorbu; pokud žádná nejsou, napiš „žádná"]\n'
+            "\n"
+            'ROZSAH: Na jedno téma připadá asi tolik znaků, kolik uvádí údaj „znaků na téma" v poli MAXIMÁLNÍ DÉLKA SOUHRNU; celkový limit v tomtéž poli nepřekroč. Když zdroj na téma víc látky nemá, souhrn tématu zkrať – nedoplňuj ho. Piš česky. Když musíš krátit, zachovej v tomto pořadí: problémy > definice a kontext faktů > rozpory a pravidla > příklady pro skupinu > další látka.'
         ),
         "description": "LLM pro sumarizaci zdrojového obsahu kurzu před generováním modulů.",
     },
@@ -219,167 +366,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "key": "course_planner",
         "name": "Plánovač kurzu",
         "model": "gpt-5.4",
-        "prompt": (
-            """
-            Na základě následujícího obsahu vytvoř strukturovaný vzdělávací kurz.
-            OBECNÁ PRAVIDLA:
-            - Veškerý textový výstup (názvy, otázky, odpovědi, klíčová slova) bude čistý prostý text bez jakéhokoliv formátování.
-            - Výjimkou je pouze pole content v learn_blocks, kde se používají základní HTML tagy pro strukturování textu.
-            - Kurz vytvoř v českém jazyce.
-            - Používej pouze fakta obsažená v dodaných materiálech. Pokud něco v materiálech chybí nebo není jednoznačné, nevymýšlej si — upozorni na to opatrnou formulací.
-
-            STRUKTURA KURZU:
-            Rozděl obsah do logických modulů. Každý modul musí mít přesně tuto strukturu:
-
-            title: [Výstižný název modulu, 1–200 znaků]
-
-            perex: [Krátká anotace modulu, max 255 znaků. Shrnuje v 1–2 větách, co se student v modulu naučí a proč je to užitečné. Prostý text bez formátování.]
-
-            neuro_principle_code: [Kód PŘESNĚ JEDNOHO neurovědního principu ze seznamu níže, který se pro pedagogický design tohoto modulu hodí nejvíce. Uveď pouze kód, např. "NP-01".
-
-            SEZNAM NEUROVĚDNÍCH PRINCIPŮ (vyber jeden kód na modul):
-            NP-01 Neuroplasticita — Opakované učení mění strukturu synaptických sítí v mozku
-            NP-02 Distribuované opakování — Učení rozložené v čase vede k trvalejšímu zapamatování
-            NP-03 Aktivní vybavování — Vědomé vybavování z paměti posiluje stopu víc než pasivní čtení
-            NP-04 Žádoucí obtíže — Mírná obtížnost a kognitivní zápas prohlubují zpracování a transfer
-            NP-05 Prokládání — Střídání různých typů úloh podporuje rozlišování konceptů
-            NP-06 Duální kódování — Kombinace verbální a vizuální reprezentace vytváří dvě paměťové stopy
-            NP-07 Kognitivní zátěž — Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení blokuje učení
-            NP-08 Elaborativní kódování — Propojení nové informace s existujícími znalostmi tvoří síť asociací
-            NP-09 Efekt generování — Sám vytvořená informace se pamatuje lépe než pasivně přijatá
-            NP-10 Testovací efekt — Samotné testování konsoliduje dlouhodobou paměť silněji než čtení
-            NP-11 Predikční chyba — Dopaminový systém reaguje na rozdíl mezi očekáváním a realitou
-            NP-12 Konsolidace ve spánku — Spánek přepisuje paměťové stopy z hipokampu do neokortexu
-            NP-13 Pozornost a pracovní paměť — Bez selektivní pozornosti nedochází ke kódování
-            NP-14 Slučování do bloků — Sdružování informací do smysluplných bloků zvyšuje kapacitu paměti
-            NP-15 Metakognice — Schopnost přemýšlet o vlastním myšlení a sledovat porozumění
-            NP-16 Zrcadlové neurony — Pozorování postupu druhého aktivuje stejné okruhy jako vlastní provádění
-            NP-17 Stav plynutí (flow) — Optimální poměr výzvy a dovednosti maximalizuje zapojení a učení
-            NP-18 Okamžitá zpětná vazba — Rychlá konkrétní zpětná vazba umožní opravit chybu dřív než se zafixuje
-            NP-19 Vtělené poznávání — Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje zpracování
-            NP-20 Schémata — Nové informace se snáze ukládají při napojení na existující schéma
-            ]
-
-            krauu_competence_codes: [Seznam kódů KRAUU kompetencí (MŠMT 2023) ze seznamu níže, které modul rozvíjí. Vyber 1–3 nejrelevantnější kompetence. Uváděj pouze kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".
-
-            SEZNAM KRAUU KOMPETENCÍ:
-            Oblast 1 – Obsah a didaktika:
-            1.1 Rozumí vyučovaným oborům a rozvíjí se v nich — Učitel/ka rozumí oborům, které vyučuje, a systematicky se v nich rozvíjí.
-            1.2 Didakticky zprostředkovává obsah žákům — Zprostředkovává obsah žákům v souladu s jejich vzdělávacími potřebami.
-            Oblast 2 – Plánování, vedení a reflexe výuky:
-            2.1 Nastavuje cíle výuky — Stanovuje srozumitelné cíle a vede k jejich nastavování i žáky.
-            2.2 Poznává vzdělávací potřeby a plánuje výuku — Plánuje výuku tak, aby každý žák mohl aktivně dosahovat cílů.
-            2.3 Podporuje zvídavost a motivaci žáků — Podporuje u žáků zvídavost a motivaci k učení.
-            2.4 Efektivně vede výuku a zjišťuje porozumění — Vede výuku efektivně, zjišťuje porozumění a reaguje na potřeby žáků.
-            2.5 Reflektuje výuku — Reflektuje vlastní výuku a vyhodnocuje dosahování cílů.
-            Oblast 3 – Prostředí pro učení:
-            3.1 Vytváří bezpečné prostředí pro učení — Vytváří fyzicky i psychicky bezpečné prostředí pro učení.
-            3.2 Vede žáky k chování podporujícímu učení — Vede žáky k chování podporujícímu vlastní učení i spolupráci.
-            3.3 Uspořádání fyzického a digitálního prostředí — Zajišťuje vhodné uspořádání fyzického a digitálního prostředí učení.
-            Oblast 4 – Zpětná vazba a hodnocení:
-            4.1 Hodnotí na základě kritérií — Hodnotí žáky na základě jasných kritérií a vede k tomu i žáky.
-            4.2 Poskytuje a přijímá zpětnou vazbu — Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá ZV od žáků.
-            4.3 Vede žáky k reflexi jejich učení — Vede žáky k reflexi vlastního učení a samostatné metakognici.
-            Oblast 5 – Profesní spolupráce:
-            5.1 Spolupracuje s kolegy a kolegyněmi — Spolupracuje s kolegy ve prospěch žáků a společného profesního růstu.
-            5.2 Spolupracuje s rodiči a širší komunitou školy — Spolupracuje s rodiči a širší komunitou v zájmu žáků.
-            Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví:
-            6.1 Utváření profesního sebepojetí a rozvoj — Systematicky pracuje na utváření profesního sebepojetí a vlastním rozvoji.
-            6.2 Odpovědná práce s informacemi a demokratické hodnoty — Odpovědně pracuje s informacemi a digitálními nástroji, vede k etice.
-            6.3 Duševní zdraví a psychohygiena — Systematicky pečuje o své duševní zdraví a psychohygienu.
-            ]
-
-            bloom_level_codes: [Seznam kódů úrovní Bloomovy taxonomie kognitivních cílů ze seznamu níže, kterým odpovídají výukové cíle modulu (podle toho, co student po modulu umí). Vyber 1–3 nejrelevantnější úrovně. Uváděj pouze číselné kódy, např. "2", "3".
-
-            SEZNAM ÚROVNÍ BLOOMOVY TAXONOMIE:
-            1 Zapamatovat — vyjmenuje, popíše, identifikuje, rozpozná, zopakuje
-            2 Porozumět — vysvětlí, shrne, klasifikuje, interpretuje, přeloží
-            3 Aplikovat — použije, provede, řeší, demonstruje, implementuje
-            4 Analyzovat — porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá
-            5 Hodnotit — posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní
-            6 Tvořit — navrhne, sestaví, vytvoří, zkonstruuje, naplánuje
-            ]
-
-            learn_blocks:
-            - content: [
-                Kompletní výklad látky daného modulu jako nový výukový text — ne shrnutí, ne opis zdroje.
-                Pracuj jako zkušený pedagog: vyber podstatné informace, uspořádej je od nejjednodušších ke složitějším a vysvětli je s kontextem a příklady.
-
-                ZÁVAZNÉ POŘADÍ OBSAHU:
-                1. Proč je téma důležité a k čemu slouží.
-                2. Jednoduché vysvětlení hlavní myšlenky, ideálně s analogií nebo příkladem.
-                3. Klíčové pojmy — každý pojmenuj a vysvětli před tím, než ho začneš používat.
-                4. Vztahy mezi pojmy, příčiny a důsledky.
-                5. Praktický příklad nebo ukázka z praxe.
-                6. Složitější nuance nebo časté omyly, pokud jsou v materiálech obsaženy.
-                7. Krátké shrnutí toho nejdůležitějšího.
-
-                PRAVIDLA PRO STYL VÝKLADU:
-                - Vysvětluj souvislosti a ukazuj, proč informace dává smysl — nepřepisuj zdroj mechanicky.
-                - Piš v krátkých odstavcích, věcně a srozumitelně. Vyhýbej se akademickému jazyku a dlouhým souvětím.
-                - Pokud je pojem abstraktní, použij jednoduchou analogii. Vždy za ní doplň, kde analogie přestává platit.
-                - Nezahlcuj studenta detaily příliš brzy. Nejdříve jednoduchý mentální model, pak detaily.
-
-                ZASTAVENÍ PRO PŘEMÝŠLENÍ:
-                Na vhodném místě vlož alespoň jedno zastavení pro studenta. Použij tag <blockquote> s konkrétní otázkou nebo úkolem, například:
-                <blockquote>Zastav se a promysli: Jak bys vlastními slovy vysvětlil rozdíl mezi těmito dvěma pojmy?</blockquote>
-                nebo
-                <blockquote>Mini-aplikace: Zkus najít příklad tohoto principu z vlastní praxe.</blockquote>
-
-                DOPORUČENÍ PRO AI ASISTENTA:
-                Pokud je část látky náročnější nebo vhodná k dovysvětlení, vlož na konci bloku konkrétní doporučení, například:
-                <blockquote>Pokud ti tento rozdíl není jasný, zeptej se AI asistenta: "Vysvětli mi [konkrétní pojem] na příkladu z praxe [obor studenta]."</blockquote>
-                Nedávej obecnou výzvu. Vždy navrhni konkrétní otázku.
-
-                POVOLENÉ HTML TAGY:
-                <h2> pro hlavní nadpis tématu
-                <h3> pro podnadpisy sekcí
-                <p> pro odstavce s výkladem
-                <ul> a <li> pro výčty a seznamy
-                <ol> a <li> pro číslované kroky nebo pořadí
-                <strong> pro zvýraznění klíčových pojmů
-                <blockquote> pro zastavení, analogie a doporučení pro AI asistenta
-                Žádné jiné tagy nepoužívej. Žádný markdown.
-                ]
-
-            practice_questions:
-            [Každý modul musí mít PŘESNĚ 3 otázky: první dvě jsou uzavřené, třetí je otevřená. Žádná jiná kombinace není přijatelná.]
-
-            Otázka 1 – uzavřená:
-                question_type: closed
-                question: [Text otázky]
-                closed_options:
-                - text: [Možnost A]
-                - text: [Možnost B]
-                - text: [Možnost C]
-                correct_answer: [Musí být doslovně shodný s textem jedné z closed_options. Nesmí být prázdný.]
-
-            Otázka 2 – uzavřená:
-                question_type: closed
-                question: [Text otázky]
-                closed_options:
-                - text: [Možnost A]
-                - text: [Možnost B]
-                - text: [Možnost C]
-                correct_answer: [Musí být doslovně shodný s textem jedné z closed_options. Nesmí být prázdný.]
-
-            Otázka 3 – otevřená:
-                question_type: open
-                question: [Text otázky]
-                example_answer: [Příklad správné odpovědi. Nesmí být prázdný.]
-                open_keywords:
-                - keyword: [Klíčové slovo nebo bod 1]
-                - keyword: [Klíčové slovo nebo bod 2]
-                - keyword: [Klíčové slovo nebo bod 3]
-
-            PRAVIDLA PRO OTÁZKY:
-            - Všechny otázky musí ověřovat pochopení látky z learn_blocks daného modulu.
-            - correct_answer musí být doslovně totožný s textem jedné ze tří closed_options.
-            - example_answer a open_keywords nesmí být prázdné.
-            - Počet otázek na modul je vždy přesně 3: 2 uzavřené, 1 otevřená. Nikdy více, nikdy méně.
-                        
-            """
-        ),
+        "prompt": COURSE_PLANNER_PROMPT,
         "description": "LLM pro generování struktury kurzu (moduly, otázky) ze sumarizace.",
     },
     {
