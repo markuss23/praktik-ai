@@ -6,6 +6,7 @@ from api.enums import Difficulty, Status
 from api.src.catalogs.schemas import (
     CourseBlock,
     CourseEqfLevel,
+    CourseLevel,
     CourseRequirement,
     CourseTarget,
     CourseSubject,
@@ -24,6 +25,7 @@ class CourseBase(ORMModel):
     course_subject_id: int | None = None
     course_requirement_id: int | None = None
     course_eqf_level_id: int
+    course_level_id: int | None = None
     course_type_id: int
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     min_modules_to_open_final_exam: int = Field(default=1, ge=1)
@@ -104,6 +106,7 @@ class CourseCreated(ORMModel):
     course_subject: CourseSubject | None = None
     course_requirement: CourseRequirement | None = None
     course_eqf_level: CourseEqfLevel
+    course_level: CourseLevel | None = None
     course_type: CourseType
 
 
@@ -125,6 +128,7 @@ class Course(CourseBase):
     course_subject: CourseSubject | None = None
     course_requirement: CourseRequirement | None = None
     course_eqf_level: CourseEqfLevel
+    course_level: CourseLevel | None = None
     course_type: CourseType
     krauu_competences: list[KrauuCompetence] = Field(
         default=[], validation_alias="krauu_competence_list"

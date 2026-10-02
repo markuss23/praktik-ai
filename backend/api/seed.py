@@ -7,6 +7,7 @@ from api.models import (
     BloomLevel,
     CourseBlock,
     CourseEqfLevel,
+    CourseLevel,
     CourseRequirement,
     CourseSubject,
     CourseTarget,
@@ -63,6 +64,12 @@ COURSE_EQF_LEVELS: list[dict[str, str]] = [
         "name": "Doktorský stupeň",
         "description": "Pro specializované kurzy odborníků (Ph.D.)",
     },
+]
+
+COURSE_LEVELS: list[dict[str, str]] = [
+    {"code": "level.1", "name": "Vstupní", "description": "Bez předchozí zkušenosti s AI"},
+    {"code": "level.2", "name": "Středně pokročilý", "description": "Základní orientace s AI"},
+    {"code": "level.3", "name": "Pokročilý", "description": "Aktivní práce s AI ve výuce"},
 ]
 
 COURSE_TYPES: list[dict[str, str]] = [
@@ -493,6 +500,9 @@ def seed_db() -> None:
 
         if db.query(CourseEqfLevel).count() == 0:
             db.add_all([CourseEqfLevel(**row) for row in COURSE_EQF_LEVELS])
+
+        if db.query(CourseLevel).count() == 0:
+            db.add_all([CourseLevel(**row) for row in COURSE_LEVELS])
 
         if db.query(CourseType).count() == 0:
             db.add_all([CourseType(**row) for row in COURSE_TYPES])

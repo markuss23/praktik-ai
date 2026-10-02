@@ -68,6 +68,14 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="EQF úroveň s tímto ID neexistuje")
 
+    if course_data.course_level_id is not None and db.execute(
+        select(models.CourseLevel).where(
+            models.CourseLevel.level_id == course_data.course_level_id,
+            models.CourseLevel.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
+
     if db.execute(
         select(models.CourseType).where(
             models.CourseType.type_id == course_data.course_type_id,

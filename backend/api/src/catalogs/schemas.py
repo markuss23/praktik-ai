@@ -35,6 +35,13 @@ class CourseEqfLevel(ORMModel):
     description: str
 
 
+class CourseLevel(ORMModel):
+    level_id: int
+    code: str
+    name: str
+    description: str
+
+
 class CourseType(ORMModel):
     type_id: int
     code: str

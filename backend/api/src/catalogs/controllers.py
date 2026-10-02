@@ -9,6 +9,7 @@ from api.models import (
     BloomLevel,
     CourseBlock,
     CourseEqfLevel,
+    CourseLevel,
     CourseRequirement,
     CourseSubject,
     CourseTarget,
@@ -40,6 +41,15 @@ def get_course_requirements(db: Session) -> list[CourseRequirement]:
 
 def get_course_eqf_levels(db: Session) -> list[CourseEqfLevel]:
     return db.query(CourseEqfLevel).filter(CourseEqfLevel.is_active.is_(True)).all()
+
+
+def get_course_levels(db: Session) -> list[CourseLevel]:
+    return (
+        db.query(CourseLevel)
+        .filter(CourseLevel.is_active.is_(True))
+        .order_by(CourseLevel.code)
+        .all()
+    )
 
 
 def get_course_types(db: Session) -> list[CourseType]:

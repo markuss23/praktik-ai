@@ -22,6 +22,7 @@ def get_courses(
     course_subject_id: int | None = None,
     course_requirement_id: int | None = None,
     course_eqf_level_id: int | None = None,
+    course_level_id: int | None = None,
     course_type_id: int | None = None,
     status: str | None = None,
 ) -> list[Course]:
@@ -79,6 +80,9 @@ def get_courses(
 
     if course_eqf_level_id is not None:
         stm = stm.where(models.Course.course_eqf_level_id == course_eqf_level_id)
+
+    if course_level_id is not None:
+        stm = stm.where(models.Course.course_level_id == course_level_id)
 
     if course_type_id is not None:
         stm = stm.where(models.Course.course_type_id == course_type_id)

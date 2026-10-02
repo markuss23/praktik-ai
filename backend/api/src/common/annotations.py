@@ -33,6 +33,10 @@ COURSE_EQF_LEVEL_ID_ANNOTATION = Annotated[
     int | None, Query(description="Filter by course EQF level ID")
 ]
 
+COURSE_LEVEL_ID_ANNOTATION = Annotated[
+    int | None, Query(description="Filter by course level ID")
+]
+
 COURSE_TYPE_ID_ANNOTATION = Annotated[
     int | None, Query(description="Filter by course type ID")
 ]

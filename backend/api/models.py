@@ -305,32 +305,32 @@ class CourseRequirement(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_requirement")
 
 
-# class CourseLevel(TimestampMixin, SoftDeleteMixin, Base):
-#     """
-#     Úrovně kurzů (Cxx číslování):
-#     C01 - Základní seznámení s AI pro začátečníky
-#     C02 - Praktické využití AI pro pokročilé
-#     """
+class CourseLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Level (úroveň pokročilosti v práci s AI):
+    level.1 - Vstupní (bez předchozí zkušenosti s AI)
+    level.2 - Středně pokročilý (základní orientace s AI)
+    level.3 - Pokročilý (aktivní práce s AI ve výuce)
+    """
 
-#     __tablename__ = "course_level"
-#     __table_args__ = (
-#         Index(
-#             "uq_course_level_code_active",
-#             "code",
-#             unique=True,
-#             postgresql_where=text("is_active"),
-#         ),
-#     )
+    __tablename__ = "course_level"
+    __table_args__ = (
+        Index(
+            "uq_course_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
 
-#     level_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     code: Mapped[str] = mapped_column(String(10), nullable=False)
-#     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    level_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-#     courses: Mapped[list[Course]] = relationship(back_populates="course_level")
-
-#     _soft_delete_cascade: list[str] = ["courses"]
+    courses: Mapped[list[Course]] = relationship(back_populates="course_level")
 
 
 class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
@@ -580,9 +580,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_type_id: Mapped[int] = mapped_column(
         ForeignKey("course_type.type_id"), nullable=False
     )
-    # course_level_id: Mapped[int] = mapped_column(
-    #     ForeignKey("course_level.level_id"), nullable=False
-    # )
+    course_level_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_level.level_id"), nullable=True
+    )
 
     owner: Mapped[User] = relationship(
         back_populates="courses",
@@ -626,7 +626,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
     course_eqf_level: Mapped[CourseEqfLevel] = relationship(back_populates="courses")
     course_type: Mapped[CourseType] = relationship(back_populates="courses")
-    # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
+    course_level: Mapped[CourseLevel | None] = relationship(back_populates="courses")
 
     _soft_delete_cascade: list[str] = [
         "modules",

@@ -7,6 +7,7 @@ from api.src.catalogs.controllers import (
     get_bloom_levels,
     get_course_blocks,
     get_course_eqf_levels,
+    get_course_levels,
     get_course_requirements,
     get_course_subjects,
     get_course_targets,
@@ -41,6 +42,11 @@ async def list_course_requirements(db: SessionSqlSessionDependency) -> list[sche
 @router.get("/course-eqf-levels", operation_id="list_course_eqf_levels")
 async def list_course_eqf_levels(db: SessionSqlSessionDependency) -> list[schemas.CourseEqfLevel]:
     return get_course_eqf_levels(db)
+
+
+@router.get("/course-levels", operation_id="list_course_levels")
+async def list_course_levels(db: SessionSqlSessionDependency) -> list[schemas.CourseLevel]:
+    return get_course_levels(db)
 
 
 @router.get("/course-types", operation_id="list_course_types")

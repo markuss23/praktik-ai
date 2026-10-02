@@ -13,6 +13,7 @@ from api.dependencies import CurrentUser, require_role
 from api.src.common.annotations import (
     COURSE_BLOCK_ID_ANNOTATION,
     COURSE_EQF_LEVEL_ID_ANNOTATION,
+    COURSE_LEVEL_ID_ANNOTATION,
     COURSE_REQUIREMENT_ID_ANNOTATION,
     COURSE_STATUS_ANNOTATION,
     COURSE_SUBJECT_ID_ANNOTATION,
@@ -88,6 +89,7 @@ async def list_courses(
     course_subject_id: COURSE_SUBJECT_ID_ANNOTATION = None,
     course_requirement_id: COURSE_REQUIREMENT_ID_ANNOTATION = None,
     course_eqf_level_id: COURSE_EQF_LEVEL_ID_ANNOTATION = None,
+    course_level_id: COURSE_LEVEL_ID_ANNOTATION = None,
     course_type_id: COURSE_TYPE_ID_ANNOTATION = None,
     status: COURSE_STATUS_ANNOTATION = None,
 ) -> list[Course]:
@@ -101,6 +103,7 @@ async def list_courses(
         course_subject_id=course_subject_id,
         course_requirement_id=course_requirement_id,
         course_eqf_level_id=course_eqf_level_id,
+        course_level_id=course_level_id,
         course_type_id=course_type_id,
         status=status,
     )
