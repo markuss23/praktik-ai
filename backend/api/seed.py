@@ -122,28 +122,28 @@ NEURO_PRINCIPLES: list[dict[str, str]] = [
 
 KRAUU_COMPETENCES: list[dict[str, str]] = [
     {"code": "1.0", "name": "Oblast 1 – Obsah a didaktika", "description": ""},
-    {"code": "1.1", "name": "Rozumí vyučovaným oborům a rozvíjí", "description": "Učitel/ka rozumí oborům, které vyučuje, a systematicky se"},
-    {"code": "1.2", "name": "Didakticky zprostředkovává obsah", "description": "Zprostředkovává obsah žákům v souladu s jejich"},
+    {"code": "1.1", "name": "Rozumí vyučovaným oborům a rozvíjí se v nich", "description": "Učitel/ka rozumí oborům, které vyučuje, a systematicky se v nich rozvíjí."},
+    {"code": "1.2", "name": "Didakticky zprostředkovává obsah žákům", "description": "Zprostředkovává obsah žákům v souladu s jejich vzdělávacími potřebami."},
     {"code": "2.0", "name": "Oblast 2 – Plánování, vedení a reflexe výuky", "description": ""},
-    {"code": "2.1", "name": "Nastavuje cíle výuky", "description": "Stanovuje srozumitelné cíle a vede k jejich nastavování i"},
-    {"code": "2.2", "name": "Poznává vzdělávací potřeby a plánuje", "description": "Plánuje výuku tak, aby každý žák mohl aktivně dosahovat"},
+    {"code": "2.1", "name": "Nastavuje cíle výuky", "description": "Stanovuje srozumitelné cíle a vede k jejich nastavování i žáky."},
+    {"code": "2.2", "name": "Poznává vzdělávací potřeby a plánuje výuku", "description": "Plánuje výuku tak, aby každý žák mohl aktivně dosahovat cílů."},
     {"code": "2.3", "name": "Podporuje zvídavost a motivaci žáků", "description": "Podporuje u žáků zvídavost a motivaci k učení."},
-    {"code": "2.4", "name": "Efektivně vede výuku a zjišťuje", "description": "Vede výuku efektivně, zjišťuje porozumění a reaguje na"},
+    {"code": "2.4", "name": "Efektivně vede výuku a zjišťuje porozumění", "description": "Vede výuku efektivně, zjišťuje porozumění a reaguje na potřeby žáků."},
     {"code": "2.5", "name": "Reflektuje výuku", "description": "Reflektuje vlastní výuku a vyhodnocuje dosahování cílů."},
     {"code": "3.0", "name": "Oblast 3 – Prostředí pro učení", "description": ""},
     {"code": "3.1", "name": "Vytváří bezpečné prostředí pro učení", "description": "Vytváří fyzicky i psychicky bezpečné prostředí pro učení."},
-    {"code": "3.2", "name": "Vede žáky k chování podporujícímu", "description": "Vede žáky k chování podporujícímu vlastní učení i"},
-    {"code": "3.3", "name": "Uspořádání fyzického a digitálního", "description": "Zajišťuje vhodné uspořádání fyzického a digitálního"},
+    {"code": "3.2", "name": "Vede žáky k chování podporujícímu učení", "description": "Vede žáky k chování podporujícímu vlastní učení i spolupráci."},
+    {"code": "3.3", "name": "Uspořádání fyzického a digitálního prostředí", "description": "Zajišťuje vhodné uspořádání fyzického a digitálního prostředí učení."},
     {"code": "4.0", "name": "Oblast 4 – Zpětná vazba a hodnocení", "description": ""},
-    {"code": "4.1", "name": "Hodnotí na základě kritérií", "description": "Hodnotí žáky na základě jasných kritérií a vede k tomu i"},
-    {"code": "4.2", "name": "Poskytuje a přijímá zpětnou vazbu", "description": "Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá"},
-    {"code": "4.3", "name": "Vede žáky k reflexi jejich učení", "description": "Vede žáky k reflexi vlastního učení a samostatné"},
+    {"code": "4.1", "name": "Hodnotí na základě kritérií", "description": "Hodnotí žáky na základě jasných kritérií a vede k tomu i žáky."},
+    {"code": "4.2", "name": "Poskytuje a přijímá zpětnou vazbu", "description": "Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá ZV od žáků."},
+    {"code": "4.3", "name": "Vede žáky k reflexi jejich učení", "description": "Vede žáky k reflexi vlastního učení a samostatné metakognici."},
     {"code": "5.0", "name": "Oblast 5 – Profesní spolupráce", "description": ""},
-    {"code": "5.1", "name": "Spolupracuje s kolegy a kolegyněmi", "description": "Spolupracuje s kolegy ve prospěch žáků a společného"},
-    {"code": "5.2", "name": "Spolupracuje s rodiči a širší", "description": "Spolupracuje s rodiči a širší komunitou v zájmu žáků."},
+    {"code": "5.1", "name": "Spolupracuje s kolegy a kolegyněmi", "description": "Spolupracuje s kolegy ve prospěch žáků a společného profesního růstu."},
+    {"code": "5.2", "name": "Spolupracuje s rodiči a širší komunitou školy", "description": "Spolupracuje s rodiči a širší komunitou v zájmu žáků."},
     {"code": "6.0", "name": "Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví", "description": ""},
-    {"code": "6.1", "name": "Utváření profesního sebepojetí a", "description": "Systematicky pracuje na utváření profesního sebepojetí a"},
-    {"code": "6.2", "name": "Odpovědná práce s informacemi a", "description": "Odpovědně pracuje s informacemi a digitálními nástroji,"},
+    {"code": "6.1", "name": "Utváření profesního sebepojetí a rozvoj", "description": "Systematicky pracuje na utváření profesního sebepojetí a vlastním rozvoji."},
+    {"code": "6.2", "name": "Odpovědná práce s informacemi a demokratické hodnoty", "description": "Odpovědně pracuje s informacemi a digitálními nástroji, vede k etice."},
     {"code": "6.3", "name": "Duševní zdraví a psychohygiena", "description": "Systematicky pečuje o své duševní zdraví a psychohygienu."},
 ]
 
@@ -261,28 +261,28 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
 
             SEZNAM KRAUU KOMPETENCÍ:
             Oblast 1 – Obsah a didaktika:
-            1.1 Rozumí vyučovaným oborům a rozvíjí — Učitel/ka rozumí oborům, které vyučuje, a systematicky se
-            1.2 Didakticky zprostředkovává obsah — Zprostředkovává obsah žákům v souladu s jejich
+            1.1 Rozumí vyučovaným oborům a rozvíjí se v nich — Učitel/ka rozumí oborům, které vyučuje, a systematicky se v nich rozvíjí.
+            1.2 Didakticky zprostředkovává obsah žákům — Zprostředkovává obsah žákům v souladu s jejich vzdělávacími potřebami.
             Oblast 2 – Plánování, vedení a reflexe výuky:
-            2.1 Nastavuje cíle výuky — Stanovuje srozumitelné cíle a vede k jejich nastavování i
-            2.2 Poznává vzdělávací potřeby a plánuje — Plánuje výuku tak, aby každý žák mohl aktivně dosahovat
+            2.1 Nastavuje cíle výuky — Stanovuje srozumitelné cíle a vede k jejich nastavování i žáky.
+            2.2 Poznává vzdělávací potřeby a plánuje výuku — Plánuje výuku tak, aby každý žák mohl aktivně dosahovat cílů.
             2.3 Podporuje zvídavost a motivaci žáků — Podporuje u žáků zvídavost a motivaci k učení.
-            2.4 Efektivně vede výuku a zjišťuje — Vede výuku efektivně, zjišťuje porozumění a reaguje na
+            2.4 Efektivně vede výuku a zjišťuje porozumění — Vede výuku efektivně, zjišťuje porozumění a reaguje na potřeby žáků.
             2.5 Reflektuje výuku — Reflektuje vlastní výuku a vyhodnocuje dosahování cílů.
             Oblast 3 – Prostředí pro učení:
             3.1 Vytváří bezpečné prostředí pro učení — Vytváří fyzicky i psychicky bezpečné prostředí pro učení.
-            3.2 Vede žáky k chování podporujícímu — Vede žáky k chování podporujícímu vlastní učení i
-            3.3 Uspořádání fyzického a digitálního — Zajišťuje vhodné uspořádání fyzického a digitálního
+            3.2 Vede žáky k chování podporujícímu učení — Vede žáky k chování podporujícímu vlastní učení i spolupráci.
+            3.3 Uspořádání fyzického a digitálního prostředí — Zajišťuje vhodné uspořádání fyzického a digitálního prostředí učení.
             Oblast 4 – Zpětná vazba a hodnocení:
-            4.1 Hodnotí na základě kritérií — Hodnotí žáky na základě jasných kritérií a vede k tomu i
-            4.2 Poskytuje a přijímá zpětnou vazbu — Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá
-            4.3 Vede žáky k reflexi jejich učení — Vede žáky k reflexi vlastního učení a samostatné
+            4.1 Hodnotí na základě kritérií — Hodnotí žáky na základě jasných kritérií a vede k tomu i žáky.
+            4.2 Poskytuje a přijímá zpětnou vazbu — Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá ZV od žáků.
+            4.3 Vede žáky k reflexi jejich učení — Vede žáky k reflexi vlastního učení a samostatné metakognici.
             Oblast 5 – Profesní spolupráce:
-            5.1 Spolupracuje s kolegy a kolegyněmi — Spolupracuje s kolegy ve prospěch žáků a společného
-            5.2 Spolupracuje s rodiči a širší — Spolupracuje s rodiči a širší komunitou v zájmu žáků.
+            5.1 Spolupracuje s kolegy a kolegyněmi — Spolupracuje s kolegy ve prospěch žáků a společného profesního růstu.
+            5.2 Spolupracuje s rodiči a širší komunitou školy — Spolupracuje s rodiči a širší komunitou v zájmu žáků.
             Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví:
-            6.1 Utváření profesního sebepojetí a — Systematicky pracuje na utváření profesního sebepojetí a
-            6.2 Odpovědná práce s informacemi a — Odpovědně pracuje s informacemi a digitálními nástroji,
+            6.1 Utváření profesního sebepojetí a rozvoj — Systematicky pracuje na utváření profesního sebepojetí a vlastním rozvoji.
+            6.2 Odpovědná práce s informacemi a demokratické hodnoty — Odpovědně pracuje s informacemi a digitálními nástroji, vede k etice.
             6.3 Duševní zdraví a psychohygiena — Systematicky pečuje o své duševní zdraví a psychohygienu.
             ]
 
