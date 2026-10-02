@@ -454,20 +454,23 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
 ]
 
 COURSE_SUBJECTS: list[dict[str, str]] = [
-    {"code": "01", "name": "Český jazyk a literatura"},
-    {"code": "02", "name": "Cizí jazyky – obecné"},
-    {"code": "03", "name": "Angličtina"},
-    {"code": "04", "name": "Němčina"},
-    {"code": "05", "name": "Primární vzdělávání"},
-    {"code": "06", "name": "Tělesná výchova"},
-    {"code": "07", "name": "Hudební výchova"},
-    {"code": "08", "name": "Výtvarná výchova"},
-    {"code": "09", "name": "Dramatická výchova"},
-    {"code": "10", "name": "Dějepis"},
-    {"code": "11", "name": "Společenské vědy"},
-    {"code": "12", "name": "Občanská výchova a etika"},
-    {"code": "13", "name": "Ochrana obyvatelstva"},
-    {"code": "14", "name": "Mediální výchova"},
+    {"code": "obor.01", "name": "Český jazyk a literatura"},
+    {"code": "obor.02", "name": "Cizí jazyky – obecné"},
+    {"code": "obor.03", "name": "Angličtina"},
+    {"code": "obor.04", "name": "Němčina"},
+    {"code": "obor.05", "name": "Primární vzdělávání"},
+    {"code": "obor.06", "name": "Tělesná výchova"},
+    {"code": "obor.07", "name": "Hudební výchova"},
+    {"code": "obor.08", "name": "Výtvarná výchova"},
+    {"code": "obor.09", "name": "Dramatická výchova"},
+    {"code": "obor.10", "name": "Dějepis"},
+    {"code": "obor.11", "name": "Společenské vědy"},
+    {"code": "obor.12", "name": "Občanská výchova a etika"},
+    {"code": "obor.13", "name": "Ochrana obyvatelstva"},
+    {"code": "obor.14", "name": "Mediální výchova"},
+    {"code": "obor.15", "name": "Speciální pedagogika – obecná"},
+    {"code": "obor.16", "name": "Speciální pedagogika – specializace"},
+    {"code": "obor.17", "name": "Ostatní"},
 ]
 
 

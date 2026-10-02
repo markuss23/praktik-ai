@@ -335,9 +335,11 @@ class CourseRequirement(TimestampMixin, SoftDeleteMixin, Base):
 
 class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Číselník oborů/aprobací:
-    01 - Český jazyk a literatura
-    02 - Cizí jazyky - obecné
+    Číselník oborů/aprobací (školní předmět, volí se pouze u bloku C):
+    obor.01 - Český jazyk a literatura
+    obor.02 - Cizí jazyky – obecné
+    ...
+    obor.17 - Ostatní
     """
 
     __tablename__ = "course_subject"
