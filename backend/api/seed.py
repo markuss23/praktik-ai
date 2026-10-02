@@ -100,24 +100,24 @@ COURSE_TYPES: list[dict[str, str]] = [
 NEURO_PRINCIPLES: list[dict[str, str]] = [
     {"code": "NP-01", "name": "Neuroplasticita", "description": "Opakované učení mění strukturu synaptických sítí v mozku"},
     {"code": "NP-02", "name": "Distribuované opakování", "description": "Učení rozložené v čase vede k trvalejšímu zapamatování"},
-    {"code": "NP-03", "name": "Aktivní vybavování", "description": "Vědomé vybavování z paměti posiluje stopu víc než pasivní"},
-    {"code": "NP-04", "name": "Žádoucí obtíže", "description": "Mírná obtížnost a kognitivní zápas prohlubují zpracování a"},
+    {"code": "NP-03", "name": "Aktivní vybavování", "description": "Vědomé vybavování z paměti posiluje stopu víc než pasivní čtení"},
+    {"code": "NP-04", "name": "Žádoucí obtíže", "description": "Mírná obtížnost a kognitivní zápas prohlubují zpracování a transfer"},
     {"code": "NP-05", "name": "Prokládání", "description": "Střídání různých typů úloh podporuje rozlišování konceptů"},
-    {"code": "NP-06", "name": "Duální kódování", "description": "Kombinace verbální a vizuální reprezentace vytváří dvě"},
-    {"code": "NP-07", "name": "Kognitivní zátěž", "description": "Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení"},
-    {"code": "NP-08", "name": "Elaborativní kódování", "description": "Propojení nové informace s existujícími znalostmi tvoří síť"},
-    {"code": "NP-09", "name": "Efekt generování", "description": "Sám vytvořená informace se pamatuje lépe než pasivně"},
-    {"code": "NP-10", "name": "Testovací efekt", "description": "Samotné testování konsoliduje dlouhodobou paměť silněji"},
-    {"code": "NP-11", "name": "Predikční chyba", "description": "Dopaminový systém reaguje na rozdíl mezi očekáváním a"},
-    {"code": "NP-12", "name": "Konsolidace ve spánku", "description": "Spánek přepisuje paměťové stopy z hipokampu do"},
+    {"code": "NP-06", "name": "Duální kódování", "description": "Kombinace verbální a vizuální reprezentace vytváří dvě paměťové stopy"},
+    {"code": "NP-07", "name": "Kognitivní zátěž", "description": "Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení blokuje učení"},
+    {"code": "NP-08", "name": "Elaborativní kódování", "description": "Propojení nové informace s existujícími znalostmi tvoří síť asociací"},
+    {"code": "NP-09", "name": "Efekt generování", "description": "Sám vytvořená informace se pamatuje lépe než pasivně přijatá"},
+    {"code": "NP-10", "name": "Testovací efekt", "description": "Samotné testování konsoliduje dlouhodobou paměť silněji než čtení"},
+    {"code": "NP-11", "name": "Predikční chyba", "description": "Dopaminový systém reaguje na rozdíl mezi očekáváním a realitou"},
+    {"code": "NP-12", "name": "Konsolidace ve spánku", "description": "Spánek přepisuje paměťové stopy z hipokampu do neokortexu"},
     {"code": "NP-13", "name": "Pozornost a pracovní paměť", "description": "Bez selektivní pozornosti nedochází ke kódování"},
-    {"code": "NP-14", "name": "Slučování do bloků", "description": "Sdružování informací do smysluplných bloků zvyšuje"},
-    {"code": "NP-15", "name": "Metakognice", "description": "Schopnost přemýšlet o vlastním myšlení a sledovat"},
-    {"code": "NP-16", "name": "Zrcadlové neurony", "description": "Pozorování postupu druhého aktivuje stejné okruhy jako"},
-    {"code": "NP-17", "name": "Stav plynutí (flow)", "description": "Optimální poměr výzvy a dovednosti maximalizuje zapojení"},
-    {"code": "NP-18", "name": "Okamžitá zpětná vazba", "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív"},
-    {"code": "NP-19", "name": "Vtělené poznávání", "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje"},
-    {"code": "NP-20", "name": "Schémata", "description": "Nové informace se snáze ukládají při napojení na existující"},
+    {"code": "NP-14", "name": "Slučování do bloků", "description": "Sdružování informací do smysluplných bloků zvyšuje kapacitu paměti"},
+    {"code": "NP-15", "name": "Metakognice", "description": "Schopnost přemýšlet o vlastním myšlení a sledovat porozumění"},
+    {"code": "NP-16", "name": "Zrcadlové neurony", "description": "Pozorování postupu druhého aktivuje stejné okruhy jako vlastní provádění"},
+    {"code": "NP-17", "name": "Stav plynutí (flow)", "description": "Optimální poměr výzvy a dovednosti maximalizuje zapojení a učení"},
+    {"code": "NP-18", "name": "Okamžitá zpětná vazba", "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív než se zafixuje"},
+    {"code": "NP-19", "name": "Vtělené poznávání", "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje zpracování"},
+    {"code": "NP-20", "name": "Schémata", "description": "Nové informace se snáze ukládají při napojení na existující schéma"},
 ]
 
 KRAUU_COMPETENCES: list[dict[str, str]] = [
@@ -237,24 +237,24 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
             SEZNAM NEUROVĚDNÍCH PRINCIPŮ (vyber jeden kód na modul):
             NP-01 Neuroplasticita — Opakované učení mění strukturu synaptických sítí v mozku
             NP-02 Distribuované opakování — Učení rozložené v čase vede k trvalejšímu zapamatování
-            NP-03 Aktivní vybavování — Vědomé vybavování z paměti posiluje stopu víc než pasivní
-            NP-04 Žádoucí obtíže — Mírná obtížnost a kognitivní zápas prohlubují zpracování a
+            NP-03 Aktivní vybavování — Vědomé vybavování z paměti posiluje stopu víc než pasivní čtení
+            NP-04 Žádoucí obtíže — Mírná obtížnost a kognitivní zápas prohlubují zpracování a transfer
             NP-05 Prokládání — Střídání různých typů úloh podporuje rozlišování konceptů
-            NP-06 Duální kódování — Kombinace verbální a vizuální reprezentace vytváří dvě
-            NP-07 Kognitivní zátěž — Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení
-            NP-08 Elaborativní kódování — Propojení nové informace s existujícími znalostmi tvoří síť
-            NP-09 Efekt generování — Sám vytvořená informace se pamatuje lépe než pasivně
-            NP-10 Testovací efekt — Samotné testování konsoliduje dlouhodobou paměť silněji
-            NP-11 Predikční chyba — Dopaminový systém reaguje na rozdíl mezi očekáváním a
-            NP-12 Konsolidace ve spánku — Spánek přepisuje paměťové stopy z hipokampu do
+            NP-06 Duální kódování — Kombinace verbální a vizuální reprezentace vytváří dvě paměťové stopy
+            NP-07 Kognitivní zátěž — Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení blokuje učení
+            NP-08 Elaborativní kódování — Propojení nové informace s existujícími znalostmi tvoří síť asociací
+            NP-09 Efekt generování — Sám vytvořená informace se pamatuje lépe než pasivně přijatá
+            NP-10 Testovací efekt — Samotné testování konsoliduje dlouhodobou paměť silněji než čtení
+            NP-11 Predikční chyba — Dopaminový systém reaguje na rozdíl mezi očekáváním a realitou
+            NP-12 Konsolidace ve spánku — Spánek přepisuje paměťové stopy z hipokampu do neokortexu
             NP-13 Pozornost a pracovní paměť — Bez selektivní pozornosti nedochází ke kódování
-            NP-14 Slučování do bloků — Sdružování informací do smysluplných bloků zvyšuje
-            NP-15 Metakognice — Schopnost přemýšlet o vlastním myšlení a sledovat
-            NP-16 Zrcadlové neurony — Pozorování postupu druhého aktivuje stejné okruhy jako
-            NP-17 Stav plynutí (flow) — Optimální poměr výzvy a dovednosti maximalizuje zapojení
-            NP-18 Okamžitá zpětná vazba — Rychlá konkrétní zpětná vazba umožní opravit chybu dřív
-            NP-19 Vtělené poznávání — Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje
-            NP-20 Schémata — Nové informace se snáze ukládají při napojení na existující
+            NP-14 Slučování do bloků — Sdružování informací do smysluplných bloků zvyšuje kapacitu paměti
+            NP-15 Metakognice — Schopnost přemýšlet o vlastním myšlení a sledovat porozumění
+            NP-16 Zrcadlové neurony — Pozorování postupu druhého aktivuje stejné okruhy jako vlastní provádění
+            NP-17 Stav plynutí (flow) — Optimální poměr výzvy a dovednosti maximalizuje zapojení a učení
+            NP-18 Okamžitá zpětná vazba — Rychlá konkrétní zpětná vazba umožní opravit chybu dřív než se zafixuje
+            NP-19 Vtělené poznávání — Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje zpracování
+            NP-20 Schémata — Nové informace se snáze ukládají při napojení na existující schéma
             ]
 
             krauu_competence_codes: [Seznam kódů KRAUU kompetencí (MŠMT 2023) ze seznamu níže, které modul rozvíjí. Vyber 1–3 nejrelevantnější kompetence. Uváděj pouze kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".
