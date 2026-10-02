@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:704fb93b44c5503ac1ccc950b503b2890c45a4817c282fe60c79588f7000aca0",
+  "claims": [
+    {
+      "id": "claim_32fcc7c3ca604b04b34a74acf0799155",
+      "statement": "The FastAPI app in backend/api/main.py sets docs_url=\"/\", serving Swagger UI at the API root, and mounts the aggregate router from api.src.routers under the /api/v1 prefix.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L28-L28",
+          "version": "repo-lines-v1:sha256:d47ee30227e061769f94d477a8100b04195ca6fd70a009ac24f2e0ffb4f3d613:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ3ZWUzMDIyN2UwNjE3NjlmOTRkNDc3YTgxMDBiMDQxOTVjYTZmZDcwYTAwOWFjMjRmMmUwZmZiNGYzZDYxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ3ZWUzMDIyN2UwNjE3NjlmOTRkNDc3YTgxMDBiMDQxOTVjYTZmZDcwYTAwOWFjMjRmMmUwZmZiNGYzZDYxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTVhZDQxOGJiODZlMTQxNjZhMmEyNmIyZWExY2U5NzMwNzJmNDI0MzhjZmQwY2Q4NDliYjdiMmZmZDFlN2NmOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Y2N2ZhNzYwNzFmNTJjNTg3Y2VmYmI4MzM0YWUyNWE2OGIzMzQyZWVkOWYxM2RjNzQ5NzhhOTgyYTQ1OGM2ZiJ9"
+        },
+        {
+          "resource": "repo://backend/api/main.py#L69-L69",
+          "version": "repo-lines-v1:sha256:ba1bc4e88ca7c711a1ff50ff3e69ae286ab806bb62ad2bb2b65b4327b1ec23b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmExYmM0ZTg4Y2E3YzcxMWExZmY1MGZmM2U2OWFlMjg2YWI4MDZiYjYyYWQyYmIyYjY1YjQzMjdiMWVjMjNiNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmExYmM0ZTg4Y2E3YzcxMWExZmY1MGZmM2U2OWFlMjg2YWI4MDZiYjYyYWQyYmIyYjY1YjQzMjdiMWVjMjNiNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTkwZTRlN2JlNGZhMWRlNGE2ZTY4OTIxYjE1NzRmOTAyODI5MzI1MWYwOWUyODMyYjMyN2NiMGU4OWVmZjZlZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_885e46c6cb0a4e82859e6d79d694684e",
+      "statement": "api/src/routers.py builds a single aggregate APIRouter that includes one router per business domain (courses, modules, activities, agents, auth, users, enrollments, feedbacks, catalogs, superadmin, module_tickets, editor_images, and publicDB's resources/reviews/rating/collections).",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/routers.py#L1-L70",
+          "version": "repo-lines-v1:sha256:a3fec8dcf61d3b022c291fb8b3f4dfcac17bf25a7fd25efd264bbe952cda00f3:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxYzBmYjczOWU3YjI4NmE5OWFjOTdhMjQ3ZjM5ZjExMTVjY2JlZmYwYTE1ZTJhYmQwZTJlNDM4MDlhODViYzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkNjM5YWE2ZTg0NDVkN2RjNDg4MzUxODQ4MmM1NzNkZjBmNThiOGEwZjAyY2JlZDZkNzU0NGU2OGY4NjAyZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b42a88b90fbb41d78f5e339841734bd0",
+      "statement": "In api/src/routers.py, auth, courses_public, catalogs, resources_public, editor_images_public, and collections_public routers are included without the auth dependency, while every other domain router is included with dependencies=[Depends(auth.get_current_user)], making authentication mandatory for all their routes.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/routers.py#L33-L70",
+          "version": "repo-lines-v1:sha256:ae357af05edf2ccc2479d636ceae29ea5c448d7c0750329c981695b66655b1b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmM2U3ZTdjOWM5NjU4YTBjZjdmZGJhNmVlYjU0M2E0ZTFjZDllN2E2OWE4ZTc5ZGZkZjdmNTRjZmVjMDE1NTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkNjM5YWE2ZTg0NDVkN2RjNDg4MzUxODQ4MmM1NzNkZjBmNThiOGEwZjAyY2JlZDZkNzU0NGU2OGY4NjAyZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhNGY4YTZlYmE2ZjBlOTU2MmZjMWQzNzg0MzE0OGJjMGY2YmJhYjRhN2U0OGEwZGY0MDI3YzA2ODJkNjBiYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef4c0e2698324b70944b07c9c1e6f008",
+      "statement": "The courses, editor_images, and publicDB resources/collections domains each define two APIRouter instances in the same routers.py (an authenticated `router` and an anonymous `public_router`) sharing the same URL prefix, splitting endpoints by access requirement rather than by domain.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/routers.py#L55-L80",
+          "version": "repo-lines-v1:sha256:ebf7c225c78871944be7392d0b79d5db783b3950ee68af6721690b6a89f3f492:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFiYjc2NjE2OWMwMjJlMjFkODY4NDk5NTRlMTdiNDdjMzdiMzA1ODlhNjQyZjEwZTk1ODQwZDQwZDliZWNjZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3OGFmODVkNzUxYTVkZTE1OWYwOWQ4Y2QzMDU4NTQxZmVlNzY4MmY0MjE2YzAxOTRmZTUzODc2NzA2ZWIxZTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2NjliNjE1NTBkYjdlOWJhYzkxODJlNjNiMmU2MTIyYTE0NjI3OTAxNWZhYjkyMzQ0NTU3NGQzNzJkNDQ5ZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3ODAzZmQ1YjM2MTVjOTRlMTlhNTA5NTA0NTlkMTkzYTdkYmFiNjUzNWViODE5YTA3NGE2ZTgxNGE2MDUxMjUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/editor_images/routers.py#L8-L25",
+          "version": "repo-lines-v1:sha256:ef13f92dc1ffe51642166fefd1b52e1de9c36ec9cb5cf98559c73c30903f0415:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5YmFkNmYxY2NmNTQ3MDNhYjRlOTdmYmU5NjBkYThlNTI5ZDQ2MjFlMWQ2NTRiZTcyYjQ2NjExYWJhNWY4NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkyZTEwNDU1NGY0ZmMzYmE4MTI0NTUyMzhhMmEzZDlmM2RmZTk3MjNjMTE4ZWRiYjYzNWM4OWNhM2IyZWU1ODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhZGZjN2Y4NTZhNzU5NDU4OTdjNTI0OGQwNzI5NzI3MTRmMjg1Mjc1M2QzMTI0NTA3ZGE2MmY2NDZiMjIzMTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzZWM1OWE5NDVkNjNhNzM1MzEzZjlhOWUwM2U3ODBmN2E1MWFlODA2NmM0MDc3ODczYzRlMDY3YjdkYjBhMTIifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/collections/routers.py#L27-L36",
+          "version": "repo-lines-v1:sha256:4622f474cf3aa3789cfd64b3ba26dc7aa4a9386c93c2ebe692138cfb920005ce:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhNDcwYjU1ZWE4MDEzMWQ0MjE2NThjZmY4NTQ2ZTQ2MWI1OGIwZDU4ODBhZTZmODgzMjY3MjM1ZDEzOWQyY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyYzViMGNjYTRiZTRhM2JmMjNiYzM4MGJjYjU3ZmU3NjYwYTFiMjk5YmQwNTYxYzZmNjI2ZDIwYjU3ODJmNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkNzJmYWFhNjEyNTM5YjAyZTllNGNjODliZDczMDZmNjhmYjU1Njg5NjAyMTMzNDg3YjdlYmVhYWFiYzAzYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1MjU3OTIwMTA2YjAzM2EzNjYzMjI2YmY4MjI0ZTAzOTMzN2E4M2IzYzA3MDBlMjYwMjgwMGQ0MDQ0ODQzMjgifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/routers.py#L58-L64",
+          "version": "repo-lines-v1:sha256:1339eb9e6e15b48657091b6a3261fb1e59323bf9c18b29f89c75204aed9a1330:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjliYWQ2ZjFjY2Y1NDcwM2FiNGU5N2ZiZTk2MGRhOGU1MjlkNDYyMWUxZDY1NGJlNzJiNDY2MTFhYmE1Zjg1YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTNiNjc3YmY1ZjgzYmUzMzU4MjA0MDRkMjcwYWI0MWY0MjA1ODQ5MTZlNWE0NmQzYmJlNTA1ZTU4ZGZiYTUwYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTJkYTUwMWQyNzkzODRkNmFkNTZmMTJkNTcyNmYxYTg3YzRjNThmODMzNzMwYjFmYWU5MjJhYzE1OWZkZWNlNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_fbab39b173f04969a390f84b46fb90f2",
+      "statement": "In courses/routers.py, the /recommended endpoint is registered on public_router ahead of GET /{course_id} specifically because FastAPI matches routes in registration order and public_router is included before the authenticated router in routers.py; without this ordering FastAPI would try to parse 'recommended' as an integer course_id and return 422. The /recommended endpoint itself still requires an authenticated user via require_role(\"user\").",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/routers.py#L59-L77",
+          "version": "repo-lines-v1:sha256:deb577fef53175e32e82bbe5a1106326bd191745d22ceae1b1cdc1d33b4e4662:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkNDVjNjBkODRkNGRlYWQxM2I2NjlhMThkZjZhMDA5ODE4YmFkMWIyNDViNzEwYjUwYjYxOTgyZjEzMjJhN2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxYWRhZTBkODEzODVjZGE1ZDQxNzhkYjljNmFjMDgyY2VjYzI4MGE2YzA2NWJlMjExYzhmMWRkZDllY2NlYzQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3NTkzN2NjM2MyZjY1YzA2MWFiZTIzZjJiYTJiNzZhMzNmM2FkZjYxOTk2ODQ4YzBjODkyNTMxZWQwMjYyYzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZjMmNiZmFkMmUxYjVmZTAwN2RmZWYzNDU2MTE2N2Y0NzcwZWE0OTIzZTM4NTg2Y2FjY2QwOTRhNjU0MDlhYjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_42b4fb47ad8943fa84d745f445c2fc12",
+      "statement": "api.dependencies.require_role(min_role) is a FastAPI dependency that compares the current user's role against a fixed ROLE_HIERARCHY (user < lector < guarantor < superadmin) and raises 403 if the user's role level is below the required minimum; it internally depends on auth.get_current_user.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L235-L254",
+          "version": "repo-lines-v1:sha256:2a3d050e9a69da882d38e850eaa76137fca4e2ec288cb7c9b1868ba396e2b671:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ZDIxZmVkZDVmMjBjYTZjMTU5OTFhMzBhZmQ0MGQ1Mjc1ZDI0Nzg0ZDg5YWM1MmJmOTAwMDVlNDIyNDM1ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhYjMzYWYzZDE2ZjA5ZmE2MTJlMTY3MzRiMjBmNzUxODAwNzc1YWY5Zjg3N2Y4ZDdkZWEzODU5MmVhZjZkMWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyYmJiYjE5MzcxMmVhNDVlOGM0MTQ4NGViZDA1ZjE5NGQyNDMzNjg1ZjIyMjNiNTNlYTFmOGZlMmNmNWFmODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhmNDM0ZTYwOWY5MGZkZTU3ZDUwZWU0NzA0MjI2NTNhMmQ3Njc0MDJiNDVkZjkwMmE4YzI5MmY2ZDMxZDJmMGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a11d4bce88174c2695ae27191bb4f340",
+      "statement": "api/authorization.py provides three ownership-based authorization helpers used inside controllers for finer-grained checks beyond require_role: validate_ownership (owner or, by default, guarantor/superadmin bypass), validate_owner_or_superadmin (owner or superadmin only, no guarantor bypass), and validate_superadmin (superadmin only); all three 404 via _check_resource_exists if the resource is missing.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L24-L100",
+          "version": "repo-lines-v1:sha256:3b56c250145fba9874b057da74aed824a965e939942c5ed9a41e60d1902f7fb1:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhNDhlYjUyYjJhOGMyODNjM2ZiYmMxOTZiMmM5N2Y1OWQzMjE1OWM0ODdhNWQ1ZjhiNmViYWQwZmUyODYwZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM3MzA5OTU0ZGFmZGJlNDI5MTE1NDY4NzJkNWFhMGY3NTU1ODllMDFmNWQyNjIwN2ZhMWYyNmUwN2EzOTQxZWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExZWZkMWJjOWM1MThhNjExODNhY2RhZDIwMGU0MjVhY2JlMjJjMWM0NTY2MTMxZGNiZjQ0OGNjZDY5YjY3YTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9a0ef53590e64fb48bd71fc798ab07d0",
+      "statement": "api/src/common/utils.py defines get_or_404, which generically loads a row by primary key via SQLAlchemy reflection, raises HTTPException(404) with a model-name-derived default message if missing, and by default also filters is_active.is_(True) when the model exposes that column.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L42-L69",
+          "version": "repo-lines-v1:sha256:535e59ac92071c375d3f3837667ec929e20df173d47c35406d6fdd2519494ffa:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJhNWZiZGMyZjgwMWEzYjI0ZTU3MDAxY2ZhNzYwMzBlNTg5NGE0YjgwYmE5ZGUxYWYzZWJjNmQ0YTY4MjFmMjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhMTFjMDU2N2QwYTVmOWU5YjEzNWY2NWNkMjUzNzJkZmQ2Mjg3NzVmN2MxZWQyNTNmOGJhZDQyZGQyZDY2NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY1ZmQ4NWIxMjM3OGVjMTk3OWU1YjcxODg1MjI5NzYwOTI1MTFkMDYxYTYxYTczNjkyMDVlZWI2ZWZhMjAwNzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bb0d0c2ef3774bed9abb3d6e35237526",
+      "statement": "api/src/common/utils.py defines assert_course_editable, which raises HTTPException(400) unless the course's status is draft, generated, or edited, gating course mutation endpoints to the editable lifecycle stages.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L72-L80",
+          "version": "repo-lines-v1:sha256:43575466f1b9afb014f1d12e92dc5b1cc7713f917efc31cbe5f8c97cc5158bea:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzM4YjkyOGE1YWZiZjczMTE0OWRhNTE0YTExZTNlYzJkNjUyM2NlM2MyMzJjMzM4YzY4ZTRlMzZkOWY0NzU4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDcyMjMxMDZmZDg3NDJiNzBlYTIzM2Y5ZGMzNTlmNGIwMmJiYjA2OWI3MjgzZWVmNzYyNDk5NTE2YmQ3YjljOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjQyMzM0NmYzNTFhNjVmN2VkMTYyNTFiMWQwYmUxNTY0YTIxZDk3YWU4NjA3MTcwNzNkMjYxMTEyMDk4NzA0ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_cfded242d2f045f4ac11166cbfab8df2",
+      "statement": "api/src/common/utils.py defines check_enrollment, which raises HTTPException(403) unless the user has an active Enrollment (is_active=True, left_at is null) for the course, with an optional bypass_for_owner flag that lets the course owner or a superadmin skip the check.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L83-L111",
+          "version": "repo-lines-v1:sha256:aef14251b2d4a63cb2b32495fe55537600c1a563dca6d537e85b30a36ae3e50a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlYjc1Zjc5NjIzMzY2OTMyN2ZmZjUxN2ZhZGVjYTQyYWZhYTU0MTFjYjllY2I0MTdjM2Q3ODE1NWNiNTk5ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwOThkMmJjZTU0MmYyY2Q0OTljNzc0ZmNkNWZjMDZlMDkyZGRlYWMyZGE4MzNhYzc1YjMzODYwZjNkYjBiOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dc3101e57603433ab7ae9642b3cd127d",
+      "statement": "api/src/common/utils.py defines attachment_response, which builds a file-download Response carrying both an ASCII-transliterated fallback filename and an RFC 5987 filename*=UTF-8'' encoded original filename in Content-Disposition, plus Access-Control-Expose-Headers, to avoid header-encoding failures with diacritics.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L14-L39",
+          "version": "repo-lines-v1:sha256:b793662731fae9c893e772a0361fb2e6ce3f690d98469c30517fcc69399ab3d3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIyNmE0NzE5ZTk1ZDE2NTdjZDNmYjJhMmVmNGY2M2FiZDc4YjI4N2VkYWZhY2QyNmU1OWRhMjg5OGZjOGQwMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViNDQ3ZjY0MzFjNTJiNWExOTQ1MTMyYjhiMTg5ZWNiMzIyMDVkNTU1YjMyNzNjOWJhMzFjMjFiOWIxY2FhNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmMWMxYWRjOGZhN2IyODA1OGJkZDE5NjM2NTIyZmEzNThmZTI5ZGE0Y2ZkNmU2NTdjZDE0MmY5ZGVhN2M3MDQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_cb7594b9aa474c7c80b86b62aa730a46",
+      "statement": "Each backend domain under api/src/* (and api/src/publicDB/*) follows a routers.py -> controllers(.py or package) -> schemas.py layering convention; simpler domains (modules, enrollments, activities, catalogs, users, superadmin, feedbacks, module_tickets, editor_images, agents) use a single-file controllers.py, while the courses and publicDB.resources domains use a controllers/ package split into per-operation modules (create.py, read.py, update.py, delete.py, plus recommended.py for courses and comment.py for resources) re-exported through controllers/__init__.py.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/controllers/__init__.py#L1-L50",
+          "version": "repo-lines-v1:sha256:29310a94996b471498302941c71ee6aceb4afe61bbbc0678353e8383a5db184a:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/modules/routers.py#L1-L25",
+          "version": "repo-lines-v1:sha256:4bf73318d9e5ab415bbdd9d5169c4448ad8bea57476cf9f9ccff1174ae112168:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRhYjM0OGUyMWZjNTFiMTkxYjEzYTcxMjhkYWJmZGE0MjFiY2FmMDZlNjQxMTZiYzYzMTBkYTcxYTQ0NjkyMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRmODdmM2FmZTJjMjczOTFiZGIzN2JiMWI0M2JmNWYzMTUzYTA2ZDVmZmFmYjZmZmRjZTlkZDhjZmE5M2YxMzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjczMzMxNTRmNjk3ZTEwZTdlNTJjNTRmN2M0YzRhOWMyNDQ1NDc4MmY4MTNjNzI3YmRjYzEzMGVmNGYzMzU1ZDMifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/__init__.py#L1-L54",
+          "version": "repo-lines-v1:sha256:29b01861a6bf13c3f5e594849c8b2697625732c4541a94be5259d47460bc138b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8bac12b0195746e0a6356e240e1a0073",
+      "statement": "The frontend's typed API client under frontend/src/api/ is code-generated from the backend's OpenAPI spec using openapi-generator-cli with the typescript-fetch generator, driven by the generate:openapi script in frontend/package.json which fetches http://localhost:8000/openapi.json; route operation_id values become generated client method names and route tags determine which generated *Api.ts class an endpoint belongs to.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/package.json#L14-L14",
+          "version": "repo-lines-v1:sha256:a3e838004e378ab2227605ac15010b8d796c7eba57d8813696dcfb9140788ef4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNlODM4MDA0ZTM3OGFiMjIyNzYwNWFjMTUwMTBiOGQ3OTZjN2ViYTU3ZDg4MTM2OTZkY2ZiOTE0MDc4OGVmNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTNlODM4MDA0ZTM3OGFiMjIyNzYwNWFjMTUwMTBiOGQ3OTZjN2ViYTU3ZDg4MTM2OTZkY2ZiOTE0MDc4OGVmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWYzOTE5YTNhOGU0NTAyM2MxM2RiZTZlMjZhNmZkZjk1MzNmYTVlMDQ3NGRiYWY0N2M3ODcwY2I0M2MyNjg2ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGUxNzY4MDE4NDRkYmY4OGYyNzliMTkxZmFkZjRlYjUwMDlmY2U1MjRjY2Y0MTY1OTBlMDY5MGFkYjgzNWU3NSJ9"
+        },
+        {
+          "resource": "repo://openapitools.json#L1-L7",
+          "version": "repo-lines-v1:sha256:79ceabedf1b8c38806cf0d76ccc0dba1a4c3fadbfd8d9a8ff3cd1230c0347d7d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTZmYjA4ZmRhMWFjYjk1N2I2MTE2YmQzNzgxMWExZmU0MWEwMTYxMWMwNjMxZWRiZjc4NmQ2ODg5YTI3YTU1YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f560f28ed77c1e53544de7dc6e0f17e7d7678cdef29204f1cc62fb55d9281e00",
+  "claims": [
+    {
+      "id": "claim_0c03c60f53db43cd9366d0ec5f0d7619",
+      "statement": "The assessment_generator, assessment_evaluator, practice_question_generator, and practice_answer_evaluator agents are each a LangGraph StateGraph with a load_context -> generate/evaluate -> persist node chain, wired with a conditional edge that skips remaining nodes and routes to END if load_context (or, for practice_question_generator, generate_question on malformed closed-question output) sets an 'error' key in state.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/graph.py",
+          "version": "repo-file-v1:sha256:20c3205038d2e5921b73459631dfed41cf6641f098d7eb676a9f2eb1daa8db2f"
+        },
+        {
+          "resource": "repo://backend/agents/assessment_generator/graph.py",
+          "version": "repo-file-v1:sha256:b666aa55d2f2b11c8c4ea4336617da984eeaa6b1496982dc0e93d440ee6f44a3"
+        },
+        {
+          "resource": "repo://backend/agents/practice_answer_evaluator/graph.py",
+          "version": "repo-file-v1:sha256:287cbc656e4490e0ba925e7b885c34f9b2dfdd9dcf5fa1cfbdb4dd382fb8f6b9"
+        },
+        {
+          "resource": "repo://backend/agents/practice_question_generator/graph.py",
+          "version": "repo-file-v1:sha256:67bc321b03b9b13af6e07ead2b107791097454f25f69b1ffd3e4881c32743195"
+        },
+        {
+          "resource": "repo://backend/agents/practice_question_generator/nodes/generate_question.py#L66-L74",
+          "version": "repo-lines-v1:sha256:2a5e2280814c8651c311f05d65a60e97d061b108477f4a98501688bbac5abb04:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDc5MmEyNDc4ZmMyMWViYWMwMTU5NjMyNWIyZjAzMTQ5ZGQ2OTJhNWUwYmUwYTM3M2E4MWY2ZTk3NDQzYjAyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZTIxMTBkMDk2YjExMTBjODAwMWJkOTU4ZjI5ODdiODA2MDFmZmRiOWY1ZDA1ZGY4NGExN2UyYjU3OGJhMDA4ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGFkZjE3NDE4YTQ2NjZhODEyOThhZmI2OTcxYTFjMWE1N2JmYTQ4NWMzZWM5ZDdkODViNjU5ZTFiNDFkZWFiMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWE2ZmFmYjcxMjRlYzlmMTMxZWZlNThiYmVlNjAwOGQzYjYyMzAyYjZiMGIxYjBkY2I5YTQ4N2NjNjljMWU3NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_80104bb885984defabfeb3cce556e5e0",
+      "statement": "generate_assessment and generate_practice_question both require the target module's course to be is_active with status in ('approved', 'archived'), and both call check_enrollment(db, user, course) without bypass_for_owner, so the enrollment check applies uniformly to students, the course owner, and superadmins.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/practice_controllers.py#L29-L38",
+          "version": "repo-lines-v1:sha256:49525e111f12c83185f433188cf88aacd9e6e52ad67c83d61592adeead7dfa7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwNGZkYzhlN2ViMmNkZWEyNWIxNWMxYzQxYzA0ZDlmMDVhOGYzNTg4YWZmM2I1MDM5NDUzZjI5NzVmYzkwNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4MTZhYzQ1NDllN2I3MmMzZGRhODgyMzNiY2FkY2NlYjYzNmJkNDVhYzZlODI3ODI5NDgyYTM2Y2E2MGFiYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4NzdjZjdlMTY2MDliOTg4MzgxNmRmNWYxMTM3NjIwZGYxMzVlNDczMWZkODlkMjViZmJmYTZlZDA1ZTk3MDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVhOTdkN2U0NWVmNjM1NjU2ZTAwOWU0YTkyOTVjM2U3YTMzOTk5ZTk1OGU2ZWMxYjVmMmFlYmYwMmJmZGFjODQifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L292-L304",
+          "version": "repo-lines-v1:sha256:94f38d9e0563f323c54910ae8e9c1c9f401bdd514b9403be2ef8783a343035a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzOTRiZDQwNmZjYjg1NjUzODhlMDJiMTdiODc3NGYxMTRjYmRhMTU4MWMxZjFlN2RkMGVkMGY0ZGM1NjAwM2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE4MTZhYzQ1NDllN2I3MmMzZGRhODgyMzNiY2FkY2NlYjYzNmJkNDVhYzZlODI3ODI5NDgyYTM2Y2E2MGFiYmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZjMmNlMzBhMjNkYmExNDU3MTc0ZDliZjU5YmFlOGFhNDFiMjRjNzgzYzQ4ZmNiNTdjYmY5ZjY3OWFjZDEwYjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM2YjIzNzVkMWI0YmIxZjVjODZjM2ExOTY0ZGYwZjk4NjIxOTllYjQ3ZDg3Y2RlNTdiYzNmNzU1MDI0MTE3ZDIifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L83-L111",
+          "version": "repo-lines-v1:sha256:aef14251b2d4a63cb2b32495fe55537600c1a563dca6d537e85b30a36ae3e50a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlYjc1Zjc5NjIzMzY2OTMyN2ZmZjUxN2ZhZGVjYTQyYWZhYTU0MTFjYjllY2I0MTdjM2Q3ODE1NWNiNTk5ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwOThkMmJjZTU0MmYyY2Q0OTljNzc0ZmNkNWZjMDZlMDkyZGRlYWMyZGE4MzNhYzc1YjMzODYwZjNkYjBiOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_645282df873944b4934b7a8d5a6494b2",
+      "statement": "generate_assessment rejects with HTTP 409 if the user already has a ModuleTaskSession for the module in status 'passed' or 'in_progress', preventing duplicate active assessments or re-assessment after already passing.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L306-L333",
+          "version": "repo-lines-v1:sha256:c941edb44de88a24184404fd6ae827f2b52867259c6de1d50597a226a484f1b2:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmMGZiYTRjN2Q2ZGFiNTQ0M2IzZTcwNTRkMzk2ZWQxNDk4YmM1MWQwNDJlMjVjYjljNDVhZDI3YzgxMTgyOTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmZDAxNTg0ZDA5ZmZjOWYyYWQ3MGY1ZTQxODliNjc1YTZiNzEwMzYzNDg4ZTcxZWFhMWMzYTYwMmQ1ZjZlZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE4ZjkxMzU0OGZkYzg3ZTc0MTJmMWNlNDU4OTBiMjE2OWY2YTUxYjZjNzlmNWE1ZTZmNDBkNTVmN2MzYmVlOGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c39d694616fc4652b5396e7c528a319d",
+      "statement": "assessment_generator's persist_session node reuses an existing in_progress ModuleTaskSession by overwriting its generated_task when one exists for the user/module, and only creates a new ModuleTaskSession row otherwise; this is how a re-generated question after a failed attempt stays attached to the same session.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_generator/nodes/persist_session.py",
+          "version": "repo-file-v1:sha256:66861fd39496398877828ea4a91dd8d672e83f28b6e81b95c00ab29e812b5916"
+        }
+      ]
+    },
+    {
+      "id": "claim_073e3b3b207f42cba0bf9c8f3f093d32",
+      "statement": "evaluate_assessment re-checks that the session belongs to the requesting user and is in_progress, and blocks evaluation with HTTP 409 once the count of TaskAttempt rows with status evaluated for that session reaches Module.max_task_attempts.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L359-L394",
+          "version": "repo-lines-v1:sha256:6de448324e3d242b20681e1c8ccf28d35f331a063c4e9970fd15c001d1257399:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhNmMwMmQ2YjA4ZWExZWNmOWU2OGUyN2MyMDc3YWZmOWE1MjM4MTIyNjc1YmQyNmFkYzMzYjk2ZDU5ZGRhMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2YmYzMjhjZWI0ODgyYzdlZTk4NjhlM2E2NTMxMTM5YjQ5MWY3NjI1YzgxMWRmNjkwMzA0NzYxYjI0NjdjM2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiMzA1MGFhNjg5NTM3OGRkOTE1ODYwMWI1NzA0ZjQ2OWY3N2NlYmE0MGM4MzU1NzFkOWZkNmZkODkyODdkZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9f42b0fc03f049b68a3aec524a199720",
+      "statement": "assessment_evaluator's evaluate_answer node prompts the LLM to return SCORE/PASSED/FEEDBACK, clamps the parsed score to 0-100, and recomputes is_passed in code as score >= passing_score rather than trusting the model's own PASSED field; the feedback prompt explicitly forbids revealing the correct answer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/evaluate_answer.py#L8-L84",
+          "version": "repo-lines-v1:sha256:d2e380af06689b2007d5faf6070f77739c33e9694cffbe9a7ddb2a57d3ba8311:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ODJjZWIzMWI0MDFmMzA5OTBkYTdjMGEwZTQyZDQ1MTFiZTc5M2Y0NmVkN2JhNzI4MGE5ZWY5YmM5ZTc5YTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkNjA5ZDNjMjZhZjhmZTI0NDg1OTlhODE3NDMzNzBhM2ZjOWMzN2QzMzY3NTFjNjExNTM5Mzg1NGMxN2YwZmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYTQ5MjlkNzhhNzMyMWZiNjE3MjJmMTY2Y2MwMDUyZDExODUxNGRhOTExNzMzNDBiZjVjMGZhOWM5ZWVjMzkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_00de24368788469687919bae5af28523",
+      "statement": "assessment_evaluator's persist_result node always inserts a new TaskAttempt with status evaluated, sets the session to passed if is_passed, and otherwise recounts evaluated attempts against Module.max_task_attempts to decide between leaving the session in_progress (attempts remain) or moving it to failed (cap reached).",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/persist_result.py",
+          "version": "repo-file-v1:sha256:fae3dd8e34ff302cfe508f389d776c15780b63db141c4ad8da46cd1c319b039a"
+        }
+      ]
+    },
+    {
+      "id": "claim_4d1a993d68074624bf4573b482187453",
+      "statement": "AttemptStatus defines an 'error' member intended (per its inline comment) for API failures that should not count as a consumed attempt, but no node in assessment_evaluator currently sets it; instead the EvaluationService raises ValueError on any state['error'], which the router surfaces as HTTP 400.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/persist_result.py",
+          "version": "repo-file-v1:sha256:fae3dd8e34ff302cfe508f389d776c15780b63db141c4ad8da46cd1c319b039a"
+        },
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/service.py#L25-L47",
+          "version": "repo-lines-v1:sha256:62ccbf44b2f9e6ae7664063756f62e9288973a1808aa92e7ddccf7f558170c45:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3YWQzYjg0ZTQ5ZDUxYzNhNGM0NDA3MTVhYjAxNzAyMTExOWM0NzNhOTZhZTMwMzRkZDdkMDk3OGNkMDYwNTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3N2QxM2NiZjdkMWM5NzA0NGU5NzljOGUxOGM0OWY0ZjYwZGY1ZGIyYjQ3OTc5ZmRhNTI4NDVlZmM2NmQ3NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/enums.py#L50-L54",
+          "version": "repo-lines-v1:sha256:4414cc860ed9bc839b7fd2b8ae8f2611dcb729fc15c5d8a4a594805456e034e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzdhMjZlNWQ1ZTdlMjhkMDQzMWQ3NWI0NGFiODVlYzQwODgwYmVhNDllMzNlNWVlOWFhMjljN2YwODRkZTg3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTU5ZTFkOGVmMjA1ZGY4MjA5MjQyNDk4NTNmZjY1YzgyMjA5NjhkNGJhZGY1YWExZDU5YjQ5NDk4YzBmZjMwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjY0ZjU2MzA4YzU2MWRlYTk3NmFkZjYzZWFhYjQwMzdiNTA1MjhkNzU2MDI3OWEzNDZhMzA2MWRlZGY2NTQzMCJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L403-L406",
+          "version": "repo-lines-v1:sha256:f77ac95c80bd070f6a5dbd0868ecd808b2ce982c76e1d7ee0925206fe6a6cf6e:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRhNWM2NmUxN2IxNDUzOTc4MzRiOGM4NTRkYzQxOTNlMjEyNTE4MGE4OTk2YTE0YzMxODgzMzI2YjJlZmJjZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWYzMmEwNWFlOTkzNTEzOTRkOWNjOTM3YmY5ZjgxM2U2ZGJlYmY1OGM1ZTNmOTVmNzJmYTFlZDhmYWRjMDEyOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODM0MDQzNjRiMmQzMDMzNzE0MTdlNWE4MDE4ZDYzZDgzMzk2YWUzOWQ4ZTdkODQxZTg0NjQ2NjljOWRmNGU2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODUwZWU3OTA0YzI2YzAyNTgyYzBjZTNhNjUzNzM5NzNiNDhkYTE3YmFjODkzNzE4ZjIwYTZiNWM4OGNkMWMyYiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f2da92632c424f9ab398dfab09b39015",
+      "statement": "Each call to generate_practice_question creates a new UserPracticeQuestion row (a personalized, per-user variant of module content) rather than reusing a prior one, and practice_question_generator selects distinct SystemSetting keys/prompts for open vs. closed question types while sharing the same default model gpt-4o.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/practice_question_generator/nodes/generate_question.py#L1-L56",
+          "version": "repo-lines-v1:sha256:f9e1b58356dbf5b6bf7ddca84929cd83de3a550d4b3ea0d1a9aa7634101c3df9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZjIzZTVhOWE2MzU4YjVhZmMxNDI3Y2I1ZmI0YTk3YjA0Njg0NWQwMzExMGYxOGI2ZjliNGE0NjU1OWViZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkMjIxOTQ1MDBiYjA0YTE1ZTA3NjliYzliZDljNTZkY2QzNTA3ZDZkZDIzODA5MmQ5OGQ1NzgyMDVjNzk5YTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjMmYwYzg1ZWIyYjVkZTQyN2QzY2Q3MTlkM2JhMWQ2NTQ3NTMxOGUyNjNlZTZhY2Y0MjdmOGNhYTNjY2IyODUifQ"
+        },
+        {
+          "resource": "repo://backend/agents/practice_question_generator/nodes/persist_question.py",
+          "version": "repo-file-v1:sha256:81bab6153ba4b566dc71ac1f6a542917af20d21d49491625f6ff349412f4b31f"
+        }
+      ]
+    },
+    {
+      "id": "claim_3d4fc9ad9e534c2e944ffa989da8d9eb",
+      "statement": "For closed practice questions, generate_question requires the LLM to answer in a QUESTION:/A:/B:/C:/D:/CORRECT: format and sets state['error'] if parsing does not yield exactly 4 options with a valid CORRECT letter, which short-circuits the graph before persist_question runs; persisted options are stored as a JSON list of {text, is_correct}.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/practice_question_generator/nodes/generate_question.py#L66-L101",
+          "version": "repo-lines-v1:sha256:850c40d10991330a27e35aaa22fb7a2a3b651a2132718983070adc6ac885624e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ3OTJhMjQ3OGZjMjFlYmFjMDE1OTYzMjViMmYwMzE0OWRkNjkyYTVlMGJlMGEzNzNhODFmNmU5NzQ0M2IwMmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViYTljOWQyMmU3ODJiNjg2MzhjOWM3MDU1NWI2NjVkMTNhZTg0MWU0Njc2YTYzNTJjODFkMWYzMDA1ZTA0MmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRhZGYxNzQxOGE0NjY2YTgxMjk4YWZiNjk3MWExYzFhNTdiZmE0ODVjM2VjOWQ3ZDg1YjY1OWUxYjQxZGVhYjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1176-L1182",
+          "version": "repo-lines-v1:sha256:425aa31a8891cc41241bfd43326f8aaa2955d5c33d09b98c3dfc8431476021eb:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjUyYWEwZTc0OWViODZmNDEyYjkwN2U5OWNmOGRhODM5ZGMxYTliZTIxZjM0ZjJhOTUyM2Y4MmI0NGRhOTY4ZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjNiMjRkYzRmNTI3NjRhYTE4YzA1NzIyMzlhYWIzNWQxZjVlODllNTEwZjg0YTEzM2NiNzJkZTAxZjMyZmY3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2UwYWQyZTdjM2U2NTdlM2VjODBlMTQ1N2U0Y2IwM2RjMjFlYWFkYzdiOTE2ODQwZmM3YzVlN2Y4OGIzZDIzNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmFhYjc5NWRhYTA3ZTY4NzQyMmJjMmNkZGRkMGIyNzJmZjUxNjhkNTcxN2M4YTlmNDBjYzgxMDE5MzVhYjRiZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_38e7e102f44a4c4d8206b541ec308202",
+      "statement": "evaluate_practice_answer rejects further submissions to a UserPracticeQuestion with HTTP 409 once any prior UserPracticeAttempt on it has is_correct=True, and otherwise branches purely on question_type: closed questions are graded deterministically in _evaluate_closed by comparing user input to the option flagged is_correct in the stored options snapshot without any LLM call, while open questions are graded by the practice_answer_evaluator LangGraph agent.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/practice_controllers.py#L62-L156",
+          "version": "repo-lines-v1:sha256:4b02781b26c2db7a98f68b8f742c3fc8d221a3ddfd653c8723712f84b8826706:eyJzZWxlY3RlZExpbmVDb3VudCI6OTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0NzkxZTk0ZmZiOGM3NzhkNDUxOGU5ZmI5MzZmNzQzMDdmZDdjOTk1NWI3YzBlY2VjMjNkN2Q2MDZkZTdjNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA0ODEyYTQ1MDAwODgyNzJlMGZhMDEyZjIyZDZiMTIyYmU2NWYwMTAyNmU3M2Q3MGJjOGQ5NDcxNzZiNWNlZjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_83918dd38b40422fab2920f6aad081d6",
+      "statement": "practice_answer_evaluator's evaluate_answer node prompts the LLM for a CORRECT:/FEEDBACK: format with an encouraging, non-adversarial feedback style (praises correct answers, only hints at gaps) and produces only a boolean is_correct with no numeric score, contrasting with the stricter, adversarial scoring used by assessment_evaluator.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/practice_answer_evaluator/nodes/evaluate_answer.py",
+          "version": "repo-file-v1:sha256:984f3e433834ed2abe11ab6362f0592e99b71ed6728e4025dcb6ab7a9a8941f5"
+        }
+      ]
+    },
+    {
+      "id": "claim_cb91fe4f0bd14f6fab720b9b5861ea30",
+      "statement": "ModuleTicket has a partial unique DB index uq_ticket_user_module_type keyed on (user_id, module_id, ticket_type) where status='open', but create_ticket's application-level pre-check rejects a new ticket whenever the user already has any open ticket for the module regardless of ticket_type, making the enforced business rule broader ('one open ticket per user per module') than the DB index alone would guarantee.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L1346-L1368",
+          "version": "repo-lines-v1:sha256:9c2fee4dc777f2c06ad667cf010d31a00c37cc3ae2060281f1daf9c0d1bf41cc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ1NjY4NjdkNDRiNDNjMDM4OWM5ZTQ4N2Q4YjRjZmIwNjNkMjY4ZWM2NDE1MGNjODUxZWFmNTI0YzMyMjdkNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIwNGE5ZWIzZThiNGU0NTkyMTBkY2U4MDYwMmI3ZDA0NDhiMTVmZDQ2ZmFmMDllYTFkZmNjYmQwODBiZDJiNDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY2OTA3ZTY1OTlhOGJjYjkzN2RiY2Q2ZmU2NmIxNTkwNDQxYjJmZmI4ZTFlMzE1M2UyMWJiMjM4NmNjOTJmOWUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/module_tickets/controllers.py#L33-L57",
+          "version": "repo-lines-v1:sha256:0efbe7cd31bd48c3cb7d2f670621f45d6827e75bb20cb544150126b0866b595c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0M2FiY2ZiNzFkOWY1YTkwNjFjMDkxYzljY2VhZjc2MGExODJmMjgzNWM2ZDIzZjBjMGQ0ODgxNDlhOWFiMGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFmOTA0ZDFlNDIzNWMxZjY3ZDE2ZDI3ZjFmOTk0MWMwMzNiZjkxZWE0MTI2YTc1MzM0YWY3YTFlZjhhMGY1ZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkZGMwOTM0M2ZhNDA0NzY1Nzk2ZTZmZDNiMWY2OWJhNzM5NWZmZmJlNmRhNmY1N2UwMGQxNzk4MjcwYWM3ZjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d86454d8ae1c4f0fad49e51421c70995",
+      "statement": "reply_to_ticket may only be performed by the course owner or a user with role guarantor or superadmin, explicitly excludes the ticket's own author even if they are the course owner, sets status to resolved unconditionally on success, and rejects with HTTP 409 if the ticket already has a reply (a ticket can be replied to at most once).",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/module_tickets/controllers.py#L73-L111",
+          "version": "repo-lines-v1:sha256:9f3a4f7382cdc99eca1e5e8d89fb26e0cb63f3d47a905be3e6b73c88d1c689b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0YzM1NzFiODI4MWY1YTgzZWU2NWU4MWE2ZTQ1NmFkMzI2ZGY4NmUwNTNlYzY2ZGNhYzM3NDEwNmEzODA5YWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUzYTEyZmY3NjAwNDhhMDNlY2QwNTYwZWI5NTkyZTIyMzMwYjJkN2ZjNmY5ZWQ4ZWRiYmM3ZmEyMDY2NWVlZDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNTUyYjBhMThiNDhhZWMwNGI3NmM4ZjUwYTM3YzdiMDY2ZWZlN2Q3MDNkYjA3ODZmZjI0NGI1ZmUzMzc2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRlOWEyMWQxZmZlMzNmZmNkNWM0MGM4YzE4ZmIyNWZjMTg3M2RlYmZkMThhNzI0YjA5NDVhZGNkOGNmYjYzNmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a9352ddd4d374484832acafa0f62d1c2",
+      "statement": "get_tickets restricts users with role UserRole.user to seeing only their own tickets for a course, while course owners, guarantors, and superadmins (implicitly, via reply_to_ticket's authorization and the lack of a user-role filter for them) see all tickets for that course; delete_ticket lets a superadmin always soft-delete a ticket, lets the ticket's own author delete it only while reply is still null, and rejects anyone else with HTTP 403.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/module_tickets/controllers.py#L11-L30",
+          "version": "repo-lines-v1:sha256:2edd23d4e0f8582b6328eab7c535af961460de5220ab9e60f808f18cd3935685:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkMzdhNTgwZDFlNmE3YzI5OTdhOWFjODcxZGZiYjQ5ZTk2ZWUyZTYxZWUyZDNlMmIwNjU2NGE3NDc3OTBiZjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg2OTk0MDQyNzYwNTQzNzVlM2JkMDJlOTRhMzMxOGYwZWZkMWFjZTUzYzJmMmQ3NzMyYThlMTNjZjQwYjI2MGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzNmI5NmRiNTNlZjJkYTZjNTczZmYxMzRhNjhjOGJiNjQ1NmIzMDFkMTdhYTVlMWZkOWI0NzI3NzA3ZWMxM2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJjMzRhZDk3YmViM2JhN2VjZmQ5NjA2ZmJhYmQ1NGIwZTk5ZTU4OTQ3ODJiNTJlY2Y4YzcyNmJlZjhjZWZjMDMifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/module_tickets/controllers.py#L114-L134",
+          "version": "repo-lines-v1:sha256:e64fba0871ac1a8e3a614d1a74928782e9dc17c42098d7645e4fc165e845664e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFhMjUzODg5OTJmZDllZDYwNzUxNTllNjkzYmFjMWVkNDg3YjI0ZjUzOGZmNmRkYjA4YmEwZTM3ZDljZGQxMzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNTUyYjBhMThiNDhhZWMwNGI3NmM4ZjUwYTM3YzdiMDY2ZWZlN2Q3MDNkYjA3ODZmZjI0NGI1ZmUzMzc2YjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1d39b04827114aef867c95a94a01bed9",
+      "statement": "Model and prompt for each of the five LLM-driven steps (assessment_generator, assessment_evaluator, practice_generator_open, practice_generator_closed, practice_answer_evaluator) are resolved at runtime via get_llm_config looking up a SystemSetting row by key, falling back to hardcoded DEFAULT_MODEL/DEFAULT_PROMPT constants in the node module when no active row exists; create_chat_llm selects ChatOpenAI vs. ChatAnthropic based on a 'claude' model-name prefix and applies Anthropic-specific handling that omits unsupported temperature and always sets an explicit max_tokens to avoid response truncation.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_generator/nodes/generate_question.py#L31-L37",
+          "version": "repo-lines-v1:sha256:f62589a910c555d1b330772e2bdc95f8947892533f63462cf51417293fb9275f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDkwMDRkNTc3NjJhOGQ4MjI0MmRhMmRiNjFlMmViMjY0YzE5YzM3ZDQ4ZTI0NThiNWVlNjEwMTdlNDllYjZkZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQyMjE5NDUwMGJiMDRhMTVlMDc2OWJjOWJkOWM1NmRjZDM1MDdkNmRkMjM4MDkyZDk4ZDU3ODIwNWM3OTlhOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTUzM2IwZDZiOTRkYjI4OWU1ZTYyMmFjZmZmZmVlYzVlZjk1NGExMjI4MGQ1MjAzYWZjODhmMDkxMzhkYmU2YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2MyZjBjODVlYjJiNWRlNDI3ZDNjZDcxOWQzYmExZDY1NDc1MzE4ZTI2M2VlNmFjZjQyN2Y4Y2FhM2NjYjI4NSJ9"
+        },
+        {
+          "resource": "repo://backend/agents/base/llm.py#L25-L86",
+          "version": "repo-lines-v1:sha256:880de1e491f23dd8db936fd2f91d244d6904d69fc018d197ea1bb222e898b81c:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkMjhmZDVmNzczMDE5YzNiOWNiMjA3YjFiZjBiNjk2NjRiOGE0MTkzOGVlNjZiMDUwMTBjNDFiZjAxMThlMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwODM2MmY0ZWUxZjU0NmQ1YjcxNmFkNzIyMzY4MDk1MTkyYmI2NWUxODZmOWNiOTY2M2QzYzY3ZTAxNjNjODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljY2ViYjQ5ZjllOWJiODYyNmFlYzI2YTIzMDYzOTRjYzVkMjI5ZGQ5YjJiMjIwZmEyMzgxMGI3ODVkOGRjZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/agents/practice_question_generator/nodes/generate_question.py#L46-L56",
+          "version": "repo-lines-v1:sha256:1e5bdba4ff6997efc640456a90775e37e440b678380f063fc5c305fcdc0702d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2ZhMGI5YjcxNjk4YWIwYzZlMTU1YmE2NTUzNjY0ZGI0OWI3NDBmNWUxNTRhOGE2YmU0MzhhYmYxZGQ2OGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkMjIxOTQ1MDBiYjA0YTE1ZTA3NjliYzliZDljNTZkY2QzNTA3ZDZkZDIzODA5MmQ5OGQ1NzgyMDVjNzk5YTkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZGZlNTA1YzViZGRjMGZjZDM4YWI0ZWE1OWM4MTViNjUyNmZlYjExYmIzYjdlZjBjZDZkZjJmZTBlYjZmZDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjMmYwYzg1ZWIyYjVkZTQyN2QzY2Q3MTlkM2JhMWQ2NTQ3NTMxOGUyNjNlZTZhY2Y0MjdmOGNhYTNjY2IyODUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9146feca33d54304b5cf6f0a769ba93e",
+      "statement": "Module.max_task_attempts (default 3, admin-configurable 1-20) and Module.passing_score (default 75) are per-module settings enforced twice for the assessment flow: once in the evaluate_assessment router as a pre-check gate before invoking the evaluator, and again inside assessment_evaluator's own nodes (load_context reads passing_score, evaluate_answer recomputes is_passed from it, persist_result recomputes the attempt cap from max_task_attempts).",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/load_context.py#L45-L59",
+          "version": "repo-lines-v1:sha256:f430b56fd33b014facbf690a4f1d153419bf4ac7c7dd10160dd4d1cb2deda995:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1ZTg0ZTRhNGUyNTEyYTJjZTllMWVlYjJhYTdhZTJkZGZmNTViYzEwZjc0Y2E5OTIyZmE0ZjVlMTg3NzBhYTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1MzY2NjExMGI3Mjc5NjBkYjE4MWQzMmJjNzI0MjIzODNhMTM2ZjVjNzg1MjY4ZTE5NjU3N2NjNmU5YmZlNTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjYjljNzcxNmMwYTM1MGY5NDczYzBjNGM4YWNkNGZhMDNkMTQ4NDMwNDA4M2QxNzcwYTE2ZjA4MGJhOGQzODYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMifQ"
+        },
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/persist_result.py#L36-L53",
+          "version": "repo-lines-v1:sha256:c7a4a65e81461a36f818faabcaf5faf6224ed583cb3b00271f44b21ebeaed3a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhZGU2NjRmM2Y3ZmFmNGU5M2ZkOWNjZWQ0YmI3ZTY1MDIzODUwZDM3ZTQ5ZDdhOTZkMGMyOWNiMGU0YjgxOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyODgxMmI4YjI1ZWIxNDJmZjZhY2RmNzg1NTE4ZmY3M2M3ODgzNWI1ZDMyYTRhMGMyMWJlZDFmYTdiMmI4NmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVmZmUyZGJlMTVmM2M4NzJlMjA0MjI3OGUxYWE2M2U1Yjg0ODAyZWFiNDc0ZTkyNTkyMzFlNDNjNzA5MGQwMjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBhMGFjNGEyYWEwNWVkNmZhMDU1MjhmMGNhNmIzNjQwOGZlZDdhNjE5YTVjYmE3ZGNhOTFjZWEyMWYxY2UzMWMifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L796-L797",
+          "version": "repo-lines-v1:sha256:13aa7b1e9326b8f5b2a43d0218b4547ccf759507f4ff150217e59caa8eb689a0:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjA4MDUxY2Q5YTA4NjgwN2UwOGJjMWEzMWNmM2Q2YWVjYzc2ZThlY2U3ODA4ODAzNDhjY2JkNzdjMGE0YWUyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzk1ODc0N2VlYzE5Y2RhMDBiN2JiMTUxODM2ZjU2Mzg4N2MwNzEyYzYyZDE4NDNiNzg3NjhlYWE5NzVlYTVhYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGY1ZGZmYWIxYjEyNzhjZDkwZTk0NTc5YzUyYTE1YTAxZjc0OTEyNTZhMDJiNzMzZTAwMTlhOWNmYTc1ZWMxZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWEwY2UzNWI5YjEzYjc2YTJhOGVhY2Q4ODZiZjE2YmJhYjA1ZDM1MTVjNDRhNDQ4NDA3NzNhMDcwYWY5NjdmYyJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L381-L394",
+          "version": "repo-lines-v1:sha256:944c6b34c33649eaecedb4edd23838f61431ee4e6320d6ebfced59b052f0eb2d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyOGE1NzlmOWUyNmE5OTIyNzc3MmEyNmJhNDMyZWNmMmIyZmZhN2NhZGM5N2ZjZjc4NDk1MjViNjhkMDQ3N2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiY2RkOWQyNTQwODA4YzFiMjY5YWNiNjlkMDQ4NjdlZmY1Y2FhOGViZGE1MGU1N2MzZGFiZDg5N2M4ZWZiZDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiMzA1MGFhNjg5NTM3OGRkOTE1ODYwMWI1NzA0ZjQ2OWY3N2NlYmE0MGM4MzU1NzFkOWZkNmZkODkyODdkZDkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

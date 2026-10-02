@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ce2f8f9619e57a607fff9e71909ef7943f7050a140ff69bba01f1d56005c8dc4",
+  "claims": [
+    {
+      "id": "claim_52a8ba341fa6434c8a5ebb1aae4d96a3",
+      "statement": "Compose start order is enforced via healthchecks: the db service must report healthy (pg_isready) before api starts, and keycloak's dependency on api uses condition service_healthy so keycloak only starts once the API's /health endpoint succeeds; frontend depends on api without a health condition.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L17-L43",
+          "version": "repo-lines-v1:sha256:480b18d27eb932e08602acdeafaea3b4be566a51add4d50ec74778fb90a75e14:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmZGQ1NWVmMmFlM2NhNjc0YTRjM2E1NmRhYjM0Zjg5MDhkNzQwNDMyM2RiNTRlYWRkYzRlNGNmMTg5ZThmY2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU5MDdhYWIwZWZhODFhYjQ1NDZlOTQ2Nzg1MWVlMmEzNTczZDNiYTQxMTJkMjkzOWRhZTc3MjI0ODEyNWFmZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjMDZjNmY2YTNlYjAxOTNkNGE1MjExYmJhYjQ5YTViNTQ2MGFjNjYzODI1NDNjNTk3NWU2YTViOTU0NjgwZjcifQ"
+        },
+        {
+          "resource": "repo://compose.yml#L67-L73",
+          "version": "repo-lines-v1:sha256:a397046184dd2093899715f8b930e6de3f1bc207d7b7649a9fcf24383f8c68b7:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTQ3YmE2NzI1MDc0N2EwNTEyMTM0ODlmZWZmMThmNzZlYWI3YzM1NGZmNGY3NGU5N2VhZDE3MDc2MzNkOGQwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjI3NDYzMzRmZGJkNjUxMzIzOWYxMzI2ZGI4YjYxMjc1N2I1YjMyYzA4MDhiNTA4MWE5OTM3ZjY1MzNiOGRiOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2QxYjI0Nzg2ZGVhYzFlYjllNDM2Zjk5NjI4NmNiMGM0YTMyYzQyMzlmMzk0MDZhODg0ZTc0YjM3ZmQ1ZTI4OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWM5MjI4YzlhMTg5M2E1NDM2MzVjY2E5NzM0NjFiZDhjNTcwNDBiMzA3NzczOWM3OGUzNThiMDA1YzdiNGIyMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_8ab606173b994978b15998da8c79a4ad",
+      "statement": "The API healthcheck in compose.yml probes GET http://localhost:8000/health using Python's urllib, and that endpoint (defined in backend/api/main.py) exercises the DB session dependency, so a passing healthcheck implies the database connection and startup schema bootstrap succeeded.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L60-L66",
+          "version": "repo-lines-v1:sha256:2e2372bcab92fce26a43b70173aa9dfaa79c37d49d6c0b98204b887343bce27d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmY2MWJmZjE0N2I5YTQ2YTE0NTMwZjAxZWFkMzQwZjA4YTg2MTIyYjFmOWJkMjNhNzQ2MWUyOWI4MDhjZTEwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjIzOTM0NDgzZWIwZGIyMDE1MDE1MDBlY2FmNWRhYTFiYTc3YjdkOTY4YzE0MmUxMWE0ZTJmNGQ0YWE4Y2EyNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTE5YWU3YjUzYjdlMGEwNThjMTg0NTA3ZDllNWFiNzFhODM2ZDcwYTFmOTUxNzhlMTg4YmI0YjJkZTZlMGJiMSJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L35-L42",
+          "version": "repo-lines-v1:sha256:45347d3e4a16b8bb1ba7e2df1fd29be4c08d02ad45033860aaf9ecdf7b31d998:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjk1N2Q2NGNiMDRiZjc1ZWI5YTlkN2E4ZjY4YTAyZTE4NTczMDlhMmRlYzhhNmFlNmVhMDRmNWFjYWEyZGI2MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWYyZGJiNGM5ODgwNWNmYmE2NzZlMmVlYTU2YmI5ODA5Nzg0ZDVjZGRiYTRhN2E2NGEwZDllYmU5OTI0YTMzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzQ3MWRjNjNiY2VhZjA0NmM2N2Y4YWUxY2Q1ZDAxNDk5YzM1Njk0MjhjNTRiYjdlYTg1YTAzMTU0Y2E4NzVkYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_88bcb3eed0d4420d947597e445af5663",
+      "statement": "Keycloak is configured to use the same Postgres database as the backend, in a dedicated 'keycloak' schema created via CREATE SCHEMA IF NOT EXISTS keycloak, both by infra/docker/init-db.sql (run once on Postgres init) and redundantly inside seed_db() on every API start.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/seed.py#L478-L481",
+          "version": "repo-lines-v1:sha256:ce7f43170ab6b3ebb5c3d57378e0e867623c0a3cc20313c0f09b02b4adbf3b70:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmYwZTJhMmYwN2IwOTMyODUzNzFkYWNiNWE2ZjYzNGJjODQzZGI1ZDU4MzQ2NzgxMzExZGRiNTg1NGZmOWU1NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzU4NGQ2NTg4MWZiMmQ0NWYwZjM3NTBlYTA3ZTYxZGNjMjc2MmY1ZDg2ODFhNDVhMmE5Njg5Nzc4YmQ5ZjJiNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDNkMTcxZGU3NTQzMWEwMjFhMGQ5NGZhNzZmYWJmMGQ3MTM5Yzg5OGMxYTBiNDRiNDNjYTYwOTAzZmExYjg0NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDM1ZWJjYjZlNDgzMjRlMzUxZmQzMzQzMDU0ZTk2MWYxYmVhMzk0YWY5MWY0YjNlOWZjMzQ4ZTQ3MDJjZjk3ZSJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L79-L82",
+          "version": "repo-lines-v1:sha256:8e45c1bb0e331f383d97276a388faf7415be431aa896242ac278ac7471a49b05:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDNkMzkxZWQ5NzE1MjlmOTE0MTk2NDY0ZTY0OTQ3MTA5MjMwMTJlZjhkMmZmMTgxYzllNDkzYTZiODcxNTY0NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTg1M2FkZGMyNDZhYTQyZmRiMTJmMGVmN2ZlNzVhODM2Yzg2ZjFiNTkxM2M1Y2Y1NzQ1MDY2MWRhYWE1OGZlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjNlYzEyYzgxZTljZGNmY2RiNDM0ZDM5NzNmMDBhNmI1M2RmNDIwY2E5MWVmZWE2ZmI4M2VkYzBlNDExYzFiZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTYzMjFhZTY0ZTEwNjViMmU5ZWUxZWRhOGM5YWEyODRiNmYwMDRhNWYyZjVjNGU3YWQwOWQ1YWRmM2Y3YjNhYSJ9"
+        },
+        {
+          "resource": "repo://infra/docker/init-db.sql#L1-L1",
+          "version": "repo-lines-v1:sha256:06b0ef3b8a35c2d3d3046aede25e89f10e30c9e494f2b632c0affd69a2a541bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDZiMGVmM2I4YTM1YzJkM2QzMDQ2YWVkZTI1ZTg5ZjEwZTMwYzllNDk0ZjJiNjMyYzBhZmZkNjlhMmE1NDFiZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDZiMGVmM2I4YTM1YzJkM2QzMDQ2YWVkZTI1ZTg5ZjEwZTMwYzllNDk0ZjJiNjMyYzBhZmZkNjlhMmE1NDFiZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6ec59845d33e434ab788d5def57708a4",
+      "statement": "Backend configuration is a pydantic-settings Settings model composed of PostgresSettings, KeycloakSettings, SeaweedFSSettings, and WikiSettings, using env_nested_delimiter=\"__\" so environment variables are named <GROUP>__<FIELD> (e.g. POSTGRES__HOST); Postgres and Keycloak fields have no defaults and are required, while SeaweedFS and Wiki fields have working defaults.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/config.py#L1-L47",
+          "version": "repo-lines-v1:sha256:d1eff2f56141350820fdbe6fb02bb798d4e98c89297b511238b68b0ad5b6cb37:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZDJkNzcxMjdlNjk2ZDJiYjgyNWMwMWFiMjJhZWIxMGY2NzBhYTdmZGRkYjVjOWQ0MGE1YWQ5MGI4YzY4ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4ZjRiZjE4NzYxNjAyZDNiNTkwYjM3ZDM5OGZhOTk3Nzk3MzBhNzdiNjgxMzhmZGQxNDA3MzQ5MmUzNzY2ZWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_490d785f6cac435695ffc239a9e7ea82",
+      "statement": "There is no Alembic or other automated migration framework: backend/api/database.py's init_db() creates schema by calling SQLAlchemy's Base.metadata.create_all against the models in api.models, and backend/api/main.py invokes init_db() followed by seed_db() at module import time (before the FastAPI app's lifespan runs), so schema creation and seeding execute synchronously on every API process start.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/database.py#L29-L47",
+          "version": "repo-lines-v1:sha256:becfa0c93578bff2308939d6c760e8be727ca4b2d50fa60aa9a75e2632b36411:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MzUyOTIxN2VhNTBmODZhYzVjNzczYjJmYWFkZmYxYjFiNWNmYTU0YzA2MWIwMjU1ODU5YjVmMjE1OTMxNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmM3ZTA2NzE5OTFlM2NiMTI5MDVlNGJmNDEzNTlhYjk0Zjg4ZWJjYmI1MGRlYWM4NzdiNGI4ZmNhYjlhZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhZWU0ZjQ5MjE2OTc5YzE1YjVhN2MyMTJiZjBhNWNjYzIzYjBhZGNjMWQ1MDBkMzg2YmMwOTBjYTllYzM3Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYzY3MDkyYTUyZGU1NmViZmRjOGMyMWRmYTIzNTJjN2U4M2I5NjcxMzRlMDA3OGU0M2Q0ZmI2ODYwMmZiNGEifQ"
+        },
+        {
+          "resource": "repo://backend/api/main.py#L14-L61",
+          "version": "repo-lines-v1:sha256:d579c728bdbb0ee46579fb57f70def19e281f3585e96230c0792100de55bad57:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmOGFmNDJiOGRmMDM1OTdhM2Y1NWI1YjkzYjAyNzY1OWJhODY3NTJiODA4ODdjNjdlYmMxMDI5NjhkNzcxODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0Y2U4N2EyMGU2ZmFkZjEyYTc4NjU4ZmI5MTcxODU0Njg5NzhiYTM3MWJiNjUxODM0OTg3YTM2NWRlMTE0NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YjFmMTkwYzc4ZDBkOTYzNWQwY2E1N2JmNjJkMGYzODE0OTU1NTUyNGU1OTVlYWVmNjcxNmY2YTc5YTJjNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMDFlODQyZjJkYjQ0ZmIwNGY4MWRkYzQwN2E2ZDI4NTUzZjQ2N2Y3Yjc5YWUxODAyODE2NzY5Mzc2M2ZjMzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f4b5d928f826478ba3bd7e5fa194daa1",
+      "statement": "seed_db() in backend/api/seed.py populates default reference catalogs (CourseBlock, CourseTarget, CourseSubject, CourseRequirement, CourseEqfLevel, CourseType, NeuroPrinciple, CrossSubject, BloomLevel, KrauuCompetence) and SystemSetting rows only when each respective table is empty, so edits to the seed data or SYSTEM_SETTINGS list have no effect on an already-seeded database.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/seed.py#L478-L526",
+          "version": "repo-lines-v1:sha256:d28c1503f74ed4c7cdeda0ac24fb8ba41b2b08cffcd308b0f6509498895c887e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmMGUyYTJmMDdiMDkzMjg1MzcxZGFjYjVhNmY2MzRiYzg0M2RiNWQ1ODM0Njc4MTMxMWRkYjU4NTRmZjllNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxYWMyODVjNzc1ZDYyMTc2M2JhN2Y3ZDJjOWUzN2NhMTk5ZWM1MTA2YTJmZTFkZmI4YzdkMTk0ZTczMTg2YjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZDE3MWRlNzU0MzFhMDIxYTBkOTRmYTc2ZmFiZjBkNzEzOWM4OThjMWEwYjQ0YjQzY2E2MDkwM2ZhMWI4NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5NjlkMzg5M2QyNDU0YThjNTI3OTZlOTU2YmQ2YTliNzBiYmEwZmZjZDM3YjY5MGRkOTkxNzZkMzQ0ODRjYTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_712f9ecf5f154a59ac86dcc8a50193a9",
+      "statement": "backend/scripts/update_system_settings.py is the operational tool for propagating SYSTEM_SETTINGS changes (from api.seed) into an already-seeded database: for each key it inserts a missing SystemSetting or overwrites only the changed name/model/prompt/description fields of the existing active row, and it is invoked via `make update-settings [KEYS=...]` which runs it inside the running api container, explicitly overwriting any manual edits made through the admin dashboard for the affected keys.",
+      "evidence": [
+        {
+          "resource": "repo://Makefile#L7-L11",
+          "version": "repo-lines-v1:sha256:f87ea0e217351f2dc609525cd44555af18de3e55eab63b3411f5196d37ce755c:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U4ZjBmODkyMTk3MjQwNWU4NGM4NDc5MTM4NjE5YzRjMTczODU4NzgyNDFhYWIzMmQ3ZDhkNjA4ODU2ZjkwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDMxMmJkNmM0N2U1NzdjYTc1NTA3MDhmZjFjMmE0MjcwMzYyNDNlZGI1ZWI2MGQ3MzYzOTk2Njk0MmZmYmYyNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTI5Yjk3OTQ4MmNlNWI1MjlmOTlkOGI1NGRiNDI5NzhjNzdlNTg3ZjgyZDI2NDBjZjhjZDhjY2M2M2NkYTdhZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/scripts/update_system_settings.py#L1-L63",
+          "version": "repo-lines-v1:sha256:da36da39b4e5bbe122feb49de6fb3e14a17953c7187b34337e9d50ce21c3d1dc:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0N2MwMzY2ZTlmN2RhODAyYjM4MjJiYmMyYzI3ZjAyZWRkMWQyY2I1ZjkzYjdiYTdiYWIzNmQ4ZTc2NGMzMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_110cf0d6d542401a958eb7f4c382348a",
+      "statement": "The migrations/ directory contains hand-written, manually-applied SQL scripts (not run by any compose step or migration tool) used to alter existing tables, add constraints, backfill data, or create new tables/catalogs outside the create_all bootstrap; because Base.metadata.create_all only adds brand-new tables and never alters existing ones, any models.py change that modifies an existing table requires a corresponding manually-coordinated script in this directory.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/database.py#L29-L47",
+          "version": "repo-lines-v1:sha256:becfa0c93578bff2308939d6c760e8be727ca4b2d50fa60aa9a75e2632b36411:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MzUyOTIxN2VhNTBmODZhYzVjNzczYjJmYWFkZmYxYjFiNWNmYTU0YzA2MWIwMjU1ODU5YjVmMjE1OTMxNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmM3ZTA2NzE5OTFlM2NiMTI5MDVlNGJmNDEzNTlhYjk0Zjg4ZWJjYmI1MGRlYWM4NzdiNGI4ZmNhYjlhZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhZWU0ZjQ5MjE2OTc5YzE1YjVhN2MyMTJiZjBhNWNjYzIzYjBhZGNjMWQ1MDBkMzg2YmMwOTBjYTllYzM3Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYzY3MDkyYTUyZGU1NmViZmRjOGMyMWRmYTIzNTJjN2U4M2I5NjcxMzRlMDA3OGU0M2Q0ZmI2ODYwMmZiNGEifQ"
+        },
+        {
+          "resource": "repo://migrations/0001_pubresource_add_eqf_level_course_type.sql.sql#L1-L23",
+          "version": "repo-lines-v1:sha256:64488e8361f25da154d37379824febf552ca34c50a08604e80c03b6c09b4677c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwMTZlZWFkZTNkYTNmNDc4OGQyZTMzNWJkNTY1MmExNDdjMzBmYmQwMWNhYTM0MzAxMmRmNmM1OTU5NjJiZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NmQ0NDUzZGYwNDQwZTVkMGI5ZGQ4MmQ2MDlmYzRhZWQ1ZTA2NTI4MGY1YTJkYzQyOGM0OTljMzFiMjVkNjEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://migrations/0002_changes_since_petricek_d1f773c.sql#L1-L20",
+          "version": "repo-lines-v1:sha256:5831a397f7642c2d49f8325b4a174e4ef330bd7521f205ea0ea69c302d193421:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFkMjU5YTg5NzA2MjQ0ODY2N2Y3YWI0NTM3OGUzNjBmMWExNjNjM2M2NjljOTRjZjVjNmFkN2Q0NWZjMTdkYWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiMWI2YzUxOGMxMjIxNzFkMTNmNDVlM2IwYzFiYzBlY2M3NDMzOGZmZDRiNGVhY2U5OTZmZjQ4N2I0YTIzMjgifQ"
+        },
+        {
+          "resource": "repo://migrations/migration_script.sql#L1-L20",
+          "version": "repo-lines-v1:sha256:0848d73a116dc869af7842067c957aabcc05c73f869c5fd93834947947c70401:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZkMjk2M2RmMzQ1ZDlhMjQ1YTEwMzMwOGUzZGQ2ZjdkZTQ2YTVhZTBiYWI0OTk1NjcyOTYyZjRlYTAzNzY1ZTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5YmQyZjg4MmVmZjJkMjUwZWY5YTVmNjc3MDA0OTdmZjdiYWM4MTkxNTMyNWUyODVmZjdkZGM5MGMxZGRjZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdiYTc0MWE0MzM1ZDllYWM2MzEyNjc1Y2ExYmUxYTU4OTA1ZjM1NzEzMGU5NmVjMTNkNzIwMGJmYzJmYmQwMjYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

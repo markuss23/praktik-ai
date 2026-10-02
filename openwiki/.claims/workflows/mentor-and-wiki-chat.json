@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2d5495aaeb9d2791dc8f91e9fdd7dfe2437ea04a05f8267a7db53c4b1a53f5fb",
+  "claims": [
+    {
+      "id": "claim_6c5fbed9229b47e0b1b2dda284464a5b",
+      "statement": "POST /agents/learn-blocks-chat verifies the LearnBlock's course is active and status approved or archived, checks enrollment (bypassing for course owner or superadmin), invokes MentorService.chat(), then writes a MentorInteractionLog row and commits before returning the answer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L213-L255",
+          "version": "repo-lines-v1:sha256:52cd58ae05382577f485d51b3965b7c1ce7d30783e1beb34e2b8eef7df4e29d9:eyJzZWxlY3RlZExpbmVDb3VudCI6NDMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MjJmYzE3MTc1NTEwMDEyZTlkOTE5OTI5ZTQ0NWUxMjQ1NmY2ZWFhYmRiYmY5YjE2MjNjNzVmYmE2Yzk4ZmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ2ZWJlZTgwNzMwMjYxMDVmYjNjMTgyMWIyYWFhYWZkNjVkZjc2ZDYyMDhmM2ZiZmZhYmYyOGIyYjY5M2E5YmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyZDk5OTRhNGQ1NmJlM2UzZWM1Zjk5YjcxMmY1NTA3MzNjYWYwZTNhMGRhM2I2NmIxZDQxNjg3MzI4YmRhZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71f62768890a47ae9b9cac786bdc0907",
+      "statement": "MentorInteractionLog persists one row per question/answer turn with user_id and learn_id foreign keys, indexed on user_id, learn_id, and the (user_id, learn_id) pair, and is exposed read-only to superadmins via get_mentor_interaction_logs for auditing mentor conversations.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L1401-L1423",
+          "version": "repo-lines-v1:sha256:abfa3b242daafd787e579c53c96c4d337f2a861f952fd8ed02b91eb6a5724c21:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwYWNiOTNkNWQwZGRiYjIwNzZmOTk2M2JiZjYyMzE3YWViMDViMzE4MjFlYmFjYzlhODA0ZjcxMzkzNTJmN2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlYWFkMjY2NDAxYjI1Zjg5MGMzMGQ1MDkzODVkNGFkN2IwMDE3MGJiNzAxNjllZWUwYjU3MGVmNTc3YjJmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0ODIwZTQ2ZTdjN2U2YTUzYWY0NWE5MDFhYWQ3OWY1YTFkMmZhZTA2NGE0OTFmMGM3MTcyYWFkM2IxNzBmYzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlMTM5NzJkYzBmMjUwZmJiOTAyNzhlZDY0OWYxZGY2N2Y0OWRlMzI5MWFiNGM0MzVkODZlZDAxODgyMTYxZTQifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/superadmin/controllers.py#L1-L32",
+          "version": "repo-lines-v1:sha256:2fe1825b71b7048c7d359fe3c9647366eba89524bdf1bafaf2e68658b5ae0568:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM4NzBhZGExZGZjMTJlMDIyODU1OGI4YTE0OTNiNzRiOTFjYTk4YWE0NjU5NzBmODZhOTgyMTUxOTI4MjM1OWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlYjY2NWE0ZTFiZjEzMzAyODk0MDc1MzgzMWVjMjBhZGIwNjI2YTg0Njk0OGU0Y2Y0Mjg5NTY4ZjA3MWU4NjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4NTZlMTA3OGEyZGM3MmJhN2I0Zjc5OWRkODk1NDY5MjNkZDIyMWI4ZTQ1MTJjNDBlMmQ1NGZmNTI3NzgzY2EifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e090c84657cf4cef89d79fe402804c16",
+      "statement": "The mentor RAG pipeline is a 4-node LangGraph (load_learn_block_data -> query_vector_store -> rerank_documents -> generate_answer) over AgentState, where load_learn_block_data derives course_id/module_id from the LearnBlock's module/course relation and loads the user's ai_tone/ai_expression_level preferences.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/mentor/graph.py",
+          "version": "repo-file-v1:sha256:f144e6768679727c082ab81dd68bdf92f31199d1e380fe302e0e9b4b8667f359"
+        },
+        {
+          "resource": "repo://backend/agents/mentor/nodes/load_learn_block_data.py",
+          "version": "repo-file-v1:sha256:1c8253ea637365a60d69154e6aaf9c33a6815c36180c92a845e44f775378acdb"
+        }
+      ]
+    },
+    {
+      "id": "claim_47a9d931ea4b404490a02c5c19928404",
+      "statement": "query_vector_store scopes mentor retrieval to the current course_id/module_id via a PGVector similarity_search metadata filter against the shared course_embeddings collection, retrieving up to k=10 chunks.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/mentor/nodes/query_vector_store.py",
+          "version": "repo-file-v1:sha256:a352741cc99c3f4b3655870b44e3f1d2c2738ba83c4ba4a46b759b2d9b7031b4"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fd4b6ccfee44f2dabdf880270f4980b",
+      "statement": "rerank_documents skips reranking when 3 or fewer chunks were retrieved, otherwise asks an LLM (SystemSetting key mentor_reranker, default gpt-4o-mini) to reorder chunk indices by relevance and keeps the top 3, falling back to the first 3 original chunks if parsing or the LLM call fails.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/mentor/nodes/rerank.py",
+          "version": "repo-file-v1:sha256:34bcbf96a90cc360856aa161083e27629ed3f513105800eab95c3674703d49ff"
+        }
+      ]
+    },
+    {
+      "id": "claim_a289919dedab443182024bfec7f72823",
+      "statement": "generate_answer builds the mentor's answer from retrieved chunks and the student's tone/expression-level preferences using an LLM configured via SystemSetting key mentor_answer (default gpt-5-mini), returning a fixed apology string if no context chunks are available or the LLM call raises.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/mentor/nodes/generate_answer.py",
+          "version": "repo-file-v1:sha256:d3673748a51c46345980e9e3ea5af68233e34949339d0b6de8460809e9a8bb47"
+        }
+      ]
+    },
+    {
+      "id": "claim_c2152464ef604c4fbd8938acdb7526d1",
+      "statement": "get_llm_config loads an overridable model/prompt pair from the SystemSetting table by key, falling back to caller-supplied defaults, and create_chat_llm dispatches to ChatAnthropic or ChatOpenAI based on the model name prefix; this mechanism backs mentor_reranker, mentor_answer, and wiki_mentor_answer.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/base/llm.py",
+          "version": "repo-file-v1:sha256:230a12e53c18da61b3573be93cebcaf8a60a33efdf5c3e9abc99080db0379d71"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2e546cbba4546b69c642f3f9456c583",
+      "statement": "EmbeddingGeneratorService runs a 2-node graph (load_course_data -> generate_embeddings) that only proceeds for courses with status approved (raising ValueError otherwise, surfaced as HTTP 400 by POST /agents/generate-embeddings), splits each active LearnBlock's content with a 500-char/100-overlap RecursiveCharacterTextSplitter, and upserts chunks into the course_embeddings PGVector collection with deterministic ids \"{learn_block_id}_{idx}\" tagged with course_id/module_id/chunk_index metadata.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/embedding_generator/graph.py",
+          "version": "repo-file-v1:sha256:e005685e2c08b02fc6bcbef4b3f415723f1b0554709933b426724876e9606412"
+        },
+        {
+          "resource": "repo://backend/agents/embedding_generator/nodes/generate_embeddings.py",
+          "version": "repo-file-v1:sha256:a185a13eaa2ddd75cf423b1e5af4a5eef45808718a34ce17078260829ab680ed"
+        },
+        {
+          "resource": "repo://backend/agents/embedding_generator/nodes/load_course_data.py",
+          "version": "repo-file-v1:sha256:22c7d98b67f236ac0886180f4a7f120d7bf09520d806ec6230cd506b71d81de0"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L196-L210",
+          "version": "repo-lines-v1:sha256:3400f179bb6199efe9b8c8f42f106c8bdfd86e63fce6c7c98192e3194ebc5df4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2N2Q4ZjRiNWY5MzE0ZTQyZmJhY2ZjNmU0ZDljZDQ3M2Q0ZjA0ZWU0MzljMmU1YjUyMjljYjQ5NTVjZjVkMDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNiYzhhMjkzYTVmNjRkNWRhOTM4ZmY0NjE1ZDI2MmUxZWNjNmQwNjQ1OTBkZDIxZjgwY2RiNDRjNzNjYzg3YzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVlMzc4ZGE1MThlMmE0NmExNTI3YzVhNDJjNDVkNGNlMWY2ZTQ3NzYxNWU5MThmZTZhMjAwNThiZjcyNTg2N2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_71c31d3df3594056ac47fa7bd8dea50e",
+      "statement": "save_embeddings_node in the embedding generator is fully commented out and not wired into the graph; it is dead legacy code for an alternate design that stored embeddings directly on LearnBlock rows instead of PGVector.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/embedding_generator/graph.py#L1-L30",
+          "version": "repo-lines-v1:sha256:609506d01d2ea6ec8f10047ea81298f509c635d70fc633b3070f0a460a97a345:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2NGQzODczM2Q3N2Q0YWU1ZDlkNzY0ZWJmMDRkZTk5NDVmYmNkMzY2MjQ4MzI0YWQ4NDcyZTY1MTlkZTJkZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjOTQwZDQxNzQwZDRiYjBjMmFhMjliMTRlMTc0NTE2ZjY1Y2E3MTY4Yjk0MDcwMTdhZDBiYmJmMmQzYzFlYWMifQ"
+        },
+        {
+          "resource": "repo://backend/agents/embedding_generator/nodes/save_embeddings.py",
+          "version": "repo-file-v1:sha256:1f3deb83e3fea55a07494a59ff59859825fff099af601cc8e8a31bbb8453e8c7"
+        }
+      ]
+    },
+    {
+      "id": "claim_e6fc2bf49ac14480b69cf1426984b373",
+      "statement": "agents/vector_store.py exposes a lazily-initialized module-level singleton PGVector bound to collection course_embeddings using OpenAIEmbeddings(text-embedding-3-large), deliberately kept as a singleton to avoid duplicate SQLAlchemy MetaData registration of the langchain_pg_collection tables shared across PGVector collections.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/vector_store.py",
+          "version": "repo-file-v1:sha256:311536e049635b5962f7d14e027f9df1adc3cfb99c8ea308a9441cb38535ec59"
+        }
+      ]
+    },
+    {
+      "id": "claim_84f57898df0a43239c7a2ddd786c8a44",
+      "statement": "agents/wiki is a periodic background job started from FastAPI's lifespan (api/main.py) that uses APScheduler's AsyncIOScheduler with an IntervalTrigger of settings.wiki.sync_interval_hours (WikiSettings, default 12) to run sync_wiki, is idempotent via add_job(replace_existing=True), and additionally runs an immediate one-off bootstrap sync job when the wiki_embeddings collection is found empty (including when the underlying PGVector tables do not yet exist) so wiki chat has content before the first interval elapses.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/scheduler.py",
+          "version": "repo-file-v1:sha256:8c484492e3309ea1a8f154f2d179813f2178e9c27b9f86bbacbe5a3339ce25a4"
+        },
+        {
+          "resource": "repo://backend/api/config.py#L28-L31",
+          "version": "repo-lines-v1:sha256:6bb026aaaac6cee4d2bca1bf310d9b104e1f75b45a25958ced52ef5ad6344112:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkwMDQ3NTZkNGZjOTNjYWNmMGUxYjVlOGVmMDgwNTY0MjBkYTgxYTZlNzA5NzdiYjJlN2YxNGM4ODRkMTk3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMyOTE4MzQwODFkNDkwNTgxM2I2OGRlYmQyNTNhZjdjODk3Mzg2YmUzNjFjYmYxNDg0NjJiZWRkYTgzM2FmNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTU2MTcyMDNhN2YzZmUxMjQyMDUxNWU1MTQ3NjRmNzkzZjAzNDQ2MDEzZTQ3YjdkZTQ4Mzc5MDY0MjI1ZmQxNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzcyYzc2ZDUyZmU1OTk3YTliZTY5NDM2MjA4NmM3MDFhMWQ1NTEyZjBkYmU4ODFiNDFiOTVlYzg1ZDRkNzhmZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/main.py#L10-L26",
+          "version": "repo-lines-v1:sha256:ce51165a9940de6645b76fcb3461c9451d622c47e5fe204bb0a2c7e36000d854:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkZmU0NTU1ZGY0OWI3OWE3YWRjNTg1MDkxZjBlZDAyMzY1NGRmZjE1N2MyNzVhY2YzNDE2NGVkMWRlZjJiM2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5NWU3ZjViMTE1OThlYWVhZjQzNjE5MzUwNTZkNWUxNjQyMzUxOTg3MjEwMGJiMTQzNTAzMjMxOWI5Y2M4YWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZhYzRhOTY1OThmNTcwMThiOGU3N2RkM2YwYmE1MjE0MTMyY2Y5YmQyN2E1MjQyNGM2YTQ5ZTdhNzJmOWFlMjgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_da54f31db37d4b6cb260e0fdbb9d7c6d",
+      "statement": "The wiki sync pipeline is a 3-node LangGraph (clone_or_pull_wiki -> load_pages -> generate_embeddings): it git-clones or git-pulls the configured GitHub wiki repo to local_path, loads all top-level *.md files via MarkdownLoader, and chunks/embeds each page (500-char/100-overlap splitter) into the separate wiki_embeddings PGVector collection with deterministic ids \"{title}_{idx}\" and metadata {title, file_path, chunk_index}, making re-sync an upsert rather than a duplication.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/graph.py",
+          "version": "repo-file-v1:sha256:4186392686c49bd36b5c3eb839fb185a9959f1629b54e6a0faa6c64411873815"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/agent/nodes/clone_or_pull_wiki.py",
+          "version": "repo-file-v1:sha256:e034d9546b4b4ff83e5531c2971fa7e1764cefa2df771fa37c4b4222e2551891"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/agent/nodes/generate_embeddings.py",
+          "version": "repo-file-v1:sha256:3cdae81fa0125c96fe4cfc730da7acd65f66f8004621182ae553fe5bacf2cc4c"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/agent/nodes/load_pages.py",
+          "version": "repo-file-v1:sha256:8e2f9dd218a6f4c0110b77018bc7e5dbf2d68ef6d32bc2c5bb0f0bd22c83600e"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0212d951b8e49539c322c5bab16b462",
+      "statement": "agents/wiki/vector_store.py exposes a separate lazily-initialized singleton PGVector bound to collection wiki_embeddings (WIKI_COLLECTION_NAME), keeping wiki page embeddings isolated from the course_embeddings collection used by the mentor.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/vector_store.py",
+          "version": "repo-file-v1:sha256:5af7c40e92cf8d9286a266288e05315a8f0ef39d41028bec2a0e97aee8da7eee"
+        }
+      ]
+    },
+    {
+      "id": "claim_074b9f6dfd4440eeb120bb45f93e46f2",
+      "statement": "POST /agents/wiki-sync is restricted to the superadmin role and triggers the same sync_wiki() code path as the scheduled job, returning pages_processed; POST /agents/wiki-chat delegates to WikiChatService for RAG chat over the wiki_embeddings collection.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L258-L280",
+          "version": "repo-lines-v1:sha256:16edc6c4c2c50a6bff58bc61d79fa943dad5cda1e74510bea61ec575f53d46f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3M2UyN2ExYzhiNWNiYWEyNjYzMTk4ODEwNmI0YzVlYmM3MzEyZThiZjlkZDA5OTM1YTUwYTQzMTViY2VlODMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMDMzMTUyNDE5ODVkZDA5YmU4NmM4OWUzYTk4MDYxOTRhZTVlMDRkZWViOWEyOTM5ZmE1MzkyNDcyZmExOWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdmYmE3YjU1YzkzZGY3YTkzN2ZjODY3MjY1OTVmNzY3ZmFkN2JjYWE4OGY4ODYwNDc5MzBkNjI4MzJiYjgxMzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNjAwMmVmNDc2NWUyNzE4NzhlMjg4OGM1ODRjYWE2N2U0YjllZDAyMWMwODU4OWFhNWY3MWQ0NTI4ZDI1ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_56f84ead1b3c4d119ae0f012a4b84a3f",
+      "statement": "WikiChatService runs a 2-node LangGraph (query_vector_store -> generate_answer) over WikiMentorState with no course/module metadata filter and no reranking step, retrieving k=10 chunks from wiki_embeddings and answering via an LLM configured under SystemSetting key wiki_mentor_answer (default gpt-4o-mini), restricted to the retrieved wiki context and falling back to an apology string when no chunks are found or the LLM call fails.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/mentor/graph.py",
+          "version": "repo-file-v1:sha256:4aa90673e5d3fdde9b7d94a695959f7915ebc5a984aa437f018435fd53052e54"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/mentor/nodes/generate_answer.py",
+          "version": "repo-file-v1:sha256:d42d93860aad6b0304822f65909fcf8a9a6fc3c3a009e6e0675b65b3a0efd3b1"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/mentor/nodes/query_vector_store.py",
+          "version": "repo-file-v1:sha256:35a94aa3c7a749ff555a52c0a340010c5a14be7adce1e6c5db3a24d124f6e631"
+        }
+      ]
+    },
+    {
+      "id": "claim_891a30717499499f9d7dd68f1b3a9e7e",
+      "statement": "The admin WikiSyncView frontend component gates the manual wiki-sync trigger button on superadmin role via useRole(), persists the last sync result client-side in localStorage since the backend exposes no sync history, and states that sync also runs automatically on an interval.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/app/admin/wiki/page.tsx",
+          "version": "repo-file-v1:sha256:82652dd5f51bb1cb32f26b2775a091edaa4f20c7f64a54e70e6f35e4a0961326"
+        },
+        {
+          "resource": "repo://frontend/src/components/admin/views/WikiSyncView.tsx",
+          "version": "repo-file-v1:sha256:de3fd98a59d90176cbdcfafbfc6425d3e1e374f180e4e0f1092640d74d497360"
+        }
+      ]
+    },
+    {
+      "id": "claim_72dcb651ecb843e4b4a9bdb8b402377c",
+      "statement": "The mentor chat UI is AiTutorChat, embedded in the module learning page and calling learnBlocksChat(learnBlockId, message) against POST /agents/learn-blocks-chat, with chat history persisted per-module in sessionStorage; the separate route frontend/src/app/(main)/tutor/page.tsx is an unimplemented placeholder and not the mentor chat surface.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/app/(main)/modules/%5Bslug%5D/page.tsx#L1-L29",
+          "version": "repo-lines-v1:sha256:2ec75ffb348a3319c0bcdf101d2290f9fb9342cb1fcc04e19464762f7a93182e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMzdkYjFiOGRiM2ZiZWEzNmE1ZDJhNmZmZDVmMzM5M2E1M2VmMDUwNDdlMGI1ZTZlMTRhNDM0ZTQwNmZkZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4Yzk5Y2E0NTBkODI5NTE0YmM2YzgzOTU2NjFjNGYyNDdjMDYyNzg3Y2E1N2M4ZGY0ZGIzZTk1M2ZjNjBjMGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA5OTg2M2E0MGIyN2M4NTE4NWYzMDcwY2RhMGJlNzZkMzc4Y2FhMWFjZDlhZTg2MzkzZTNhNDMzMGU5YWYzMWYifQ"
+        },
+        {
+          "resource": "repo://frontend/src/app/(main)/tutor/page.tsx",
+          "version": "repo-file-v1:sha256:052d72d26e36702c79400982031576ec922dc78631d81814c7ba9ad8f210d16a"
+        },
+        {
+          "resource": "repo://frontend/src/components/admin/AiTutorChat.tsx#L38-L126",
+          "version": "repo-lines-v1:sha256:6da1fe5a8e50791f61d529edaf32df37fa95fb7b8f93736344bd1da85e0b2832:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxNjYwNTc1NDg1ZjViMWQ3ZmNmYWU1ODI0YjU0ZTZlZjBjOTg0NzI5M2I5OTZiMzA4ZDg4Zjk0MzdjY2JjYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTJjYjI1YTEyMmI0NDIyMWE2MjM0ZWM2NjBhN2I1ZmI3ZjliZGU3YjNiOWUyYjNjNTU5YTBkOTZmYWM3MzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUyYjYyNmIwMWYwZTMxMmU2MTk5ODI1YjgzMWQ1YmJiOWM0NjIzZTViOWU0ODg4Y2Q0ZThhY2NkN2FkMGNjMGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVkOWY0NDFkZWI0M2QwYjg4ZGMxYjBjMWE4ZTUwMTEyNzBmODI2YWMyYmQ4OWQ1MjRkZGQ0NmQxZmZkMDcxZTkifQ"
+        },
+        {
+          "resource": "repo://frontend/src/lib/api-client.ts#L252-L255",
+          "version": "repo-lines-v1:sha256:963c89114f73f0e280aeba626a48f3670ce31aae1556fd1a705891f38a6cb0e5:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGYxNmY4MjJjYTk5OTA1ZDYyY2EwOThlZDI3ODlhNWNmMDU5ZWQzMWNhY2E5MTFhNzYxNjQ1ZjgwYjM2ZjA2MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2EzZTQ2Zjk0Mjc2YjZmNmY0ZWQxZjAyYWY3OGJlZjZhMmVlMWM0MzlkZDU1ODRiOTczOTQ4MzEzMjE0ZDJiNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzY2ZTI5OTVjZTk4NGVlNzA4MmQ4YzkyODg1M2JkNTdhN2U0NjViOGY4ZjQyNTJmMGIwNmViZTg2NGM1NmNhNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmJjNjg3MDYzYzViM2U4M2QyMzA5N2FhYTUyN2Y2NTRlNjA4OTc0NmQwMzQ4YjFjN2RiY2Y4ODkwZjZmOTQwMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ea4d5b371790421b8ea5104c2b3ad1cc",
+      "statement": "agents/wiki (GitHub wiki sync/chat feature) is architecturally unrelated to the repository's own OpenWiki documentation pipeline referenced in AGENTS.md/CLAUDE.md, which is a GitHub Actions-driven generator of the openwiki/*.md evidence index; the two systems share only the word \"wiki\" and have no code or data dependency on each other.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:8926524de63a1266e7592d9f1256ec367b67e9fa0583f343808e3e51f19d4990"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/__init__.py",
+          "version": "repo-file-v1:sha256:b34bae9c4c97949a5ae171391816c9d5807e65ffac04f52f89373029a0d8b91d"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

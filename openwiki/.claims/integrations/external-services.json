@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f9c4c367c374379b5eaa4e92ac080f40b6d599ba0079ae6a716bb10e820f4f3b",
+  "claims": [
+    {
+      "id": "claim_6d40aa42811f4955918e61c820d31691",
+      "statement": "Keycloak is provisioned via compose.yml importing infra/keycloak/praktikai-dev-realm.json into a 'praktikai-dev' realm defining four realm roles (user, lector, guarantor, superadmin), a confidential client 'app' (service accounts enabled, direct access grants enabled) used by the backend for both token introspection and admin role lookups, and a public PKCE client 'praktik-ai-app' used by the frontend.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L67-L98",
+          "version": "repo-lines-v1:sha256:5603b23b4a1568f3ec9ef2dbef48ff903f4e297e6ca9616fc8dbc03cf2335782:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0N2JhNjcyNTA3NDdhMDUxMjEzNDg5ZmVmZjE4Zjc2ZWFiN2MzNTRmZjRmNzRlOTdlYWQxNzA3NjMzZDhkMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1YzExZDFhYmMxZjk3MTdlOTVkZjJlNzBjODY0ZGFmZTgzNzc4NGQ0MTVkYjg0YmVjYTdjMGM2N2E1ODY5OTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMWIyNDc4NmRlYWMxZWI5ZTQzNmY5OTYyODZjYjBjNGEzMmM0MjM5ZjM5NDA2YTg4NGU3NGIzN2ZkNWUyODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlZDA0NWJiODNiYzBmYzY4Mzc0ZDQ1NDdhYzljYThlZmE0NmJiZDIxYWNjMGFlMTk4MDEyMTMwNWEzNTQ4ZDMifQ"
+        },
+        {
+          "resource": "repo://infra/keycloak/praktikai-dev-realm.json",
+          "version": "repo-file-v1:sha256:2a1618bc38343bc2285ac8dd3e9bd80407b96e1eb136c89bca3ad6cd1267a943"
+        }
+      ]
+    },
+    {
+      "id": "claim_d663dcf565c14f0298b3db0688806fd2",
+      "statement": "backend/api/config.py's KeycloakSettings (server_url, realm_name, client_id, client_secret) is populated from KEYCLOAK__* environment variables and must match the 'app' client's id/secret in the imported realm JSON; SeaweedFSSettings (master_url, filer_url) defaults to the seaweedfs-master/filer service DNS names and is overridable via SEAWEEDFS__MASTER_URL/SEAWEEDFS__FILER_URL.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/config.py#L16-L26",
+          "version": "repo-lines-v1:sha256:733732283bcc0237b0040d864510a4703d60d134173227d17025f1c9a876a2b9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlkYjkyMzQzYjNmMDQyNzJmZDQwYzc0NGQ5MGY3OTZmZGM0YzcxOGU2NjE4OTc3YTQzZDc3Nzk5YjgwYjM5ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjYWRhMDdlZDk2ZWQ2ZjhiODQwNmU2OWU5MDliY2Q5ZTk3ZTBiODlmNzg2ZjBlYmNjZjY3MWNlMjFmOGFmMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVjOTc0YTM5MjQzZjc3NjdjZWU1ZTMyMDA0MWE4Y2RjZGY5ZmVlOGE0OThjZDMwOTcxODk0N2VmNjM0YWEyMzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_29b2d15321c542dca6268a6c102eee79",
+      "statement": "backend/api/dependencies.py's Auth class wraps python-keycloak's KeycloakOpenID as a module-level singleton: get_token() performs the password grant for the backend's own token endpoint, and get_current_user() introspects then reads userinfo() from the bearer token, using only sub/email/name from the JWT and never trusting embedded roles; a Keycloak connection/auth error during get_current_user surfaces as HTTP 500, failing all authenticated requests closed.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L85-L154",
+          "version": "repo-lines-v1:sha256:e5fbf8eb25496d54f898b8ef01fee17483d92067440fb3fa22702cbb5fdd7037:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZjNTlkNzg5N2I3NjQxZDIxYTQ1NWZjNjg2Y2I1OThjN2ZkYThlMTI2YTU4OGUxNDI2ODhhYjA3MGQ1OTVhYmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3NjZjNzg4OTdmOTZlOWEzMTkxNmZiOTk1MDFkM2RhNGY1NzU4NGMxOTdhNTgwNzA4Y2VmMDBkNDRkNjZjYTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZkMzQzZTIyZjNmMDllNGZhOTlhMzJlZTgyMGRmNDRmYWI5ZThlZTI2OGUwZDZkNGM5NmQyMmU2ODZiMjU4OWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNhNGE2MjRhNWU5ODA2YTVkMzBkZmY3MjEzNjdhNDIwZGFlYmVhYzQ2MTJkYTYwMmI2ZWQ5MDEwYzI4YTYzNzcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5966d4dafed449c09e404313178080e4",
+      "statement": "Role lookups are performed via python-keycloak's KeycloakAdmin authenticated through the client-credentials grant on the same 'app' client's service account (KeycloakOpenIDConnection); _fetch_roles_from_admin_api resolves the highest realm role via a fixed priority order and falls back to UserRole.user on any exception (e.g. Admin API unreachable), failing safe rather than blocking the request.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L36-L82",
+          "version": "repo-lines-v1:sha256:b28a782918b20a0fce07d16500806b660fae5c4b0f9ce208b77f7b78142f94cb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkY2M0YTE1ZTUyMjhiOGVhOGNiNjNjMDQwMDIyMzIwNzIyMDExMTBhNWQ3ZWJkM2U0YTAyNzNkYTQ3NzUyMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzOTQ2Zjk4NWQ0ZTEwNzQwZTE4NWIxYjkwOGE5ZmIxZjI4MGQ2YTExYmRhZDc0OThmYmM5NjE3MzYyN2ZmMWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1YmYwODMzY2NjNGIzNzUyNDQwODFlNjJkNTQ1ODFmOTMwOTc2YmY5OGQzYWRmMTg3MzBiYmFjMDBhNjA3YWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyMDEzZDE1N2E5MjdlZTkyMGRiNTljZTQwNWYxYTQ3YTM2ZTg3ZDZjZmUzMTMwMzQ1OWYwNjQ2YmM4NjA3MTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fa95ce82cba540f1859bc949c601a49d",
+      "statement": "get_current_user only re-invokes the Keycloak Admin API role lookup when a user row is first created or when now - user.last_synced_at exceeds a 5-minute TTL (_ROLE_SYNC_TTL), otherwise reusing the DB-cached role; a role change in Keycloak is visible to the backend within at most 5 minutes or immediately after a fresh /auth/sync call.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L161-L232",
+          "version": "repo-lines-v1:sha256:3e7402d9dc6b70c9930d664193829ca3cbab8c343ce2f0c17216b6a82bfbded2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMGZkODAxOGVlNjBjNDdiZTkxNDZjZWE4ZjAwZmU2NWQxMDY1ZWE2ZjQ5MTE1ZWJkOTk0ZjA0MTMyNWQ1YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NjdkYmVlMWEyODYzNDlkMGMyN2Q3MjE4YWFkNjZkMTVmOTY0MDA3NGMwYzkzNDU3MDAxYmJiNmFhODIzYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzOWQ5YmJhNzg0NDliYWEzZTM2MjFiODE5ZTlmMzVmMzY1NzZkOTFkM2YyMjhkZWJlZmU5YTBhZTE4NzZkMDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyODg3MDViZmRkMzQ5ZTk1YjVkYzZkZDY0ZGZmZjY4YTQ3ZDg5ZTVmZWQ2OWEwZWQyMTk3YWM4Y2FhMzY3ZTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/dependencies.py#L39-L39",
+          "version": "repo-lines-v1:sha256:4709f6ddcdb2600968b14464e898c42f7dd4fb69e1a7b7399e5295e92d05f5d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcwOWY2ZGRjZGIyNjAwOTY4YjE0NDY0ZTg5OGM0MmY3ZGQ0ZmI2OWUxYTdiNzM5OWU1Mjk1ZTkyZDA1ZjVkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcwOWY2ZGRjZGIyNjAwOTY4YjE0NDY0ZTg5OGM0MmY3ZGQ0ZmI2OWUxYTdiNzM5OWU1Mjk1ZTkyZDA1ZjVkOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTM5NmIzM2ZkYjJhM2M3OTlhYmM4MDkzNmFjMDBkNTcwYjJhYjAzMjE2MGEyZjljMTliYmFkYjRkOTUyZjU4YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDIzMTU5YjY2MzIxNzgxODZiODhhNjAwMWI5MmViM2Y4NzI0OTA5MDlhMjkzNTI0MWYxNmFkYmEzMThiMjJmZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_622034f00c654c948db44da6dea724ba",
+      "statement": "SeaweedFS runs as three independent containers (master, volume, filer) of the same chrislusf/seaweedfs image in compose.yml; the filer (port 8888) is the only role the backend communicates with, while volume and filer register themselves with the master.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L101-L137",
+          "version": "repo-lines-v1:sha256:6b9952c8c0c50da8621c0a671b6c0ff91751545dca6f77c90520aff13be370ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZTk1ZWE4ODFlMTMzOGM1ZGMzMTM2ZDkxZWU2NTcwZjUzYjExYTE4Mjk1ZDZjOWIzNDBmYjU4MjAzYzQ5MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MzFlMjYwMzk4YWQ2MTA5MTRkZmMyOGYwNDhkMzkyNjRiYTdkNTAzMjc4ZGQyZjhiYjFjNGMxNGI0OTlkOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzEzNWM1MDgyZGRmZmY0N2ZhODBjYWYwMTZmNWQzMzA1OGUyOWFhYzIzYjY4NWYwZTgzY2I0OTZmOTE0NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2OWY1NjI4NmU1ZjQyNWFiODQwOGU3MmVjMGEzZjQzYzk3NGY0Nzk4ZDk4OTAxYTUwZTFiZTdlNTgwNThlMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2e1e7600f35c4de89b5381d304fb9696",
+      "statement": "backend/api/storage/seaweedfs.py provides synchronous upload_file/download_file/delete_file helpers that each build a URL via the configured filer_url and a remote path, use a short-lived httpx.Client, and let httpx.HTTPStatusError propagate on failure with no retry or caching; upload_file posts multipart/form-data matching the filer's curl -F contract and returns the full filer URL persisted as file_path.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/storage/seaweedfs.py#L1-L78",
+          "version": "repo-lines-v1:sha256:13ebb392b61827a2e2ef672c9c21ccb0e7b9f333ff157be2557e246971842817:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkMWM1MDBlMzFiNjg2YmY3Y2I3Mzk4Nzg1YWU3N2JlM2I1ZjE5ZjkyZmQ1N2FhYzU4YTI3MWUyZTljMWFjMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMTRhYzNiZmIzZDg2MTdmYTU2Y2NkZjY3MTkwOTMyMDU3OTE0MzhhMzBiMDE2NzJmZjEzYTgzOTY0YTIzZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8906c49963b94128a79d57f3b70e7910",
+      "statement": "SeaweedFS via these helpers backs course file uploads/deletion (api/src/courses/controllers/create.py and delete.py, path convention courses/{course_id}/{filename}), rich-text editor image uploads (api/src/editor_images/controllers.py, path editor-images/{uuid}{ext}, with content-type allow-list, 10MB cap, and path-traversal guards on filename), public resource attachments (api/src/publicDB/resources/controllers), and course-generator agent source file loading (agents/course_generator/nodes/load_data.py).",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/load_data.py#L1-L50",
+          "version": "repo-lines-v1:sha256:50d40e026d27e0e12ec8c394439222d8b8dce9a95677497c1b6bb84ff9cb1e11:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA1NzgxMzliYWE4ODM1MjMxMzU1ZTA2ZjdmYzUxNjQzYWQ0OGQyYzYzMzNiZDA3NzdlODBiODRhOTNiOGFhZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhNzI5NTFhYTUwNmFlMjg5MzYxOTY0MWNlZmE0YTkyYjg0MmZhNDk3MGJmOTAwYzUyMTcxNjM0NzY4MWVmNjYifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/create.py#L155-L188",
+          "version": "repo-lines-v1:sha256:1be4699c6484eae8ded7d5811844a4e2c31a90ffa2c75e32318c1e0510583201:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMTRhNzY0YmUzNDQ3MGMzN2Y3ZjRkN2UwMTlmMzAzNDhhZmQ5NTdkOWRjNGMxYWVjZGFmODVmYjBmMjA1ZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkZjg1OGYzYjU4NWVmNjk4ZGRmNmNkY2ZiMGE1NDMxNDZlODNlOTVhODdlZjA0NDliOWZmNzVhNTUyYWI2NjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0OGJiYzRiNTljZjI1NmYwMWJkMThlMmVjZDJjZjY1YjE0ZmEyMjMwZDBjYjc0NWMwOTc5OTg1YmU2ZTJkMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMwOWZhMGExMWZhYmEwYmYxZmM2NGYzZDg1MjYwZWYzM2MxMmI0MTBlOWI5YmNiM2U4NTFmZjcwM2RmMDg3OGQifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/delete.py#L59-L65",
+          "version": "repo-lines-v1:sha256:8562fe46cbb5065238cfd890721ccb2d28d3a4517b42dd582db11962b46443f1:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I1ZmM2OTRiM2VlMDcwZTc3ZThkZTI1YTBlNzU4OTc5OTI0MDE2MGFjMTQ1ZDQ1NmRlNWYzZjRkZGMwYTQ5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmMwNTY0MTY2MGEzMGNlZWQ1NWE0OTUzM2U5MmU4NGJhMjcyMmRlMjQ3YTQxOTNkYThhMWE1N2Y4OWI4YjgxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmEyMTRhY2Q1YjRmNjc0NDI4NjI5MTdiOTZlYmEyNmRmOTFhMzYyMGRiNGJlM2VlOWMxNmM2NjY1ZmI4ZGE4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjA1ODU3M2YxN2E2NDUyYmI3ODBlMDBhMTM2MDM3NDFhMGExYjhiMWNhOTNmYmY1ODQ4ZTRjMGJhMmIxMTJlZiJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/editor_images/controllers.py#L1-L57",
+          "version": "repo-lines-v1:sha256:ac4719483640f3f8b298bd7af21e6fe5d06d58936ccd21a3d9fdaeec022df3a2:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYTRmYzViNmY3NGEyZmZmZGUyY2E4ZTg4MWIzMTUxMmU3M2RlZTYxZjYxZWQzMjk5N2ZlYWMwMjAxYjViOGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/create.py#L1-L18",
+          "version": "repo-lines-v1:sha256:4f95f6662ffb3da8b949110acda310c6f5d3b8afb5ef09fce19e6cafa2278ab6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQwYTkxYzUxYjE1YTgyNDU1YzY4MWNlZTE2NTYwZDcxMWUxMTA5ZmFhOTkwM2U1NzgzMDlkZWM1NDA4YjNlYjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4MzQ5MTU3YzExNGQ4NTMyMWY4ODkzZmVlYWQ3NzhiM2I5NTljZjQ5ODljMTc3MTkyZjI1NmNhYjQ1ZmJhMGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_04b1022dd7d8451e89a480385b340a66",
+      "statement": "delete_course (hard delete path, draft courses only) iterates a course's files and calls seaweedfs.delete_file, but only logs a warning on failure instead of aborting, so SeaweedFS unavailability can leave orphaned blobs on the filer while the corresponding DB rows are still removed; load_data_node raises and fails the whole course-generation run if it cannot load any source file from SeaweedFS, making SeaweedFS availability a hard dependency for course generation.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/load_data.py#L42-L46",
+          "version": "repo-lines-v1:sha256:e061cee915576d9bc73d3c4e131963b4ac2d4d0b65b5c6514dfac5844ebb1bd9:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzZiMDRlNmM0MjA4MTM2MjBmZjI2MWViYmNkMzI2YjcxM2Q2ZTdhYjE2YWVmOGU5NjM0M2E1ZWM3NWM3YmEwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjRhYTRhOTgyZDEwMmE5OTUzNjVhYzFjMTBjYTAyZDQ0N2Q4MDFiYjUzZmFkY2E0MTAzYzI4NzAxMDI5ZjgxMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGRhYzk5MDBmZTNiZjg0MDNkODE0ZjkwZmY1ZDcxNWRmODE3N2E3YTE1YTMxMTlkOTNlNjkzYWFiZTUzZTc0NCJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/delete.py#L59-L65",
+          "version": "repo-lines-v1:sha256:8562fe46cbb5065238cfd890721ccb2d28d3a4517b42dd582db11962b46443f1:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I1ZmM2OTRiM2VlMDcwZTc3ZThkZTI1YTBlNzU4OTc5OTI0MDE2MGFjMTQ1ZDQ1NmRlNWYzZjRkZGMwYTQ5ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmMwNTY0MTY2MGEzMGNlZWQ1NWE0OTUzM2U5MmU4NGJhMjcyMmRlMjQ3YTQxOTNkYThhMWE1N2Y4OWI4YjgxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmEyMTRhY2Q1YjRmNjc0NDI4NjI5MTdiOTZlYmEyNmRmOTFhMzYyMGRiNGJlM2VlOWMxNmM2NjY1ZmI4ZGE4MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjA1ODU3M2YxN2E2NDUyYmI3ODBlMDBhMTM2MDM3NDFhMGExYjhiMWNhOTNmYmY1ODQ4ZTRjMGJhMmIxMTJlZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_99948496c48b4180a2b4fdc1e64552ac",
+      "statement": "agents/base/llm.py's get_llm_config(db, key, default_model, default_prompt) looks up an active SystemSetting row by key to obtain per-role model/prompt configuration managed by Super Admins, falling back to caller-supplied defaults if no active row exists, or raising ValueError if neither exists; every LangGraph agent node (course_generator planner/summarize, mentor generate_answer/rerank, assessment_generator/evaluator, practice_question_generator/evaluator, sql_agent, wiki mentor) obtains its model this way rather than instantiating a chat client directly.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/base/llm.py#L25-L50",
+          "version": "repo-lines-v1:sha256:7c3a34d7831aecaf8aa2d1a9580544432d78c072d72b3b6cfb723090607b2f40:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkMjhmZDVmNzczMDE5YzNiOWNiMjA3YjFiZjBiNjk2NjRiOGE0MTkzOGVlNjZiMDUwMTBjNDFiZjAxMThlMDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljY2ViYjQ5ZjllOWJiODYyNmFlYzI2YTIzMDYzOTRjYzVkMjI5ZGQ5YjJiMjIwZmEyMzgxMGI3ODVkOGRjZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZmM2E1MTlmYTQ2NDViMTNlNTQ5OWEwMjY1Y2JlM2UwZGZlNjA4Mzk2ODRmYTZiZDk3OTkxODcwM2RiNDg4NjQifQ"
+        },
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/planner.py#L1-L22",
+          "version": "repo-lines-v1:sha256:4c9f68fe6a7ae085b5536a530717905d515824ec25f49d47c5ee0a13764c9fe7:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkZTkwODk0NzQ2MzQzN2M0M2ZlZmY3YzM2MjIzNWI5YzQzNmIzZmUxZGQ5YTkxNDI5ZDBkZDAzYmJiZDRkZjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNzQ2OTlmOWUwNmM3MGEyNThiYzgxY2FkNjc3NTFiZTYzYjdlNmZjZTFhNTdmNzU3ZWZiMjAyYzE1ZDkyZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjMjUxOTg4ZDlhNTQ2NDM2MmVjYmFkOTgwOWUzMDY5NWZmMTVjMDQ0ZjJhZGY4N2YxMTE5ZDdiYTI2NWUyYmIifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L87-L110",
+          "version": "repo-lines-v1:sha256:304e0a721cdffe802e60c4a5d464f8ff73caa2cbb52876e6783999763ee5f744:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4MmJmMTQzMjkwZDYyMjIyMzNjM2Q1MzVhMTY5YjJmNTg1MzhkYjMzYTFkMTBkNWFjZjdlNGQ0ZjBiNzVkYWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4YTA4OWFjNWI3NTBiOTQ5YjhjNzZhZDU4N2E1ZGZjMGJmNDIwMWY0NDY4MDk2NGNhMWJjOGZiMmJiMzM3MWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5ZmNjZGYxYjZmYWUwZmM1MjIzYjhkMjA1YjhhMDJhMDc2NDBlZDdkODM4NTk2YzM2YThhZTliZDhlNWM4ZjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjllM2UwMWUzMTM1MGY0ZDk2Njg0ODExYTJlNzUxOGE4MTA2NWY5MDVkYmJiNGJhYTMyYzg1NTYyNWM0NzJlZGIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1137112b1cfd4a26b44677563f1e8a17",
+      "statement": "create_chat_llm(model, temperature, max_tokens) selects ChatAnthropic when model starts with 'claude' and ChatOpenAI otherwise; for Anthropic models it never forwards temperature (current Claude models reject it with HTTP 400) and always sets max_tokens explicitly (default 16000, DEFAULT_ANTHROPIC_MAX_TOKENS) to avoid langchain-anthropic's per-model default table silently truncating structured output, enabling streaming when the resolved max_tokens exceeds the default to avoid HTTP timeouts on large non-streamed responses.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/base/llm.py#L53-L86",
+          "version": "repo-lines-v1:sha256:616b3914ce7413b2639ef51be9fd6d904297e0d84678a33f51940e96ef93e36f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjYzhiMTU2ZjQwYzViZGU3ODhhYTZkMTg1ZTRjZGNiODJmYzM3NDE5N2M1MjllZjhjMmQyZmYxM2UxNTRhNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwODM2MmY0ZWUxZjU0NmQ1YjcxNmFkNzIyMzY4MDk1MTkyYmI2NWUxODZmOWNiOTY2M2QzYzY3ZTAxNjNjODciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c334db5afd24f73834deac72655d3be",
+      "statement": "LLM provider API keys (ANTHROPIC_API_KEY, OPENAI_API_KEY) are not part of the backend's pydantic Settings in backend/api/config.py; they are read directly from the process environment by the langchain-anthropic/langchain-openai SDKs, sourced from the repo's top-level .env file loaded into the api container via compose.yml's env_file directive, so a missing/invalid key surfaces only as a runtime SDK authentication error rather than a startup configuration error.",
+      "evidence": [
+        {
+          "resource": "repo://.env_example#L22-L23",
+          "version": "repo-lines-v1:sha256:73d50c7879aa580d514adc66fd91e9d17e938389d3180bd916394a6126aa0133:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGRhOTU3ZDUzY2Q5YjEwZTdiN2EzMzQxMGZiZWU5NmJkNzhiNzE2ZjNiNDhlYzRmMTNhMTdiMjY0MmM5MDA3MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2YxMzU4YzFiNTFlYTNlYTc2OGRkNTlhMzZkNGE3OGE5MzNkMjg2NWVmNTE5MjQxYWQ0OTc0Mjc3ZWEwNzkzOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGVjMDA3NGQyN2NiODk5MDcxNGQzOTkzM2FmY2FiYzU4NTQyYWUwY2NmNzYxZDUwNWVhMWE4M2Q3YzBiMzdlOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTkzZmY1NWUxYWQ5ZjY3NTFhNDZjMWVhODFkZTcxYzBiMjc5NzQyODY2OGE2NjYyYWVhODM1NWFlOTZjMzRjMiJ9"
+        },
+        {
+          "resource": "repo://backend/api/config.py#L1-L45",
+          "version": "repo-lines-v1:sha256:6b9e6fb5da90675610339b60ebd482f0137e6e895315028c6e874719f333eecc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZDJkNzcxMjdlNjk2ZDJiYjgyNWMwMWFiMjJhZWIxMGY2NzBhYTdmZGRkYjVjOWQ0MGE1YWQ5MGI4YzY4ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5MTY5YWZhMzUxYTA4MDBjZjVlNTU0ZmMyNGM3ZjgyYjQ4NDk2OTBhN2ViYjlhMTRhYWY5NzlhMmU2MTIzMzkifQ"
+        },
+        {
+          "resource": "repo://compose.yml#L19-L26",
+          "version": "repo-lines-v1:sha256:7efe1dae996c5d20b38993354fd6a672130d1dbdd26b12279ab67b81db6b6c82:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzcxZjRlMjVkY2E0ODZlOWQzMWNjZjViNzYzYzZjODUzMzI5Nzk4OTc5YjU3NWM0ZjE5OGQxNDllMjQzNTNmMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBkYzIwNmM2MjI2ZDczMGM4YmEzYmI4ZDIwNTY2YzE1ZjczMGViMzhiZjlmMjE4MWJkNDg5ZTgzOWIwN2RhZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjAwMzc1ZjA0NDBlYWMwYTE5MGZkYzFhMzdkN2YxYjNiNjg4NjRkNmFmNzEyM2I3MTY0ZTg2OTlhYjEyZjk2YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWM2MzhmMmUyN2Y2MTM2ZmMwMmI4OTE5NDYxNWQ5NGQwNjlkMDAzNzZkOWEwMWVmNzgxNTNmOTliMzUwODJlZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_acdcd5f4a0894f1b92ab668663b0a268",
+      "statement": "In compose.yml, only the api and db services define an explicit Docker healthcheck (api's GET /health, db's pg_isready); keycloak and the three seaweedfs-* services have no healthcheck defined, so compose orders their startup via depends_on but does not gate on their actual readiness.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L35-L43",
+          "version": "repo-lines-v1:sha256:8e85411daf50795447449d9de2501c3ea94a93c28c1d59508bd0dfed1e619313:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWYyZGJiNGM5ODgwNWNmYmE2NzZlMmVlYTU2YmI5ODA5Nzg0ZDVjZGRiYTRhN2E2NGEwZDllYmU5OTI0YTMzNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGMwNmM2ZjZhM2ViMDE5M2Q0YTUyMTFiYmFiNDlhNWI1NDYwYWM2NjM4MjU0M2M1OTc1ZTZhNWI5NTQ2ODBmNyJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L60-L65",
+          "version": "repo-lines-v1:sha256:f8438f7349bc20fadccf19d8ea723c401258500698d792394e255b0f98c42554:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjk1N2Q2NGNiMDRiZjc1ZWI5YTlkN2E4ZjY4YTAyZTE4NTczMDlhMmRlYzhhNmFlNmVhMDRmNWFjYWEyZGI2MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDhlMjMwOTMwMjVmYzM5MDJhYTBjYTkzNWVlMjJhN2NiNWM0ZjkzYmJiN2ZjMzdiMDBkNDUzZTQ2YmZkOTg1OCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjE1NTAzYTZjM2FlZGUzMjIzNGY0NWVkZjgwNGRkYTcwNDkwNzU4ZDEzYTQ3ZWUwMzc5YzRjNmM1MDY4ODBlNiJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L67-L137",
+          "version": "repo-lines-v1:sha256:8ff67bbf1ba298821536419515480f078a1adee2559c15830ecd28b1d0fd919a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU0N2JhNjcyNTA3NDdhMDUxMjEzNDg5ZmVmZjE4Zjc2ZWFiN2MzNTRmZjRmNzRlOTdlYWQxNzA3NjMzZDhkMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MzFlMjYwMzk4YWQ2MTA5MTRkZmMyOGYwNDhkMzkyNjRiYTdkNTAzMjc4ZGQyZjhiYjFjNGMxNGI0OTlkOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkMWIyNDc4NmRlYWMxZWI5ZTQzNmY5OTYyODZjYjBjNGEzMmM0MjM5ZjM5NDA2YTg4NGU3NGIzN2ZkNWUyODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2OWY1NjI4NmU1ZjQyNWFiODQwOGU3MmVjMGEzZjQzYzk3NGY0Nzk4ZDk4OTAxYTUwZTFiZTdlNTgwNThlMWUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:3fdf9f218ba41412688c758eed2bd2350a4f49e5c947308eaa25161c6e67438c",
+  "claims": [
+    {
+      "id": "claim_142588a9a3e440f5910cd801dc626d56",
+      "statement": "The publicDB feature (resources, reviews, rating, collections sub-packages under backend/api/src/publicDB/) exposes public (unauthenticated) routers for listing resources and public collections separately from authenticated routers, mirroring the courses public/private router split; the public routers are mounted in backend/api/src/routers.py without an auth dependency while resources_router, review_router, rating_router, and collections_router are mounted with Depends(auth.get_current_user).",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/collections/routers.py#L27-L37",
+          "version": "repo-lines-v1:sha256:ca94e58d162c68578e31919b304b873289e9133250da05d64adbdddb992b3bf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhNDcwYjU1ZWE4MDEzMWQ0MjE2NThjZmY4NTQ2ZTQ2MWI1OGIwZDU4ODBhZTZmODgzMjY3MjM1ZDEzOWQyY2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZkNzJmYWFhNjEyNTM5YjAyZTllNGNjODliZDczMDZmNjhmYjU1Njg5NjAyMTMzNDg3YjdlYmVhYWFiYzAzYTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBiOWIwNmVkYzNiMTdkMDlhYzgzM2E4N2E1ZWZkNmFhYWRkZTdmMmQxMTFiNGM3MzEzMjc3ZDA4ZDQ1YTZlZDEifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/routers.py#L58-L98",
+          "version": "repo-lines-v1:sha256:5880687319f6c0b9821f689074ead801d509bab4c2836b7540201fccdf30b790:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5YmFkNmYxY2NmNTQ3MDNhYjRlOTdmYmU5NjBkYThlNTI5ZDQ2MjFlMWQ2NTRiZTcyYjQ2NjExYWJhNWY4NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkzYjY3N2JmNWY4M2JlMzM1ODIwNDA0ZDI3MGFiNDFmNDIwNTg0OTE2ZTVhNDZkM2JiZTUwNWU1OGRmYmE1MGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1ZmMzYjBlOGRiNmQ3ODgwZDUwNGFlYWZmNjc3MDAyZTVhZTU4MjYyMDk4OTZjYjVkNmMzYWFmMjhmOWEzNmIifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/routers.py#L60-L70",
+          "version": "repo-lines-v1:sha256:992d5369b61338f1034d1cc1b1ef99a0d37aa41668d4314ec8095345204a0778:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwMjUzODAxNjEyYzcxYzRjNGVlYjY0N2JjZmQ5ZDBkYjBmYTcxZWU4MWZiYjJiZmE0YzBjOTEyZDM3Mzk4OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkNjM5YWE2ZTg0NDVkN2RjNDg4MzUxODQ4MmM1NzNkZjBmNThiOGEwZjAyY2JlZDZkNzU0NGU2OGY4NjAyZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4MjExYTgwZGFkMWY4N2ExY2IwMjBiNjFlMzkxODM4Yjg0NTQwNDY4Zjc3YmVkMGY5MzNmMjVmODY0ZjJlNjEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0b9c882e769a4e40b0d10ca49f548da5",
+      "statement": "list_reviews (GET /reviews) has no require_role dependency of its own, so any authenticated user can list reviews, whereas rating endpoints such as list_ratings and get_resource_ratings explicitly declare require_role(\"user\") even though the router is already gated by authentication.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/rating/routers.py#L27-L46",
+          "version": "repo-lines-v1:sha256:2f932b05f1079894a11a6cb1ea55689e41e63ba6ccd9641e44022f0164309344:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0NjU5NjYwMjEzNjFiOGI4MWRiODI2YjJhOWY4OTg0OGFmNWEwYWFlMWNkMjhmNDVkYjI2ODI4ZTM5NDM3YTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRjMWU5ODZjODgwOGM4NWIyZWMwNzgzYTBmYzNmMTViN2U4ZGVkYTA2YjMzZGM0YTdkMjU0OTk1ZTM1ZTcyZDAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcwOWRlMTU2MWI0ZDQ0NmVmMmJjMzBlNjU4Y2E2ODA1NGZjMGRhNjU1MTIwYjY3YTU2ZThjZDMwNjY2MGJlOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/reviews/routers.py#L24-L38",
+          "version": "repo-lines-v1:sha256:92415de5603a79eb482f312a69cf06e294621932562d9c739b61af7cc16e559d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYzYTczNzBiZGEwYThhODYzNGM2NDVjNzUyMmIzZmI0MjJjNTJiYjU2OTAwODUwYWVmZGM0OTgwMTI2ZTJhMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhlOTVhY2NmODkwMTExZWFmZTM4NmY0MzkwNDA1YzczYjA0YjY1NThiZjNmM2Q2ZWQ1OGM5MDZhOTdlZmMxMTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b90f4f5da3542c2a46679394199f77f",
+      "statement": "PubResource has a PubResourceStatus lifecycle (draft, pending_review, approved, rejected). update_resource_status only allows draft->pending_review and rejected->pending_review transitions, and a rejected resource can only be resent for review if its most recent active PubResourceReview has verdict needs_revision.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L73-L78",
+          "version": "repo-lines-v1:sha256:c9992b1e00b3da3c818ba618d18aa86888f153db2b62cf71d98d517b955deaae:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA4ODcyZmU2YjRlNDU0MGZiOTgwYzZjMDZhMGI4M2NlYTNjNjgzN2FjMmYxMjBmOTk2YjhkYzY0NDNlNjU2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY2ZTZhYjE1NjI5NjljMjMxYTc2MTIyMDU2ZDk3ODQ3NDAwZmZkODE2MTlkMGE5OGVkOGZmNGI3MDgxN2U1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWM4Y2M5ZDRkNDZlNjgxNTc3ZGEzZWUwODJjZGRlZDMwZjBkYmI5MGY0NDQ2NTgzMGMxNzE5YzQxZjg5NmYzZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/update.py#L133-L192",
+          "version": "repo-lines-v1:sha256:a8165477a3544976529a61c5049be09c413ab670ecf30923243ef9eb360b3622:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzM2YyYWNlZjUxNTMzZTg3MDQzYTRkY2Q3OGUwYWRhYWVjNWZlODc2MWU0NjAwNTY4ZGYzZjg3ODExZjUzZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1ZTBiOGZmOTJmYzEwOGIxYzIzZDZlM2I3MjJkYTU2MWFhNWZjOTllOTk4MDg2NzM3MzNkYmRlYzQxYTRmNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjZTM2N2M4Y2VmMmRhZTA3MjQxMDIyODIxZjQwZDFiMjIzZDY4M2UxNjc1MjBhZDU0YzQ0MTJmZGM4MGUzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1MTlhMThlM2FiOGYzZmQwMTI3ZTc3MWI4ZGY0ZGYwMDUzOTJiYmY1OTlkOGZiNDg0Y2FlNWU1YWE0ODRiNjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_95be5c3ec2f8437ea0c1ce21e2d15334",
+      "statement": "create_review only accepts a review for a resource currently in pending_review status, and maps ReviewVerdict.approved to PubResourceStatus.approved while both ReviewVerdict.rejected and ReviewVerdict.needs_revision map the resource to PubResourceStatus.rejected; only guarantor or superadmin roles may create a review, enforced by validate_guarantor_or_superadmin which does not grant the resource owner access.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L103-L120",
+          "version": "repo-lines-v1:sha256:5a1bbd8bdeb9578d0336d7b9ea9604362346594acc8112793b60ba2d307825ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM3MjU2NWZiMDIzNDUyNmRkOTY2OWM4OTg0YzIyZGM5OTA3NDNjMDI1NTY2MmMzNjc2Y2MwMmI1NmQyMjM4NmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/reviews/controllers/create.py#L12-L49",
+          "version": "repo-lines-v1:sha256:50fc9750df020ee69f417f360530dec3cc19211bd11aa124e598e457860d5f6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0MzY3YzI3MzI3YTA1NWE2YjI4MjI0ZjJmNjRjOWQxYmJlZmQ1ZjVjZjI4ZTFmY2FmNjljNmRkNmRiMzIxNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1ZTBiOGZmOTJmYzEwOGIxYzIzZDZlM2I3MjJkYTU2MWFhNWZjOTllOTk4MDg2NzM3MzNkYmRlYzQxYTRmNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0N2JiODg5ZWZkYTFmZTY5Y2JjODliYmE5ZmEzZDNmNDA5Nzk0N2IzMjdiYzI2MmNiZTRkOTg2M2ZjYTQ5Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c5678b41869e411c97cbb6def321723a",
+      "statement": "update_resource and update_resource_status both query the resource's latest active PubResourceReview ordered by reviewed_at desc when status is rejected, and only permit edits or resubmission if that review's verdict equals ReviewVerdict.needs_revision; a hard rejected verdict is otherwise terminal for the normal edit/resubmit endpoints, and deleting a review resets the resource status back to pending_review.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/update.py#L156-L179",
+          "version": "repo-lines-v1:sha256:f5d83beb6193ef958fc62392b6e206f9d5f3cd0e61ab64f372146ddf1bacc7f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1ZjllZTY3YzY4NWNhMTY0N2FmZTU0YmRhNDE0NWMxM2U4NmI4YTVhODRhY2Y2NzkzMmEzOTg0MWI0MDA1M2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2NzJhOTQwYWYzZWQzMzcyODcyOTY4MGQwYWEyZDE2N2JmMDI5MzBkMjRjNTFmNzVjZjFkNDYwODRlYmUzMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3NDcxYjA3YjlkYTUzZjA1OTRjMTQ1YzgxMWIyOTc2YjIxMDE2MTNkMzJlZGJlMzJmMDdjZjAxNjA1ZmY4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/update.py#L90-L118",
+          "version": "repo-lines-v1:sha256:dae1414a78386e027c3774db6697121dfdda231f689623040a468a0f1dda081c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyMGRjNmMwYjhiOGMxZmIxNzI1ZWM4OTVhMDc1ZWRjZmQwMjI1MDY0NjAxNjk2MWQ5NzM1Yzc1NzViN2ZmM2IiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg5ZDIxZDExZGE1ZmEwZTFhNDRhZTIwYTZhMDcxMGE4M2Q3ZTczNjNiNjY2MGEwODI0MDIxYjIyMGMzNDAyZjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliYmQ0NjMzYjY5MjAxNDU5Nzg2NGNiZGQ2NjFlZjk5Y2IzY2Y5NDY5MTExZjY3NWVhOGFkMTBiYjZhZDRmZjUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/reviews/controllers/delete.py#L9-L21",
+          "version": "repo-lines-v1:sha256:9306e688b21ad953c968316be24aaf195a2eedd2dedfe22790d2810b202460cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1YzExNTY2MjFmMGM4ZjkxODg3NTRmNWQwMjZhNGNhMTg0NWIyM2IyOTM3NjdmYTZlYmI0YzQxNjM2YjZhODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjODg3OGQwYTRkMzJjYWZkZjkyNzE4MjRlYmJjYzQ3Y2E1ZTdlMzljYTIxYjdhNzQzZjc0NGE3MWI4OTcwMTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVmMzJiMjBhYjFjYWE4NGVkZjg4Zjk4OTM3NTY3ZDRiODIxZmNmZmNhM2I5NmZjNjRkOGUzZWI5ZTI2YWEyNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ea5861fe44004a1fb4af3b9451544344",
+      "statement": "PubResourceComment is a separate verdict-less moderation feedback channel from PubResourceReview: create_resource_comment requires the resource to be in pending_review status and only guarantor/superadmin may create it, comments never change resource status, and comments are soft-deleted by their author or a superadmin only.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/comment.py#L23-L89",
+          "version": "repo-lines-v1:sha256:ae81ffb6e060ce285d78c8293eaf62bed3c408c3168554820ff883103e4c42d7:eyJzZWxlY3RlZExpbmVDb3VudCI6NjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyZWIxMjQ1MmJlZDc3MDYyMjhjYzhkNTE1ZjM2MDk3YmYxOWZiY2FlNDNmZTg4YzQ5OWMyZDM1ZGEyMDA0NzciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ec3d8bb6c6064fd7980d3c883fe5bf11",
+      "statement": "Ownership operations on a resource (update_resource, update_resource_status, update_resource_public_state, upload_resource_file, delete_resource, delete_resource_file) are gated by validate_owner_or_superadmin, granting access only to the resource's author or a superadmin (not guarantors).",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L68-L86",
+          "version": "repo-lines-v1:sha256:70c5255f785010edb5cbea2d6da3277a860e1a6f0cdbf3be5c7469fa3a575feb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkYzgzZmQxNWVmNGNkOWJhOGI3MDJhMjZlYTgwMTU0MjRlYWZiMzlhZTEwMzE2NDgwZDcwYmVkNjU5MjRhNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU2ODM1MTMzYTVmNzRkZDU1YWY4NzhhNTNjOGJiYjU2Yjc5ZDU2MzQ5YzY3ZThlYzU0NTBmMjhhYTlhMTQ5YTcifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/create.py#L101-L111",
+          "version": "repo-lines-v1:sha256:293d54503c4236da4f85f3abe896af39f30ea4b168cf279e8ea156a2e773ff33:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NzBmNzhmNzc2ZTJjMjAxZTAwNDY4OTQ2ZTViMjg4ODg5MmU4MTAwMDk3YTI3NjM1Y2RkNTNlOTQ3MjViNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU4OWQzMzE4YTA4OWM2Y2RiYzhiYmRhYTA0NzNmMDdlNGM1MWFjNmE2NTkzYzI5MDM1Y2UzYWE2MjhkNjg3ZDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1YmJiNTE5MWYwMWNhNjRlYjNjNjJlNjhhNjNlMWExMmZjYmYwYmUxYzMwYzllMGU0M2RjOTQ1YTI1M2QwZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNiZWFkZDQ1NzUyYTU5ODhjMDNlMmY3ZjZjMmU3OTVkYTMwYWVmODlmMjgxY2NmODY4OGVhNTRhOWRkMmQzZjAifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/delete.py#L20-L44",
+          "version": "repo-lines-v1:sha256:e33f549098d3d34ed4e5b6c6e8ea4b49d6cc2ae0ee03d3c81dce1b82b199067a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyYTc0NjU0MzRmZGYyYjJiOTAzYjA1ZTY1ZDljMTEzZDE2Y2E0MWY0ZDlkMTEwMjMyNDNhZjU1MmYxNTViYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlZWFiMWZiOGUzYzQ1YjBhZjZiYTc1ZGUxMjhkMmQyZjk4MjI2MWRkYTFjOGYyZDc5OTRiODJiNDFmMDNiMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyMDA5N2U0YWE1MDA2OGJhMTU3ZjlhMjczOWZhZDg2OTk1ZTFlMGNkY2NkYWRjNTg5N2MyMDM0Yzc0ZDNlZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEyMTczMzI5YzAzNWJjZTdlMGNkNDdiYjFkZGY3Y2ZjMjM4NjgzMzc2ZWZmZmY4NDlkNzc2YTkwN2VjZDJlZmEifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/update.py#L19-L21",
+          "version": "repo-lines-v1:sha256:f220b713d2c3ff59fb7ebdcc50cc83c47842ed6ec40a19a33649c37996556c0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2I3NjYwOTllYmM2NDZmOWRlZDhiMmJmOTcxYjNlOWYyZTNhOWUxOGU2MmU0OGEyNWI4NjYyZGJhODcxNjY0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODViODI4NTUyNzg0OWUwOWUxMjhiZTA3ODFkMTlkNTI0YmQ4MGQzMDVhYmRlNDBjMWE0NTVhZWQyZWM3YzJmNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjlkNzM1ZTgzOWU4MjgyMjc4Yzk0OGM4MmNlOTFjOTcxMzkwYjI4NDgxYjBmMTAyMjkyN2I2YzIzY2RjMTk5NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTRkMWMwODdmMWRlYzZhOTRmMjFjMTc1MWY4YTc0NGIwYWVjNWU4MDdiMDBjZGM5MDI5Y2U5NWJjNmI5OTg3MyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c98cb8fc41dc4843b074c3f94c88a7ae",
+      "statement": "delete_resource refuses to delete a resource that both allow_forks and is currently approved, and refuses to delete any resource that is currently is_public; a draft resource is hard-deleted (including SeaweedFS file cleanup and PubResourceFile row removal) while any other status is soft-deleted via soft_delete().",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/delete.py#L20-L69",
+          "version": "repo-lines-v1:sha256:e82b835183e1aaef8feb0ff7d90a8e739ec095f6d0cfd46fed520feed81c203e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyYTc0NjU0MzRmZGYyYjJiOTAzYjA1ZTY1ZDljMTEzZDE2Y2E0MWY0ZDlkMTEwMjMyNDNhZjU1MmYxNTViYTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyMDA5N2U0YWE1MDA2OGJhMTU3ZjlhMjczOWZhZDg2OTk1ZTFlMGNkY2NkYWRjNTg5N2MyMDM0Yzc0ZDNlZmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiYTdiYWE4Zjg4MDgzMWIzNDA2YmVlYjAxMzUzYTRmMTc5Y2VkYjAyMjU1NDJjMmNiZWFiODA3ZGZmMWUxZDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f69dc1d942cc461dacfde83740d0f7be",
+      "statement": "delete_resource_file is only permitted while the resource is in draft or rejected status.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/delete.py#L72-L111",
+          "version": "repo-lines-v1:sha256:42ec64fbd25847206fc4770134e304564952d4484daaf0e13bb935804f269861:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkMGRjMTBiNDk4YzkyMDg2ZjVmOGQwNTkwMmVmMGViMjIxNWNlMTZlMjA1NjM0N2E2M2EzYWYyOGJjYzI5MTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTcyOGViMzNmMjRkZWJhODYxOTZiNmY2NzUxOWNiZjAyOTBmNDUxZTI0NjVkNDY1NzEwNGI4NjVkY2E4NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a00f3167ba474172b4fa4310f41c88ca",
+      "statement": "update_resource_public_state (toggle is_public) only succeeds for resources in approved status, and rejects the request as a no-op if the target is_published value already matches the resource's current is_public.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/update.py#L195-L229",
+          "version": "repo-lines-v1:sha256:fbd2cfc5b45e5b2963f893cefdb60b11573384a6aab3190c4511a40270d1ce5b:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ0NzFmNmFhY2RhYjIzMjUyOWJmNmFlNDljOGM0NTEyYWUyMTg3MTdiNWNjZjhiZWVkNDM5YzNiZTJjZGUxMzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1ZTBiOGZmOTJmYzEwOGIxYzIzZDZlM2I3MjJkYTU2MWFhNWZjOTllOTk4MDg2NzM3MzNkYmRlYzQxYTRmNTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjZTM2N2M4Y2VmMmRhZTA3MjQxMDIyODIxZjQwZDFiMjIzZDY4M2UxNjc1MjBhZDU0YzQ0MTJmZGM4MGUzZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4dae84aedc9a4887af30fa692ea65645",
+      "statement": "create_resource_fork requires that the original resource is not itself a fork (is_fork must be False), is_public, and allow_forks is True; it creates a new PubResource with is_fork=True and allow_forks=False (preventing fork-of-fork chains), inheriting subject_id, target_id, education_level, and difficulty_level from the original while title/description come from the PubResourceCreateFork input, and records a PubResourceFork row linking original_id to forked_id and the forking author_id.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/create.py#L169-L234",
+          "version": "repo-lines-v1:sha256:e4d37813b89cdbf5d2e6cbb48094fbdfb6131c06e8bb7ef40bd2448b6b6ff2e2:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2YTEzNTliMjc2NThjYmJkNGM1OTc2NjdiMDljMWQzNmNhNDQ4YWE2ODA3NDljMmUzMDhhZWU5MWQ4MWNkMjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwODhiOWVhMzAwNTYzN2U3YWEzNWIxZTU5YmQyZjZlYjYyZGQ0Y2ZkNTY1M2EwZWU5Mzk5YjZkZTk5ZTU0ZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNhN2QwZGYzZjcyMWQyMjM4NTM1MTNjYWM4ZTljZmZlNzNkZDdhM2E0YWEyZGQ5N2RjMjUwODA3YzYxZWQ3Y2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f44b3d9998fe4c18bd534f010c8847c7",
+      "statement": "get_resources/get_resource compute forks_count via a subquery counting active PubResourceFork rows grouped by original_id, and forked_from_id via a subquery joining on forked_id, exposing both on the PubResource response schema along with RESOURCE_IS_FORK_ANNOTATION/RESROURCE_ORIGINAL_ID_ANNOTATION query filters on list_resources.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/common/annotations.py#L59-L64",
+          "version": "repo-lines-v1:sha256:483d16420f03d27844489901b0eba92cd9032cbf9a85f40a98d0356dabd91a47:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTliMTU5Nzc4N2NlOTdmODM3MDdhY2M5ODIzNDVjZDUzYjNhMzUxNjM2M2Q5NjZmMDUzMzQ1MDVkZTkyMmRlZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk0MTZlMDlmNzhiYTMxNmMwMzI1NjgyMTNiODU1ZWU3NTZlNDE1NjVkOTE4ZjA5NTE5YzgxZmQ2MjBmNDA2MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTY4ZTIzODgzOWI0OWYwNTZlYWVjMGMxY2ZiYTNjODNmYmM0Yzc1NTc3YzUwMWE2NTI1NzFhODY5MGZkNTMyNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGUwYjAzN2EyYzdjMzY4NWM0MGViYjgyMWZkNzliYjlmNGMwNGUyMjNhOTAwNWM0ZmExZWJkMzUxYzNmZjAzOCJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/read.py#L54-L69",
+          "version": "repo-lines-v1:sha256:294851e9f09c225e68ef2702cfe11862eab172c0aee48e1978c3b96d800b36dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjNjg0ZmUwYzllNzIyMjdlZjA3ODA1YjAzNjk5ZmVjZGI2MmEyNDEwZjZkMGUzYzliZWE2ZGYxYjgzZjQyNzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhlNjUzM2YxYTA2MWZmYTNhMDJiY2VhYjk1OTgyN2U0MmY0MDFiZTAzMDg3ZmNiMzlkZjJiZTM0ODJiNDkzNWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUwMTM5MTgyYTFiZjA1MWMyZTg1OTg5ZjEwMGJiM2I0NmQ4OGE4ZmQ2OTk3NTY0ZWRiZWQ3N2YzZTg0MDVkODgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhZGVlY2ZlY2M5MTExM2JhZmVmOGE3ZmUwOTk0NzgwOTVhODc3YmExNmY0YzViNDI0YzAyNDBkOTljZjdkMmIifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/schemas.py#L90-L103",
+          "version": "repo-lines-v1:sha256:4907330fb46e6b8f8d7a33909705af8ebfe96cf33289bd25edaff95f2d6749f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMDdjMjQ0Yzk3ODQxNjRiNmRiM2Y0ZjFjZGVlODIyYTBhMGE4MTcyNjNlYzQ2MzRjMDg4MjAyODEyMjM2ZDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU2NWM5MWQxMGY1NDlmNWEwYzI1YWQwOTc3ODhlZmI1MWRjOTJhNjBhZjMzNDY3YmQ3NDY3OGY1ZjNhMWE4OWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExMzNmYzU4YjM1MDkyNzU0M2YzZWU5MjI0YTk5NjI1ZDFiOWM5N2EwZDE1ZWZjODNhNjAxNTE2ODk5NzIyZGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_98b41a20b07e4dcebded0d71fe4a500f",
+      "statement": "PubResourceFile stores only metadata (filename, remote file_path, detected AttachType) in Postgres while the actual bytes are uploaded to SeaweedFS under a resources/{resource_id}/{filename} path via upload_resource_file; uploads are capped at 30 MB, require owner-or-superadmin, and the file type is detected from magic bytes via the filetype library rather than trusting client-supplied content_type, mapping to AttachType values pdf, docx, pptx, image, video, or other.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L80-L86",
+          "version": "repo-lines-v1:sha256:4373bffb30b7bd82c81b18bffc7623448fb89712fb97e38a5f0a513b1e331776:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmI5NjViN2EzZDM2ZjFhYTA4OTYwNTkwNDdiOGY4YWUzZWVhNmVmZTMzMzE5YzgzOWZhMTNmNjgyZDU2YzQxNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2QyODU0MzQ4NzVkMGMxN2FhNzkwODBmNjUxMDA0ZWU3Y2JmOWY1OTg4ZGFiYjUxZDQyMGZmOGIwN2M1NDZlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjE4NDdkOTYzMzU1Mzk5M2NkMDkxOTA2ZTg4MDVmMDNmYWRhNjRlOTA1OWQ3NTk5ZDAyODBlYmNlMzBiZGFkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWI4ZmEzZjA5NmZiNDYyYTQ3MWZlNzkyMTZjNzE1ZmQyMDI2OTRkODM5OTQyMjIwN2Q2MjM1Mzk0YTEyMmQ5NiJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/create.py#L101-L166",
+          "version": "repo-lines-v1:sha256:c89d0364b1f688edea91ca86fab3ed2b99cf191d201b6b6b9a9f93f6fdf793a6:eyJzZWxlY3RlZExpbmVDb3VudCI6NjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NzBmNzhmNzc2ZTJjMjAxZTAwNDY4OTQ2ZTViMjg4ODg5MmU4MTAwMDk3YTI3NjM1Y2RkNTNlOTQ3MjViNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5Mzk5NTgwMDlkZjA3ZjZhY2FjMDRjMjY1N2I1ZjgzNWI2Njg2YTQzYTI1OTlkMmU0YjUwOTQ1ZmVhMTRlYWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg1YmJiNTE5MWYwMWNhNjRlYjNjNjJlNjhhNjNlMWExMmZjYmYwYmUxYzMwYzllMGU0M2RjOTQ1YTI1M2QwZTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVlMTAyNTY2MDIwNWUwN2RjMWZlZWI4M2JjYjM1NTlmNzUwZGI5ZGVlNDdlMmJhYjUwMTFjYmVlYjE2YjNjOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7dd82ee233af42eda43653dc76820d58",
+      "statement": "Downloading a resource file streams content back from SeaweedFS through attachment_response, translating a SeaweedFS 404 into an API 404 'Soubor už není v úložišti' and other httpx errors into a 502 'Úložiště souborů je nedostupné'.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/routers.py#L207-L235",
+          "version": "repo-lines-v1:sha256:757145df1cc7c456167756fb99832997ef76a9a0b0ea5e4461aa69ff170e119f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllZmMzNDA4YjljMTE2NGYzNDNmOGNiMjlkYTJhMGY5OGE1Yjk0MjhkYWYzYzlkNjAyYzA5NmY5NTg4ODE5OWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVjODhlOWYzNWQ0ZThmZjJlNmM4Y2UxNjU0MjEwYTlmMzFmY2Q2YTI4ZGIyOGMwMTI2MDI2MjIzYjRiM2UzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ1YmNlYTg2MmFhOTY0NjJkOTcxMDAxY2Y1ZGEwNGFmYmU3YWM1NzVjZmMzNzcwZjY5NWQzYWJiZTUyYWU3NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFiOThmMDg0NzQ1ZTNlNTJjNzM3NjZhZmM3Yzg4Nzg4NzU4YmFhZjdlYmJmNTU2Njk3OTc2M2JhMGMxOGY4NTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0787e34f5a74eb2a41778c1d9bf0716",
+      "statement": "PubResourceRating restricts each user to one active rating per resource (checked in create_rating before insert, and backed by the uq_pub_resource_rating_resource_user DB constraint) and validates the score is between 1 and 5; get_resources/get_resource compute ratings_count and avg_rating per resource via aggregate subqueries over active PubResourceRating rows, exposed on the PubResource schema.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/rating/controllers/create.py#L17-L60",
+          "version": "repo-lines-v1:sha256:2e69fb768fd79ce053910683b6e0c495cf10780622e05cc7ed4be7f7be0da75d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1NWRkNWRhYTk2ZWJhZmUzY2ViODk3NzhiNDY4NmNkNzgzZjk4OWJjZTZjYjNjODI1NjgyZjAwYzViZjI3ZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhY2ZiOTYxOGZiYTFkYzQzMTk5OWYzZDMwNDBjMjZhZmM2MWQzNjdiZGRlMDAyNjEwNDAxZjY1NjU0MmE2NzAifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/controllers/read.py#L31-L38",
+          "version": "repo-lines-v1:sha256:65c8a893341b92156b370d9bd2eabafcc9895fbc4b5b8b1d1b422cffe96221c3:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDZmNjAzOThlZGRiOWIxNDRhYjQ0YTVhZmNlNWEyYmMxNWVmOGMyY2NlY2MyNTdmNjNjMTA5ZmRhMWRiYmNiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2M0MDhiMWZjNDAxNWFkMGQzM2ZmYzU0Mjc2MjdjZThlMWE2NWE3YTFlYWY5MTZkZDRjYzE3MjE5MWE3YjNkZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTc3N2Y2MDE1YjZkMWZiYjQ4YzJmODI0ZTM3NWMyZDUxZDk4OTk5Y2Q3YWJkYWQ0NDY5YWMxMzUxZDMxMDQ0ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzc1ZTY1MjA0MTEyYjZiNTU3NDAwZjUzNzU4MzU4ZjQ2ZjBkMDkxNTU2ZmE2ODQxMDI1ZTRmNWM0MDI5MWY4ZCJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/resources/schemas.py#L98-L101",
+          "version": "repo-lines-v1:sha256:e015f95211067cc2ec1129771526e495daf500da2eb1c1f8d46f0813b4733227:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzM2MGU3MzZmNWZhMGRkODc4YTMyOTUwNmI5OWQwMmU5Mzg2MGQxMDIxN2ExNWI2OTQ0YWNkODE2NGMwMzg5MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzUzZjIzOTNiNTQ4NDc2YzRhZjE2NjY3ZDYzOWJlZTEyZmQ5NWNmYjgwMThmZmE5NmI1OTRhM2YxNGE4YTkyYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzk5M2UyMGU3MDEzYzUzNTE5MDcwZmY0YjVmYjNjNGZmMzI0Mjk3NWI2YTIzN2E5ZDE0MzQxNDYxYzBkYjFhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDNhY2FkNWZlYzVhZDlhNzI0MmJhYWY0ZTIxYTA0NTk1NjhlN2RhYzE2YzdlOWExM2ViNjA5MGVlNzg5MDkxZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_31bec59263cd4609954cd57c7efa496d",
+      "statement": "add_resource_to_collection only allows adding resources whose status is approved, and additionally requires the resource to be is_public or owned by the same user performing the add, meaning a private approved resource can only be self-collected while public approved resources can be collected by anyone with access to the target collection.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/collections/controllers/create.py#L47-L100",
+          "version": "repo-lines-v1:sha256:90bd4cb930882e068dd498ce5a98b65812d735b3e77dd1d3ca248325de0028a5:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZjczYzE2ZGE4NjkzN2RlMDg1Y2U2MDdmN2JlMGQ4ZGE2YjRmOTgyMmQ2YzRiMGM0MzAxZjQ3Mzg5MmUwMTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmY2NhNGIwMTZkZWVlZjQyZmEwNzdhYjA5YTlhMmI1OTA1YTZmMTE2NjAxZDZhNTcxZTNiZmRmODA4MDllYWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4ODljNjMzNjFkNWI2NWQyMDc3OTgzMjA2MzBiYWRjNmQ4MjUxMzEzZjljNjE5NjllYWJmZWJmYTkxNDQ3ZmUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_33a97fa8d95b41e7b1976ee056537bb0",
+      "statement": "Collections expose a public unauthenticated listing (get_public_collections, filtered to is_public collections) distinct from the authenticated get_my_collections (caller's own collections, public or private) and get_collection (authenticated detail lookup by ID); collection visibility (PubCollection.is_public) is independent of individual resource-level publication.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/publicDB/collections/controllers/read.py#L21-L76",
+          "version": "repo-lines-v1:sha256:973bb3ef8c2ee759e9ba5c0e3e6fef1f4add7ad23e38fd3fde94924ef67f857e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlYzFhZTdiNDIyZDAwYmU1Mzk3NzRmZmQ4MDcyM2FmNDM3YjE0ZWI4OWEyMGNiMzI3NzJiMTVmYjk0MmRiZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0MTk0ZDBhMmY0ZjkzY2ZkNzQxODIyMjAwMDExYzkxOWY4YTQ0M2E3NjUxNzU2NTAzYjA0MTI2Zjk1ZmUyMDYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2NGI4N2Q3OWFlNDk2YTg3MDhhYTFmM2JhOGFhN2U1NTU1ODc1OGMxYzdkNGUyZTE3ZDExM2U4MjNhNjg1NTYifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/publicDB/collections/routers.py#L31-L60",
+          "version": "repo-lines-v1:sha256:83d5ed12b3a6502f042cda748e1a91849a3b2aecacf7f107b6be7797ef1be1eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZhYmNjZTlkNjRhN2NlODJiNDI1MmQyN2ZmODFkODIzZGUyNWM4MGFiMTczMWE2MGQ3MzAwYjdmYzk4MDliYTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2ZTM5NjU5NmFiODQ2MTVlMjg4NjI0ODRiMWIwNTRhODFmZmMyNWM3ZDcwOWM0NTM3ZTc0ZTZhNzUzZjFiYzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NjZlOWFmZGQwODc4NjhmMmNkNWM0NTRhMTBkNDM2ZmQ5NzAyMWQ4ZGFjYjdkY2FmYTRjYzQ4YTgxMDkwZTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljYTczNjI2N2I2NWNjYmEzYTk2Y2YxNWI0ODk0MTM2YjRlYWZmNTllMmFmODc1OWZhMjU0Mzc4Y2NhNGE2MjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_388954449797448d8389998461fe90f7",
+      "statement": "The frontend /verejna-databaze page.tsx hosts three tabs via TabSwitcher (public, collections, mine) backed respectively by PublicDatabaseClient, PublicCollectionsClient, and MyCollectionClient, and falls back the 'mine' tab to 'public' for unauthenticated users; the resource detail route [id]/page.tsx requires authentication before fetching material detail and shows a login prompt otherwise.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/app/(main)/verejna-databaze/%5Bid%5D/page.tsx#L33-L58",
+          "version": "repo-lines-v1:sha256:0d3b983f766f20ce52b9e789719f966cc1d1e6fc6ef1a73c3ed6f18e0bc76ea9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NjZmYmZhODg5OThkYTc0NjU2YzUwMTk0OTU2YzI1ZjA4NDk0NTc2NjBjMDA5ZmU2M2QxZTlmYTlkYzkzMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5YWE5OWZiZDMwNjEwMzM1ZTY1MzA4MTNkMTAwNjhhYmZlOTJlOTQ5ZTNkZWU1MGY4NWE1MTljNGYwNDViYWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjODg0M2E3YjI3NGJlYmVhMWMyYzIyY2YxNjY1MTNkNWQxOWQzMDNlM2QxZjllNDcwOWI1MDA5MDNhMTdiODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4NDdjNjFmNDQxYTE0YjFiZTQwMDk0MjUwNzNjN2FlM2IzNTYwZTc5MDllMjczOTQ3ZDlmYzljZjcyZjM5MGUifQ"
+        },
+        {
+          "resource": "repo://frontend/src/app/(main)/verejna-databaze/page.tsx#L30-L37",
+          "version": "repo-lines-v1:sha256:8a03f8fc148027942aab4f504ab2c06b47c2505b5f2ad681b4221203a9e4dac2:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ0YTY0OGNkZGZkYmEwMzQxMjhkMzY4NzQyN2FkOWQ3MTgyODBiZWE0NjA1M2Y5YTQ1M2I3MDA1NGI4NDU2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODAyNzNiNmE2ODE5NDViMTQ0OGE0NTViMThiNzljYWM4YWMwOTk3MGU1OGNjYjkwZGYxZDY2NGMzODNiNTU3ZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDk0ZmMwYzE3M2QxZWMzZmM1MDFkN2RmYTkyODU1MDFjNTI3Y2ZiNDcxMjU4M2RhM2NjMzYxODA1NjZiNGJlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjRiODU5ZGI1NmRlYzdlN2FmODU3MGE4ZTI5NzEwYThmZDJkNDMyMWIyYWMyMjY5Yjk4YzM5ODQ4NzRkYzMxZiJ9"
+        },
+        {
+          "resource": "repo://frontend/src/app/(main)/verejna-databaze/page.tsx#L84-L93",
+          "version": "repo-lines-v1:sha256:c39ce2b6bbb8388b57d52090a4255953281971b448ceb03abbed58fadba68f93:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NDgxNDNiY2UzMDMzNmExNGI1MmRkYjViOGQwZjliODJhZGU1YjU1ZjcwNDZjN2NjMTk0OTM5YjhhZDEzOTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM5NmVlYjUwMTFhYTBjMmEzOWVhZTg5N2E4YjMxOWE2ODhiMzJhMjNkMjQwZTYyNzc2NTk3ZTdiMzlkNTg2OWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3NTI3OTQxODgwMWQzMTY5Nzg1NzgyZTMyMThjOGYxODE1ODM3MWE3NDk1NDJjNDlkNWE3MGI2ZDEwMGI3YTYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

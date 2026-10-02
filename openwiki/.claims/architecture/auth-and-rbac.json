@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6b0f055e99ecac35171f6111a3827ee2f67511e18e9b3ab1e6a79bcb838379ff",
+  "claims": [
+    {
+      "id": "claim_94686231e7fe4414b4ba399beee1aa58",
+      "statement": "The frontend runs a PKCE authorization-code OIDC flow directly against Keycloak (buildLoginUrl generates a code_verifier/code_challenge pair, redirects to Keycloak's /auth endpoint, and the /auth/callback page exchanges the returned code for tokens via exchangeCodeForTokens), rather than proxying login through the backend.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/app/auth/callback/page.tsx#L15-L50",
+          "version": "repo-lines-v1:sha256:896c7a4aeaedf994c6f88dfb980a856fd5d296f0fac79abf4404c5ed8726c894:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5NjZmYmZhODg5OThkYTc0NjU2YzUwMTk0OTU2YzI1ZjA4NDk0NTc2NjBjMDA5ZmU2M2QxZTlmYTlkYzkzMWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmMTdjZTM2YzM3YmNhMTc0N2U1NzQyODRlN2NmNzFmZTdiM2M0ODdmMTVhN2U0NDgwZWI3YjFkYzk2YmZkNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZTQyZDlkZjY3NWQ1OWY2ZmEwZmViOThjZTZkYmI0ODJiY2ZlOGQyYmExMGRjZmZhYzRlNDdhZmM4YTJjODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImExYzA4MGJjMTc4N2U3NmM0ZTU5MWZjYTE0NDQ5YzMxZDgxOWNjMjQxNWY5YWNhYzZmY2FmYjg5MWNmNGY1YzcifQ"
+        },
+        {
+          "resource": "repo://frontend/src/lib/keycloak.ts#L28-L117",
+          "version": "repo-lines-v1:sha256:7f61a7b9ac805396f2970b835d2ec8de8f1a30cd05ec3f0ac2f992af6efdec11:eyJzZWxlY3RlZExpbmVDb3VudCI6OTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2ZGYwMDA3ODU5Mzc2MjVmM2RiMTA3ZmMwYzcxNDYyNmViYTc0ODFiYWFlNTFiYTM5OTViNmNmZjYyN2U5YmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ZGY2MDFlNGU5MGU2N2RhNDNlZjQ4YjUwYWY1MTNjYzIyMTlmOGUxMmY4NWRkMTA1Y2Y2ODU4YWFkMTc1ZTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3MzE3Zjg2YjZiMWY5OTFlYjA4YTc3NzNhMWM1NDI0NDRmNWJjYzUxNTM3MzU2OTM4YjRmNDgyNGJmNzMxNDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fbf1d65308fa44b998d25054f2120336",
+      "statement": "storeTokens() persists access/refresh/ID tokens and an expiresAt timestamp (now + expires_in - 30s) to localStorage and dispatches a 'kc:login' window event so other mounted useAuth instances pick up the new session without a reload; clearTokens() removes them and dispatches 'kc:logout' unless called silently.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/lib/keycloak.ts#L201-L223",
+          "version": "repo-lines-v1:sha256:1178c01c975ecc25126ee1595ccdf04e8561d2e2d89e22ffdb171ebab146a933:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUwN2I2NzY1Y2IzNDdmNzE5N2IzNTA2MmQyMmIxMDkyZTRkY2MwY2M3YzZlZDE4ZjAwMTc1ODFiMTE5ZWRhY2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU4MjdlMjczNjcwZDRmNmEzZTVlZjllZmQ1MDI3NDgwMmVkOTA5Njk3M2ZiOGJkMTQ2ZjNiZDA1NDgxZGYxNGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY2NTgwZDM2NGYxNWZlOGYyZDJmODIzYzI5MjdiZjIyZWVkMTE2ZWJhMjk4NjkzOGU3YTBhZWU3ZGU2YWNkNTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4cdadd66ee3e4a91b64240bb51505b0b",
+      "statement": "getValidAccessToken() is the funnel for obtaining a usable access token: it returns the stored token if not expiring (isTokenExpiring, default 60s buffer), otherwise refreshes via refreshTokens(), sharing concurrent refresh calls through a module-level _refreshPromise singleton so multiple mounted hook instances trigger only one POST /token instead of a duplicate-refresh race.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/lib/keycloak.ts#L238-L277",
+          "version": "repo-lines-v1:sha256:2c5b148a4e3da6178d624d1ab358518e8543664105469792cfee94f28b461b84:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkN2JkNmU4NzNhMDdiOWQ5ZDYxMzEzMzQzMmYyMzUzZmM3MGRkM2M4MWYzOGZmOWNlODEyNWQ0OTRkMzM4MmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6bc6bd3cc5ed47bba0b1566cca8bdc89",
+      "statement": "useAuth() initializes synchronously from localStorage via useLayoutEffect to avoid a UI flash, schedules a proactive refresh timer 60s before expiry, refreshes on tab visibility change when the token is expiring, listens for cross-instance 'kc:logout'/'kc:login' events, and logout() redirects to Keycloak's RP-initiated /logout endpoint with id_token_hint.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/hooks/useAuth.ts#L53-L167",
+          "version": "repo-lines-v1:sha256:1b61fd0d333905386af38ca29040c1497e164a24669f54e822ff3864ff736ebf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIzMDhjODQzNmY5ZTI2NjkyMzY5NTIyZTM5NWNhNGRhMWQ4YzkzNDc0MjAwZGM2MTc2YmMxZWFlNTZkZDA4ZGNjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWRlY2U1ODVjY2RhOTUzZjEyYWM4YzMzZTY2MmQ0NTYxNGZlNzhiMTdmMWFkMWU4YWVmY2QxODYxYTkwZTcwIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_ded81ce5775849feb8d9636a4a05a7c1",
+      "statement": "parseJwt() decodes the JWT client-side without signature verification and resolves an effective UI-only role via resolveRole(), which returns the first matching role in superadmin > guarantor > lector > user order from realm_access.roles, defaulting to 'user'.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/lib/keycloak.ts#L140-L190",
+          "version": "repo-lines-v1:sha256:52dc5a0596ab7ccbdfd56c54fb2eff0f73d2f46c44a034d3afc32cafc26307e3:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZWRjNjlkMDliY2VkMjdlMDdhMTcyNDc2NjAyZWU5ZDAxZDIxNTA0NDA4NGJhYjg2YjhlODc4MWYyOTExMGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiNWFmMGVlMDFmOGU4ZmQzYTU4NDM1ZDNlNGZmODlhNWEyMjU3N2ZkMGI5Zjc5ZmZhZDk0YWQ2ZmYyODdkYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMxNTJlYjUwYTBmOGJmYjljOWJmZDc2ZTI4ZTdmYjc4ZmM5MGZlZDhjMDA3Y2I2NDlhNmVkMzYxZDgzNGEyNjkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0bca3c37fa8142128c88d180bb7938ce",
+      "statement": "Auth.get_current_user (the CurrentUser dependency) never reads roles from the JWT: it introspects the token for validity, calls userinfo() only for identity (sub/email/name), looks up the User by sub, and rejects deactivated users (is_active=False) with 403 regardless of Keycloak token validity.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L117-L194",
+          "version": "repo-lines-v1:sha256:a94bbca7279e87ec87219266c9bd0faf9d25a4a4bceaabc9cde0e9d2dbdee4f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZmM0ZTQ0NWM1NzVkZmIxZWU3OTMxYWU4MTEwZGM3YTNkY2VjNDBkYjA4ODNmMzU0MjE1YjVhNDJlYjk2ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NjdkYmVlMWEyODYzNDlkMGMyN2Q3MjE4YWFkNjZkMTVmOTY0MDA3NGMwYzkzNDU3MDAxYmJiNmFhODIzYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxNWFlZTljZDg3ZTEwOTg2MGY0OWYyZGVkNmFhY2VlYzBiYWI0ZDU0MzRmNDA2ZGQ0ZmMyN2IxYTA3M2I3MWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5YjI1NTQ5NjQ5MjQ3YTUzNDIwZjY3OGM4OWJkYjA3ZTRmNjZhNWJkNGM1NTk0NjVmYWRkN2I5ZWVkYTc1YzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c80ef805bd334eaeb265db5fad939fcf",
+      "statement": "User role is (re)synced from the Keycloak Admin API only when the DB row is new or last_synced_at is older than the 5-minute _ROLE_SYNC_TTL, bounding Admin API call frequency while keeping Keycloak role changes eventually consistent in the app DB.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L161-L189",
+          "version": "repo-lines-v1:sha256:d27119e43eadbcf789a9f91a8d5c3b45d08bae766906982c8dedb08d3c385ef3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxMGZkODAxOGVlNjBjNDdiZTkxNDZjZWE4ZjAwZmU2NWQxMDY1ZWE2ZjQ5MTE1ZWJkOTk0ZjA0MTMyNWQ1YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxMTRiZDJhZDU3YjMwOGFjYTZhOGFlMWJhMjJiYjA1NmZiZTFlODAxMTg2MjZmMDU1MjAzYzU2NTE5MDI1YzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUzOWQ5YmJhNzg0NDliYWEzZTM2MjFiODE5ZTlmMzVmMzY1NzZkOTFkM2YyMjhkZWJlZmU5YTBhZTE4NzZkMDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdjM2RhNzg3OTJiNDViMzc2NjVmYWUwZWU0MzY4ZWQwYjI0NTZjMWQxN2U5YzhkYTQ5YjkxNDYzMzAwZDQ2MDUifQ"
+        },
+        {
+          "resource": "repo://backend/api/dependencies.py#L39-L39",
+          "version": "repo-lines-v1:sha256:4709f6ddcdb2600968b14464e898c42f7dd4fb69e1a7b7399e5295e92d05f5d9:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcwOWY2ZGRjZGIyNjAwOTY4YjE0NDY0ZTg5OGM0MmY3ZGQ0ZmI2OWUxYTdiNzM5OWU1Mjk1ZTkyZDA1ZjVkOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcwOWY2ZGRjZGIyNjAwOTY4YjE0NDY0ZTg5OGM0MmY3ZGQ0ZmI2OWUxYTdiNzM5OWU1Mjk1ZTkyZDA1ZjVkOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTM5NmIzM2ZkYjJhM2M3OTlhYmM4MDkzNmFjMDBkNTcwYjJhYjAzMjE2MGEyZjljMTliYmFkYjRkOTUyZjU4YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDIzMTU5YjY2MzIxNzgxODZiODhhNjAwMWI5MmViM2Y4NzI0OTA5MDlhMjkzNTI0MWYxNmFkYmEzMThiMjJmZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c4f8727252564a14a6b5ebe4970ca4ea",
+      "statement": "_resolve_highest_role picks the single highest-ranked realm role a user holds using the fixed priority order ['user','lector','guarantor','superadmin'], and _fetch_roles_from_admin_api falls back to UserRole.user on any Keycloak Admin API failure rather than blocking the request.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L36-L82",
+          "version": "repo-lines-v1:sha256:b28a782918b20a0fce07d16500806b660fae5c4b0f9ce208b77f7b78142f94cb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkY2M0YTE1ZTUyMjhiOGVhOGNiNjNjMDQwMDIyMzIwNzIyMDExMTBhNWQ3ZWJkM2U0YTAyNzNkYTQ3NzUyMzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzOTQ2Zjk4NWQ0ZTEwNzQwZTE4NWIxYjkwOGE5ZmIxZjI4MGQ2YTExYmRhZDc0OThmYmM5NjE3MzYyN2ZmMWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc1YmYwODMzY2NjNGIzNzUyNDQwODFlNjJkNTQ1ODFmOTMwOTc2YmY5OGQzYWRmMTg3MzBiYmFjMDBhNjA3YWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyMDEzZDE1N2E5MjdlZTkyMGRiNTljZTQwNWYxYTQ3YTM2ZTg3ZDZjZmUzMTMwMzQ1OWYwNjQ2YmM4NjA3MTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_55f8fc496ed44505a3d5613bc5a8eb93",
+      "statement": "Auth.sync_user_from_token is invoked explicitly by the auth router's POST /auth/token (password grant) and POST /auth/sync (called by the frontend right after the PKCE callback) to unconditionally refresh identity and role in the DB, ensuring a fresh User row before subsequent business-logic requests.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L196-L232",
+          "version": "repo-lines-v1:sha256:5238e4d99e012ebf6fd8bc92d07bcf8a6965e37671942951fd9b12fa7be00e77:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1NTEwMDE2MWFkNzRhMzU4NjMyNjEzYzlkYTY3NjkwNmNkZTA5NWJhNWNjOTgxZjYzODliZWVkNGYxMDc2MDQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NjdkYmVlMWEyODYzNDlkMGMyN2Q3MjE4YWFkNjZkMTVmOTY0MDA3NGMwYzkzNDU3MDAxYmJiNmFhODIzYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiMTQ5MmZmNjk5YWFkMTE3OGU4MjZkODg2YjdjMzliZmVhMjg3YWVlY2E4NjhlYzZjYjZjNzRjOTI5NTMyNmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIyODg3MDViZmRkMzQ5ZTk1YjVkYzZkZDY0ZGZmZjY4YTQ3ZDg5ZTVmZWQ2OWEwZWQyMTk3YWM4Y2FhMzY3ZTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/auth/routers.py#L12-L32",
+          "version": "repo-lines-v1:sha256:7819fdf836a6fdcbb02606920c8e26b9fec1b6a2b80a16c66c1c6d5c580b958c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5MmZmM2NlZDNjYWMwNjAzZmIzMWExOGYxZmYxZjA3NWE0MmM2Y2M4MGViZmQzODk5ZWQyYmQ5YjUwNTUyZGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxZTY4ZDRhNzExNjJjYjI4NWQ2YjczYmJmNjMwNjdmZTdhYWYyMGRjNDEyYzc2MzU3MTRmOWU2ODQ5NzhjOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYxMWQzNjU4NjJlMWNkYjU2MTY1YmEwMmVkMTFmMDM2NjdlNjk3NTExYjA0ZDYxNGNkYTlhZTk2Nzg0MTlkZGQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg3MGFhN2ZjYTc1MDIyYWRhYTBkMzQ4ZGM0NDllZDhlNjdkYjg0M2IxNDg2MmVjMWMxZWQ4MTU4NmMxZDcyNGYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_33a7d0e9a9e249dba5319cae99799d71",
+      "statement": "require_role(min_role) is a minimum-role numeric gate (ROLE_HIERARCHY: user=1, lector=2, guarantor=3, superadmin=4) layered on top of get_current_user, so a check for a given role also passes for any higher role; it is applied per-router or per-endpoint via dependencies=[require_role(...)].",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L235-L252",
+          "version": "repo-lines-v1:sha256:b002cb019e6f3022c638f9f408f7cb942a1b311fd7e9d765937028f85245d86c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0ZDIxZmVkZDVmMjBjYTZjMTU5OTFhMzBhZmQ0MGQ1Mjc1ZDI0Nzg0ZDg5YWM1MmJmOTAwMDVlNDIyNDM1ZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyYmJiYjE5MzcxMmVhNDVlOGM0MTQ4NGViZDA1ZjE5NGQyNDMzNjg1ZjIyMjNiNTNlYTFmOGZlMmNmNWFmODIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyZWE1MTkyZGRhNTRjZTZjNjQ4ZTc0ZTBiMWI3MjNiZmI2NDVhZGE1YTk3MDNkODdiOWY4ZTA1ZDk2MDcyZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_622beef218414e6bb30a7e7fa734a64c",
+      "statement": "backend/api/src/routers.py mounts most sub-routers with a blanket dependencies=[Depends(auth.get_current_user)] at include_router time, enforcing authentication before any endpoint-specific require_role check runs; the auth router and the public catalog/resource/collection routers are deliberately mounted without this dependency to remain anonymously accessible.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/routers.py#L33-L70",
+          "version": "repo-lines-v1:sha256:ae357af05edf2ccc2479d636ceae29ea5c448d7c0750329c981695b66655b1b8:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmM2U3ZTdjOWM5NjU4YTBjZjdmZGJhNmVlYjU0M2E0ZTFjZDllN2E2OWE4ZTc5ZGZkZjdmNTRjZmVjMDE1NTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkNjM5YWE2ZTg0NDVkN2RjNDg4MzUxODQ4MmM1NzNkZjBmNThiOGEwZjAyY2JlZDZkNzU0NGU2OGY4NjAyZGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhNGY4YTZlYmE2ZjBlOTU2MmZjMWQzNzg0MzE0OGJjMGY2YmJhYjRhN2U0OGEwZGY0MDI3YzA2ODJkNjBiYjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_da81941d6ebd4c17afdd225bf6a54286",
+      "statement": "authorization.py provides four ownership helpers built on a shared OwnedResource.get_owner_id() protocol and a 404-if-missing check: validate_ownership allows owner or (by default) guarantor/superadmin; validate_owner_or_superadmin allows only the owner or superadmin (guarantor excluded); validate_guarantor_or_superadmin allows only guarantor or superadmin regardless of ownership; validate_superadmin allows only superadmin.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L12-L120",
+          "version": "repo-lines-v1:sha256:648aa3c52dc2f437925167ff00c0636ac464749db81761c680b7b88ff26c1d96:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxM2VlZWM5NGIwODdlNTJjYjAyZTVlNDgzM2UxYWQ3MjNjOTU0YTZhODQ5OGExNjUyOTVmYmIxODI0ZTFmNWM0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzMGMxZjE4OGYxNDJlZDdhODI0NjgwYjIwNzE3MmM1NTE5YmM2MTRhNDhmZGE3Y2YxNjdlZGI4ZGRmNzk5NTZjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxMzQwOWVlMzdmODQ5YTZmMzc1ZjFlZTM3NDZhYTMwN2IwNmNlYTA0ZjI5NDdkNWFmYTE5ZDRhNTFiYzExOTM1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_58c87d57ad4c40969ebe410034db85b8",
+      "statement": "validate_ownership is defined in authorization.py as the most permissive owner-or-elevated-role check but is not invoked by any controller in the codebase; controllers instead use validate_owner_or_superadmin (excludes guarantor) or validate_guarantor_or_superadmin/validate_superadmin for elevated-only moderation actions.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L36-L65",
+          "version": "repo-lines-v1:sha256:c9128202b28fc2a03d79a070fd70353814b1530157e9373e9cf11f11ad07f0f6:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzNzRjYWNmNDQxYzQ3M2U3ZDc4OWU3MDA0NmMwYTgwMTIyMzJjNjIwODQ0NWQyY2UyMjAxNTZhZTUxMjJhMWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY0YjUzODM5OGY2ZjZkODlhMzY4YmE2MmI0NzY3ZWEwODM2NzE5ZWM3Nzk1MWE3NTBkOGVhNGVjZDM2MzVjNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMWY3YWE2MDA5Y2Y4N2NmMjcxZDBhZjBmNWIwM2ExZWJjOTVkZmM2MmUzZGE3M2UxYjcxMTcxZjdkODdlZjIifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/create.py#L21-L21",
+          "version": "repo-lines-v1:sha256:307bb75cafa6bb64142de64f72f2353fcc85fe01b2a652867a0481a74610fae7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzA3YmI3NWNhZmE2YmI2NDE0MmRlNjRmNzJmMjM1M2ZjYzg1ZmUwMWIyYTY1Mjg2N2EwNDgxYTc0NjEwZmFlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzA3YmI3NWNhZmE2YmI2NDE0MmRlNjRmNzJmMjM1M2ZjYzg1ZmUwMWIyYTY1Mjg2N2EwNDgxYTc0NjEwZmFlNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmI3MDhhOTI4Mzg2NDNkZGE2ZWNkMTI2OGZiNGFlMmVkZTQ2MDdmMWMxNzZlNGNlMGI0NjQ5YTQyYjliMWYyNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY2NTY3NTAyNzgxY2NjZTc5MzQxYzFlYWMwOGI0N2E0ODY1MDFlYTNlODA1NTgyNmNlYjkwZGU1NzMzZWE1NiJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/delete.py#L14-L14",
+          "version": "repo-lines-v1:sha256:307bb75cafa6bb64142de64f72f2353fcc85fe01b2a652867a0481a74610fae7:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzA3YmI3NWNhZmE2YmI2NDE0MmRlNjRmNzJmMjM1M2ZjYzg1ZmUwMWIyYTY1Mjg2N2EwNDgxYTc0NjEwZmFlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzA3YmI3NWNhZmE2YmI2NDE0MmRlNjRmNzJmMjM1M2ZjYzg1ZmUwMWIyYTY1Mjg2N2EwNDgxYTc0NjEwZmFlNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWM3MjczMjA0M2ZlZGFlZDk4MmQ5YmEyZDMyMjNkYjU4MTc4YTExNzZjNmQ0OThmZjFlN2U2NTE3ZGM0OWI2YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjUzYTZlNTU4MDIwMDllYzBlZGM3MWY1N2FkMzI1YTZhNWY5OGNlYmZiOWM0YWM2YWQ0ZmE5Njg5OGRlNGRmYyJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/update.py#L21-L21",
+          "version": "repo-lines-v1:sha256:c5e1a1f2b2b2e11f023e0d5abb5dcb57ee3060364b1714a8c8755c705e86fb23:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzVlMWExZjJiMmIyZTExZjAyM2UwZDVhYmI1ZGNiNTdlZTMwNjAzNjRiMTcxNGE4Yzg3NTVjNzA1ZTg2ZmIyMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzVlMWExZjJiMmIyZTExZjAyM2UwZDVhYmI1ZGNiNTdlZTMwNjAzNjRiMTcxNGE4Yzg3NTVjNzA1ZTg2ZmIyMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmU0ZjU1NGQ0YjU5MGU0NDljMWFiMWIyNmQzMDQ0M2NlOGE0ZjYwNjAzYzQzZTQyOTk1YjRiMjk5YzlmMmEzNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiM2ViOTM1MjQ2MGZhNmU0MWFlMzJkNDI3MTFlMWQ4NWIyMjE0MmIyOTk5MTcyOTI5NTBhNTdjNTMzN2JjNTQ2ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_9e8ff075a7d24a9fa8fc2bdbb0c4504e",
+      "statement": "Course status-transition authorization in update_course_status branches by transition type: submitting for review uses validate_owner_or_superadmin, approving/rejecting an in_review course uses validate_guarantor_or_superadmin, reverting an approved course back to edited uses validate_superadmin, and other transitions default to validate_owner_or_superadmin.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/controllers/update.py#L144-L156",
+          "version": "repo-lines-v1:sha256:3859bc77154ca7e636e52fb5e342821519d64ebedb155ab622d6ea3cc02bb8f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNhNDNkMzFjYjY1MTYyNzkyZmE5NjJjODA4MGI4M2Q2NmRkMWM1YjFlNzUzNjYyYWIxZjdkZDkyNzZkOWY4YTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1YTdhZmFmMjg2NDUzYzM5Mjg0NDg0ZjBjYWExM2ZhYWI0OTBkYWM4YWE0ZGRlN2I2NzIxMzQxOGZlNTc5N2YiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1OGJmYTg3YzhmZDA0M2M5OTRmMzJhNzZjYmYwMjhkNzMxOTkzOTg5YzkwNWE4YmIyMjAyYmY4ZjJlMjNmMmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkYjNjMTQ0N2MxMTRlOTI5NTM1NDZhMzAxYjY2MDVhZmRkOWM1NjhhNTc2N2E5MDFjZTQ3MTZlMzEzZjUyZDcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7050531ac1af4980bf6041fbb0091c42",
+      "statement": "The Keycloak dev realm (praktikai-dev) defines exactly the four realm roles matching UserRole (user, lector, guarantor, superadmin) with 'user' as the default role for new registrations, a confidential 'app' client with service accounts enabled (used for both password-grant login and Admin API role lookups), and a public PKCE-only 'praktik-ai-app' SPA client with no direct access grants.",
+      "evidence": [
+        {
+          "resource": "repo://infra/keycloak/praktikai-dev-realm.json#L1-L68",
+          "version": "repo-lines-v1:sha256:9816916dd13e0bddc8ab3392d0d08d67d2a3b9c8223b7b70f29895cf5e7ecd41:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE2ZmIwOGZkYTFhY2I5NTdiNjExNmJkMzc4MTFhMWZlNDFhMDE2MTFjMDYzMWVkYmY3ODZkNjg4OWEyN2E1NWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1NmJmYTgwMWI5MjRkZmVjZTY3ZjZhMGJmNjYxNTc4ZDVkZTEzY2U2ZTRjYjM1ODVlOTM1MTA4MTVhZTU2NzUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

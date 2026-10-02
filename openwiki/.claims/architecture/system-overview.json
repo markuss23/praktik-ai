@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8d4335dd8ae487abcd1263879aec4c5070629a1f7a45ae42a005753b1348ade8",
+  "claims": [
+    {
+      "id": "claim_5e35f054261344158eaf13c7e8ce5e37",
+      "statement": "compose.yml defines seven services on a single bridge network (praktikai): frontend, api, db, keycloak, seaweedfs-master, seaweedfs-volume, and seaweedfs-filer; the LangGraph agents package is not a separate compose service.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/__init__.py",
+          "version": "repo-file-v1:sha256:1693377fb1f3775f2d5247245f676dffed79cb669de013f2cffac3291ae488e8"
+        },
+        {
+          "resource": "repo://compose.yml",
+          "version": "repo-file-v1:sha256:8382347606de3504e80d70cd302c51bda0c80029024382fd052553b756ee9169"
+        }
+      ]
+    },
+    {
+      "id": "claim_309562503e4a4c6f86ccd566ebccb464",
+      "statement": "The frontend service builds from infra/docker/fe.Dockerfile and bakes NEXT_PUBLIC_KEYCLOAK_URL, NEXT_PUBLIC_KEYCLOAK_REALM, NEXT_PUBLIC_KEYCLOAK_CLIENT_ID and NEXT_API_URL in as Docker build args.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L2-L18",
+          "version": "repo-lines-v1:sha256:4c9bfa2c9b3141f28e90b440f26db3148ba0ec82b69f3aa4031e58de6e11eac7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2OTAxODQxMDA2MTIxZDQwM2Q0ZTRhOTgwOWE3ZGFhODdlNTE2MWIzYzQyNGQwYjE5N2NhMDY0NWJmY2FlNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImExYzNhZGFmOGQ1YTA3ZmQxNjI1NzkxMTU4ZGYxM2NkYjhlODFkMzI1ODUyMWJlZjYyYmZmMmEwMmY0NWYzMGYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjoxLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZhNzNmY2NkYzk5ZWE4MzU5NjdjN2RlZTdlZmJlZDFmM2NhODcyNjBkOTI5MzE4NTBmZGQ2NmRhOGNiMTJmMWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ3NGQ3MmZhNjg5MTBkMzkwMDkxYzUwNjgwYjJhMDc4ZDI5NDlkMTIzY2E2YTMxYWUxMGJlMzk1NWY2OGRjNjQifQ"
+        },
+        {
+          "resource": "repo://infra/docker/fe.Dockerfile#L43-L59",
+          "version": "repo-lines-v1:sha256:4e8d379d2cfc1874b5e5ed216eae66f8e0f857bec987e2f3cbb3a27b4c6b7939:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjMTVmNzUwZDRlMzM0YTA5YjBjYTBhMGY4MWE0NjM2ZmViODY0NjFmMmYxYjI5YWY2MDlkOTAwZjE0MGI1YjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzZWFhMWFmMDA3NDQwZmQ1MmYwYjk1MmU2N2UyMjNjN2ZjOWU1NjQ0OGMyN2JlOTMwMDMwYjZlMTM0MmFiNmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3MzJjMDVlY2FkOTFiODcyNjVkNmFkMGU5MzFkMTJiZTI4NGQwMTlmMTRlMTRlMWY3ZjdmNDdlMTk5N2IyNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ2YjhiZTc3YWU0ZWY3OTZmNmE0MzZjZjQ3MTIwYTcxYmMwZTg5NzlmZDU1NzNkYTFjMzljYmFlMTY1NjAyZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6c27823e856040cf9ffe42ce85609d51",
+      "statement": "The api service builds from infra/docker/backend.Dockerfile, mounts ./backend and ./wiki_data, depends on db being healthy, and exposes a /health endpoint used by its Docker healthcheck.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L64-L66",
+          "version": "repo-lines-v1:sha256:2b2b1ee1100d07ca9744a32af6058a39381234a33121205dc21aa906b802ccd8:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTlkY2NmZDY2ZTcyZDZhNWQwY2U0NzVjNWU0ODQzZGY0ZDBhYjRlMzA0ZTRiZWViZGMzOTY5NTM2NjYwZGY4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjIzOTM0NDgzZWIwZGIyMDE1MDE1MDBlY2FmNWRhYTFiYTc3YjdkOTY4YzE0MmUxMWE0ZTJmNGQ0YWE4Y2EyNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzdjMDI0NDBiOGEzNjg1YzUzMTlhOTg1MzY3MzFmMzcxODJmNjNlOTMxNGIzYTJkM2IyMGQwN2JjMTNhMDBhZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTE5YWU3YjUzYjdlMGEwNThjMTg0NTA3ZDllNWFiNzFhODM2ZDcwYTFmOTUxNzhlMTg4YmI0YjJkZTZlMGJiMSJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L19-L42",
+          "version": "repo-lines-v1:sha256:81dbeaf070cca6471f2fa38f76ccf83e33823dd4db4a358649aacc79f2ae459d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MWY0ZTI1ZGNhNDg2ZTlkMzFjY2Y1Yjc2M2M2Yzg1MzMyOTc5ODk3OWI1NzVjNGYxOThkMTQ5ZTI0MzUzZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY5NTdkNjRjYjA0YmY3NWViOWE5ZDdhOGY2OGEwMmUxODU3MzA5YTJkZWM4YTZhZTZlYTA0ZjVhY2FhMmRiNjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwMDM3NWYwNDQwZWFjMGExOTBmZGMxYTM3ZDdmMWIzYjY4ODY0ZDZhZjcxMjNiNzE2NGU4Njk5YWIxMmY5NmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc0NzFkYzYzYmNlYWYwNDZjNjdmOGFlMWNkNWQwMTQ5OWMzNTY5NDI4YzU0YmI3ZWE4NWEwMzE1NGNhODc1ZGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c5a7c56a9c4d4f66931d4a96c0c6738e",
+      "statement": "The db service is pgvector/pgvector:0.8.1-pg18-trixie (PostgreSQL 18 with pgvector) and is also used by Keycloak for its own schema via KC_DB_URL pointing at the same database with currentSchema=keycloak.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L44-L99",
+          "version": "repo-lines-v1:sha256:2266d39d3b2d2a37f3c9d95d362f6d3d0ce24a80f7723c8a015191e42ae5a053:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmMzRmNWY0ZTFmMGJlZTc5MzAwNzc0MDM3ZjUzZmZhZGUxZGQ4ZTg4YjUyYzAxMTlhMmUzN2E2N2ZiYWJlYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4Y2MwMzNlYmY5ZTFhNjUyMTJjZmJjYWQ5YWJlNjVlMDgwNGI2NjZlNWFlMjIzYmJkMmFjOTdlYWY4ZDdmODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgyZTQ0NmFkMDA1NzkwN2E1YmQ4YTM1M2FmM2Y4NzllZDQwNzkxOGJiNTEzNTQ2MzM0NDllOWE5N2JkNDg4Y2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_900e0ee600144f158621daed7b521169",
+      "statement": "SeaweedFS runs as three independent containers from the same chrislusf/seaweedfs image (master, volume, filer) with the volume and filer registering against the master; the backend talks to SeaweedFS via configured master/filer URLs.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/config.py#L23-L25",
+          "version": "repo-lines-v1:sha256:20fe0d150af269d595be368b441477163c8c6f6cac71faa5ee2a3f86cb485df7:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYzZTdiMDg3NzAyYzUzNjAxM2E3NTRkMGU4NmU5N2VhZTVhODQ4YzJhMjViNzNkNWRiOGJlMjM5OTE3MWQ1MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2RiMmZkMTE3OGRmNzI5ZTJkN2JiMDZmZThiODk0NmI1YmZkMmZhYTRiNmE5NWVkYWI3MWJkNjFkNGZlYTNmNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOWVlNGYyOTNkMjY4MmRlNWI5YWNjM2QxYTU5YjNkYTQzMWMzN2U2Yzk2OGMxYjIxODg3ZjA1MWY5NGMwZmE2YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTQ3N2FmODZlYTU5ZDk4YzIzNWNjNDQwN2QyMjY3ODU4ZTRkOWEwZDM4Y2RiMDdjMmRjZjgzYzA5MmM3ZTZhMCJ9"
+        },
+        {
+          "resource": "repo://compose.yml#L101-L137",
+          "version": "repo-lines-v1:sha256:6b9952c8c0c50da8621c0a671b6c0ff91751545dca6f77c90520aff13be370ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyZTk1ZWE4ODFlMTMzOGM1ZGMzMTM2ZDkxZWU2NTcwZjUzYjExYTE4Mjk1ZDZjOWIzNDBmYjU4MjAzYzQ5MzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE1MzFlMjYwMzk4YWQ2MTA5MTRkZmMyOGYwNDhkMzkyNjRiYTdkNTAzMjc4ZGQyZjhiYjFjNGMxNGI0OTlkOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYzEzNWM1MDgyZGRmZmY0N2ZhODBjYWYwMTZmNWQzMzA1OGUyOWFhYzIzYjY4NWYwZTgzY2I0OTZmOTE0NjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU2OWY1NjI4NmU1ZjQyNWFiODQwOGU3MmVjMGEzZjQzYzk3NGY0Nzk4ZDk4OTAxYTUwZTFiZTdlNTgwNThlMWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_343714a932c34e879401f1e7f608438a",
+      "statement": "infra/docker/nginx.Dockerfile exists in the repository but is not referenced by any service in compose.yml, so there is no reverse proxy in front of the stack as currently configured.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml",
+          "version": "repo-file-v1:sha256:8382347606de3504e80d70cd302c51bda0c80029024382fd052553b756ee9169"
+        },
+        {
+          "resource": "repo://infra/docker/nginx.Dockerfile",
+          "version": "repo-file-v1:sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "id": "claim_12ea9ff6503340b28227c4f752705b97",
+      "statement": "backend/api/main.py runs init_db(create_extensions=True) followed by seed_db() unconditionally at module import time, before request handling begins, creating the pg_trgm extension and all SQLAlchemy tables and seeding reference/catalog data.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/database.py#L29-L47",
+          "version": "repo-lines-v1:sha256:becfa0c93578bff2308939d6c760e8be727ca4b2d50fa60aa9a75e2632b36411:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1MzUyOTIxN2VhNTBmODZhYzVjNzczYjJmYWFkZmYxYjFiNWNmYTU0YzA2MWIwMjU1ODU5YjVmMjE1OTMxNjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmM3ZTA2NzE5OTFlM2NiMTI5MDVlNGJmNDEzNTlhYjk0Zjg4ZWJjYmI1MGRlYWM4NzdiNGI4ZmNhYjlhZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdhZWU0ZjQ5MjE2OTc5YzE1YjVhN2MyMTJiZjBhNWNjYzIzYjBhZGNjMWQ1MDBkMzg2YmMwOTBjYTllYzM3Y2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYzY3MDkyYTUyZGU1NmViZmRjOGMyMWRmYTIzNTJjN2U4M2I5NjcxMzRlMDA3OGU0M2Q0ZmI2ODYwMmZiNGEifQ"
+        },
+        {
+          "resource": "repo://backend/api/main.py#L60-L61",
+          "version": "repo-lines-v1:sha256:9d2a90b5798f09cc0f6ebd974ad558ce36c14368f044ddd42154836e8274542f:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmY2MWJmZjE0N2I5YTQ2YTE0NTMwZjAxZWFkMzQwZjA4YTg2MTIyYjFmOWJkMjNhNzQ2MWUyOWI4MDhjZTEwNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzRjZTg3YTIwZTZmYWRmMTJhNzg2NThmYjkxNzE4NTQ2ODk3OGJhMzcxYmI2NTE4MzQ5ODdhMzY1ZGUxMTQ2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMGUwMWU4NDJmMmRiNDRmYjA0ZjgxZGRjNDA3YTZkMjg1NTNmNDY3ZjdiNzlhZTE4MDI4MTY3NjkzNzYzZmMzOCJ9"
+        },
+        {
+          "resource": "repo://backend/api/seed.py#L1-L23",
+          "version": "repo-lines-v1:sha256:69257df73521603a6029f725e6a8f9e7eeb3d3f8edd9a1e78b31cb68f7eb336a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZDhiOWU3MWFlY2U4ZDFkNGNkNTZkZTNjYmUyNzdjYTE0YWFhNjg0NGJhODBkODA4OTViYjAzY2VjNTcxNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwNGQ4YWJjZDUyZmE3MmVkOTRkZWRkOTg0MjMxZDc5YjYzNjk3YjU0ODk3N2QxODNlNjUzNzhlNjJmNjQwNDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_202ab58801c04ea586c6fc2a73ec9611",
+      "statement": "The FastAPI app uses an asynccontextmanager lifespan hook that calls start_wiki_sync_scheduler() on startup and stop_wiki_sync_scheduler() on shutdown, managing an APScheduler AsyncIOScheduler that runs a periodic wiki-sync job.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/scheduler.py#L16-L86",
+          "version": "repo-lines-v1:sha256:63e05765bd2fa08cef23a6f121688a23510ddea81a909c99af1e7a60bcbe73fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlYmIxMGZlMDY4OTQwNzk1ZDQ4NTNiMzJhMWU3M2ZjN2NjMDYwMjYzNzc3YmY0MzY3NDMyZjVhMWQ3OTQ2NDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMjNkZDllZTE0MWY1Yzg5Y2IyMDFjMTdmNmJmOGJlYTQ2NmZlMjQwZDkwODYwZDIyZjA3MmY5NTNhYTMyYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU1YzFjNDYyZTJhMzlkNzQ3NTlmNWUxYjEyNmY3NjgzYTJiNzMwMTE4ZTE4ZjUxMjJiMDhjZWRlZWI2NTBlMjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/main.py#L21-L28",
+          "version": "repo-lines-v1:sha256:83f7bd9c117be49e9219ec47316a97ac31ee848d628ea61307a51a660fa4beaa:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODdjZmYzZjE3ODQyZGVjNmU3ZTkxYzNlM2I4ZmNlMGE4MjJmYzMxMTI3MzgxYjAwZjQ0YTlmMTMzMzMwM2EyZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZDQ3ZWUzMDIyN2UwNjE3NjlmOTRkNDc3YTgxMDBiMDQxOTVjYTZmZDcwYTAwOWFjMjRmMmUwZmZiNGYzZDYxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjIwMDk3ZTRhYTUwMDY4YmExNTdmOWEyNzM5ZmFkODY5OTVlMWUwY2RjY2RhZGM1ODk3YzIwMzRjNzRkM2VmYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2Y2N2ZhNzYwNzFmNTJjNTg3Y2VmYmI4MzM0YWUyNWE2OGIzMzQyZWVkOWYxM2RjNzQ5NzhhOTgyYTQ1OGM2ZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_70aeaf28118748b38a669db7dde918b5",
+      "statement": "start_wiki_sync_scheduler registers a recurring wiki_sync job on an IntervalTrigger (default 12h via settings.wiki.sync_interval_hours) with replace_existing=True for idempotency, and additionally enqueues a one-off bootstrap sync job immediately if the pgvector wiki embedding collection is empty or its tables do not yet exist.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/scheduler.py#L19-L80",
+          "version": "repo-lines-v1:sha256:bf2523d85ae09d2c0b9ee1971e84a149dcde2f6f8f9c51441c35e4f9a5e1bd1a:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmMTE2MTQ3Yjk5NWRjODQ3MzQzNTQ1OGVhOTIzMTc1ZjI4YWYxNmJjOWQ4OGZjODFiYzIzNmY3YzhmMjg4OWYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzYTJlNDcwZGE5Y2EzNWYzZjdkZDE1ZTFmNTkzM2FhYzNkNWM1OTZiZTVkOWRjMmZhMWJhZTVkNjI3MzY4ZTkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAxYmY3YzNkOGNmOTRlYzQ2MzFkZjllOTE3ZDBkZGJiZDBhMGZmOTJlMTg5YWI2MzhkM2MwODlhYWZkYjc4ZGIifQ"
+        },
+        {
+          "resource": "repo://backend/api/config.py#L28-L31",
+          "version": "repo-lines-v1:sha256:6bb026aaaac6cee4d2bca1bf310d9b104e1f75b45a25958ced52ef5ad6344112:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDkwMDQ3NTZkNGZjOTNjYWNmMGUxYjVlOGVmMDgwNTY0MjBkYTgxYTZlNzA5NzdiYjJlN2YxNGM4ODRkMTk3YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMyOTE4MzQwODFkNDkwNTgxM2I2OGRlYmQyNTNhZjdjODk3Mzg2YmUzNjFjYmYxNDg0NjJiZWRkYTgzM2FmNSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTU2MTcyMDNhN2YzZmUxMjQyMDUxNWU1MTQ3NjRmNzkzZjAzNDQ2MDEzZTQ3YjdkZTQ4Mzc5MDY0MjI1ZmQxNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzcyYzc2ZDUyZmU1OTk3YTliZTY5NDM2MjA4NmM3MDFhMWQ1NTEyZjBkYmU4ODFiNDFiOTVlYzg1ZDRkNzhmZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d9addb1059404317bb99d0e7b35adf7c",
+      "statement": "Wiki sync jobs clone/pull a GitHub wiki repository into settings.wiki.local_path and re-index it via a LangGraph graph into pgvector; failures during sync are caught and logged rather than propagated, so a failed sync never crashes the API process.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/scheduler.py#L41-L49",
+          "version": "repo-lines-v1:sha256:0cea9fe2bb7511b56a089bacf832324b7ef3a469296bbf71f898589964774bd4:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjBhMDFiYzdjODcyM2I5NGIxMjJkNjVkYTM2MmRhOTZhZGNjZWFmMmZhMGI4ZTBlZTQ0ZTJmM2E2MDA1ODVkNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2UzMGY5Y2U1YzRmZjhjOGVkOGE1Y2MxNWY3ZDc5MzVmYmVjOTQ0YjI0NWYwYmFlMDQwYjlhYTU1OWQ0MjE5YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjhhMTljNDk0YTQ0MmQ0ZTIzMmEzMmQ0YTQ3NmY2MTViNWUwOGRmNmI4OTMyOGY2YmI1YjVmMGRkNzU2NTYyNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjllMDVkNzY2ZjE3NWI1ZGY3OTJmYjJjN2U1MzVjNzA5OWYyZGM3ZTM0ZDdkMTY0YzA4MzcxOTBlNWE1MWZiNSJ9"
+        },
+        {
+          "resource": "repo://backend/agents/wiki/agent/service.py#L14-L43",
+          "version": "repo-lines-v1:sha256:f405ed8bc773da86028f6d696f86d569bd688498214e3b7269ebfc0f2b765e0e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2MjhmZGMzODNkNDEwYjQ0MjdkMDIzMDVkNzc0YTM3MGQ3NjY5NWYzY2Y3MmZhNDUzYTY2OGZiODYzZDI1MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxNjZlNGUyY2NhNGFhMGY5MmRhYjY4ZDllMGM1NDJjNDM0OWQ1NDJlODE2OGNiMWI5MmJmOWIwYzJhNzE1NDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI5YjNkYzRhOWVmMWUzMTg1ZmI0YTdlNGY4OTBhNDQ3MmYzY2ZkNTBlN2QyYTNmMzM0ODVhZjczMmJkY2ZkNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8586aeb05edf49f8a00c2b228c5414a0",
+      "statement": "The API registers a global exception handler for SQLAlchemy IntegrityError that logs the error and returns HTTP 400 with a generic constraint-violation message, and a catch-all Exception handler that logs a full traceback and returns HTTP 500 with a generic error message, preventing unhandled DB or application errors from leaking internals or crashing the process.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L40-L57",
+          "version": "repo-lines-v1:sha256:e0ca57f953db9560e2c08f5ff3efa661ca763e698c93c63c8daad567b81f8e4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3YzczMDdhNjg0N2FhY2VjNGJhZTQ0NzAwM2U0Y2VjOGE0NWI0YWI1NmU0YWEyMzRlNjE0YWMyZTE1ZDUyNGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiMDgzN2EyYjY5YjljOGQ5YTdjZGE5Y2RjZGUyMmMxMWM1NTc0NWJlZDg0YTJkYTRlOTg3YjBhNDkzYTMzMWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_abfa73071fb14bc5be777db98fe7040b",
+      "statement": "CORS is configured with allow_origins=[\"*\"], allow_credentials=True, allow_methods=[\"*\"], and allow_headers=[\"*\"], meaning the API accepts cross-origin requests from any origin, relying on bearer-token authentication rather than origin restriction for protection.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L30-L37",
+          "version": "repo-lines-v1:sha256:5df8fe9b69c04109658ed95d3fa429e618f4a90931cd6f789dcb2259322ffc06:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjBkOTMyYWY4MDVlNzYxNmQ4YjAzNDk2ZTY0YzVlYjNlZDhkZmRlN2I1ZDQyNGJkODc0ZmQ5ZmJiNDhkMzcwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmFjNGE5NjU5OGY1NzAxOGI4ZTc3ZGQzZjBiYTUyMTQxMzJjZjliZDI3YTUyNDI0YzZhNDllN2E3MmY5YWUyOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjEzZWU2YTZlZDZlMzI0MmYwNDlkZTE1MWYwNTAxNDM0N2M2YTNlNDQyNjlmYmY0ZTc3NmJkNjlmM2FmYWQ1ZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_45fa0268a9fa46969a9d56308aaa06d5",
+      "statement": "The aggregate API router (api/src/routers.py) mounts most sub-routers (courses, modules, activities, agents, users, enrollments, feedbacks, superadmin, module_tickets, editor_images) with a shared dependency on auth.get_current_user, while auth, the public course catalog, and catalogs routers are mounted without that dependency.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/routers.py#L31-L52",
+          "version": "repo-lines-v1:sha256:ae3bd1109efcbc240936e6b9bada6c08e7cdfe3c00da59c1240e3adb8f06b667:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyNjA0MjYxYWM4MGM5ZDIzYjk2ZmNmMjZjOTVmNDNmMzMxZWY5NTU2NjJlNWYyNjY1ZmVhYmVjYjM4YzVmNTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRkMjgyNzQ1ZTljNDQwZDcxMzE3OWY4MGNmYjVjNTNkOTc0Y2I2NzBhZmM4ZmUwNGQ4MWJhZDNjN2FjNTQ1MTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE3YzNkMGVjOTU2MzczZmE1NzkxZDg4MzYzMjQ2ZGU3MmQ3M2Q3MWMwMzBhMGYzYWM1ZTI2MjU2NGFjNjNkOWYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0619ff20002a463288f270b5c5bae43f",
+      "statement": "The LangGraph agents package (backend/agents/) is bundled into the same container image as the API (infra/docker/backend.Dockerfile copies both backend/api and backend/agents) and is invoked in-process either synchronously/as asyncio background tasks from API route handlers, or on a timer from the FastAPI lifespan-managed scheduler, sharing the API's DB engine, configuration, and Python process/event loop rather than running as a separate service.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/wiki/agent/scheduler.py#L1-L16",
+          "version": "repo-lines-v1:sha256:e386aafa7dc1cf8fd7daa8b80d227ccb72ea55befa9ae4a7f89d37ae10d0b3a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1MzQwZWNjODAzNTA3NmI0MjJkYzA0M2U3NzYzMDY5YzhkODVhZGJiMWViZGNiM2Q4MjVlZGM4NDY1ZTc0OTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlYmIxMGZlMDY4OTQwNzk1ZDQ4NTNiMzJhMWU3M2ZjN2NjMDYwMjYzNzc3YmY0MzY3NDMyZjVhMWQ3OTQ2NDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImMwYzA4MmJhNmQ4Y2MzNjUxMDkyZmY2OTc2NjkzOTBhNzdmOGU4YTM4NzAwOWU2MGJlNjhiMjFjZDBlZDgzNjQifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L1-L80",
+          "version": "repo-lines-v1:sha256:0fae81b9a1b55cd79e97b59b8b2a8ce8853567091edd10444f1c4d778e04396b:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzNGM5Y2RkNDJmOGQ4OGMwNDQyNTM3M2E3MzM2MjA5ZjZiMmEyZGNlYmVjMzJiNGQ0MDU5M2Y5MGJlMmJiMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlN2JjZDM2ZWY1M2I0NDUyM2U2NWU5OGQxOTQ0OTkzZTBmZjE3NDZmNTUzNmMxYTUxMTc0NmYzZTAxZTc1NmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmNGQ3MWQzNzYyMTYzMWFiOWNiZDVlZWVmNGQ2N2U4MzU3M2EwZTA4ZGY4MTVhZmRhODM2MjliNWZhYjczOWUifQ"
+        },
+        {
+          "resource": "repo://infra/docker/backend.Dockerfile#L27-L34",
+          "version": "repo-lines-v1:sha256:ab221672aa653e7344dd0d57004a5fc3336f2a6d5ac012f2004efcb5e1a084b9:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTMzNWRkZTRhYTVmOWJjNjk5ZTFiZWVhMzdkYTA5ZWMwN2JmNWM3NDA1YmM4ZGJjN2IzYTMzOTZkYTY5ZDYxZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjNhNzUxMDRiNDNjMmQxYWUxZGNmNTRmODFlZjRjZGNmOTJjYTU0YTE2YWNkNGZhYzkwOGMwZmQ1ODAwMGI1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2E0MjdmMTJkNDE0NGJmM2FiMWRjZThiYTcxNDRhYzhmNzliMjdhNzNkNDMyNThmY2JiNDJmNzMwNjU0MTNkZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0878ea949f4e47ed8cdfaa73cd88ec1d",
+      "statement": "Settings (backend/api/config.py) is a Pydantic BaseSettings with env_nested_delimiter=\"__\" and extra=\"ignore\", instantiated once at import as the module-level settings object consumed by both the API and the agents package for Postgres, Keycloak, SeaweedFS, and wiki-sync configuration.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/config.py#L1-L45",
+          "version": "repo-lines-v1:sha256:6b9e6fb5da90675610339b60ebd482f0137e6e895315028c6e874719f333eecc:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZDJkNzcxMjdlNjk2ZDJiYjgyNWMwMWFiMjJhZWIxMGY2NzBhYTdmZGRkYjVjOWQ0MGE1YWQ5MGI4YzY4ODUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ5MTY5YWZhMzUxYTA4MDBjZjVlNTU0ZmMyNGM3ZjgyYjQ4NDk2OTBhN2ViYjlhMTRhYWY5NzlhMmU2MTIzMzkifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

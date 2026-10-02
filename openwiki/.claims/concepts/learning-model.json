@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ae6348de1b4066f3454d7815967d1a12bb18fdfbdb9babc1d4e0fa96b1cf05df",
+  "claims": [
+    {
+      "id": "claim_9cd3042640224e5aa43f669608832ce7",
+      "statement": "A Course starts in Status.draft, AI generation transitions it to generated on success or failed on any exception (with retry allowed from draft or failed), and any content edit performed while status is draft or generated auto-transitions the course to edited.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/save_to_db.py#L17-L39",
+          "version": "repo-lines-v1:sha256:f7a2bde5100f18f2c120dde84de884026b87d212f7affd9ff0fd914216c8a31c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0NTE5YTU5Mzc0MzQ4NTQ0YzhjYTM1NjA5YmQyZTBhMGUwOGIwMGQ0NjQyMTRkZjk4MTcyMTQ3ZjNmNGEyYTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3MTUyYzYzYTYxNTRkN2ZhZjliMGNmOTczNGJhYzM0NGI2ODM1MzIyMTZhODY0MTNlODEzYjQ5ZDg1YzlhNjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjMDg0ZTkwM2I3YjRlYzI0NmI4Yjc2ZjhkNWU0ZGNlZmQ2NTVhYzhmODgxYTUyYzY2MDg2MTFlYzY1MjRlZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlmODk2NDJkZjUxYmIxMzgzODIxNWFjMGNmNDYyZmIxYTU1ZjI2NjljMDRlYjE4ZTlhZmI3OTRjZTRmZmEzZTEifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L63-L109",
+          "version": "repo-lines-v1:sha256:0d4ab8fc98508859609369ac1b3eac75f889844463a7563af6985a5d11d0c076:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjllZTJkYWM4YzUzYjhjNTZkMjNkMzM0OTg3NjFiNjRkNGYwMjc2YzI1OWQ5M2FmM2Y1MjdmOTk2ODliYTJjOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJjMjkzNDhiOTRiNmMyNTU1ZGQ1ZDQ0MWJjZTY3N2FkMWEwNzY3NzAzMDZhNTAyOTNkOTZmZjUyNTM5ZThhNmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRhNzY4OTg2YzQ0ZjQ2MWIzOGUwZDRlNzQ2NzhmMzY4YTRlMTllZTkxZjc2NWE0ODQ0YjBiZmI2ZjZjY2UyYzgifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/update.py#L92-L98",
+          "version": "repo-lines-v1:sha256:8907a8096c7489062b7f74b29d637623d85cfaca56ac964892836f4d42faf1ab:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjhhODI1ZDU0ZDgzYTYxNDQ4YzJiMTE0YmQwNDhkODlhOTA3ZWI3MDFmNzk3MDRlMjQ2NjZiMDIwM2YyMWE3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTcyYmE2OTEyZDk4ZmE1Yjc1NzRkM2RiMTkwMjNhZTcyMWM5ZDFjOTVjZTk3NjRhOGJiZDgxYmMwZDA2ODhjZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTE5NGIyZThhYWY0MmE0NTkyNDdiMDc0M2MyNTBkOTUzODA0NzUwYjEzM2ZkMWQxYjY2ODAyYzZjZjcyMDM5YSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2Q2MGQ0MjI3N2UwODlkNzcxODMzNGMwMWU3ZDUyYmMxZTljNTJhNGQ4Njc1Mjk5OWM3Y2IwZDRkMTQwNzI5NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_32199a02c7cb4a23bcafe948ce9924c0",
+      "statement": "update_course_status enforces a fixed transition table with per-transition role checks: draft/generated/edited -> in_review (owner/superadmin), in_review -> approved (guarantor/superadmin, self-approval blocked) or in_review -> edited (guarantor/superadmin), approved -> edited (superadmin only, clears approval and unpublishes), and approved -> archived (owner/superadmin); archived has no further transitions defined.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/controllers/update.py#L128-L177",
+          "version": "repo-lines-v1:sha256:5daeec89760080c9791ac662dd994525905e632b790d81765043568a09043a97:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4MDdiNGExZDM1MzVlODgwZmE5YzhmODU1NzJhZGJmOWViMGRkMWFjYThmN2IxNmIxZWFmMzU2MDU0M2VlZGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM1NTM5MDBmNDgwMTMzZjljMWZjMjFiYWMxZDBmZjRmZjg5NzM1NzE4OTQzZjg4ODkxMDgxNjkzZGVlZjcwMDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNmRiZjUyYWFjN2Q3ODBhOWZhZWUyYzAxODkwNzQ3MzA1OGQ1MDllYzRkYzYwNDZlZTFjZDFiNWI3OTc2N2UifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c24f69fa313e4d16b175bba93f3d3372",
+      "statement": "assert_course_editable restricts mutation of a course and its modules/learn blocks/practice questions/options/keywords to courses whose status is draft, generated, or edited; other statuses return HTTP 400.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/activities/controllers.py#L27-L100",
+          "version": "repo-lines-v1:sha256:8eccdb9f12a01568a54972cd1446477d245b5a66637bca2e62f8d8da84935580:eyJzZWxlY3RlZExpbmVDb3VudCI6NzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiZTcwYjFhYzJhY2VkYjFlOGI3NTM0ZTJmOTEzNzcxMDUyOThiZTc3ODE5YWIxOWFlZmU2ODg4ZWFkZjZlNTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyYTdjNjQ0NjIyZjE4ZTIxNTNhMDNjOGQ3OTc1MjFjNjJkMDkwMmRlNTc2MjgzNjkwNGM2OWY3NmUxNDZkNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg5MTBkNDU0YzM1ZmJjZDVlZmM3ZjYxYjM4Mzc5MjE3NWY1ZWVhYWI5YTY1NWE5ODVhYjdmYmUwZjdlNzkwZTgifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L72-L80",
+          "version": "repo-lines-v1:sha256:43575466f1b9afb014f1d12e92dc5b1cc7713f917efc31cbe5f8c97cc5158bea:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzM4YjkyOGE1YWZiZjczMTE0OWRhNTE0YTExZTNlYzJkNjUyM2NlM2MyMzJjMzM4YzY4ZTRlMzZkOWY0NzU4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkwOWE1M2E2MThkMDI4ZTFkMzAwMGMwYTdhYmNlZWNiZTVmYjM3ZjRlNTExZWZlNDY2NDNmYWQ2ZTY2ODcyZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDcyMjMxMDZmZDg3NDJiNzBlYTIzM2Y5ZGMzNTlmNGIwMmJiYjA2OWI3MjgzZWVmNzYyNDk5NTE2YmQ3YjljOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjQyMzM0NmYzNTFhNjVmN2VkMTYyNTFiMWQwYmUxNTY0YTIxZDk3YWU4NjA3MTcwNzNkMjYxMTEyMDk4NzA0ZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/modules/controllers.py#L139-L150",
+          "version": "repo-lines-v1:sha256:87c6ca853b363a42c594abddf64e725c421dc4336cb08a8a75fe96c33b4cc92e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmODc1NzRkMTVhODRmOGIyMmUyNGM1NGZhNjg5YzZkZjNkOGI4NjY0MjUzZWRlNzQwMDAxMjUyNmNkMGQxNWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMWMyMjMyZTNhMGU1ZTZmYTlhNTAzNGEzOGU5OTI2ZTBlNjM2Mzc4YWE1NTBiYzBiNDBlOTA5OTQzNmQwMzMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFmMThkN2JmZGNlZmQxZDY1M2YxZGMxNWJhMWQ3OTkzOGEzNDFhZGQ2YWE1OGVkZjEzNzQyNDFmODk2Y2U2YzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwYjljMmI3N2I4Y2RmN2FlNGM5YjFhNDY5N2Y2MDJkMjNjMDYyMTI2MjU5NmNmODBmN2Y1NmZmOTFlYjg2NDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_850eaae804914e85a7c05b4194b58dc1",
+      "statement": "A user can only create an enrollment in a course that is both is_published and has Status.approved; ordinary users may only enroll themselves while guarantors/superadmins may enroll any user, and re-enrollment into an existing active enrollment is rejected with 409.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/enrollments/controllers.py#L52-L93",
+          "version": "repo-lines-v1:sha256:e5d6b236a8bf5c5c6846ffdb9d7e6d0e044496bdb6a6055a8bb6fecc0c2a5747:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhNzBkNjg5NDBiZjQxZDg5MjM5OGUxYzlmNThiODg1YWM5YzA3MWE0N2FiNWVjNTg2NGY3MjljMzJhMmJjYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2YTUwNjQ2MTMxNDViZDQ4ZGM3OThkZjYwMDEyMDAyOGE1MmIxY2VjM2VlNTJhZDMxNzIyZDE0MDI5OGUwZTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVhOWIzNTIzYTM1ZDBkYjdiODIzZWNlMDIyOTRhMmZjMzdhOTViYmViNDg5ZmU0N2MyMDFiMmZkZjUzMGE0YzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyODUyM2ZjNDI2ODMxMDMzMTgwOWI1MmNmMTc1ZjUxODhkZWY3YjYxY2RjZWE1NmE0NmYwZDYzZDEwNWFjMmMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a4fb649d42df463088461cae812058c5",
+      "statement": "check_enrollment(db, user, course, bypass_for_owner=...) is the shared authorization gate reused across agent endpoints (learn-block tutor chat, generate/evaluate assessment, generate/evaluate practice answer, module tickets); bypass_for_owner=True lets the course owner or a superadmin skip the enrollment check, but assessment/practice generation and evaluation endpoints call it without bypass so even the course owner must be enrolled to consume graded/limited resources.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/practice_controllers.py#L23-L60",
+          "version": "repo-lines-v1:sha256:a4cf7b93a1ac3b49c36f2dbd05f5f9ede8728f17f9dcdb48bfee451c52e6cfd7:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmOTc4ZTM3ZGZhNTlmZWU4ZjA0NmY5Y2E3ZTM1MDQ3ZThlYzViZTBmMmFhNDdjYjYxNWZlZWU2ZmU3M2FlYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1NGEyYTQyM2EyNWZlNDcwMmQyMTRkNGNiYmMzZDU3NDJhOTNlN2FiZDVjODAzMDJhZjMzODY4MTliNTdkNjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyMDhkZTRhY2MxOTgzNTAwMTRkYjY2ZWU3MmQwMzRjYzIxM2E1NGMyZGZkMDY0NjY5MDUxNmRkNWE0MWZiNDcifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L234-L235",
+          "version": "repo-lines-v1:sha256:5b9ae633c0988acbf7c40a0b10aa921212c3b2a2a6882a8454f905b46c0c84c1:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmU0YzAyNTRiMWQ1NTY1NDQ4ZTVkOGM2MWI0Nzg0NDMxMDVkNWE1ZmMzMTE0NTYyNWQ0NmU4Y2U1MmQ4ZGI0MCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiM2VkYzk3ZjZjYzRiNTc3MTEyMTU5NmM5Mjk0OTg0MzhjZWZjMTA4MWQzMTUxZDk4MTU5YTc1YTc2NGU1MjU0MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWRjN2ViOWQ3YmZmZjQ0ZTAxNTgxMTAxODI1NTNjMTg0MmQzYzllZTBkODEwNjA1MTY5ZDIyNzk4NjEzZWU2OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQ5YTYwZmRlODdjNWJjMGFkOWI3NDIyNTMzNmRkMWJlNjRiZGQ5OTQ5YTk3YTQ1YmQ1MTY1MWU4M2E2MmM0MyJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L303-L304",
+          "version": "repo-lines-v1:sha256:a39ea7fd51156d1aabbad8be836c9d0a4f52383068d6cbb0be01dfa8c99f5de9:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODFlYmU0YmE4ZWMyNDM0MjZmMzcyOTBlM2RjOTJjNThjYjAyNzdlZjg1ZDBmYjExYjcwNGYyOWNmMDA3YzE1NyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTgxNmFjNDU0OWU3YjcyYzNkZGE4ODIzM2JjYWRjY2ViNjM2YmQ0NWFjNmU4Mjc4Mjk0ODJhMzZjYTYwYWJiYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYmI2ZTVlMTE1Y2YzYzE1YTExYWI5YzQxNjIxYmIwMWFhYzgyMDY0ZTVmZDE0MjIzODc3NDJiYmYxNDA0YWI0ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzZiMjM3NWQxYjRiYjFmNWM4NmMzYTE5NjRkZjBmOTg2MjE5OWViNDdkODdjZGU1N2JjM2Y3NTUwMjQxMTdkMiJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/common/utils.py#L83-L111",
+          "version": "repo-lines-v1:sha256:aef14251b2d4a63cb2b32495fe55537600c1a563dca6d537e85b30a36ae3e50a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlYjc1Zjc5NjIzMzY2OTMyN2ZmZjUxN2ZhZGVjYTQyYWZhYTU0MTFjYjllY2I0MTdjM2Q3ODE1NWNiNTk5ZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEwOThkMmJjZTU0MmYyY2Q0OTljNzc0ZmNkNWZjMDZlMDkyZGRlYWMyZGE4MzNhYzc1YjMzODYwZjNkYjBiOWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/module_tickets/controllers.py#L41-L41",
+          "version": "repo-lines-v1:sha256:53debd48aea16ac6db9a0e2dd358e75251255c699cabbc7f45013608d24c7569:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNkZWJkNDhhZWExNmFjNmRiOWEwZTJkZDM1OGU3NTI1MTI1NWM2OTljYWJiYzdmNDUwMTM2MDhkMjRjNzU2OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTNkZWJkNDhhZWExNmFjNmRiOWEwZTJkZDM1OGU3NTI1MTI1NWM2OTljYWJiYzdmNDUwMTM2MDhkMjRjNzU2OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzBlOGE0OWExOTg5NDg2YThmODczNTkwYWIzZGMzZDIwY2EzN2QzMTZlOGNjOWRmODI5YTM1MDI5Y2NmNmJjOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTQxZDdlNDEzNjQ3YmRhYjVmOGYzMjRjYTM4ODYzMTRjMjI0ZDcyMGNmZDU1MzVmMjU5YTQ0YWIzMjNjZDdhMyJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/modules/controllers.py#L210-L222",
+          "version": "repo-lines-v1:sha256:636a880cd7e0e9e43ba0c33a64ae9410f19dbb78601a2b57bb06e4a539e929ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYmRjMmI3OGMwZmUwMzExZjk1ZTQ5ZjYxNzhiMzExZTBlY2I3ZTIzZDdjYzUyNDc1ZGZlNGRhYjRjMzUyMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlZGM5N2Y2Y2M0YjU3NzExMjE1OTZjOTI5NDk4NDM4Y2VmYzEwODFkMzE1MWQ5ODE1OWE3NWE3NjRlNTI1NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTcyOGViMzNmMjRkZWJhODYxOTZiNmY2NzUxOWNiZjAyOTBmNDUxZTI0NjVkNDY1NzEwNGI4NjVkY2E4NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjZTU3ZTU0N2EyMDYzYWM4MDIxNDQ3N2YzZGUxMmFiMzJjMmJiYzc1MGNmYzU3NGQ2NjcxNjc3NmFlOTNjZTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_74a0062a32bc4e2ea17b155ba621c497",
+      "statement": "my_enrollments computes per-enrollment progress (completed_modules/total_modules from ModuleTaskSession rows with status=passed) and a next_module target as the first not-yet-passed active module in ascending module_id order, in a single batched query per user rather than per-course, and sorts the learner's enrollments by most recent activity for resume purposes.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/enrollments/controllers.py#L137-L259",
+          "version": "repo-lines-v1:sha256:aa2c61c0cd29680ddce638a418a707a473a8cf5cdc53b929425c87debf9f2146:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmNWJmYjRhNDhhMzQ3NmQ3MTljYjQyMDlmNTZlN2MzZjY5YTM4ODdkZTJmNTgxMGQyNDk1ODhkYzgzN2M4ZmQ5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYTExYzA1NjdkMGE1ZjllOWIxMzVmNjVjZDI1MzcyZGZkNjI4Nzc1ZjdjMWVkMjUzZjhiYWQ0MmRkMmQ2NjY5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzZWE3MjhlYjMzZjI0ZGViYTg2MTk2YjZmNjc1MTljYmYwMjkwZjQ1MWUyNDY1ZDQ2NTcxMDRiODY1ZGNhODcxIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyYjdhYmMyMTA2OTEzM2FlOGJiNTc2YzQzMzUwMWQ1YTc4ZTBlZDVlNWEwZGI5NTcxMWQ2OWYyMDNlZGVmMjM3In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f1dcc14215c43f6bb6d596afb448fee",
+      "statement": "mark_module_visited is a silent no-op (used for 'resume where you left off') when the module or its course is inactive or the user has no active enrollment in that module's course; otherwise it updates the enrollment's last_visited_module_id and last_activity_at, which also feed the /enrollments/my/activity heat-map endpoint alongside enrollment-created and course-completed events.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/enrollments/controllers.py#L276-L304",
+          "version": "repo-lines-v1:sha256:c303f664a4c911d4ae7124e83b5be6c4d596bf0284142b9453bb24c9a8c699dc:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMzNGU4NTI1OGNlZjdkODFlY2FjYTEyNTZjNDUwMThlNWNkYzQ3Nzg2YmIxZWFiOGFjNDdmYzkwNTg1NmRkNjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliMmI1YTc5NjNmYTllNDY0ODBkNTBkMDVlNjcxYzA0M2JkYTcxNTc4ODUwZTg4NDFiMmRiMmYzZTU3ZjYwMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTcyOGViMzNmMjRkZWJhODYxOTZiNmY2NzUxOWNiZjAyOTBmNDUxZTI0NjVkNDY1NzEwNGI4NjVkY2E4NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwOWQyNWE1OTY2MWU3YTEyNmJjMzYzZTczMmYwODYxYmFiODg0MTFlMTc0MWQ4NTIxYmMyM2YzYzUzMmFkNDkifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/enrollments/controllers.py#L312-L424",
+          "version": "repo-lines-v1:sha256:62fbaeb46b1dcf2db832ba1242de228c453ae3128b623a41def3b82c215801f3:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjM2RmMzJkOGU2MTFhMWI2MzJmMjM1MDJkNzMxYzYzMDA0YTM3ZmUwOTY2NzE2MTQ5NmQ1MTNiMjMxNjc4YTI1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI2NjEzZmQyZWFjODk5ZGE3MTE0MzEzMmMzZmZhYmFkMTU1MjMwMmEzY2JkYjVjNzEzY2U0NzRlOWEyOWM5ZThkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwYjdiYzJhNDRiNjRmMjMzMTcyNjg0ODMwMzA1OWI5ODUxZWE3NmZiMjQ3NTcxMjk1OTQyZTcyNDUzODY5MDY5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_976f08351015459cbab638163d434fb4",
+      "statement": "The module page gates its three tabs client-side: Practice is locked until the Learn tab is marked handbookCompleted, and the Assessment/Test tab is locked until Practice is marked practiceCompleted; if the module's ModuleCompletionStatus.passed is true, all three sections are unlocked and marked complete at once. This is UI-level gating, not a server-side precondition re-checked by the practice/assessment endpoints themselves.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/src/app/(main)/modules/%5Bslug%5D/page.tsx#L120-L128",
+          "version": "repo-lines-v1:sha256:f71cd16f0eca8dbc0b73bac9b5ddd12fe7eb1ed3c215eaca5179d50997d21ca4:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDNjYWEwNDYwZDNkOTk2MjFkZmFmOTY4N2QzMmQ0MGQ4MzA0NzU0YTE3NzljMjM5MTRlODM5Yzc0MzVhOWFiNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWI2MmY2MGQ4NTkwYTU3OWNmNDZmOGQ2NzM3OGM0YzU3MmI5NjJjZWNjZGI5MGM3YTVmN2I0MmI5NjA3ODJhNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTAxMWMxNTVhOTU4NDNmMTE4MDZjZmVmMzRlYmVhMDZjOWYzZmFhMGY2ZWY0MDYwMGU3OTc2NjhhODAxNWJlYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTUwY2VhMDk4NjQxZGIwY2UwMDllYTBkNjE5NDgxZjcwYmUxOThkYzk3ODk0ZjRiZDNiY2NiOTUyZDBmNjMxNiJ9"
+        },
+        {
+          "resource": "repo://frontend/src/app/(main)/modules/%5Bslug%5D/page.tsx#L279-L302",
+          "version": "repo-lines-v1:sha256:d1f1102ac726c3ce459490716ceb2c900c03e520ac5dc9a5c8ada214bc98f034:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5NmEzNzIyZGYwMmFkZWUyMWNlNWE0MmFkZThjMDc0MzE3NTFhYWZjMjA2ZmY4YWU4ZDQ0ZWIxMDIxM2MzZDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmMGNkYjk3MmE3YmZiN2VkMjQ2ZjlmZjY3MjM4NWU1NWY0OTY4ZmMxMTA0M2RjNWI2ODRkNTFkZmEzMWRiY2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcyNWMyMWE5MzIyMTRkZDU0YTYyNzgwODViY2ZjZGZjZmEzN2YwNjY3MjYzZDYzYTc3NjVmNzU5ODNkNGIzY2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU5MTM4MmJhMjZjMWUxZjAyOWFjZmQwNmNlNmIxMjRjNjk1ZmJmNWQyYmJlZDExNjUxOTU2N2FlNjY2NDFmZTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3514299a465a446d8dc1cf26ae2db322",
+      "statement": "complete_module requires enrollment (bypassed for the course owner/superadmin), idempotently records a passed ModuleTaskSession for the module, and stamps Enrollment.completed_at once every active module in the course has a passed session for that user.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/modules/controllers.py#L210-L274",
+          "version": "repo-lines-v1:sha256:b56b5f6b8053364df829e369e028a0d1a6d362ca8a84c65815e9a355a7856113:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYmRjMmI3OGMwZmUwMzExZjk1ZTQ5ZjYxNzhiMzExZTBlY2I3ZTIzZDdjYzUyNDc1ZGZlNGRhYjRjMzUyMzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkZDgwMDAzMjRjYjFkYTdmNTlkMDFmNDViNWJlYzBjMDk3ODdhMTkzNTgzNzdkOTc2ZTI1OGM0YTFlY2Y5NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTcyOGViMzNmMjRkZWJhODYxOTZiNmY2NzUxOWNiZjAyOTBmNDUxZTI0NjVkNDY1NzEwNGI4NjVkY2E4NzEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxODBiNGNmNGU5MTAyMThkMDYyMGM3NjExY2YzM2NiZTZmMWZjOGU3NTkxNmQ4YjFjMjgzZWRhZGZhMDNkMTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5dca02282fec4a4d90968aefe51b4592",
+      "statement": "generate_assessment refuses to start a new assessment cycle if the user already has a ModuleTaskSession in status passed (409, module already completed) or in_progress (409, assessment already active) for that module; a prior failed session does not block starting a new cycle, and persist_session either updates an existing in_progress row's generated question or creates a fresh session, effectively granting a new attempt budget after a failure.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_generator/nodes/persist_session.py",
+          "version": "repo-file-v1:sha256:66861fd39496398877828ea4a91dd8d672e83f28b6e81b95c00ab29e812b5916"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L283-L345",
+          "version": "repo-lines-v1:sha256:abc5f0ac8e7906b1d9988f57d0f4085b6d88e0b77fda32e347adc33419c6152b:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1MzI2OTVmZjkxMTMzNTM5M2YyZWMyMjNmYWE0OWMwZTFjNTJjNDU2YzQ3MmU0ZWE0MzkzYmRkMTNmZDgxOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjNDgxNTJjY2Q2Y2UzOTYyN2QyYmE5NTA5ZTkxYjQxZjZlODliMDExMGIyNjNjZmY5OTAxNzM0ZjEwZWMwN2IiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNjAwMmVmNDc2NWUyNzE4NzhlMjg4OGM1ODRjYWE2N2U0YjllZDAyMWMwODU4OWFhNWY3MWQ0NTI4ZDI1ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f53b31a6c62e459f85e56a78af06f248",
+      "statement": "evaluate_assessment counts only TaskAttempt rows with status=evaluated against module.max_task_attempts and returns 409 once that cap is reached; persist_result marks the session passed if the answer passed, otherwise failed once the evaluated-attempt count reaches max_task_attempts, or leaves it in_progress to allow a further attempt.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/persist_result.py",
+          "version": "repo-file-v1:sha256:fae3dd8e34ff302cfe508f389d776c15780b63db141c4ad8da46cd1c319b039a"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L380-L394",
+          "version": "repo-lines-v1:sha256:a91a026ab0460199698b5b53f1101d027ea018a41b4e505b30d653cc4ff23d90:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkYjlhZWQxZDg1NWVmMWUzNjRlOGU4ODU3NDI3YjAxOWI2YjA0MmVhMWE1NThkODA1M2M0OTk1ODMxZDU4MGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiMzA1MGFhNjg5NTM3OGRkOTE1ODYwMWI1NzA0ZjQ2OWY3N2NlYmE0MGM4MzU1NzFkOWZkNmZkODkyODdkZDkifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b597207915014e9bb437711a98a5777a",
+      "statement": "The assessment EvaluationService's LangGraph only creates a TaskAttempt row in persist_result, after evaluate_answer's LLM call has already succeeded, always with status=evaluated; if the evaluator LLM/API call itself fails, evaluate_answer raises before persist_result runs, so no TaskAttempt row is committed at all and the failure does not consume an attempt, matching the AttemptStatus.error semantics documented in enums.py even though no row is persisted with that status in the current write path.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/graph.py",
+          "version": "repo-file-v1:sha256:20c3205038d2e5921b73459631dfed41cf6641f098d7eb676a9f2eb1daa8db2f"
+        },
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/evaluate_answer.py",
+          "version": "repo-file-v1:sha256:6e0e0b828ef6cbb3de28dbef667374c8029a6a7ca9b21912c675203a9b75f30f"
+        },
+        {
+          "resource": "repo://backend/agents/assessment_evaluator/nodes/persist_result.py",
+          "version": "repo-file-v1:sha256:fae3dd8e34ff302cfe508f389d776c15780b63db141c4ad8da46cd1c319b039a"
+        },
+        {
+          "resource": "repo://backend/api/enums.py#L50-L54",
+          "version": "repo-lines-v1:sha256:4414cc860ed9bc839b7fd2b8ae8f2611dcb729fc15c5d8a4a594805456e034e0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzdhMjZlNWQ1ZTdlMjhkMDQzMWQ3NWI0NGFiODVlYzQwODgwYmVhNDllMzNlNWVlOWFhMjljN2YwODRkZTg3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTU5ZTFkOGVmMjA1ZGY4MjA5MjQyNDk4NTNmZjY1YzgyMjA5NjhkNGJhZGY1YWExZDU5YjQ5NDk4YzBmZjMwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjY0ZjU2MzA4YzU2MWRlYTk3NmFkZjYzZWFhYjQwMzdiNTA1MjhkNzU2MDI3OWEzNDZhMzA2MWRlZGY2NTQzMCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1311-L1334",
+          "version": "repo-lines-v1:sha256:490f2d044e31f367b1fad204c048aca074f8bda4ca4eba288f4d79755280d2eb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyNjdmMjQ4ZTAwODYxYTY5YTU1YTY2ZDYyMzMzNjk4NTk4MTIxMTFiMjdkODVjYzNhYWE3OTMyNjhlY2EwNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ1YmZkZTFmNmUwYmIwNzMyNTA5OGQ3MTNiNGNkY2Y0ZTVlNTM1NGZiNWY2OTE3MTE3ZTQ5ZTAyMTRkNTNlNWMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_70f65940811746c680281890fbd3880e",
+      "statement": "The ungraded Practice flow has no attempt cap or session state machine of its own: closed PracticeQuestions are graded by direct comparison against the marked-correct PracticeOption, open questions are graded by PracticeAnswerEvaluator, and once one UserPracticeAttempt on a given generated UserPracticeQuestion instance is correct, further attempts on that same instance are rejected with 409 while new instances can be generated without limit.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/practice_controllers.py#L62-L155",
+          "version": "repo-lines-v1:sha256:19d5c5e96fb8ae3a6a2ca922359e31f16dd052c16d020e8d2f3b5703fcd61e6a:eyJzZWxlY3RlZExpbmVDb3VudCI6OTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0NzkxZTk0ZmZiOGM3NzhkNDUxOGU5ZmI5MzZmNzQzMDdmZDdjOTk1NWI3YzBlY2VjMjNkN2Q2MDZkZTdjNmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1OTg5YmQ2M2FkYzM4OTU5YmQ3NjgxMTIxY2M0M2M1ZGU4NjU5ODllYmQ5Y2Y2MjQ1YjU3NzA5MzUwOTZhYzYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7b073f8bcabc442ea9bea841633e241f",
+      "statement": "The editor_images subsystem provides POST /editor-images (role=user; validates content type against an image whitelist, caps size at 10MB, stores under a random uuid4 filename in SeaweedFS under the editor-images/ prefix) and a public GET /editor-images/{filename} (no auth dependency, rejects path traversal) used to embed images inside LearnBlock rich-text content via plain <img src> tags that cannot carry auth headers.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/editor_images/controllers.py",
+          "version": "repo-file-v1:sha256:ac4719483640f3f8b298bd7af21e6fe5d06d58936ccd21a3d9fdaeec022df3a2"
+        },
+        {
+          "resource": "repo://backend/api/src/editor_images/routers.py",
+          "version": "repo-file-v1:sha256:38c77a0b1900b184b48b071be749b075a21e02d653d90c0e47fd0b518f3cdb03"
+        },
+        {
+          "resource": "repo://backend/api/src/routers.py#L47-L64",
+          "version": "repo-lines-v1:sha256:a27f0d18756b2083726b2270feb27488eda61cefaf6014a14e4c11c4bb415d10:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxN2Q2M2QwOGQzYjEzYTljNWMwNWVmZGVmMTM3MDM2MzZlNjFmZDUzY2NkY2QzM2UyYTI4ZTFiNDExNjJmNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNlYzE1ZTU2ZTBlZDRmZGE1NmIzMmQ0NzM0MGYwNTcyYjZkMGE4NThhZWY2ZWRkYmQ3NmI4ZmRkMjg3NTc1YTUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwODI0N2JiNWFjM2Q1NmY1N2Y0OGVlYmFhODQzZjEwOTFmYTI1YWVhMGI4MjAwMjljMTBmNDkwMThkYjFiNGEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQwYTU4MTVkYmZmNzZiYWE5YTM3Mjc1YzVkODY2YTUwNDFhOWYwNGQxMDRiMzMzNGUyOWE3YjQ2ZjA3YTM1NDMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_710fd484ce4840fd81759ce5006111a7",
+      "statement": "Module.passing_score defaults to 75 at the database/model level but is not exposed as a field in ModuleCreate/ModuleUpdate schemas, so it is not currently editable through the modules API, and Module has no explicit ordering column, so module order is implicitly ascending module_id.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L772-L797",
+          "version": "repo-lines-v1:sha256:cc41bbdd6dd56f9acfbbf2496a2adab9374f344e9cd60f527784079cc3e77e13:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyNjUzODU5MGY2ZGU4Mzg3ZjNkOWZiMzAwNzgyMWM1NWZkOTM0ZGU3ZGFlYjQ4ZWViNjA3ODc1YjAxYzE1NzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5NTg3NDdlZWMxOWNkYTAwYjdiYjE1MTgzNmY1NjM4ODdjMDcxMmM2MmQxODQzYjc4NzY4ZWFhOTc1ZWE1YWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYxNDlkMWRiNTdiNzA1NTlhNDMxYjYzZTNkOWQxM2Y1MDgzNjg5OTkzYTc0ZjljZDRjNjM0Mjc3OTI2YTQ0ZjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFhMGNlMzViOWIxM2I3NmEyYThlYWNkODg2YmYxNmJiYWIwNWQzNTE1YzQ0YTQ0ODQwNzczYTA3MGFmOTY3ZmMifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/modules/controllers.py#L59-L85",
+          "version": "repo-lines-v1:sha256:94ca57d4a4c0677f235251c537f61caadb8f9799bcb6a37b55951f6cf39b212e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzMDU4Mzg0ZTg1NWJmN2U1YjhmMWIwN2EzYzI4NmRjZDk4MjU3MDIyM2QwNzA1MDUxOTlmYjJiNmRlZjg5ZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmOTQ4Mjc1Y2RiZGYwMDFkZjc0ZWMxNzM3NTFlZDZiNTUyODUxYTBkMTJlNzczMDRlMzk3MzUxNjg3MjIzYjUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzZGYyYWNmMDZlOGMzZjAzYzcxMzVjNmU4YWM1YTljYTU0MzJhYmUwNmE3NGFjYTBmZGQ5YTUzYTAwOGY5ODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI4OWI4NTdhMGUwODQ3MGMzYmRjODdhNGYwMjVkNzkyNmE2Nzc3YjUzY2QwY2ZiZGQ4MTgzMTRmOTllMmQyOTAifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/modules/schemas.py#L1-L60",
+          "version": "repo-lines-v1:sha256:f34b132b4ef15485dc79b107c8a198f8e42d9014c5436ead97e5fac33a6562df:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJlZDAyNDdjYzA1Yjg2MWZlYTMzOTFlZTc2NTFhZWM0YmI1NzMwNGI3MWJlNmU5NmQyYjc0ZDE3MWM1NTFmNTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1NWJjNGZlMWE0ZGUzMmU1ZWQyNzhhM2IxNzMyMjkzMTVlYjkwODEyYmEwYWJkODNjOTc4OTM4N2Q3YmY4MmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_416e2e8bfd22407b84d8e1f25af3c6c0",
+      "statement": "get_course_progress and get_assessment_question both select the relevant ModuleTaskSession using the same priority: a passed or in_progress session takes precedence, falling back to the most recent failed session, so a learner's UI can resume an active session or see their last failed outcome.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/modules/controllers.py#L277-L380",
+          "version": "repo-lines-v1:sha256:0171074a405db136792012534cf91f8cc18aff381716970c9ad5339a7470fd4e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2Zjg1Yjg4M2FmZmVmN2VlNmNkNTZlZGVkNzVlOGViMjMwMmZmMTRhN2IzOTE4NmQ5M2NjYzk0YmRiODZiOWZiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmYTExYzA1NjdkMGE1ZjllOWIxMzVmNjVjZDI1MzcyZGZkNjI4Nzc1ZjdjMWVkMjUzZjhiYWQ0MmRkMmQ2NjY5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI3YjNjNTA4NTlhMWE0ZTQ3OGEwNDhiNWU3NjFhNWRjNjllYzU3NTFhYTI5OGRmZDEzZTYzNTBiMTA3YjE4MWI1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

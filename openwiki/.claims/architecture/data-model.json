@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c810825d1cd5cebe2b565491148d6424898b69999bb32a4ec48853eda41e8ab9",
+  "claims": [
+    {
+      "id": "claim_1ed4fdd0e2074f15b0227e3918a32e48",
+      "statement": "SoftDeleteMixin.soft_delete() never issues SQL DELETE; it sets is_active=False on the instance and recursively calls soft_delete() on every related object listed in the model's _soft_delete_cascade, whether the relationship is a single object or a list.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L61-L82",
+          "version": "repo-lines-v1:sha256:01a3a0dc4ee2ed6b7c987c55a57ac17688937f577cf55d26e46d43d1babf89a1:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0OWVjYWM0M2Y1NDMzMGM5NTkwOGU4ZWZhM2FiOTZhYzhmZmU2ZWE2MDM3MWI2NWIzOGJlYmIzOWZhNDEzODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1MTE5ZTFiODhjYzQ1MzkyMDg3NjViYzVmNDgwMGY2ZGUyMzgzYWI0OWEzYWJkZmFkNzVjMmY3MzI1ODFiMzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7fb1292c5b684f3ba9d682a34ade913c",
+      "statement": "Records are deactivated instead of hard-deleted because most foreign keys in the schema (e.g. Course.owner_id, Module.course_id, ModuleTicket user/module/course FKs) lack ON DELETE CASCADE and because historical rows such as Enrollment, TaskAttempt, ModuleTicket, and AuditLog must remain queryable after their parent record is retired.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L1339-L1396",
+          "version": "repo-lines-v1:sha256:0f573937f44c3c64c13d2c1c4ab6eae08b3275af35db376d33a853e2e8bfbf82:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY0OTM5NjI5YzhkODc3NTZlNjczZmYxZDVjZDU4YTE3YWE0NDc0ZDIxYmI0ODAyNGE2NWUxYWI2YzIyYmQzMDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjOTY2NDZmYjYxZjBjZWU0OTcyZmVhMmM3NTY4ZTA5MmRmMjcyYTc4MzY5NWU5ZDI5YzE3OGE0MzNjZjEwN2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0OWQzOGZmMWQ2MzVkOTQ1NGU1NDM1NGYyN2UzNGMzMTdhMWEzNWE2ZGQ0Y2ZlMzA5OGRkMGQzMjU2ZDJkOTYifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L164-L190",
+          "version": "repo-lines-v1:sha256:097a9b9e3ac6174b3ae930134fd9194e21c341d504b802714faba026e907bc02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiMGFiYWYwNTQyNDlkMjI3ZmVlNjZhMzQxNjU3NDAxMjIzYWNjY2Y4MGI4NDA0MzBjYTFmMTA4M2QxNDQzZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3Y2JhY2YyZTQxZmQxNGNjYjE4MTJhNmRiMWZlMDkzMTI4ZjgxZjZlZDk3Y2FiYmUxMmM5NjJlZjgwYTQ4YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlZDBmNDUxNGNhMGMwMmYyOTgxOGQwMTM4ZDI0Y2E4NTgzOTE2ZDcxNzUwNGZjZjk2ODI4NTQxMDliMjlhMGQifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L511-L653",
+          "version": "repo-lines-v1:sha256:77856e1947cdf776716a6cef8478629050c868d32d037ef169ef9d2938ef5f06:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI2YTlkMmE5NmI5MDE3NjM4Zjg0MWVlNTFmMjY1YzRjYjMzODJlZTk5NGU1MWI1NDNmOGViZTMzNWMwOTQ0YmZhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiMDQzODZhNWY0ZTM1YWM1Mzg2YjcwNWMyODUzN2JjYzNlZWJjNjVhNDQzZmMzNmNkNWQ2ODZjMDZkZmM2OTFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIxOWQ3NzNmOTI1YzViODdmMTk0ODlhZjY2MmQ3NGI5Y2I4NmYyNGQ2MWIzZjg0OTdjNzc5Y2UxMjQ4ODUwYzY5In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_90b2f94cc7dc4d4da1a7af9c847b2625",
+      "statement": "Course, Module, PracticeQuestion, PubResource, and PubCollection each define an explicit _soft_delete_cascade list (e.g. Course cascades to modules, files, links, krauu_competences, bloom_levels, cross_subjects; Module cascades to learn_blocks, practice_questions, neuro_principles, krauu_competences, bloom_levels) so that soft-deleting the parent deactivates all listed child relationships.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L1095-L1096",
+          "version": "repo-lines-v1:sha256:c3373d1eceb19de092e2ddf6aa01fa641dc31fa1e5fe7a8b0ac11349213b8415:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzUyNzhkY2U4OGM5ZTAyNzY4MDAzZmRhZGM0NWM4YTY5YjNiN2QzOGI3ODBiYjkxNjg2ZTliNTNmNTQ2YTg2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzRiMGJiMDlmYTY0ZWI4N2NkMGIxOGU4N2Q5MTI0YjcwMjBkODFkYjEzN2QxMzQ5ZGRiNTQyMDk5OTE1MTczYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTA5ZjAxNWJiN2JjYTYwNjM4OTUxZTgxZDY2ZjNjNjQxNWI1YzdiMDQwNGFhMTdjNWI4NjhmZTk2MWYyNjc2NCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1498-L1498",
+          "version": "repo-lines-v1:sha256:545e9c015cfb8d07a191539228604c7bc018d774fe9e2a353239087968a5f96d:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTQ1ZTljMDE1Y2ZiOGQwN2ExOTE1MzkyMjg2MDRjN2JjMDE4ZDc3NGZlOWUyYTM1MzIzOTA4Nzk2OGE1Zjk2ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTQ1ZTljMDE1Y2ZiOGQwN2ExOTE1MzkyMjg2MDRjN2JjMDE4ZDc3NGZlOWUyYTM1MzIzOTA4Nzk2OGE1Zjk2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmIxN2RjM2U2ZTAyMDI0NDY0Y2JjZmJiY2JkMmFkYmMzMWRlM2U2NDRkNWUyZDg5ZDhmY2QzMzJlNjA3YmE5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjE1NjEwMTU4MTg3MGFlOTk2N2I1ODg5MTQyMTI3YWI2ODc4ZDI0OTU3Mzk0ZTBlZTY3MjE4NmMzNjc5YTY4ZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1674-L1674",
+          "version": "repo-lines-v1:sha256:2620014f7eff4933af00d0b2633e17533e54112734e203da4af00450e2703fb8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYyMDAxNGY3ZWZmNDkzM2FmMDBkMGIyNjMzZTE3NTMzZTU0MTEyNzM0ZTIwM2RhNGFmMDA0NTBlMjcwM2ZiOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjYyMDAxNGY3ZWZmNDkzM2FmMDBkMGIyNjMzZTE3NTMzZTU0MTEyNzM0ZTIwM2RhNGFmMDA0NTBlMjcwM2ZiOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjY5M2JhOWNiMjYzYWQxZWRjYTQxNzBjMjg4MzBiN2Q1YmNmMjZkMDM1YWY2NTFkNTk1MmUwMGZmMWJiZjU5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmQyNzgyNDM3MDhkOWQyODFkNGY4ZTZhNjBkZTk3MTFhZmFjODIwM2FlY2Y4MzFkODY5YmFlMDBlZDI2MzMxZCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L629-L636",
+          "version": "repo-lines-v1:sha256:a0f358ab35536dc0aec43dcd367fffc3d2d2f1f2f3400e5dd05d15eaf7a69ec1:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjk4NDU0YmU0YzQwYzkxMTVlOWRmYmUxNTBiOTY1OGEzZTJiNzQwMGJiZGU5ODk1M2QyOTU5OTc1NWE1NGQ5NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRkMjQ0NTgyYjZmYjAzZDIzYjg0MTVhYmVjZDM0NmIwYzlmNDY2YjZmNzUyYjA2ODE4OWNlN2U5YTJkYzM1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjQ5NjI5Yjg3MGYyNWUxMTQ2Y2U2NTZiMzEyMmRlOWRiMjA1MDVjNmQ3NzMyZGY4YmU5MDM2MTUzMjgxM2RiZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODg4ZjlkMjBkZTk5OWQwMTkyNGZkZDUwZTBhODBmNDQ2MzZiMWEyNDQwYzUyNDAwZjYzY2RkNGQyYTc5MGQyNCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L828-L834",
+          "version": "repo-lines-v1:sha256:6f18eead80cb025028a0bb19cade84da8c550eb4c0a977611e073293b18b9f86:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzVlM2QxZTk3NDViZjhhZjIxOGQwNmM5NTczMGExYWY4ZDc4ODdiMTgzYmRiZmI1ODZjYmU2NzQ4ODI0OTRiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWRkMjQ0NTgyYjZmYjAzZDIzYjg0MTVhYmVjZDM0NmIwYzlmNDY2YjZmNzUyYjA2ODE4OWNlN2U5YTJkYzM1MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWJmMDk5MGNhNTlkN2ZiOTFhNTUwMGQ2ZDI5MTI1NTgyMDhkNjA5NGFhMDhkYjAzNDYzYWM3MjM1ZDYyY2FkOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODg4ZjlkMjBkZTk5OWQwMTkyNGZkZDUwZTBhODBmNDQ2MzZiMWEyNDQwYzUyNDAwZjYzY2RkNGQyYTc5MGQyNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_85a764134bef421c85881514c72bafc9",
+      "statement": "Active-only relationships (e.g. Course.modules, Module.learn_blocks, PubResource.files) are declared with an explicit primaryjoin that filters on is_active==True, so soft-deleted children are automatically excluded from normal ORM navigation without extra query filtering.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L1481-L1496",
+          "version": "repo-lines-v1:sha256:b0c4e4c6bf08ab18e623c48f1afebe3fa36e62536c2107ead7ff287e9b647455:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmM2YwZTllODdjYTgzNWE4NjIwNDQzMDUxMTVhY2RjMDlkNDA1MDg4MjJhZDllOTRmMzZlZDY2ZGViMDM3ZTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI0NDM3ZmNjMWM5OGQxODBkMzJjMzhmM2E2MWEzMzZmOWY3YzU1ZmY5ZGU4MzQ0ZWVjYzA1NWU1YjcxMzNmODQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0OGU1MDYzMzkzY2FhNjU1NGQ2ZmZmYWE0YmYxMWM3OGFlZmU1N2ViNTk4YmE4MmNiNGY4N2FkNGIwYzk4YmUifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L593-L617",
+          "version": "repo-lines-v1:sha256:fe600674b4461daa57622a11e1ad6ae440603055dea7618570dd239f0e1b778a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmZDViMzQ4MTgxN2VjZTVkYmY1MjY0Mzk1Yjg4ODFlYTIyNjIyZTIyMDE4YmI2MWU1NDhjNTI5ZDVkNzRjNjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3M2Y4OGZjNzAyZTgzZTYzMDI0MjcxNWVjMmUwYjU1OTVkNDI0ODlkZWUzMjRlMGU1YmMwYzg5NjQxMTE0N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiZjY2YzAzNmZjYTc3YzY5MmM5YmQxZjY3Nzg4ODg0MGIzMzBjZmFhZTEwMDcyNDE1NzkwODEwZmM2N2UxMmMifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L801-L826",
+          "version": "repo-lines-v1:sha256:983862e33ed43c52f5e9d460a91404ac735d40ecc648a19f11a588b4e1080377:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxZmQyNTJhMmIxMWEzNmM4NDFmZWMxMmI4ODgyYjBhOGE4MGNjZTcyMmRjN2FiZjQ5ZDQ2OGVhNmJjMTMwYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhMGNlMzViOWIxM2I3NmEyYThlYWNkODg2YmYxNmJiYWIwNWQzNTE1YzQ0YTQ0ODQwNzczYTA3MGFmOTY3ZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2MDM2Y2JlMWE3MmU4YmU5ZTk2NWRiZDY0NTM0OTgwZmM1MDY1OTQxZDMyYjEwMDU3Njg0MGM0OTQ0NTA3NWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3ab4606fc33843b09fb187badb52292a",
+      "statement": "Several unique indexes on soft-deletable models are partial indexes scoped with postgresql_where=text(\"is_active\") (e.g. uq_course_title_active, uq_module_course_title_active, uq_system_setting_key), allowing a code/title to be reused once the prior active row is deactivated.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L513-L519",
+          "version": "repo-lines-v1:sha256:b45641efc27e01111b0bae04b5600420c5c921c4af2fbfdf238b455c026e316d:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ1MWVmYTljNjkyMzdhOWNhMjIyOTIyMDZmM2ViN2M5NDg3NzUyMjgwZjc0M2QxY2VlMGUzMGM1N2U0MTc4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQzM2QwZWE5ZWNmMmYzOWM5YTUwNDA3Mzk1ZWU0MTE3MmZlNjgyYzljODg1YTM1MDhmNzViZGVlMTUxZWZmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjI5ZjE0YTVmZDc3MmFjNDA1MGIxNGM3Y2NmMTkxMWZiMjdlMmM3ODkyMDlhNmFkYTdhMDM3MDYwMGMzOTJkNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDEyZTIzYjBkOTRmZjk1NjM3NGQ5MDczOWEwNTViYjM1Y2IyMzdhOGVhNWQ3YTZlNDY2YWU0YjcyNDg0NDkwZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L774-L781",
+          "version": "repo-lines-v1:sha256:aee35768636682ad128d714a18bfb066257657db808e2d19517eebdce02c5453:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODQ1MWVmYTljNjkyMzdhOWNhMjIyOTIyMDZmM2ViN2M5NDg3NzUyMjgwZjc0M2QxY2VlMGUzMGM1N2U0MTc4MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQzM2QwZWE5ZWNmMmYzOWM5YTUwNDA3Mzk1ZWU0MTE3MmZlNjgyYzljODg1YTM1MDhmNzViZGVlMTUxZWZmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzIzNmViOThlZGMzZjc1OWU5Nzg4ZTMwZjk1OWMyNTY3Yjg4Y2MxM2MzYTA1MzRlZTYzZmRmZmEzY2UyZTc4NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTZjNmU0NTFjMWJiMmIwZjJiMTQwYmU0NTc0NDI4YmU2NGVmYjczZmQ2MjVkNDc4MjM5YWU5MzE4ZTUwMGRlZSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L94-L102",
+          "version": "repo-lines-v1:sha256:f29ef08c246ca8efa716aff1998465a9c01c20ad1fa7bc4408545dd2890b1cad:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWVlNjExZTk5NGM5MmUzMjAwYTZmM2NhODhkNDc5OTAxZjNkYzRlNjQyYmRlYjExZjVkYTVlMWZiM2EwZjkwZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY1Y2VhOTZhZjkwYjk3OWIxZjUzMDU4NDBhYTEwZGQ4ZTE5ODhhM2Q4MTRkOGViMWRlZGExOWU2NWE5MGFkYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzg2ZDFmZTk0NTUwNzI3OWExYmE3NThkYTc0MmFkZmE2ZjVjN2M2NWQ1MGIwNjQ4MWYyN2Y2ZDI5NTZiMjc3MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3184256edab24759b801dc6ad78375cf",
+      "statement": "AuditLog is a single system-wide table storing polymorphic references to any other table via table_name and a JSONB row_pk (GIN-indexed), plus action (AuditAction), changed_at, actor_id, and a JSONB diff; per its docstring it is intended to be populated from an application-level SQLAlchemy before_flush session listener rather than DB triggers specifically so the write can capture actor_id from the request-scoped current user, since a DB trigger has no access to the HTTP request's authenticated identity.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/dependencies.py#L117-L194",
+          "version": "repo-lines-v1:sha256:a94bbca7279e87ec87219266c9bd0faf9d25a4a4bceaabc9cde0e9d2dbdee4f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZmM0ZTQ0NWM1NzVkZmIxZWU3OTMxYWU4MTEwZGM3YTNkY2VjNDBkYjA4ODNmMzU0MjE1YjVhNDJlYjk2ZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0NjdkYmVlMWEyODYzNDlkMGMyN2Q3MjE4YWFkNjZkMTVmOTY0MDA3NGMwYzkzNDU3MDAxYmJiNmFhODIzYjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxNWFlZTljZDg3ZTEwOTg2MGY0OWYyZGVkNmFhY2VlYzBiYWI0ZDU0MzRmNDA2ZGQ0ZmMyN2IxYTA3M2I3MWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc5YjI1NTQ5NjQ5MjQ3YTUzNDIwZjY3OGM4OWJkYjA3ZTRmNjZhNWJkNGM1NTk0NjVmYWRkN2I5ZWVkYTc1YzMifQ"
+        },
+        {
+          "resource": "repo://backend/api/dependencies.py#L254-L255",
+          "version": "repo-lines-v1:sha256:b27bb97e7a2d3b62460cc1a0d078136a6e6ab6adc5ee0de69e8d61901cf31de4:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYWFiMzNhZjNkMTZmMDlmYTYxMmUxNjczNGIyMGY3NTE4MDA3NzVhZjlmODc3ZjhkN2RlYTM4NTkyZWFmNmQxYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGY0MzRlNjA5ZjkwZmRlNTdkNTBlZTQ3MDQyMjY1M2EyZDc2NzQwMmI0NWRmOTAyYThjMjkyZjZkMzFkMmYwZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGFkOWVkYzgxNTdiNWM4YjNkZTE4MWIzNTA0Nzk5NWFhZDhjZTQ0Y2E2ZmFkZGU4YzgzYTdmNThlYTZlMjI0MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L164-L190",
+          "version": "repo-lines-v1:sha256:097a9b9e3ac6174b3ae930134fd9194e21c341d504b802714faba026e907bc02:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJiMGFiYWYwNTQyNDlkMjI3ZmVlNjZhMzQxNjU3NDAxMjIzYWNjY2Y4MGI4NDA0MzBjYTFmMTA4M2QxNDQzZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE3Y2JhY2YyZTQxZmQxNGNjYjE4MTJhNmRiMWZlMDkzMTI4ZjgxZjZlZDk3Y2FiYmUxMmM5NjJlZjgwYTQ4YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFlZDBmNDUxNGNhMGMwMmYyOTgxOGQwMTM4ZDI0Y2E4NTgzOTE2ZDcxNzUwNGZjZjk2ODI4NTQxMDliMjlhMGQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4cd4a930a849487fb3c6133b54c98df8",
+      "statement": "ModuleTaskSession.status uses a partial unique index (uq_module_task_session_user_active) restricting only one row per (user_id, module_id) to be in status 'in_progress' or 'passed', allowing a new session to be created after a prior one reaches 'failed'.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L44-L47",
+          "version": "repo-lines-v1:sha256:c498c619b7bdafaa6919f1aa578e1786d032b613c89404d7f88c7ea5a99ea37a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTJlYjJiOTEzZWU4MzRkZDBiZGIyNDUyMjI2OWJiY2ZlMjZmMmY2OTdmNGE3OTdkNTc0NDZiNTliZDAzMGI1ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjNjNDM1YWIxMDVhNGVmNDc3NWRhYTZkNzNmMDU0ZmFkZDc3YWE0ZmNiYTY5OWI3ZWVlMGEyZGE0YmFlOGEwYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzlmNjIyMWI2YmYzOWJmYzk5MTgyNTZmODM0YjczMDUwNzg3ODA5MzYwZDlmODBjMjIxN2FkYzBjZTkxN2EzZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDE2YmNiYmEyMDY0OWNkOWZkMDAzYzBlZGQ0ODFlZWQzNDBlZGE4ZDBkYTIzMjcxZDNhOTg0Yjc4ZTA4ODEzYSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1276-L1300",
+          "version": "repo-lines-v1:sha256:bcaec894c1dca5cfaba8dbda2dcbf5e98b748268122a34e823a6a61904f3cc24:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJiY2JhOWMwZTlkYzZkYTIyZGExYWEwOTQ4MDY0ZTllOTg3NTg2NzNmZGMwMDZmNWQxNTMxY2RlM2MxNWQxNDkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxOTZmZDZlZjRhNzUxNTY1ZGY5YjBlYTFmYzJlOGJhNTY3YjBiNGQ4YmVjZWY3OGIwYWM0NDg2MjZmM2MyMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcxZTBlZGQxNmIyMjk3MmQxMDliOGRjNGQ5ZjhkMDE0NGRmZGRkMjczMDM4Yjc2ZDU5YzE3YjcxODhjNWFiMjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4fbf695dd85d4b168c1c913f1209d23e",
+      "statement": "AttemptStatus.error explicitly does not count as a consumed grading attempt, distinguishing an AI API failure from a completed evaluation; only 'pending' and 'evaluated' represent normal attempt progress.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L50-L53",
+          "version": "repo-lines-v1:sha256:d2fa8fba8a6f25e1ae2b91a4f76d5cda6a03fdfed2d75d575e7d00177277ec7a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzdhMjZlNWQ1ZTdlMjhkMDQzMWQ3NWI0NGFiODVlYzQwODgwYmVhNDllMzNlNWVlOWFhMjljN2YwODRkZTg3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGEzYmYwOTE2MWE3YWU0MTE5MWJiZDNkM2IxZmVhNTMwYTY1YzgwMTU5NjEzOTA5Yjc5ZjAxNTI3NDNiYTE3MiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTU5ZTFkOGVmMjA1ZGY4MjA5MjQyNDk4NTNmZjY1YzgyMjA5NjhkNGJhZGY1YWExZDU5YjQ5NDk4YzBmZjMwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTc4NmM5MWQ5ZGZmYmM2ZDVlY2EzOTE1MmM1OTBkNGFkMjUyOGJkM2JlMjA2NTJlY2MyYjFhNWViNjM5Y2Q5NiJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1311-L1331",
+          "version": "repo-lines-v1:sha256:9376499c394f2f0267336823430ed7f09187437764bec72061f9d8f8dbbc693c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyNjdmMjQ4ZTAwODYxYTY5YTU1YTY2ZDYyMzMzNjk4NTk4MTIxMTFiMjdkODVjYzNhYWE3OTMyNjhlY2EwNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0YTUxZWVhNmUwZGEwNDE1NmNlM2IwNjQxMjc4Y2QxZDEwOTI3ZWZmOTU5ZDU0YTNlOTk5ZmFkZjE5YjU0M2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmYjIyZDhmNzYyOTQ0MjFhYjA0ZWExNWU2OTFhMTRhNjYyZWExOWY1NGRiMjczNmFlMDZhNGNjMGUyNjEwZTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_11aae8ce2b404e159bf86db24ffd7247",
+      "statement": "PracticeQuestion enforces via a CheckConstraint that closed questions must have correct_answer set and example_answer NULL, and open questions must have correct_answer NULL, tying the QuestionType enum to which answer-shape columns are populated.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L4-L6",
+          "version": "repo-lines-v1:sha256:f5ef33dc48dea419de91e3f84e3e25c1d9d284fe23e8a2c1dab87f158248a04e:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2IxYzM5NTY2OGM2NDU2ZmI2MjIwZDYzYmM0YzZkMDgyNjUyNTQzNzBiYjU2OWNmNTBiMzdlNDFjODhmZWNhMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmI2M2QzNjU5ODVkNDEzMDdlZGEwZWM5OTU3NzM5N2VlYjVmMzZmMzE0ZjQ1MTYzNWEwZjQ2YWEzOGMxOTFmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTBmMGMzMTlmZDRmNmNlN2JiNGRiMTNjN2MyM2ViNGY3M2Y4MTVmN2FkNmM0MmMwMGYwODFjZDVkMDUxZDA2YiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODM2YTFkYTZlMzcxMDUzM2MxOWFjOTEwMzQzN2I1Y2FkZTE5NmYwYTAzMTgxM2RkMjQ5MjJhZDdjZWY2YzEzMyJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1044-L1099",
+          "version": "repo-lines-v1:sha256:c5b24e7f857c1f0aba16d5661f9547ab5fcf8da7e3b3e24ed36de4ee6251c315:eyJzZWxlY3RlZExpbmVDb3VudCI6NTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhY2FkZjNhN2QxMzU2MDA1NWJmYzliZWU1OTRkNTc2MmMwYTM1MmExMjZiNDFkZWEzNmJhMWU5MTRkMTc0YjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRmNjg4OThjZDA4ZmNiZTVjYmJlZGFlZWY5MWMyOGQ4MjkwMjE2YzI5YmRhNzFlZmIwYzZhN2U4N2UzNmY4YzQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2MmFlZGIzM2ZmMWRhYTgzMWZlM2UzMjhmZDk3MDdkNjQ2NGNkNDNhYzlmZjZkNzNiYTI4MmYwYjkyOTQzMTAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d48e9a6f60f249e1bb1bcae50e9e6e04",
+      "statement": "Course.status (Status enum: draft, generated, edited, in_review, approved, archived, failed) and Course.approved_by_id together model the course review lifecycle, with a CheckConstraint (ck_course_owner_not_approver) preventing a course's owner from being its own approver.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L9-L16",
+          "version": "repo-lines-v1:sha256:14ec467a4709e5ea90843f24cbd1882416d65de50ff9380b2237cc2b1bef8bf0:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTU3OWY3NDhiODE2MjAzZGVlZDFmZWQ4ZjFlNjhkNTBiMDg4YjAxMjdjNDFjMDM2MTJlNmNlNzUxMjgzMjA2NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjU2YmU0YTEwY2Y4MjI5YzE0OTBhYzFhNDczZWY1YTljYWE5MTRkMGI2NzFlODg5MzI3ZTBmYjhhNGNlZjk4OSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODNiMGUwZGZkZTc0OTA5NDY0NGYwOTVlOGM0ZGQ5MzA2MWYyMDlhZTQ4NThjYjZhZjBmZGNlNTIzZjgyNzM1OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTIyYzUwYTU2MjNhM2QyZTdlOTUwYzI3YzUyZTFjY2VhYjM2NDNiN2IzZDc2NTNhOGQyYjk5YTQ1ZTIxNWYxNCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L521-L560",
+          "version": "repo-lines-v1:sha256:66c125605f2ede70623bf21867405df184c715f44a7496e1084561133410013e:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlOTU0NDdjNjdkYjlmNTFjZGUwN2ZhNzExNTQ3Mjk2ZWI3MzhjMDRjZGQ5Y2Q0NDEyNWNhYjc3ZjZiYzI4OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRmYjg4NWMxMWE1NTdhN2FlYzJkNzdkMTY3NjcxYjI2NzhhYzZkY2Y0MjJhYTRiYmY0YjZlNGY5YTRlYjcyY2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwZWJlZDEwY2NiZWY4ZDAxOGFiYzcwNWMzZjE0ZjBiNWM0MzU5YzhhYzljZDY0ZGEzNjczMzU0NGZlMzQxZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZGEwYjI0MjI0YmRkZDBmYmI0ZWY2YTg4YzQwZmU0Y2ZmOWEwM2EzZWQ1MmQzOWU1Y2I5NDBkY2NkNTRiNjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_084fe4b0984a46ceb16a4040f8c09407",
+      "statement": "PubResource.status (PubResourceStatus: draft, pending_review, approved, rejected) and PubResourceReview.verdict (ReviewVerdict: approved, rejected, needs_revision) are two distinct enums driving the public resource library's submit-review-publish workflow: the resource has one overall status while each review carries its own verdict.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/enums.py#L73-L77",
+          "version": "repo-lines-v1:sha256:1e2868632eb43190a4b44765e3b94492f6e397240478387595b30c376703b690:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDA4ODcyZmU2YjRlNDU0MGZiOTgwYzZjMDZhMGI4M2NlYTNjNjgzN2FjMmYxMjBmOTk2YjhkYzY0NDNlNjU2MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGVkZDNlMDgwNjYwMzFiZDBkM2U4MDM2N2Y0M2U3YjMwYTYxOTQ1ODJkMmJhMDcwNjg2YTkwYjkwMjEzYmY0YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWY2ZTZhYjE1NjI5NjljMjMxYTc2MTIyMDU2ZDk3ODQ3NDAwZmZkODE2MTlkMGE5OGVkOGZmNGI3MDgxN2U1ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2JkODQyNWI1YjE1OGUwM2U4YzlhNmRkOGJjNTJjY2YxYWRlZGEyNTk2NjcxZDA3ZWI4OGVjYzY1NzJjNjBjYSJ9"
+        },
+        {
+          "resource": "repo://backend/api/enums.py#L89-L92",
+          "version": "repo-lines-v1:sha256:5517f1f4e313e91a999eef0033b6a6fd234de77a980c1e865e602e1068f482f2:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTljYzM2ZTAwYjhjOTliZWMwMjYwNTdhNmE0YjNjMmJmYzJmMjZjNDgyY2Q4NjBmNzliNzkwZTAyZjA0M2MxYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmFmMTFjZjNkZjljM2EwMzAzNTc5MDllYzQ4NDlhMDBiNzYyOWM4NTc0MTNkNmIwMmU1YWJmZjEzNjFhNzBmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTdlOWRlYmVlYzFhZmI0MTY2NmUyOTFkM2VlMGEyZDQ3ZDM0ODIwZGU4NWU2YThkYTIxODE2MzI0YWM1Nzk1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1429-L1472",
+          "version": "repo-lines-v1:sha256:2d05c3cd6f93fef98a5bf603bf3d8d9f5e78a5ab7c0c2461c9746e428c12ccdf:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ0ODg2OWMzZDYzNmZlY2ViMTRkY2U2ZDVhNDg0MDI4MmNkZDYwNWFkMjU4OWJiNjc3MWY3NmMzOTU0MTkwZjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE2NDBiZTMyNmJmNGZhYTczZGU1NTljYTMxY2Y2ZDRmMzEzODdkM2Q0NzFjYzE3OGFjNTNlZGEwZGFmMmEzNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhmNzI1MzEwOThiYmY4ODhiMTNiOGU3NzI0NTczM2I5YTQ5ZTZlNjhlODRkYzVjNmJmZTRiNmI0MTViZDM5YjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM4OWJjMDRjYjkxOTAyMDgzNDM4ZDUxNzc5ZjFlMTcwNzVjZDk1NmM1NjlkNjBmNDM2MzM0MzYzNWM2ODliZDcifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L1594-L1622",
+          "version": "repo-lines-v1:sha256:1c7a3e0bd88d5a579e4eb5e55df95e7911cd00fd231ab5b5143b453e44b40c85:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzNzQ3MjU0Mzc0MzZjMjJhOTYzMTBmOTAxZjliM2M5MGVkZDAyNDgyYWQyMjVmZDlhNDA5MzY0YmJlZTRhNTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZkYTY0ZDc4OGE5OTFkNzE3ODAzODliYmM0NDYxN2RhY2RiYzYwNzljNDZhZTUxYTQ4ZDUxN2IzYWM5NDQxODEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI2NGYwMzcwM2U4MTBkMDdjNDdjNDI2MDBkODhiYmUwM2I1YjMzZDk0NjY0YTJiY2Y4M2RkZDExOTU0MTIxMjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI1MDE1NGFhMzA1MzExMWZmZGY5ZDYxN2E3NWEzOTQzY2JhMWU5NTc1MzAxOGVlN2Q1NGE1ODQyMWUxNjQ5YzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_377a4215e8b341e19627634dee78dd5d",
+      "statement": "Most mutable, non-catalog models implement a get_owner_id() method that resolves to the owning user (directly or by delegating through parent relationships, e.g. Module.get_owner_id returns self.course.owner_id), and backend/api/authorization.py uses this uniform OwnedResource protocol in validate_ownership/validate_owner_or_superadmin to authorize writes without each router re-deriving the owning user.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/authorization.py#L12-L65",
+          "version": "repo-lines-v1:sha256:996caef58bf2d5b96327ec2b2a6f93c8bcc119be25f5fabe9782034afb4b5a36:eyJzZWxlY3RlZExpbmVDb3VudCI6NTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZWVlYzk0YjA4N2U1MmNiMDJlNWU0ODMzZTFhZDcyM2M5NTRhNmE4NDk4YTE2NTI5NWZiYjE4MjRlMWY1YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjEzNDA5ZWUzN2Y4NDlhNmYzNzVmMWVlMzc0NmFhMzA3YjA2Y2VhMDRmMjk0N2Q1YWZhMTlkNGE1MWJjMTE5MzUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMWY3YWE2MDA5Y2Y4N2NmMjcxZDBhZjBmNWIwM2ExZWJjOTVkZmM2MmUzZGE3M2UxYjcxMTcxZjdkODdlZjIifQ"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L650-L651",
+          "version": "repo-lines-v1:sha256:6c4cc1c28e30fa9bd36286d98c2030e0a81e8e05b630558d90581a6e4c3adfce:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWYzNDgxODhhMzBiNThiNTM5ZjliZDAwZjUyYzU2NGU1ZTI5OTAzMjUzMDJlN2E2ODNjMjI2YTUxOGMyMDRmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjRkZWNkNTNkZjZmNGU0NjJhOTIzYmEyZDkyYjA4ZDRkNTRhOWRmODU3YjEyMTY3ZjVlMWFjMmMzNWVmYThmZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTIwYzVmMjkzN2VmNzFmOGJiOWQ2OGYwYmY2ZTFlNjEzOGQ5MjlkNjAxYWY4MTQ2N2Q4ZDQ5NWU4MGM3MzRkMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWM4YmJlZjA5NGQ3NGQ5NWExMjYwOTg0YjJlYTIzOGVkYzc2NDI1MDQ2MDk5ZmM4Yjk5MjYxNWYxNGNiYTM2OCJ9"
+        },
+        {
+          "resource": "repo://backend/api/models.py#L852-L853",
+          "version": "repo-lines-v1:sha256:8525b83aea3ef6e66aa354dc5eaca4cc8e40e8ae339aa25839ab97d8f3cf4459:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWYzNDgxODhhMzBiNThiNTM5ZjliZDAwZjUyYzU2NGU1ZTI5OTAzMjUzMDJlN2E2ODNjMjI2YTUxOGMyMDRmNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTBlNDAxYWJiYTUzMDA0Y2Q4ZTZiYjRiMjA4ZmI2YzY2NzcyODNmOGU4YWM3ZjM1NzU5M2M3MzA1Mzg5M2U3OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzYxOTBjZjFiYzkxZmM4MGNkNWVlYTdhZWIzMmIyYzMwNTk1NmFmMThkMjBlNGQxMDVhODNkYWY1Yzc2NTgyMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjYyNTBiMzUwNGVlNjAxYWIxZTZmNWI3NGQ0Mjg3NmNlMjI3NzhjYmMxYWFhMzFjZDhhODFiZmE3M2RkZDIxMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b26a04d983f347ada7fe5be4fb40bc01",
+      "statement": "KrauuCompetence models the KRAUU competence framework as a self-referencing tree via parent_id: area rows (code x.0) have no parent while competence rows (code x.y) reference their area, and only competence rows (not areas) are attached to Course/Module through the CourseKrauuCompetence/ModuleKrauuCompetence link tables.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/models.py#L391-L425",
+          "version": "repo-lines-v1:sha256:e98b904732cf83f847be3ce3eb7c5cbdedcb8dd4e4ddc0419b18bfc9582dfa28:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNGQ0MGI0NjA4YzM5ODM0MDE1YmE5ZDZlOTdkYTVkOGVjNWUwN2Y2ZWU3ZTllYTYyZGU3MzFiNjgyNDdiMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc0ZGNhNzY1ZjZkZjg5MDBiNTVlZDZkNzhhOTJlZjZhZDgwYjdmY2I3NDQ1ZDI1MjY2NjcxOWFkYjliOTMwNDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI0YzE5ZGNkOWQ2YTQ2MjQwNWVhM2EzMzBlYjQ3MGIzN2YxNDcxZDcxMWYzNWM4ZDA1N2EzZDEzZDIzYjZmMTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_59ce766e0f204478bd7c10d69181718b",
+      "statement": "Catalog (\"číselník\") tables such as CourseBlock, CourseTarget, CourseEqfLevel, CourseRequirement, CourseSubject, CourseType, NeuroPrinciple, KrauuCompetence, BloomLevel, and CrossSubject are seeded at every application startup via seed_db(), called from backend/api/main.py immediately after init_db(), making seed.py the source of truth for their reference data.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/main.py#L14-L61",
+          "version": "repo-lines-v1:sha256:d579c728bdbb0ee46579fb57f70def19e281f3585e96230c0792100de55bad57:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmOGFmNDJiOGRmMDM1OTdhM2Y1NWI1YjkzYjAyNzY1OWJhODY3NTJiODA4ODdjNjdlYmMxMDI5NjhkNzcxODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0Y2U4N2EyMGU2ZmFkZjEyYTc4NjU4ZmI5MTcxODU0Njg5NzhiYTM3MWJiNjUxODM0OTg3YTM2NWRlMTE0NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk0YjFmMTkwYzc4ZDBkOTYzNWQwY2E1N2JmNjJkMGYzODE0OTU1NTUyNGU1OTVlYWVmNjcxNmY2YTc5YTJjNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBlMDFlODQyZjJkYjQ0ZmIwNGY4MWRkYzQwN2E2ZDI4NTUzZjQ2N2Y3Yjc5YWUxODAyODE2NzY5Mzc2M2ZjMzgifQ"
+        },
+        {
+          "resource": "repo://backend/api/seed.py#L1-L23",
+          "version": "repo-lines-v1:sha256:69257df73521603a6029f725e6a8f9e7eeb3d3f8edd9a1e78b31cb68f7eb336a:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZDhiOWU3MWFlY2U4ZDFkNGNkNTZkZTNjYmUyNzdjYTE0YWFhNjg0NGJhODBkODA4OTViYjAzY2VjNTcxNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwNGQ4YWJjZDUyZmE3MmVkOTRkZWRkOTg0MjMxZDc5YjYzNjk3YjU0ODk3N2QxODNlNjUzNzhlNjJmNjQwNDAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_93277294949144b7848294ba13a70dc9",
+      "statement": "database.py's get_sql() dependency yields exactly one SQLAlchemy Session per HTTP request and always closes it in a finally block, and init_db() both creates the pg_trgm extension for trigram indexes and calls Base.metadata.create_all() to materialize the schema.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/database.py#L19-L47",
+          "version": "repo-lines-v1:sha256:9b5eec256c5ff723ea33582a76dff5b7df82604e3643c93688d289a1cffd7e1f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YzljMjk0MDU2NjE3ZWNlMDYzNmIxM2U4YjBjMzc1MTJlMzJhMWNiMDFkY2MyNmI0NTVlNDhmMmYxNDYyMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1ZmM3ZTA2NzE5OTFlM2NiMTI5MDVlNGJmNDEzNTlhYjk0Zjg4ZWJjYmI1MGRlYWM4NzdiNGI4ZmNhYjlhZDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJhYzY3MDkyYTUyZGU1NmViZmRjOGMyMWRmYTIzNTJjN2U4M2I5NjcxMzRlMDA3OGU0M2Q0ZmI2ODYwMmZiNGEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

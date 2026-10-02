@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b4089e124a373571d812c3a3fc37765448384eb2afc0c3bc104acb0769dc785a",
+  "claims": [
+    {
+      "id": "claim_882fad09141d46b7a1a994a607c7a606",
+      "statement": "Praktik-AI is a course platform for systematic development of AI competencies among academic staff at teacher-training faculties, supporting course creation/management/completion with AI agents for content generation, evaluation, and mentoring.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L1-L3",
+          "version": "repo-lines-v1:sha256:a0f7d579ade858d1a23e767a5b12aa0da8ac285381f1e0f1f48f61a0700e999c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTJjNTJlZmIyNzE4NmJmNzYzODYxYmE2Y2Y1ZmM5MmNlMGVhNWQwMjY1NjlhMDYyN2Q3OGIzYmY1OTExMWU4NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzZjODRlMTY1ZjIzNjA5NDllOWU1ZGJhZDg3N2ZjNjZjOGI2NGI0NTA2NDNhYjRhN2QzMTU0NzY3Y2U2ZTliMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDAxZjJlYzE3NTkzYzEwNTRlYjQ2MzY3ZDg0NTNlZjI0YTE3M2NlOTZiNzExN2Q5MWY5YTY4ZDQ0ZmVmOGIwMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_46d63a3b8ec94f5cbacf5dd55e896496",
+      "statement": "Each course module follows a Learn -> Practice -> Assessment lifecycle: Learn presents LearnBlock content with an AI mentor, Practice offers closed/open and personalized AI-generated questions, and Assessment is an AI-generated task graded by an AI evaluator with a limited number of attempts.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L63-L91",
+          "version": "repo-lines-v1:sha256:3386c0f36761ea226b672a95a5b1ba68f0d5918167d514a17a1e773bdbd1b738:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkMTM5NGU5ODY3Mzc2NTIyNDg5YjkzY2MyNzkzNjA0ZGM2MzY3MGJhMzEyZDE0NjVmYjVkNWQ1OTY5ZmNkOWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVhMTBmZmJkZDQ3Zjc2NWIxZjJmMDg5ZmFhMjhmZmZlMTI5ZTYyZDZlZTZkZjlhMzY1MzJlOTdjMDg3YjA4MDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c7bda69639294265807d37e94df49846",
+      "statement": "The backend runs LangGraph-based AI agents (course_generator, embedding_generator, assessment_generator, assessment_evaluator, practice_q_generator, practice_a_evaluator, mentor) that call Anthropic/OpenAI LLM APIs.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L95-L106",
+          "version": "repo-lines-v1:sha256:dc463231cd1fbe3d83194b21904f40d1db9149a2becc86d9e1f4e6b80e39254c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI4ZTIwZDI2NGFkM2ZmNTE2Mjc0MDI2ZTlhODQwMTQxMjZiZjcwZmI4MmQ4YmJjMmM0M2Q0NTg3ZWNmOTg4ZjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhMjRjMzgxOGQ3ZGQ4ZDJjNDU4OGM3Mjc3OGI5ZmEwZjE0ZDYzNWY1NTdiNzE2YzEzZDViMzIyMTJkNTI1YjcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bcdb063d9ec640c48db2b07f65003f80",
+      "statement": "The runtime stack is composed via compose.yml with frontend, api, db (PostgreSQL+pgvector), keycloak, and three SeaweedFS services (master, volume, filer) on a shared praktikai network.",
+      "evidence": [
+        {
+          "resource": "repo://compose.yml#L1-L148",
+          "version": "repo-lines-v1:sha256:8382347606de3504e80d70cd302c51bda0c80029024382fd052553b756ee9169:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTczZmNjZGM5OWVhODM1OTY3YzdkZWU3ZWZiZWQxZjNjYTg3MjYwZDkyOTMxODUwZmRkNjZkYThjYjEyZjFkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJiOTY3MGUxMjY5Yjg4MTc3YTRlYzc4ZmFiNTg4YzQzNjM1NjRjZGQ4NWFiZWM0MDQ2NDY2YWJhODU1NDc0Y2Q5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_62aaa0cd16ce455080ec078d13142195",
+      "statement": "Local setup uses `cp .env_example .env` followed by `docker compose up -d`, exposing the API on host port 8000, the frontend on 3000, Keycloak on 8080, and the SeaweedFS filer on 8888 (master 9333, volume 8081).",
+      "evidence": [
+        {
+          "resource": "repo://.env_example",
+          "version": "repo-file-v1:sha256:665d54fb5c55535bb4770d24ea1275473ad10c0d6b055b2d3664a7b30b68e8cc"
+        },
+        {
+          "resource": "repo://compose.yml#L1-L137",
+          "version": "repo-lines-v1:sha256:7278a82e2844ad639a57f2f9fe26138c62e030aaadbfea878fb766b7ef755876:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM3LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmYTczZmNjZGM5OWVhODM1OTY3YzdkZWU3ZWZiZWQxZjNjYTg3MjYwZDkyOTMxODUwZmRkNjZkYThjYjEyZjFkIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxNTMxZTI2MDM5OGFkNjEwOTE0ZGZjMjhmMDQ4ZDM5MjY0YmE3ZDUwMzI3OGRkMmY4YmIxYzRjMTRiNDk5ZDk4IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlNjlmNTYyODZlNWY0MjVhYjg0MDhlNzJlYzBhM2Y0M2M5NzRmNDc5OGQ5ODkwMWE1MGUxYmU3ZTU4MDU4ZTFlIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c5521dc7cc145389ead4ea09b51e8ef",
+      "statement": "Source code comments, docstrings, and user-facing API error messages are intentionally written in Czech throughout the backend, reflecting the Czech academic-staff target audience rather than being an untranslated artifact.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/routers.py#L140-L140",
+          "version": "repo-lines-v1:sha256:cd78e33b5872229e87cdf3c2e015071673c7574d81da6566225ceb5b37f9edba:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Q3OGUzM2I1ODcyMjI5ZTg3Y2RmM2MyZTAxNTA3MTY3M2M3NTc0ZDgxZGE2NTY2MjI1Y2ViNWIzN2Y5ZWRiYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2Q3OGUzM2I1ODcyMjI5ZTg3Y2RmM2MyZTAxNTA3MTY3M2M3NTc0ZDgxZGE2NTY2MjI1Y2ViNWIzN2Y5ZWRiYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWJhMGNiNTkwZjQ3NTlmMDM1MGM5MGYxMGI3NmZkM2FmNGU4NzY1MDI1M2ZiNmM2MjNiMDkzYTAyNjUwY2ZlZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGIyNjM0ZmQ2ODc5ODIzMmE2MTE1YmIzNDkyNjY1ZTI1YmZkNTRjMjFkYjg3ZmRlNzBlZTZkMDU0NjE4OGUzNSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_305989e5438246c6aca30f952910bbc5",
+      "statement": "The repository has no first-party automated test suite; the only test directories present belong to vendored third-party dependencies under backend/.venv and frontend/node_modules, so behavioral changes must be verified by reading the affected code paths and performing manual/API smoke checks.",
+      "evidence": [
+        {
+          "resource": "repo://.dockerignore#L11-L11",
+          "version": "repo-lines-v1:sha256:21ac8e59826470afff4f35689cf25acf5c7be2c3202e111c67dfaf03f6da10b4:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjFhYzhlNTk4MjY0NzBhZmZmNGYzNTY4OWNmMjVhY2Y1YzdiZTJjMzIwMmUxMTFjNjdkZmFmMDNmNmRhMTBiNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjFhYzhlNTk4MjY0NzBhZmZmNGYzNTY4OWNmMjVhY2Y1YzdiZTJjMzIwMmUxMTFjNjdkZmFmMDNmNmRhMTBiNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZDUzNjMyNTNhYWY0OWEzMDY5ZmQyYjFkOWQ5NmFkM2M4ZmUwZjMwMzE1MWFhZDU4NjJhMjEwZjhiNDM3NzVkYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTQxZDg1N2ZjM2EzZjVlODRjZWRjN2RkMjQ4MTBlODlmMzBjNjYwZWJiYmU0NmY4ZjQwYTRkY2VhZWVjOWU5OSJ9"
+        },
+        {
+          "resource": "repo://backend/.gitignore#L126-L131",
+          "version": "repo-lines-v1:sha256:395784169fc13d94cbd9549f8ced02c40d28e2b88f6799e4be6f41de7c4f8d15:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2MyMGQ3YmM0MzY1YWNjOTk4OTVlYjkwNTBiNzZlMDYyYzNjOGE5NWU2MTNmODk4MjZkMGE2Nzk5NTZlY2Y1MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGE4OWY3ZGI4NDA2ZTlhOTAwYzA2ZjRlYmYyZDA1NjI2MTMwMjM1ZWU0ZDU1OTY3NjJmMDk3Yzc1NGJiODJmNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzljZDM4MTZiMzE5ZmQ0MzZjYWUyYjRkODRkYjg5NDUzOGExZmU2NjQwZDE2NzRlODhjZjZmOTdhY2MwODJiYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmZjZjk0NzVlOTNjYzQ1NWMwYTYxMmJmN2I3ZjZjYzYyMGIzNTVjMTIwYzAwNjcyOWMyYWZmNGEyOTJkZDkyMSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6f37b82ff3de490589a2c148b20c6aa4",
+      "statement": "Roles (user, lector, guarantor, superadmin) are managed in Keycloak as realm roles and synchronized into the application database at login time.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L109-L118",
+          "version": "repo-lines-v1:sha256:645df3ccdf6e8c079d8b106f80328eafd92a22064385dcb6b4ad3a8c67813168:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU1OGM2MWNhNDBmOGZiZDQ5M2JjNjI2ODE1YzUzMjYzYzgzYzY4MmM4MTQzOWM0NmFjMGU1NGE0MWE3NjlmMzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjljYmM0MzBkN2QzYTIyYzM4OTQyOTI0MDliYzFiNzRlMDNiMjFhZDM5MjhjMzQ5MzU3NmYwMWRkOGMyZTdjYWQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}

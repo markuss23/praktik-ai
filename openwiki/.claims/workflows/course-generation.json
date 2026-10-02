@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6e962d61028fdf802792bb672964e18c4c469b51e6a56cf413ca29fdf1d06059",
+  "claims": [
+    {
+      "id": "claim_5d5aa3083d6a4bdd80980bbf69b2200c",
+      "statement": "POST /agents/generate-course requires the lector role, validates course ownership (owner or superadmin), and only allows generation when Course.status is 'draft' or 'failed', rejecting other statuses with HTTP 400.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L87-L120",
+          "version": "repo-lines-v1:sha256:082add488cc4b8ad16fc469038a37ec73cfbace385fcd0aa497689f7d851246a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1MzI2OTVmZjkxMTMzNTM5M2YyZWMyMjNmYWE0OWMwZTFjNTJjNDU2YzQ3MmU0ZWE0MzkzYmRkMTNmZDgxOTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2ZjFlY2EyMWU4NjdjZTY0ODQwNDExMjA3ZmRhYTk1YTc2NGUxYTMxYTg2YTUyZGIxYzBlODAyMzY5MmZmMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NDVjZmIzOGIyMWU5MmU0NWY4NjFlZWI5N2FhNzMyZmFlZTM2MTk2YTUxYzU3NTk3Nzc2YTA1Y2Q1MzM5NDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_9c6a1f3a184c4c6d8950abec0db930b7",
+      "statement": "generate_course enforces idempotency against duplicate concurrent generation for the same course_id: if is_running(course_id) is true, it returns immediately with an empty response instead of scheduling a new background task.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L93-L97",
+          "version": "repo-lines-v1:sha256:eda8c5e176aa0239b26f3fc86cf65f7e1815c05ecfbfecaf01cae4fedac3b155:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODk0NDZlNzkxMWViZjRiNTJmYjM0ZjdmNzU4OTYzMTI1YmZlMDMyZjMwMjEzZjE1ZDgxNTA2Zjc0ODg4OWFmYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzJjNjI4YzY0ODUzZTEzNTM2ODJhNzRjNTFlM2Y5ZTkxYzhiODFkMmFlZjE1YTA4M2E2M2NjZGI2MzcyMzljZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWY0Yzg3YTM4MDA4ODQ2OTZhNDZhMTFjZWZmZGQ2ODE0ZTg5NDc4NjQ4NWRmNjEwMWE0MDlhMGJkYTE4M2MxMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWYyNThiZmVkMTU3ZTVhZDczNjY4MjYzMzAzZjk2MTM3ZDBjMGQwYTFlOWQwNWRkNGJhZTUxMjBhZTRmMmNhNSJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L111-L120",
+          "version": "repo-lines-v1:sha256:f4c073519e83c5931e0dd6fa90d0c68a741157a1d9c23717e8bfa7519e166a43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3YjRhNTNmMWE2YWQxZTNmNDhmMDUyNTA0ZDllNDE5MWM4ZGIwNDk3ZTY5M2ZkZmRjNmY5NDhlNjg5MzVlYTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2ZjFlY2EyMWU4NjdjZTY0ODQwNDExMjA3ZmRhYTk1YTc2NGUxYTMxYTg2YTUyZGIxYzBlODAyMzY5MmZmMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJiNjU3NTBlMmI2NDNiMDE0MjUwNGE5ZDczOWUxM2NlYzNlZDI1MTYxZTI4MzE5MmRmYThiMjI5MzJiNjU4NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e209af19f8814df0984534e16ed1666f",
+      "statement": "generate_course schedules course generation as a detached asyncio.create_task running _run_course_generation, registers it in the progress module's task registry, and returns before generation completes so the client polls for progress separately.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L116-L120",
+          "version": "repo-lines-v1:sha256:a34871077736e685bf2107804d509f77e3ffb43a00182ef8e071b7460b8204b0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQ5ZjU2MjU5Yzg5ZDhmODE0MmFjZDc5MzJhZDJlNGM5YTEyZDE2NTliM2VmYjMxM2QyY2YzNzk4YjI5OTlhYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjZmMWVjYTIxZTg2N2NlNjQ4NDA0MTEyMDdmZGFhOTVhNzY0ZTFhMzFhODZhNTJkYjFjMGU4MDIzNjkyZmYxZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTg1MGI2YzU2NGJlYzhjOTkzYmY4N2VjNmU0NjVkMDgxODQyMDRlYjE1YTM4YmQ5ZWJmNGNlYjdiOGE0ZWQ0YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGJkMTg2YjAzODhjMDRiZDRiZTM2OWY4NTY2YmFiYjgyZjFmNjlkZTcxOWVjNzYwZTgyOTU0OGUyYzZjZTZhYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ef4d4ddf1cd14a7792be7b1624bc3af9",
+      "statement": "_run_course_generation opens its own SQLAlchemy session via SessionLocal() (independent of the original request's session) because it must outlive the HTTP request that triggered it.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L56-L67",
+          "version": "repo-lines-v1:sha256:1a0fb69df9d6600c6339573737a64a9d22c9453316ba34ba6f23e10065c4445b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1MmRjNTdjODkyNTdiMDFjN2UyNzRlODBhMDEwZTE4MjBlMTkwMzQyMTZlYjZmM2IwM2I3MWQ1MjM2OWUxZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5YzlhYTY3ZGJiZTliYzgwZmM4OTYyYmI3NTY3OTNmOTgyMDE3Yzc2NTNiMTQ2YjhlMmE4MjRlMzRhMWFhNDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBkY2Y1ZTkzMzRkOGVlYmIwYWI2NzNiY2RiODg5MjA3MTA5NTYzYzA3M2U2OTdkZTU5MDJmODI3OTQzZWU5YzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNmOWZjZDI1Y2VkMjUyZDI3MGM5ZWMwNmZkNzk1MGNhMmQyZWYwZmUwN2RlZGExNWI2YjRlZTE0ZjM1OTYwNGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c561f674ea694450bd30966ad0d3a5fd",
+      "statement": "On any exception during course generation, _run_course_generation records the error via mark_failed, rolls back the background DB session, and issues a separate committed UPDATE setting Course.status to failed, ensuring the course does not remain stuck in an inconsistent state.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L68-L80",
+          "version": "repo-lines-v1:sha256:55cc2cb1ba4dd6390b83807178a181f85750697db150daa7eb9d7c12b3f52687:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3YWU2OTZiMTFiNTZmOTI1YThmYmE2OTVlMWU1NzljNWFmMjI5OTQzN2YwNjg2ZjdkOWExN2Y3ZWM3MjJhZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVlN2JjZDM2ZWY1M2I0NDUyM2U2NWU5OGQxOTQ0OTkzZTBmZjE3NDZmNTUzNmMxYTUxMTc0NmYzZTAxZTc1NmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIwY2YzZTcxODU3YjBjMWQ5ZWMyM2VjODUzNDA4ZjRiMDllYTJkMjZhOGNkNDQxZGY0MmJhNTAyNmVhNjA0Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmNGQ3MWQzNzYyMTYzMWFiOWNiZDVlZWVmNGQ2N2U4MzU3M2EwZTA4ZGY4MTVhZmRhODM2MjliNWZhYjczOWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3ddcbee1d64a43e191f4c36b1b0c8a22",
+      "statement": "_run_course_generation always closes its DB session and calls unregister_task in a finally block, regardless of success or failure, which resets is_running(course_id) to False and allows a later retry to start a new task.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L88-L97",
+          "version": "repo-lines-v1:sha256:bc69c16825df2d2228bf13d5b527428ab821266d9bf31e486516dc2981a78d43:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk3ODY4MzY1YjY5YzU0MTM4MzA5YTc2YzdlZTkzNWVhNDFhNzM1ZTk1MWMyZDQ4YmQ1NWFiMGI2YzNkYjVjNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyYzYyOGM2NDg1M2UxMzUzNjgyYTc0YzUxZTNmOWU5MWM4YjgxZDJhZWYxNWEwODNhNjNjY2RiNjM3MjM5Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE2MWUyNjIzMDI3YzU1YzU1ZDAxYTQzYzQ2ZDFkMzM2YjVmM2ZiYzBhMzFmMWRkZDdhMWIyOWZhNDZjOGQyY2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmMjU4YmZlZDE1N2U1YWQ3MzY2ODI2MzMwM2Y5NjEzN2QwYzBkMGExZTlkMDVkZDRiYWU1MTIwYWU0ZjJjYTUifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L82-L84",
+          "version": "repo-lines-v1:sha256:872e3c19df6bd54004ad34ee35541235eabce92b2d5ee670c6c27755f6ed42ee:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTcwZGEwMzJmYmZkYmQxYjQyNGU4MTRjMjEyYWU1ODQ4NGU3NmY1N2RjNTZkYmZkMTNiZjgwMzczNmQzMjRiMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTUzNTY1NDlmNDQ0ZThmYTY0ZWVjNzg2NDI4NDU1M2FlMTUyMGNkM2QxZDBkOGVjM2RiMDU3MjljYTQ5MzgyNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGU0ZTJhNGI0Yzg5NmEyYjg5NDMzYmQ3YTFmZThlZWVjM2NhMWU3OWNmOTRmZjliNWZkNzkxNzA4MTM1ZWRhNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGM2MDAyZWY0NzY1ZTI3MTg3OGUyODg4YzU4NGNhYTY3ZTRiOWVkMDIxYzA4NTg5YWE1ZjcxZDQ1MjhkMjVlZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3db1142808b54373898586360629b393",
+      "statement": "Course generation progress and running-task state are tracked in an in-memory, process-local registry (api/src/agents/progress.py) guarded by a threading.Lock, storing GenerationProgress per course_id and live asyncio.Task references, and this state is lost on process restart.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L1-L30",
+          "version": "repo-lines-v1:sha256:016b4542f728dfeb21d0c53a1b9609ea5947d727e2b75b8e7000aec49068ec9f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2N2Q4OGUxNmNiYzU1MmIzNDc4OTExNmQxZDMwYWVlODBhMmI2NWY5Mjg1ZmFhZjFhNDkyNmY2NDhhZjhmY2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5ZGNmMTdkMmQxM2NkYjhmMmI0Y2M3NGUyYWU1NmY2YzEzYzc0ZjZlNDMzZDExNGViMGFkYWZmNjY4Y2RjMjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcxNGYyMjI0NGYyNmY4YTQ0NDQ3NWJmMWE5NmRiNjYxYmI3NGUyYzljMmU1OWFiN2ViNWVhNDdmZjQ3ZjRiOWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4864bebe6fb24ba1b86d3293bbd965ab",
+      "statement": "set_progress is called by each LangGraph node in the course_generator pipeline to advance a shared step counter and label used for client polling; mark_completed and mark_failed record the terminal state once the background task finishes.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/load_data_db.py#L17-L17",
+          "version": "repo-lines-v1:sha256:7432c117fdfbb036addfe57dca2adca7ca3957248cd1701f49f2c96a9895d758:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQzMmMxMTdmZGZiYjAzNmFkZGZlNTdkY2EyYWRjYTdjYTM5NTcyNDhjZDE3MDFmNDlmMmM5NmE5ODk1ZDc1OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQzMmMxMTdmZGZiYjAzNmFkZGZlNTdkY2EyYWRjYTdjYTM5NTcyNDhjZDE3MDFmNDlmMmM5NmE5ODk1ZDc1OCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDkwMDMwYjFmNzYyNjAzZDFiNDEwMTNiNDU3ZmYxMzA3MmIyZjI0YzYxMzc4OTA0MGZlMjI3MGZlNDNlN2VjOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNmY1MTI2M2Y0MTgyNDk0NWM4Yzk0MDRhOWViZjQxNmI3Zjk2MmQ3NTI0NDI1NWI3ZDg0YTNjZGUyZGVmNDJkMCJ9"
+        },
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/save_to_db.py#L14-L15",
+          "version": "repo-lines-v1:sha256:74035641e14aa206f0d94dcae6663216d4574488985e605ce7355247957aa208:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGU2NGM4NGM0ZWMyMjFiODUxODE4OWRmODczMWQxNDYyNzY0ZmI2MmViZDE2NjgyNjgzMjI2NTg3OGFjMTg5NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiN2U4YjE3NTdhZGU1ZmEzYWZkMTAyMzU0NTBjYjMxNjQyZjYyZmJlY2MxYTEzY2Q2ZDlmNGExYjEzNjY5MzZmZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmM5NjgxNTExMzA2NGMxOTdlN2FiZWMxOTJiZmI2NDUwOWU2MDBmYmQ0ZGRkNTVlYmFiMGU4ZWZkN2MyYjM1YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWU4Y2YwNDcyNTQ3YmJlMjUxOWY2YWRlYzJhZTdlYWNlZDUzMTAyMDJhYzgwNzEzMzE1ODNjZWRlZTM4NDE2YSJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L33-L69",
+          "version": "repo-lines-v1:sha256:4570f0d8e60bc93e9ea1d0feb9e0eaf12c9134fd77f97363109a2943e6c4257a:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzODBhZGJhZmI1ODA2NWNjOTBhMjUwNDQ4NGZlNDk0YjdlZDM1ZmMxNWNlMjRiODc5ZmFhNzFhMmYwM2FhZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEyZTNjZmYzODQyOTBmYzRiYjA4YTZiNzkyN2ZkY2U5MmE0M2U1MDdjMGZhY2I3NTMwY2E3MGQ3ZTA4ZTM2YTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMmY1MDM0ZmEwNzEyYjU1MDliOTViMTBlYTRmNWI1ZTk5YjYwYWQxZDNiZDliMzllODQxY2E3NGIwMDkzZjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ0NTk1YTAzNWM1MTgxMmZlY2U3NmJmOTEzZDgwOWE3NzVjMGQ1NDE2MmQwMDRlN2NkZGQwNmFlYjc5Nzk5ZDYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_abe98e2ace264423acf52bdd25c5fc34",
+      "statement": "register_task/unregister_task keep a strong reference to the running asyncio.Task so it is not garbage collected, and is_running(course_id) checks whether that task exists and is not yet done, which backs the idempotency guard in generate_course.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L82-L97",
+          "version": "repo-lines-v1:sha256:e289fa2485464a8b798d2522f687e18ca33ff563d053ad16d53a7dc5c800328b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0ZjU1YjRlMGI1ZjAxNTFiY2M0ZjMzMzRlODBjNGY0YmJlMWE2MjRlZjQyOGNkZDRkYWVhNGRmNzZkMzQzNDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyYzYyOGM2NDg1M2UxMzUzNjgyYTc0YzUxZTNmOWU5MWM4YjgxZDJhZWYxNWEwODNhNjNjY2RiNjM3MjM5Y2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjViNWY3ZTE5YzZmYjVlNjc0YmUyMGExYjBkMWEzNTQ0ZTAzOWJlNjM0Yjg1MWMwYTE3NGVlZmYwOWNhNTQ0NjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFmMjU4YmZlZDE1N2U1YWQ3MzY2ODI2MzMwM2Y5NjEzN2QwYzBkMGExZTlkMDVkZDRiYWU1MTIwYWU0ZjJjYTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f05134b4c9a1440e9b8efb006d7db767",
+      "statement": "GET /agents/active-course-generation lists currently running course_ids via list_running_course_ids and returns the first one owned by the requesting user (or any, for superadmin), letting the frontend resume progress polling after a full page reload.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/progress.py#L100-L103",
+          "version": "repo-lines-v1:sha256:88500678d8534964c915b82d2e510bc554f6f40bd81fa9923270dbe847ad9733:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTY3ZTgyYzI3NjA1NTAzNzcyNDBjMzgyZDY5MjNlMTc5M2FmNDBmOGM1NDYwYmVmNzVkZjdhYjVhY2RmNWRjZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWVlOGEwOTFlZmIzODU0NGQxMjQyMzdlZTZiNDRiOTlmNTEyZTIxOWM1NTEyY2MyMDU1NTk4ZWQ4NDNhNjVmYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWI5YjQ2ZTc2MzQ1MzcyOTFmMzVkMWQ5OWQ2NzJjODRhNTYwMmIzZTBlNGM1MzhhZmFiYzk1ODE3NGZjODcxYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L151-L176",
+          "version": "repo-lines-v1:sha256:a79c3df70802b741b2fd5b516693f4a74624356d721913df3e9303016fd960fb:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxY2Q5OWE1YTFmOWM0N2YzMjg4OTcwYTI2NWVmM2QzNDg3ZDYzMWJiNjY2ODNkN2QxYTRmNzViNmI0NTM4OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTYwMGE3M2QyZTAyZjM1MmI5MGZlZjFkOGQ2MzgxMWJhNGE4ZWUwYzFiZWFhN2FlNDY1OGYzNmFhMmUxOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRjNjAwMmVmNDc2NWUyNzE4NzhlMjg4OGM1ODRjYWE2N2U0YjllZDAyMWMwODU4OWFhNWY3MWQ0NTI4ZDI1ZWUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7e29993b9145459c92721e69119ebeaf",
+      "statement": "Because generate_course only awaits scheduling the background task (not the generation itself), the HTTP request completes immediately and generation continues on the server independent of the client connection, so a page refresh does not interrupt it; GET /agents/course-progress/{course_id} lets any subsequent request resume observing the same in-flight task via the progress registry.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L123-L148",
+          "version": "repo-lines-v1:sha256:17ae80f52a8d29ce7ff55283d287f791950c5b4addfcd499ce6347141ed59dfd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUxY2Q5OWE1YTFmOWM0N2YzMjg4OTcwYTI2NWVmM2QzNDg3ZDYzMWJiNjY2ODNkN2QxYTRmNzViNmI0NTM4OTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyNWVjZTNkODIyYTMxMzNhMjZkYTgwNzkwYWQwM2RhYTY5MTlmMWNkY2RkZGQyN2UyNThkNTZiNzI2MWE3NTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/agents/routers.py#L92-L120",
+          "version": "repo-lines-v1:sha256:8a87a2c40213186f0912db61982b12632dd8a380b76b5d2ce301a15de2bef851:eyJzZWxlY3RlZExpbmVDb3VudCI6MjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmZDRmOWU5Y2Y2ZmVmNTU5NjkwMjAzNzk0OWE5Y2M1ZWY4ODY3YTkwNzU5MmMyMGE2MWUyMGM0MWU2ZjBlMjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2ZjFlY2EyMWU4NjdjZTY0ODQwNDExMjA3ZmRhYTk1YTc2NGUxYTMxYTg2YTUyZGIxYzBlODAyMzY5MmZmMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRiNzRiMjllY2Y2YmMxZjczMjQ1ZDI0NmVjYmZjY2M2NWE0OTgwYWUzMTE5YzZhMDU3YmUyMTVkNGIyZjhiZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRiZDE4NmIwMzg4YzA0YmQ0YmUzNjlmODU2NmJhYmI4MmYxZjY5ZGU3MTllYzc2MGU4Mjk1NDhlMmM2Y2U2YWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_bbb26fd1b39149a38bfc5c5bc47a8b48",
+      "statement": "The course_generator LangGraph pipeline is a linear StateGraph with entry point load_data_db and sequential edges load_data_db -> load_data -> summarize_content -> plan_content -> save_to_db -> END.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/graph.py#L13-L37",
+          "version": "repo-lines-v1:sha256:1ea607f6f9593915e103ef53825ce954604621e4516a6206c7c23802e72cc8ac:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJmYjRiY2Y3NzUwMmIwODAxOWEyZWE2NzA4NDQ1NWZlMzhjMjc1ZmEwZjVmZmUzMDYzZGEzYjdjOTBjOTQ5YmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFjOTQwZDQxNzQwZDRiYjBjMmFhMjliMTRlMTc0NTE2ZjY1Y2E3MTY4Yjk0MDcwMTdhZDBiYmJmMmQzYzFlYWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE5OGIwNjNkOWI0N2U2NTM3OTYyNTU3MmNjZTE5NzY2OWQ1NzY3ZTEyYzE4YmUwNzU2NTJiOGNkOTgxY2U4ZDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ee8b0e435f53499ab40d8e507f7aece2",
+      "statement": "load_data_db_node loads the Course row and its CourseFile rows from the database into CourseInput, raising ValueError if the course is not found.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/load_data_db.py#L11-L50",
+          "version": "repo-lines-v1:sha256:9730a25cd621a93517f99f389f071fbf5085ed9e07cb4bb0c884c13b17a7f92f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMWI2ZDNiOGFjMDFhMDUyODM2NWQ3ZWQ1ODAxZTA5MTM3MzQzYjYxN2FjNmExZDIwMDQ3MzQwN2YxOTEyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc4YTI4OTE3MTljOWUyNmM0ZjlmYjk4ZmM2YjM3Mzg3ZGMwYzU5MDc4Yjc5NDRhMjllYjBmNjQ2YWVkZDZlMmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJkYWFhNTM3NTg0OGExNTU2ODUwMTU0MjE5ZjQ1YTkwYzQzOTA1Yjc3YjMyYzQ1ODAyZmNmZGMwMDg1MWVkOWIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_762716c8b95a48fd9b2e70870395ec11",
+      "statement": "load_data_node downloads each course file from SeaweedFS, extracts text via DataLoader, concatenates results into source_content, and raises if no file could be loaded at all (individual per-file failures are only logged).",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/load_data.py#L11-L49",
+          "version": "repo-lines-v1:sha256:891bd98af0c806ff0dd532d47e8a7d49c1a96b0dbeecefee7203c43ad082f540:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2ZWY1YjdkNDc4ZDI2OGVlNTZkN2JlNGU3MmRhMTBiNjI3NmFmYmUyYzU5M2RjMTZkYzU5NGUxNjBiZGJjMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2NzA0YmVkMTcxZjM2ZWUzNGYwMzM5ZmJkNTAyODYxODRmYzA4Yzc1MGE1MzY3OGY0MzI5YTVjY2VmZmJhYzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFmNjU2NzUwMjc4MWNjY2U3OTM0MWMxZWFjMDhiNDdhNDg2NTAxZWEzZTgwNTU4MjZjZWI5MGRlNTczM2VhNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZDk1ZDdlMDJiNWZhNDRhOTQ0ZWRmOTNkMGYyZmFjMWMwYmJmOThmZTI0Yjg3MWE4NmUxOTlmMDQ4OGY4ZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_74863bbc703f4c66acb404bb5c71a4e0",
+      "statement": "summarize_content_node loads the 'course_summarizer' LLM configuration via get_llm_config, invokes a chat model with a prompt built from course metadata and source_content, and raises ValueError if the model returns an empty summary.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/summarize.py#L9-L54",
+          "version": "repo-lines-v1:sha256:b975c5ac6bfc5d1b2f05b204c88cf4c4cfbc0482b1375869eee4f642d329ad8d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNWJhNjZlZTk2Mzk1MGQxY2ExMDFjODE1ZDIxYWVhN2Q2MThkNjg4YTVhNDE4NmMyYjhiYWEwNDdiMjM5Y2MiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjODQwMmFiMzNjYjYxOGEyYTYyOWNkMWNmN2RlMzJlYTI0OGUyNjJkZjljNzY1ZTQxNzZmMGYxY2E0YjlkYzgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzNzRmNDBjMmQzNDkwZjg3M2VlMzdlNzA4ZWIxNWFlODU0ODg3MzAxMTdiOTg0NGNlY2NiZGUzMTZlMGU0MWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZDk1ZDdlMDJiNWZhNDRhOTQ0ZWRmOTNkMGYyZmFjMWMwYmJmOThmZTI0Yjg3MWE4NmUxOTlmMDQ4OGY4ZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0e3a01bf10404ce98e4432b22208d3bb",
+      "statement": "plan_content_node loads the 'course_planner' LLM configuration and uses model.with_structured_output(CourseGenerated, method='json_schema') to force server-side structured output enforcement (rather than tool-calling) because the nested modules/learn_blocks/practice_questions schema otherwise risks the model returning nested arrays as JSON-encoded strings; it raises ValueError if the returned course has no modules.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/planner.py#L6-L63",
+          "version": "repo-lines-v1:sha256:c6a14afb530e401ad2848727b2198a71eef27163475dfdd152d808485fc7dc2b:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzZjUxMjBhMjgwMGMxNGJjMWQzOGNhZmI5MWQzZjU0NDZiYzFjNzQ1OTI3NjhiNzJhZjUwNTEzYTZjZTQ5YjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiOWQ2OWRhOGVkMmQ2ZDNlMDYyY2Q3OTZhYjI5MTg3NzdlMWFiODRlN2ZhZjI4MTZiZTljMzdlZjU5Mzk3ZmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImIzNzRmNDBjMmQzNDkwZjg3M2VlMzdlNzA4ZWIxNWFlODU0ODg3MzAxMTdiOTg0NGNlY2NiZGUzMTZlMGU0MWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoyLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlZDk1ZDdlMDJiNWZhNDRhOTQ0ZWRmOTNkMGYyZmFjMWMwYmJmOThmZTI0Yjg3MWE4NmUxOTlmMDQ4OGY4ZjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7d31f1bbbf784ac6ae9a339cf3571681",
+      "statement": "The course_generator agent's structured LLM output is constrained by Pydantic schemas in state.py (CourseGenerated, ModuleGenerated, LearnBlockGenerated, PracticeQuestionGenerated), which are separate from the API response schemas and used only to shape the LLM's output before persistence.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/state.py#L13-L47",
+          "version": "repo-lines-v1:sha256:8893651322af1c2bf1d2d2c63dd22a535b6e651969d6f693276fa88aafe5eba9:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyY2JiZGQ3ZjU3ZmNhZWQxZjdlMDg0Y2YzMTY0ZWE3MDVkZGFjNmQyM2I3YmQwY2Q4Mzc4ZTA5MDM5OWNjMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdjYzkwNGIwZjI4ZGFkMzJjMTE1MzZkZjAyYjQ3MDlkYmRlNmRiY2Q0MDRhN2ZlMTZlNTRlM2I3MWYwNDFhOTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhNjdiYzZkMmYyNmU5OWM4YzZkZjRmNDEwMDFiYTYxZDE4YzdhNWIwMTVjYTY2NjQxYjdiMGJjYWIzM2EwNjEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ba2a2e25be2d4d2aa955960d0a75aa9a",
+      "statement": "save_to_db_node persists the generated course by updating the existing Course row's status to 'generated' and summary, then for each ModuleGenerated creates a Module row and resolves neuro_principle_code/krauu_competence_codes/bloom_level_codes (LLM-supplied catalog codes, not IDs) against the NeuroPrinciple/KrauuCompetence/BloomLevel tables filtered by is_active, silently dropping unresolved codes (with a fallback to neuro principle code 'NP-01') and logging warnings when nothing resolves.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/save_to_db.py#L29-L116",
+          "version": "repo-lines-v1:sha256:157131746d3ba195a222e4294a4bff4e6cce543b8408d3888642d2d1dce6bfcf:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5ZGFkYWVmMTJjMDU4YzViMzU0OTdkODhlODBiY2YwOTM1YjE4YTI0YzI2MTdhMWZiM2Y5N2Y0OTE0YTY1NDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU1MDMyZTk2NGQwOTMyMzUxZTVkMTg1MjY5MjgxYjE3MWEzYTA5YjA4YjI4NmU2NjFlYTQ3MDMyM2M4MmViNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNjNGRiZjZlZmRkODcxZmY3NjhiMTJmZWFiNjg3ODE4MjZjNGVjZmI3YTFmN2M3ZjdkYWFmMzFhNDBiYTNlNzYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlMWM2Zjg3NTFiYjgxMGNhMzQ1MTY5YmFjNjExYjgzMWI3OWZlNzI1MjQ5ODFjMWVjZjdiMDNlMzA1YTc5MTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f57440d1e26c4cd3b81acba68bbe2e95",
+      "statement": "save_to_db_node enforces at most one learn_blocks entry per generated module, raising ValueError (aborting the whole save) if a module has more than one, and persists practice questions directly under the module with repair logic: closed questions missing correct_answer fall back to the first closed_option or are skipped if none exist, and open questions missing example_answer get a fixed fallback string.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/save_to_db.py#L118-L169",
+          "version": "repo-lines-v1:sha256:cb87c6c327457bc668a16be93629aef3ca20b50801760f49bfbf0d6ea017de14:eyJzZWxlY3RlZExpbmVDb3VudCI6NTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE4NmRlNWU4NzgzZGUxZTIyZjdiZThmNjVjNDJmOWZhNDVmNmY4NzNmMDliM2Y0YTRhMWM3NWM1ZTRjNTI0MTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2ZTcxZmM2OGI1ODA5NTdhMmQwZWI0YjkzNWExYmU0NjMxMmRjMzk5NTEyNDY0Zjk3OWE5N2Y3MDg3OGM0MDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxNmE1ZjgyNjQ4MDFjZGQ5OTFkOTE0ZGY0NGM0ODViZGE0OGIzMTEzZjk4OTcwM2ZhMGZmODAwODA5NDA1NTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJmNmE5ZjA4ZWZiOWQxNGI2YTdjZjBkODNhMzY2MjNkYTExMTBlMTk0MThiNTNjOGZmNDNlMjFlNDUyYTE1YjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_84257c7e364a4c85b46fdd67109213a0",
+      "statement": "save_to_db_node performs a single db.commit() at the end covering the course status update and all created modules/learn blocks/practice questions/options/keywords, so a mid-loop exception leaves the transaction uncommitted for the router's rollback-and-mark-failed handling to clean up.",
+      "evidence": [
+        {
+          "resource": "repo://backend/agents/course_generator/nodes/save_to_db.py#L171-L176",
+          "version": "repo-lines-v1:sha256:db86445bf895f0f50d1b092cb89621ad1397196f4773fe1a67a282828158d7c5:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWIyYjVhNzk2M2ZhOWU0NjQ4MGQ1MGQwNWU2NzFjMDQzYmRhNzE1Nzg4NTBlODg0MWIyZGIyZjNlNTdmNjAxNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmE3Mjk1MWFhNTA2YWUyODkzNjE5NjQxY2VmYTRhOTJiODQyZmE0OTcwYmY5MDBjNTIxNzE2MzQ3NjgxZWY2NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTg3YjVhZmUxYzdiZTRjNzUyZWJjNGRlNWY5OTRiYWY2NmI3ZGY2MGI0MWJmYTNlOWU5MTdmOTQxMzg1OTk0NyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c1192dd31667445681f059d2020d9951",
+      "statement": "Courses are always created in 'draft' status by create_course, and course files/links can only be added while status is still 'draft', which is why generate_course accepts 'draft' as one of its two valid starting statuses.",
+      "evidence": [
+        {
+          "resource": "repo://backend/api/src/courses/controllers/create.py#L155-L166",
+          "version": "repo-lines-v1:sha256:a16d7c122ab6d3ef51c50a2c6f5f57f2b92dbb5b06d40d4538e244f188510976:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjMTRhNzY0YmUzNDQ3MGMzN2Y3ZjRkN2UwMTlmMzAzNDhhZmQ5NTdkOWRjNGMxYWVjZGFmODVmYjBmMjA1ZWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0OGJiYzRiNTljZjI1NmYwMWJkMThlMmVjZDJjZjY1YjE0ZmEyMjMwZDBjYjc0NWMwOTc5OTg1YmU2ZTJkMDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFmMzFiM2NkZGZlYmE1NjkxODg5YWIyNjRjNThlZmZmN2FjMGY2OTRjYzEwOTlkMDI4MWM4NzJjN2MzNmJiMDgifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/create.py#L191-L202",
+          "version": "repo-lines-v1:sha256:50910dabc1e0564d7de3516a76b61a4e627be53f3ad09269e76804b1b5dbc2e5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5YjBlYmE3NjUxNmQ5NDI4ZDViMzUwMjU2NDJhOGE2NGVjYmNmMTUyOTc1MmYzYzYwYzdmMGFkZTg0ZjU0NmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU5MDlhNTNhNjE4ZDAyOGUxZDMwMDBjMGE3YWJjZWVjYmU1ZmIzN2Y0ZTUxMWVmZTQ2NjQzZmFkNmU2Njg3MmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM2N2Y1Y2FlNTkxMmI5YTE3NDVkZjg3ODRjODdmN2RhOTE0MzE3ZTUwMjE0ZGNkZjNiMzEzYjY4MDEyYjIwOWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkOTAzM2Y5OTQyNDQyOWVhNTljNDcxMzFkZDE0YWE1MmEzNWVlNjBlYTliY2RiODQwOTcwZjRjM2I2M2M0YjcifQ"
+        },
+        {
+          "resource": "repo://backend/api/src/courses/controllers/create.py#L25-L28",
+          "version": "repo-lines-v1:sha256:fc0b9119705635c05823e1fdeff1910472bfff219142890438c942c6b9655a51:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2ZlYjBlODA2MGMwYTc4ZjI4OGU3ZDA2NWVhNjRlMDBhNzc1YmRlNGU1OWU0Nzk2ZjQ0ZDE2MzA1ODg2NzMyYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODk0ZTkxMDJjNWUwM2VjNzRkZTdjY2FkMmIxZDE2NjUzZmNmNWM4NTgxMTFhMmY0ODZkNmI2YzY2MzU1Mjg0MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMWY2NTY3NTAyNzgxY2NjZTc5MzQxYzFlYWMwOGI0N2E0ODY1MDFlYTNlODA1NTgyNmNlYjkwZGU1NzMzZWE1NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjBiYzg4MDUzYmEwZjVkZWVhZWRhMGNiZGFiODJhYzE3MzJjNTgxNmIzODYxOTgyNWUyOWVlY2RhNzM0MDc4MyJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.6.1",
+    "at": "2026-09-30T09:28:35.455Z"
+  }
+}
