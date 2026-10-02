@@ -223,10 +223,10 @@ class CourseBlock(TimestampMixin, SoftDeleteMixin, Base):
 class CourseTarget(TimestampMixin, SoftDeleteMixin, Base):
     """
     Cílové skupiny kurzů:
-    akademik - Vysokoškolský pedagog
-    student - Student učitelství / teacher trainee
-    mentor - Fakultní učitel / mentor praxe
-    host - Externí účastník
+    target.a - Akademik (Vysokoškolský)
+    target.s - Student (Student učitelství)
+    target.m - Mentor (Fakultní učitel)
+    target.host - Host (Externí účastník)
     """
 
     __tablename__ = "course_target"

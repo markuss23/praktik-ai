@@ -23,14 +23,10 @@ COURSE_BLOCKS: list[dict[str, str]] = [
 ]
 
 COURSE_TARGETS: list[dict[str, str]] = [
-    {"code": "a", "name": "Akademik", "description": "Vysokoškolský pedagog"},
-    {
-        "code": "s",
-        "name": "Student",
-        "description": "Student učitelství / teacher trainee",
-    },
-    {"code": "m", "name": "Mentor", "description": "Fakultní učitel / mentor praxe"},
-    {"code": "h", "name": "Host", "description": "Externí účastník"},
+    {"code": "target.a", "name": "Akademik", "description": "Vysokoškolský"},
+    {"code": "target.s", "name": "Student", "description": "Student učitelství"},
+    {"code": "target.m", "name": "Mentor", "description": "Fakultní učitel"},
+    {"code": "target.host", "name": "Host", "description": "Externí účastník"},
 ]
 
 COURSE_REQUIREMENTS: list[dict[str, str]] = [
