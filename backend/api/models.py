@@ -454,7 +454,7 @@ class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
 
 class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Číselník — Průřezové obory pro Bloky A a B (O001–O020):
+    Číselník — Průřezové obory pro Bloky A a B (O01–O20):
     třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
     M2M na Course.
     """
