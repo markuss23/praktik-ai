@@ -2,10 +2,13 @@
 Controllery pro vytváření zdrojů kurzu.
 """
 
+from pathlib import Path
+
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agents.base.loaders.base import MAX_FILE_SIZE, SUPPORTED_EXTENSIONS
 from api import models
 from api.src.catalogs.controllers import (
     resolve_cross_subject_ids,
@@ -177,9 +180,21 @@ async def upload_course_file(
             status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
         )
 
+    if Path(file.filename or "").suffix.lower() not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Nepodporovaný typ souboru. Povolené přípony: "
+            + ", ".join(SUPPORTED_EXTENSIONS),
+        )
+
     remote_path = f"courses/{course_id}/{file.filename}"
 
     content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400, detail="Soubor je příliš velký (max 25 MB)"
+        )
+
     seaweedfs.upload_file(
         remote_path,
         content,
