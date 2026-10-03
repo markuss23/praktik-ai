@@ -1,14 +1,7 @@
 from agents.course_generator.state import CourseInput
 
-# Převod kódů číselníku course_level na úrovně, se kterými pracují prompty
-LEVEL_DIFFICULTY_CODES = {
-    "level.1": "beginner",
-    "level.2": "intermediate",
-    "level.3": "advanced",
-}
-
 READING_CAP_MAX_MINUTES = 10
-SUMMARY_CHARS_PER_TOPIC = 3500
+SUMMARY_CHARS_PER_TOPIC = 7000
 
 
 def build_input_block(
@@ -36,15 +29,6 @@ def build_input_block(
             lines.append(f"DÉLKA NA MODUL: {minutes_per_module} minut")
             reading_cap_minutes = min(READING_CAP_MAX_MINUTES, minutes_per_module)
     lines.append(f"MAXIMÁLNÍ ČAS NA VÝKLAD: {reading_cap_minutes} minut")
-
-    difficulty_code = LEVEL_DIFFICULTY_CODES.get(course_input.level_code or "")
-    if difficulty_code is not None:
-        lines.append(
-            f"ÚROVEŇ POKROČILOSTI: {course_input.level_name} ({difficulty_code})"
-        )
-
-    if course_input.target_name:
-        lines.append(f"CÍLOVÁ SKUPINA: {course_input.target_name}")
 
     if include_summary_limit:
         summary_max_chars = SUMMARY_CHARS_PER_TOPIC * max(modules_count, 1)

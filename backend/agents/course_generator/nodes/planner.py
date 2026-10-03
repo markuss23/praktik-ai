@@ -23,8 +23,8 @@ def plan_content_node(state: AgentState) -> AgentState:
     model = create_chat_llm(cfg.model, max_tokens=64000)
     # method="json_schema" použije nativní strukturované výstupy Anthropic
     # (server-side vynucené schéma), místo pouhého tool-callingu – ten model
-    # jen "navádí" a u složitě zanořených schémat (moduly -> learn_blocks/
-    # practice_questions) mohl vrátit zanořené pole jako JSON string.
+    # jen "navádí" a u zanořených schémat (kurz -> moduly) mohl vrátit
+    # zanořené pole jako JSON string.
     llm_structured = model.with_structured_output(CourseGenerated, method="json_schema")
 
     prompt = f"""{cfg.prompt}
@@ -39,6 +39,12 @@ SOUHRN:
     if not output.modules:
         raise ValueError(
             "LLM vrátil kurz bez modulů. Zkontroluj limit max_tokens a nastavení modelu."
+        )
+
+    if len(output.modules) != course_input.modules_count_ai_generated:
+        print(
+            f"   -> WARN: LLM vrátil {len(output.modules)} modulů, "
+            f"požadováno {course_input.modules_count_ai_generated}"
         )
 
     state["course"] = output

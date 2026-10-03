@@ -26,7 +26,9 @@ def summarize_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_id is not available in state")
 
     cfg = get_llm_config(db, "course_summarizer")
-    model = create_chat_llm(cfg.model)
+    # Souhrn má ~7 000 znaků na téma; u kurzů s mnoha moduly by výchozích
+    # 16k tokenů nestačilo a souhrn by se tiše uřízl (chyběla by poslední témata).
+    model = create_chat_llm(cfg.model, max_tokens=32000)
 
     prompt: str = f"""{cfg.prompt}
 
