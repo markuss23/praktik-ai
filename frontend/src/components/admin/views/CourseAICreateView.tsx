@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check, RefreshCw } from 'lucide-react';
+import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader, CourseCategoryFields } from '@/components/admin';
 import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
+import { BackgroundGenerationsBanner, GenerationProgressCard } from '@/components/admin/GenerationProgress';
 import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
 import { Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
@@ -18,14 +19,6 @@ import { readApiErrorDetail } from '@/lib/api-error';
 const INITIAL_PROGRESS: CourseGenerationProgress = {
   step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null,
 };
-
-const GENERATION_STEPS = [
-  { n: 1, label: 'Načítání kurzu z databáze' },
-  { n: 2, label: 'Načítání podkladů' },
-  { n: 3, label: 'Zpracování podkladů (AI)' },
-  { n: 4, label: 'Plánování modulů, číselníky a otázky (AI)' },
-  { n: 5, label: 'Ukládání kurzu' },
-];
 
 // Tvorba kurzu pomocí AI generování
 export function CourseAICreateView() {
@@ -315,30 +308,26 @@ export function CourseAICreateView() {
         />
       </div>
 
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
+      {/* Sloupcový flex, aby se karta průběhu mohla roztáhnout (flex-1) na zbytek
+          výšky a vycentrovat — procentuální min-h by přes několik flex vrstev
+          nemusela mít z čeho počítat */}
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col">
         {error && (
           <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
             {error}
           </div>
         )}
 
-        {step !== 'generating' && backgroundGenerations.length > 0 && (
-          <div className="mb-4 p-3 sm:p-4 bg-tip/10 border border-tip/30 rounded-md text-sm flex flex-col sm:flex-row sm:items-center gap-3">
-            <Loader2 className="size-4 animate-spin text-tip shrink-0" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground break-words">
-                Na pozadí běží generování: {backgroundGenerations.map((g) => (g.title ? `„${g.title}"` : `kurz #${g.courseId}`)).join(', ')}
-              </p>
-              <p className="text-muted-foreground">Můžete pokračovat v práci, průběh uvidíte v přehledu kurzů.</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={goToCourses} className="shrink-0">
-              Přehled kurzů
-            </Button>
-          </div>
+        {step !== 'generating' && (
+          <BackgroundGenerationsBanner generations={backgroundGenerations} onGoToCourses={goToCourses} />
         )}
 
         {step === 'generating' ? (
-          <GenerationProgressCard progress={progress ?? INITIAL_PROGRESS} onGoToCourses={goToCourses} />
+          // Karta uprostřed obsahové plochy: vodorovně vždy, svisle od lg
+          // (na mobilu u horního okraje, ať není pod ohybem).
+          <div className="flex-1 flex items-start lg:items-center justify-center">
+            <GenerationProgressCard progress={progress ?? INITIAL_PROGRESS} onGoToCourses={goToCourses} />
+          </div>
         ) : (
         <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -726,74 +715,3 @@ export function CourseAICreateView() {
 }
 
 export default CourseAICreateView;
-
-// Průběh generování místo formuláře. Nic neblokuje: generování běží na serveru
-// a provider ho sleduje, i když uživatel odejde (dokončení ohlásí toast).
-function GenerationProgressCard({
-  progress,
-  onGoToCourses,
-}: {
-  progress: CourseGenerationProgress;
-  onGoToCourses: () => void;
-}) {
-  const step = Math.min(progress.step, progress.total);
-  return (
-    <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8 max-w-2xl view-fade-in" role="status" aria-live="polite">
-      <div className="mb-4">
-        <h3 className="text-lg font-bold text-foreground">AI generuje váš kurz</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Můžete stránku opustit, generování běží na serveru. Průběh uvidíte i v přehledu kurzů
-          a po dokončení vás upozorníme.
-        </p>
-      </div>
-
-      <div className="mb-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <span className="flex items-center gap-1.5 font-medium">
-            <Loader2 size={12} className="animate-spin text-gradient-r" />
-            {progress.label}
-          </span>
-          <span className="tabular-nums">{step} / {progress.total}</span>
-        </div>
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-gradient-r to-primary rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.round((step / progress.total) * 100)}%` }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-          />
-        </div>
-      </div>
-
-      <ul className="space-y-2 text-sm">
-        {GENERATION_STEPS.map(({ n, label }) => {
-          const done = progress.step > n || progress.status === 'completed';
-          const active = progress.step === n && progress.status === 'running';
-          return (
-            <li
-              key={n}
-              className={`flex items-center gap-2 ${active ? 'text-foreground font-medium' : 'text-muted-foreground'}`}
-            >
-              <span className="size-5 flex items-center justify-center shrink-0">
-                {done ? (
-                  <Check size={14} className="text-success" />
-                ) : active ? (
-                  <Loader2 size={14} className="animate-spin text-gradient-r" />
-                ) : (
-                  <span className="size-1.5 bg-muted rounded-full" />
-                )}
-              </span>
-              <span>{label}</span>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button variant="outline" onClick={onGoToCourses}>
-          Přejít na přehled kurzů
-        </Button>
-      </div>
-    </div>
-  );
-}

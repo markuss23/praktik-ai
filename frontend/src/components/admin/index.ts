@@ -21,6 +21,7 @@ export {
   type CourseGenerationFinishedDetail,
   type TrackedGeneration,
 } from './CourseGenerationProvider';
+export { GenerationProgressCard, BackgroundGenerationsBanner } from './GenerationProgress';
 
 // Views - exported separately for lazy loading
 export * from './views';

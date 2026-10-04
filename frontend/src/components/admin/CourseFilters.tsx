@@ -127,7 +127,7 @@ export function CourseFilters({
   ];
 
   return (
-    <div className="px-3 sm:px-6 py-3 border-b bg-muted/50 space-y-2.5">
+    <div className="shrink-0 px-3 sm:px-6 py-3 border-b bg-muted/50 space-y-2.5">
       {/* Řádek 1: hledání vlevo, řazení a počet vpravo — s tím se pracuje nejčastěji */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <div className="relative w-full sm:w-72">
@@ -143,7 +143,7 @@ export function CourseFilters({
 
         {/* Řazení není filtr: „Zrušit filtry" ho nemění a drží se i po návratu
             z editace (viz CoursesListView). */}
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           <Select
             items={COURSE_SORT_OPTIONS}
             value={sortOrder}

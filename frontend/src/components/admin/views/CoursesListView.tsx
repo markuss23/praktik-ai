@@ -1,7 +1,7 @@
 'use client';
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, generateCourseWithAI, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
-import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
+import { Course, Difficulty, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X, BicepsFlexed, Upload, RotateCcw, RefreshCw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
@@ -17,7 +17,8 @@ import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Skeleton, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui";
+import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Skeleton, Tooltip, TooltipTrigger, TooltipContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
+import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
 import {
   courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
@@ -111,6 +112,30 @@ function readStoredFilters(): CourseFilterState {
 }
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
+
+// Rychlé úpravy v řádku kurzu: vedle názvu a zařazení i vstupy, které čte AI
+// generátor (popis, délka) a obtížnost. Stejné limity jako ve formuláři AI
+// tvorby (CourseAICreateView), ať se kurz chová všude stejně.
+const QUICK_EDIT_INPUT_CLASS =
+  'px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30';
+const QUICK_EDIT_SELECT_CLASS = `${QUICK_EDIT_INPUT_CLASS} data-[size=default]:h-auto`;
+const QUICK_EDIT_DIFFICULTY_ITEMS = DIFFICULTY_ORDER.map((d) => ({ value: d, label: DIFFICULTY_LABELS[d] }));
+
+interface QuickEditData {
+  title: string;
+  description: string;
+  courseBlockId: number;
+  courseTargetId: number;
+  courseSubjectId: number;
+  /** Číslo drží jako text, aby šlo pole vymazat a přepsat bez skoku na 0 */
+  durationMinutes: string;
+  difficulty: Difficulty;
+}
+
+const EMPTY_QUICK_EDIT: QuickEditData = {
+  title: '', description: '', courseBlockId: 0, courseTargetId: 0, courseSubjectId: 0,
+  durationMinutes: '', difficulty: Difficulty.SlightlyAdvanced,
+};
 
 /** editaci jen ve stavech koncept/vygenerovaný/editovaný */
 function getCourseEditLockReason(course: Course): string | null {
@@ -229,7 +254,7 @@ export function CoursesListView() {
 
   // Quick edit state (inline accordion)
   const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
-  const [quickEditData, setQuickEditData] = useState<{ title: string; courseBlockId: number; courseTargetId: number; courseSubjectId: number }>({ title: '', courseBlockId: 0, courseTargetId: 0, courseSubjectId: 0 });
+  const [quickEditData, setQuickEditData] = useState<QuickEditData>(EMPTY_QUICK_EDIT);
   const [quickEditLoading, setQuickEditLoading] = useState(false);
 
   // Stavy modálních oken
@@ -781,9 +806,12 @@ export function CoursesListView() {
     setQuickEditCourseId(course.courseId);
     setQuickEditData({
       title: course.title,
+      description: course.description ?? '',
       courseBlockId: course.courseBlockId ?? 0,
       courseTargetId: course.courseTargetId ?? 0,
       courseSubjectId: course.courseSubjectId ?? 0,
+      durationMinutes: course.durationMinutes != null ? String(course.durationMinutes) : '',
+      difficulty: course.difficulty ?? Difficulty.SlightlyAdvanced,
     });
   };
 
@@ -793,14 +821,35 @@ export function CoursesListView() {
     if (!quickEditCourseId) return;
     const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
     if (!existingCourse) return;
+    // Stejná pravidla jako ve formuláři AI tvorby
+    const title = quickEditData.title.trim();
+    if (title.length < 3 || title.length > 120) {
+      toast.error('Název kurzu musí mít 3 až 120 znaků.');
+      return;
+    }
+    const description = quickEditData.description.trim();
+    if (description.length > 500) {
+      toast.error('Popis kurzu může mít nejvýše 500 znaků.');
+      return;
+    }
+    const durationRaw = quickEditData.durationMinutes.trim();
+    const durationMinutes = durationRaw ? Number(durationRaw) : null;
+    if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 300)) {
+      toast.error('Délka kurzu musí být mezi 15 a 300 minutami.');
+      return;
+    }
+
     // Změna bloku mění pravidlo pro průřezové obory (A/B povinné, C zakázané).
     const rule = crossSubjectsRule(blocks, quickEditData.courseBlockId || null);
     const update = courseToUpdate(existingCourse, {
-      title: quickEditData.title,
-      // 0 = „Neurčeno“ — blok i obor jsou volitelné.
+      title,
+      description: description || null,
+      // 0 = „Neurčeno" — blok i obor jsou volitelné.
       courseBlockId: quickEditData.courseBlockId || null,
       courseTargetId: quickEditData.courseTargetId,
       courseSubjectId: quickEditData.courseSubjectId || null,
+      durationMinutes,
+      difficulty: quickEditData.difficulty,
     });
     update.crossSubjectIds = crossSubjectIdsFor(rule, update.crossSubjectIds ?? []);
     const categoryError = validateCourseCategories(
@@ -836,10 +885,12 @@ export function CoursesListView() {
 
   return (
     <>
-      <div className="flex-1 lg:overflow-y-auto p-3 sm:p-6 lg:p-8 min-w-0">
-        <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+      {/* Od lg karta vyplní výšku obrazovky (hlavička, filtry a stránkování
+          zůstávají na místě), roluje jen tabulka. Pod lg stránka roluje normálně. */}
+      <div className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 flex flex-col lg:min-h-0 lg:overflow-hidden">
+        <div className="bg-card rounded-lg shadow-sm overflow-hidden flex flex-col lg:flex-1 lg:min-h-0">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-6 border-b">
+          <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-6 border-b">
             <h2 className="text-lg sm:text-2xl font-bold text-foreground">Přehled kurzů</h2>
             <Dropdown
               trigger={<span>Přidat kurz</span>}
@@ -871,16 +922,16 @@ export function CoursesListView() {
 
           {/* Table - Desktop. Min. výška drží pevné hranice seznamu,
               aby se blok nezkracoval při filtrování na méně řádků. */}
-          <div className="hidden md:block overflow-x-auto min-h-[480px]">
+          <div className="hidden md:block overflow-auto min-h-[480px] lg:flex-1 lg:min-h-0">
             <table className="w-full">
-              <thead className="bg-muted/50 border-b">
+              <thead className="sticky top-0 z-10 bg-card">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Název kurzu</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Vlastník</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Počet modulů</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Publikováno</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Akce</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Název kurzu</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Vlastník</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Počet modulů</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Publikováno</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Akce</th>
                 </tr>
               </thead>
               {/* Klíč = stránka + řazení: po přepnutí se řádky znovu postupně objeví */}
@@ -1078,7 +1129,19 @@ export function CoursesListView() {
                                   value={quickEditData.title}
                                   onChange={(e) => setQuickEditData(prev => ({ ...prev, title: e.target.value }))}
                                   placeholder="Název kurzu"
-                                  className={cn("h-auto", "w-48 px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30")}
+                                  maxLength={120}
+                                  aria-label="Název kurzu"
+                                  className={cn("h-auto", "w-44", QUICK_EDIT_INPUT_CLASS)}
+                                />
+                                <Input
+                                  type="text"
+                                  value={quickEditData.description}
+                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, description: e.target.value }))}
+                                  placeholder="Popis kurzu (vstup pro AI)"
+                                  maxLength={500}
+                                  aria-label="Popis kurzu"
+                                  title={quickEditData.description}
+                                  className={cn("h-auto", "w-56", QUICK_EDIT_INPUT_CLASS)}
                                 />
                                 <CatalogSelect
                                   value={quickEditData.courseBlockId}
@@ -1086,14 +1149,14 @@ export function CoursesListView() {
                                   options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
                                   emptyLabel="Bez bloku"
                                   aria-label="Tematický blok"
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                  className={QUICK_EDIT_SELECT_CLASS}
                                 />
                                 <CatalogSelect
                                   value={quickEditData.courseTargetId}
                                   onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseTargetId: next }))}
                                   options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
                                   aria-label="Cílová skupina"
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                  className={QUICK_EDIT_SELECT_CLASS}
                                 />
                                 <CatalogSelect
                                   value={quickEditData.courseSubjectId}
@@ -1101,8 +1164,40 @@ export function CoursesListView() {
                                   options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                                   emptyLabel="Bez oboru"
                                   aria-label="Předmět"
-                                  className="px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30 data-[size=default]:h-auto"
+                                  className={QUICK_EDIT_SELECT_CLASS}
                                 />
+                                {/* Délka kurzu je vstup generátoru; popisek je součástí labelu, ať je číslo srozumitelné */}
+                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                                  Minut
+                                  <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={15}
+                                    max={300}
+                                    step={5}
+                                    value={quickEditData.durationMinutes}
+                                    onChange={(e) => setQuickEditData(prev => ({ ...prev, durationMinutes: e.target.value }))}
+                                    placeholder="—"
+                                    aria-label="Délka kurzu v minutách"
+                                    className={cn("h-auto", "w-20", QUICK_EDIT_INPUT_CLASS)}
+                                  />
+                                </label>
+                                <Select
+                                  items={QUICK_EDIT_DIFFICULTY_ITEMS}
+                                  value={quickEditData.difficulty}
+                                  onValueChange={(v) => setQuickEditData(prev => ({ ...prev, difficulty: v as Difficulty }))}
+                                >
+                                  <SelectTrigger className={QUICK_EDIT_SELECT_CLASS} aria-label="Obtížnost">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {QUICK_EDIT_DIFFICULTY_ITEMS.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>
+                                        {o.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <div className="flex items-center gap-2">
                                   <Button
                                     onClick={saveQuickEdit}
@@ -1301,7 +1396,7 @@ function CoursePagination({
     'min-w-[34px] h-[34px] px-2 flex items-center justify-center rounded-md text-sm font-medium transition-colors';
 
   return (
-    <div data-accordion-keep className="flex items-center justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-card">
+    <div data-accordion-keep className="shrink-0 flex items-center justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-card">
       <span className="text-xs text-muted-foreground whitespace-nowrap">
         Stránka {page} z {totalPages}
       </span>
