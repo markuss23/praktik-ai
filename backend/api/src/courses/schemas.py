@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import Field, model_validator
 
 from api.src.modules.schemas import Module
@@ -119,6 +121,9 @@ class Course(CourseBase):
     status: Status
     modules_count: int = 0
     enrollments_count: int = 0
+    # Časové značky pro řazení v administraci („nejnovější", „naposledy upravené").
+    created_at: datetime
+    updated_at: datetime
 
     # modules: list[Module] = []
     files: list[CourseFile] = []

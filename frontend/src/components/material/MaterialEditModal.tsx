@@ -11,14 +11,25 @@ import {
   listResourceComments,
   type ResourceComment,
 } from "@/lib/api-client";
-import type { CourseEqfLevel, CourseSubject, CourseTarget, CourseType, PubResource, PubResourceFile } from "@/api";
+import type {
+  BloomLevel,
+  CourseEqfLevel,
+  CourseSubject,
+  CourseTarget,
+  CourseType,
+  KrauuCompetence,
+  PubResource,
+  PubResourceFile,
+} from "@/api";
 import { Difficulty, EduLevel } from "@/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import { catalogLabel, groupKrauuCompetences } from "@/lib/course-categories";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  CatalogMultiSelect,
   Checkbox,
   Input,
   Label,
@@ -52,6 +63,8 @@ interface FormState {
   courseTypeId: string;
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
+  krauuCompetenceIds: number[];
+  bloomLevelIds: number[];
   description: string;
 }
 
@@ -67,6 +80,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const [targets, setTargets] = useState<CourseTarget[]>([]);
   const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
   const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
+  const [krauuCompetences, setKrauuCompetences] = useState<KrauuCompetence[]>([]);
+  const [bloomLevels, setBloomLevels] = useState<BloomLevel[]>([]);
   const [comments, setComments] = useState<ResourceComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -100,13 +115,17 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       catalogsApi.listCourseTargets(),
       catalogsApi.listCourseEqfLevels(),
       catalogsApi.listCourseTypes(),
+      catalogsApi.listKrauuCompetences(),
+      catalogsApi.listBloomLevels(),
     ])
-      .then(([resource, subjectsData, targetsData, eqfData, typesData]) => {
+      .then(([resource, subjectsData, targetsData, eqfData, typesData, krauuData, bloomData]) => {
         if (cancelled) return;
         setSubjects(subjectsData);
         setTargets(targetsData);
         setEqfLevels(eqfData);
         setCourseTypes(typesData);
+        setKrauuCompetences(krauuData);
+        setBloomLevels(bloomData);
         setExistingFiles(resource.files ?? []);
         setAllowForks(resource.allowForks ?? false);
         setForm({
@@ -117,6 +136,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
           courseTypeId: resource.courseTypeId != null ? String(resource.courseTypeId) : "",
           educationLevel: resource.educationLevel,
           difficultyLevel: resource.difficultyLevel ?? "",
+          krauuCompetenceIds: (resource.krauuCompetences ?? []).map((k) => k.krauuId),
+          bloomLevelIds: (resource.bloomLevels ?? []).map((b) => b.bloomId),
           description: resource.description ?? "",
         });
       })
@@ -199,6 +220,14 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       setError("Vyberte typ materiálu.");
       return;
     }
+    if (form.krauuCompetenceIds.length === 0) {
+      setError("Vyberte alespoň jednu KRAUU kompetenci.");
+      return;
+    }
+    if (form.bloomLevelIds.length === 0) {
+      setError("Vyberte alespoň jednu úroveň Bloomovy taxonomie.");
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -212,6 +241,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
         courseTypeId: Number(form.courseTypeId),
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
+        krauuCompetenceIds: form.krauuCompetenceIds,
+        bloomLevelIds: form.bloomLevelIds,
         allowForks,
       });
 
@@ -256,6 +287,11 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
     { label: "Obtížnost", value: null },
     ...DIFFICULTY_ORDER.map((value) => ({ label: DIFFICULTY_LABELS[value], value })),
   ];
+  const krauuGroups = groupKrauuCompetences(krauuCompetences).map(({ area, competences }) => ({
+    label: area.name,
+    options: competences.map((c) => ({ value: c.krauuId, label: catalogLabel(c) })),
+  }));
+  const bloomOptions = bloomLevels.map((b) => ({ value: b.bloomId, label: catalogLabel(b) }));
 
   const isReady = !loading && form !== null;
 
@@ -439,6 +475,25 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+            <CatalogMultiSelect
+              values={form.krauuCompetenceIds}
+              onValueChange={(next) => setForm((s) => (s ? { ...s, krauuCompetenceIds: next } : s))}
+              groups={krauuGroups}
+              placeholder="KRAUU kompetence"
+              disabled={submitting}
+              className="w-full"
+            />
+            <CatalogMultiSelect
+              values={form.bloomLevelIds}
+              onValueChange={(next) => setForm((s) => (s ? { ...s, bloomLevelIds: next } : s))}
+              options={bloomOptions}
+              placeholder="Bloomova taxonomie"
+              disabled={submitting}
+              className="w-full"
+            />
           </div>
 
           {/* Stávající přílohy */}

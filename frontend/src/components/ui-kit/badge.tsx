@@ -17,6 +17,8 @@ const badgeVariants = cva(
         resolved: "bg-success/15 text-success [a]:hover:bg-success/25",
         closed:
           "bg-foreground/15 text-foreground/50 [a]:hover:bg-foreground/25",
+        // Projektová varianta: chybový stav (selhané generování kurzu)
+        danger: "bg-destructive/15 text-destructive [a]:hover:bg-destructive/25",
       },
     },
     defaultVariants: {

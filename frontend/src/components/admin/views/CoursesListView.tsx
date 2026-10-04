@@ -1,20 +1,23 @@
 'use client';
 
-import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
+import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, generateCourseWithAI, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
 import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
-import { X, BicepsFlexed, Upload, RotateCcw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { X, BicepsFlexed, Upload, RotateCcw, RefreshCw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
+import { compareCourses, DEFAULT_COURSE_SORT, isCourseSortOrder, type CourseSortOrder } from "@/lib/course-sort";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
-import { StatusBadge, PublishBadge, ModuleActiveBadge } from "@/components/ui/Badge";
+import { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "@/components/ui/Badge";
+import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT } from "@/components/admin/CourseGenerationProvider";
 import { Dropdown, SimpleBotIcon } from "@/components/ui/Dropdown";
 import { useAdminNavigation } from "@/hooks/useAdminNavigation";
 import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui";
+import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Skeleton, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
 import {
   courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
@@ -24,12 +27,96 @@ import { readApiErrorDetail } from "@/lib/api-error";
 
 const PAGE_SIZE = 10;
 
+// Seznam si pamatuje, kde uživatel skončil, aby se po návratu z editace (nebo
+// přes „Kurzy" v menu) otevřel na stejném místě:
+//   - stránka: v URL (`?page=N`, jednička se vynechává) — funguje Zpět i sdílení
+//     odkazu; sessionStorage drží poslední stránku pro vstupy bez parametru
+//     (menu „Kurzy", „Dokončit" v editaci)
+//   - filtry a rozbalený kurz: sessionStorage (žijí jen v záložce, aby filtr
+//     nezůstal „zaseklý" druhý den)
+//   - řazení: localStorage (trvalá předvolba)
+// Hodnoty se čtou v inicializátoru stavu, ne v efektu — efekt by ve StrictMode
+// běžel dvakrát a s „reset na první stránku" níže by se pral.
+const SESSION_PAGE_KEY = 'coursesList.page';
+const SESSION_FILTERS_KEY = 'coursesList.filters';
+const SESSION_EXPANDED_KEY = 'coursesList.expandedCourse';
+const LOCAL_SORT_KEY = 'coursesList.sort';
+
+type StorageKind = 'session' | 'local';
+
+function getStorage(kind: StorageKind): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return kind === 'session' ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readStorage(kind: StorageKind, key: string): string | null {
+  try {
+    return getStorage(kind)?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(kind: StorageKind, key: string, value: string | null) {
+  try {
+    const storage = getStorage(kind);
+    if (!storage) return;
+    if (value === null) storage.removeItem(key);
+    else storage.setItem(key, value);
+  } catch {
+    // Soukromý režim / plné úložiště — bez paměti seznam funguje dál.
+  }
+}
+
+function parsePositiveInt(raw: string | null): number | null {
+  const n = parseInt(raw ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function readStoredSort(): CourseSortOrder {
+  const raw = readStorage('local', LOCAL_SORT_KEY);
+  return isCourseSortOrder(raw) ? raw : DEFAULT_COURSE_SORT;
+}
+
+function readStoredExpandedCourse(): number | null {
+  return parsePositiveInt(readStorage('session', SESSION_EXPANDED_KEY));
+}
+
+function readStoredFilters(): CourseFilterState {
+  const raw = readStorage('session', SESSION_FILTERS_KEY);
+  if (!raw) return DEFAULT_COURSE_FILTERS;
+  try {
+    const p = JSON.parse(raw) as Partial<Record<keyof CourseFilterState, unknown>>;
+    const d = DEFAULT_COURSE_FILTERS;
+    const str = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback);
+    const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+    // Bere jen známé klíče se správným typem — starý/poškozený záznam nesmí seznam rozbít.
+    return {
+      onlyMine: typeof p.onlyMine === 'boolean' ? p.onlyMine : d.onlyMine,
+      difficulty: str(p.difficulty, d.difficulty) as CourseFilterState['difficulty'],
+      status: str(p.status, d.status) as CourseFilterState['status'],
+      published: (['all', 'yes', 'no'] as const).find((v) => v === p.published) ?? d.published,
+      blockId: num(p.blockId, d.blockId),
+      targetId: num(p.targetId, d.targetId),
+      subjectId: num(p.subjectId, d.subjectId),
+      search: str(p.search, d.search),
+    };
+  } catch {
+    return DEFAULT_COURSE_FILTERS;
+  }
+}
+
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
 /** editaci jen ve stavech koncept/vygenerovaný/editovaný */
 function getCourseEditLockReason(course: Course): string | null {
   const status = course.status as string;
   if (status === Status.Draft || status === Status.Generated || status === Status.Edited) return null;
+  if (status === Status.Failed) return 'Generování kurzu selhalo. Spusťte ho znovu tlačítkem „Spustit znovu".';
   if (status === Status.InReview) return 'Kurz čeká na schválení. Během schvalování ho nelze upravovat.';
   if (status === Status.Archived) return 'Kurz je archivovaný, proto ho nelze upravovat.';
   if (course.isPublished) return 'Kurz je schválený a publikovaný, proto ho nelze upravovat.';
@@ -43,6 +130,8 @@ export function CoursesListView() {
   const { blocks, targets, subjects, neuroPrinciples } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
+  // Průběh AI generování (polling drží CourseGenerationProvider v admin layoutu)
+  const generation = useCourseGeneration();
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -51,18 +140,62 @@ export function CoursesListView() {
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
+  const [expandedCourse, setExpandedCourse] = useState<number | null>(readStoredExpandedCourse);
+  // `undefined` = moduly kurzu se ještě nenačetly (panel ukazuje kostru)
   const [courseModules, setCourseModules] = useState<{ [key: number]: Module[] }>({});
+  // Kurzy, u kterých načtení modulů selhalo — panel místo kostry nabídne „Zkusit znovu"
+  const [moduleLoadErrors, setModuleLoadErrors] = useState<Set<number>>(() => new Set());
 
-  // Filtry a stránkování (klientské, nad načteným seznamem)
-  const [filters, setFilters] = useState<CourseFilterState>(DEFAULT_COURSE_FILTERS);
+  // Filtry, řazení a stránkování (klientské, nad načteným seznamem)
+  const [filters, setFilters] = useState<CourseFilterState>(readStoredFilters);
   const debouncedSearch = useDebounce(filters.search, 300);
-  const [page, setPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<CourseSortOrder>(readStoredSort);
+
+  // Stránka: URL je zdroj pravdy; bez parametru platí poslední stránka ze
+  // sessionStorage, přečtená jednou při mountu (viz komentář u SESSION_* výše).
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlPage = parsePositiveInt(searchParams.get('page'));
+  const fallbackPage = useRef<number | null>(null);
+  if (fallbackPage.current === null) {
+    fallbackPage.current = parsePositiveInt(readStorage('session', SESSION_PAGE_KEY)) ?? 1;
+  }
+  const page = urlPage ?? fallbackPage.current;
+
+  const pageHref = useCallback((n: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (n > 1) params.set('page', String(n));
+    else params.delete('page');
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
+
+  // Jediná cesta ke změně stránky: zapíše ji do URL (push → funguje Zpět) i do
+  // sessionStorage. `replace` pro automatické přesuny (reset filtrem, oříznutí),
+  // ať neplní historii.
+  const setPage = useCallback((n: number, { replace = false }: { replace?: boolean } = {}) => {
+    if (n === page) return;
+    fallbackPage.current = n;
+    writeStorage('session', SESSION_PAGE_KEY, String(n));
+    const href = pageHref(n);
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
+  }, [page, pageHref, router]);
+
+  // Po mountu bez parametru doplň obnovenou stránku do URL (jen kvůli sdílení
+  // a obnovení stránky; zobrazení už jede z `fallbackPage`).
+  const urlSynced = useRef(false);
+  useEffect(() => {
+    if (urlSynced.current) return;
+    urlSynced.current = true;
+    if (urlPage === null && page > 1) router.replace(pageHref(page), { scroll: false });
+  }, [urlPage, page, pageHref, router]);
 
   // Zavře rozbalené moduly i rychlé úpravy
   const closeAllExpanded = useCallback(() => {
     setExpandedCourse(null);
-    localStorage.removeItem('expandedCourse');
+    writeStorage('session', SESSION_EXPANDED_KEY, null);
     setQuickEditCourseId(null);
   }, []);
 
@@ -132,48 +265,59 @@ export function CoursesListView() {
   const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
   /** Can the current user delete this course?
-   *  Superadmin: always. Owner: when kurz je ve stavu draft, generated nebo edited (rozpracováno). */
+   *  Superadmin: always. Owner: when kurz je ve stavu draft, generated, edited (rozpracováno) nebo failed. */
   const canDeleteCourse = (course: Course) => {
     if (isSuperAdmin) return true;
     if (!isOwner(course.ownerId)) return false;
     const status = course.status as string;
-    return status === Status.Draft || status === Status.Generated || status === Status.Edited;
+    return status === Status.Draft || status === Status.Generated || status === Status.Edited || status === Status.Failed;
+  };
+
+  /** Generování lze spustit znovu u selhaného kurzu a u konceptu bez modulů
+   *  (generování ho nedokončilo, typicky po restartu serveru). Backend povolí
+   *  jen stavy draft/failed. */
+  const canRetryGeneration = (course: Course) => {
+    if (!canEditCourse(course) || generation.isGenerating(course.courseId)) return false;
+    const status = course.status as string;
+    return status === Status.Failed || (status === Status.Draft && (course.modulesCount ?? 0) === 0);
   };
 
   // Data loading
 
-  // Načtení rozbalené kurzu z localStorage při mountu
+  // Načtení modulů rozbaleného kurzu. Jediné místo, které moduly stahuje —
+  // běží i po obnovení rozbaleného kurzu z localStorage. Ve StrictMode se
+  // efekt spouští dvakrát, proto rozpracované požadavky hlídá `modulesInFlight`
+  // (dřív se při rozbalení posílaly dva stejné requesty: z efektu i z klik handleru).
+  const modulesInFlight = useRef(new Set<number>());
   useEffect(() => {
-    const savedExpandedCourse = localStorage.getItem('expandedCourse');
-    if (savedExpandedCourse) {
-      const courseId = parseInt(savedExpandedCourse, 10);
-      setExpandedCourse(courseId);
-    }
-  }, []);
+    const courseId = expandedCourse;
+    if (courseId === null) return;
+    if (courseModules[courseId] !== undefined || moduleLoadErrors.has(courseId)) return;
+    if (modulesInFlight.current.has(courseId)) return;
 
-  // Obnovení čísla stránky z localStorage (návrat z editace na stejnou stránku)
-  useEffect(() => {
-    const savedPage = localStorage.getItem('coursesListPage');
-    if (savedPage) {
-      const n = parseInt(savedPage, 10);
-      if (Number.isFinite(n) && n > 0) setPage(n);
-    }
-  }, []);
+    modulesInFlight.current.add(courseId);
+    getModules({ courseId })
+      .then((modules) => {
+        setCourseModules(prev => ({ ...prev, [courseId]: modules }));
+      })
+      .catch((error) => {
+        console.error('Failed to load modules:', error);
+        setModuleLoadErrors(prev => new Set(prev).add(courseId));
+      })
+      .finally(() => {
+        modulesInFlight.current.delete(courseId);
+      });
+  }, [expandedCourse, courseModules, moduleLoadErrors]);
 
-  // Načtení modulů při změně rozbalené kurzu
-  useEffect(() => {
-    async function loadModulesForExpandedCourse() {
-      if (expandedCourse && !courseModules[expandedCourse]) {
-        try {
-          const modules = await getModules({ courseId: expandedCourse });
-          setCourseModules(prev => ({ ...prev, [expandedCourse]: modules }));
-        } catch (error) {
-          console.error('Failed to load modules:', error);
-        }
-      }
-    }
-    loadModulesForExpandedCourse();
-  }, [expandedCourse, courseModules]);
+  // „Zkusit znovu": smazání chyby nechá efekt výše moduly stáhnout znovu
+  const retryLoadModules = useCallback((courseId: number) => {
+    setModuleLoadErrors(prev => {
+      if (!prev.has(courseId)) return prev;
+      const next = new Set(prev);
+      next.delete(courseId);
+      return next;
+    });
+  }, []);
 
   const loadCoursesList = useCallback(async () => {
     setCoursesLoading(true);
@@ -194,11 +338,18 @@ export function CoursesListView() {
     loadCoursesList();
   }, [loadCoursesList]);
 
+  // Dokončené/selhané generování na pozadí změnilo stav kurzu → obnovit seznam
+  useEffect(() => {
+    const handler = () => { void loadCoursesList(); };
+    window.addEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+    return () => window.removeEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+  }, [loadCoursesList]);
+
   // Filtrování a stránkování
 
   const filteredCourses = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
-    return courses.filter((c) => {
+    const result = courses.filter((c) => {
       if (filters.onlyMine && c.ownerId !== currentUser?.userId) return false;
       if (filters.difficulty && c.difficulty !== filters.difficulty) return false;
       if (filters.status && (c.status as string) !== filters.status) return false;
@@ -210,8 +361,10 @@ export function CoursesListView() {
       if (q && !c.title.toLowerCase().includes(q)) return false;
       return true;
     });
+    result.sort((a, b) => compareCourses(a, b, sortOrder));
+    return result;
   }, [
-    courses, currentUser?.userId, debouncedSearch,
+    courses, currentUser?.userId, debouncedSearch, sortOrder,
     filters.onlyMine, filters.difficulty, filters.status, filters.published,
     filters.blockId, filters.targetId, filters.subjectId,
   ]);
@@ -219,33 +372,36 @@ export function CoursesListView() {
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
   const pagedCourses = filteredCourses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Po změně filtrů zpět na první stránku (první běh přeskočíme kvůli obnově stránky)
-  const isFirstFilterRun = useRef(true);
-  useEffect(() => {
-    if (isFirstFilterRun.current) {
-      isFirstFilterRun.current = false;
-      return;
-    }
-    setPage(1);
-  }, [
+  // Po změně filtrů zpět na první stránku. Porovnává se otisk naposledy
+  // použitých filtrů, ne „první běh" efektu — ten by ve StrictMode (dvojí
+  // spuštění efektů ve vývoji) obnovenou stránku hned přepsal jedničkou.
+  const filterSignature = JSON.stringify([
     debouncedSearch, filters.onlyMine, filters.difficulty, filters.status,
     filters.published, filters.blockId, filters.targetId, filters.subjectId,
   ]);
+  const appliedFilterSignature = useRef(filterSignature);
+  useEffect(() => {
+    if (appliedFilterSignature.current === filterSignature) return;
+    appliedFilterSignature.current = filterSignature;
+    setPage(1, { replace: true });
+  }, [filterSignature, setPage]);
 
   // Drž stránku v platném rozsahu (až po načtení, ať neoříznutí obnovenou stránku)
   useEffect(() => {
-    if (!coursesLoading && page > totalPages) setPage(totalPages);
-  }, [page, totalPages, coursesLoading]);
+    if (!coursesLoading && page > totalPages) setPage(totalPages, { replace: true });
+  }, [page, totalPages, coursesLoading, setPage]);
 
-  // Zapamatuj číslo stránky (první běh přeskočíme, ať nepřepíšeme obnovenou hodnotu)
-  const isFirstPagePersist = useRef(true);
+  // Stránku z URL (Zpět/Vpřed, ruční úprava adresy) drž i v sessionStorage,
+  // filtry a řazení taky — pro příští návrat na seznam.
   useEffect(() => {
-    if (isFirstPagePersist.current) {
-      isFirstPagePersist.current = false;
-      return;
-    }
-    localStorage.setItem('coursesListPage', String(page));
+    writeStorage('session', SESSION_PAGE_KEY, String(page));
   }, [page]);
+  useEffect(() => {
+    writeStorage('session', SESSION_FILTERS_KEY, JSON.stringify(filters));
+  }, [filters]);
+  useEffect(() => {
+    writeStorage('local', LOCAL_SORT_KEY, sortOrder);
+  }, [sortOrder]);
 
   // Zavři rozbalené sekce při kliknutí mimo ně nebo klávesou Escape
   useEffect(() => {
@@ -273,6 +429,13 @@ export function CoursesListView() {
   // (Voláno z klik handleru, ne z efektu na `page`, aby obnova stránky sekce nezavírala.)
   const handlePageChange = (next: number) => {
     setPage(next);
+    closeAllExpanded();
+  };
+
+  // Změna řazení přeskládá stránky, proto zpět na první (jako přechod stránky)
+  const handleSortChange = (next: CourseSortOrder) => {
+    setSortOrder(next);
+    setPage(1, { replace: true });
     closeAllExpanded();
   };
 
@@ -308,23 +471,15 @@ export function CoursesListView() {
     setModuleToDelete(null);
   };
 
-  const toggleCourseExpand = async (courseId: number) => {
+  // Moduly rozbaleného kurzu stahuje efekt výše — tady se jen přepíná stav
+  const toggleCourseExpand = (courseId: number) => {
     setQuickEditCourseId(null);
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
-      localStorage.removeItem('expandedCourse');
+      writeStorage('session', SESSION_EXPANDED_KEY, null);
     } else {
       setExpandedCourse(courseId);
-      localStorage.setItem('expandedCourse', courseId.toString());
-
-      if (!courseModules[courseId]) {
-        try {
-          const modules = await getModules({ courseId });
-          setCourseModules(prev => ({ ...prev, [courseId]: modules }));
-        } catch (error) {
-          console.error('Failed to load modules:', error);
-        }
-      }
+      writeStorage('session', SESSION_EXPANDED_KEY, String(courseId));
     }
   };
 
@@ -398,7 +553,30 @@ export function CoursesListView() {
     }
   };
 
+  /** Spustí AI generování znovu; průběh pak sleduje provider a řádek ukáže „Generuje se" */
+  const handleRetryGeneration = async (course: Course) => {
+    setStatusLoading(course.courseId);
+    try {
+      await generateCourseWithAI(course.courseId);
+      generation.track(course.courseId, course.title);
+      toast.info('Můžete stránku opustit, generování běží na serveru.', 'Generování kurzu bylo spuštěno');
+    } catch (error) {
+      console.error('Failed to restart generation:', error);
+      toast.error((await readApiErrorDetail(error)) ?? error, 'Nepodařilo se spustit generování.');
+    } finally {
+      setStatusLoading(null);
+    }
+  };
+
   // Potvrzovací – otevřou modal, samotnou akci spustí až po potvrzení
+
+  const requestRetryGeneration = (course: Course) => setConfirmConfig({
+    title: 'Spustit generování znovu',
+    message: `Kurz „${course.title}" se vygeneruje znovu z nahraných podkladů. Může to trvat několik minut, mezitím můžete pracovat dál.`,
+    confirmLabel: 'Spustit',
+    variant: 'primary',
+    action: () => handleRetryGeneration(course),
+  });
 
   const requestSubmitForReview = (course: Course) => setConfirmConfig({
     title: 'Odeslat ke schválení',
@@ -571,7 +749,7 @@ export function CoursesListView() {
 
   const closeCourseExpand = () => {
     setExpandedCourse(null);
-    localStorage.removeItem('expandedCourse');
+    writeStorage('session', SESSION_EXPANDED_KEY, null);
   };
 
   const handleGenerateEmbeddings = async (courseId: number) => {
@@ -599,7 +777,7 @@ export function CoursesListView() {
       return;
     }
     setExpandedCourse(null);
-    localStorage.removeItem('expandedCourse');
+    writeStorage('session', SESSION_EXPANDED_KEY, null);
     setQuickEditCourseId(course.courseId);
     setQuickEditData({
       title: course.title,
@@ -681,6 +859,8 @@ export function CoursesListView() {
             <CourseFilters
               value={filters}
               onChange={setFilters}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
               blocks={blocks}
               targets={targets}
               subjects={subjects}
@@ -703,7 +883,8 @@ export function CoursesListView() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Akce</th>
                 </tr>
               </thead>
-              <tbody key={`page-${page}`} className="divide-y divide-border">
+              {/* Klíč = stránka + řazení: po přepnutí se řádky znovu postupně objeví */}
+              <tbody key={`page-${page}-${sortOrder}`} className="divide-y divide-border">
                 {coursesLoading && courses.length === 0 ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
@@ -729,7 +910,9 @@ export function CoursesListView() {
                 ) : pagedCourses.map((course, pageIndex) => {
                   const editable = canEditCourse(course);
                   const statusStr = course.status as string;
+                  const generating = generation.getProgress(course.courseId);
                   const handleRowClick = () => {
+                    if (generating) return; // během generování nemá rozbalení co ukázat
                     if (editable) {
                       toggleCourseExpand(course.courseId);
                     } else {
@@ -756,14 +939,16 @@ export function CoursesListView() {
                         <td className="px-6 py-4 text-sm text-foreground">{course.ownerDisplayName ?? '—'}</td>
                         <td className="px-6 py-4 text-sm text-foreground">{getModuleCount(course)} {czechPlural(getModuleCount(course), 'modul', 'moduly', 'modulů')}</td>
                         <td className="px-6 py-4">
-                          <StatusBadge status={course.status} />
+                          {generating ? <GeneratingBadge progress={generating} /> : <StatusBadge status={course.status} />}
                         </td>
                         <td className="px-6 py-4">
                           <PublishBadge status={course.status} isPublished={course.isPublished} />
                         </td>
                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                            {statusStr === Status.Archived ? (
+                            {generating ? (
+                              <span className="text-muted-foreground" title={generating.label}>Probíhá generování…</span>
+                            ) : statusStr === Status.Archived ? (
                               <>
                                 {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
                                 {canPublishCourse(course) && (
@@ -805,7 +990,7 @@ export function CoursesListView() {
                             ) : (
                               <>
                                 {/* Edit actions - only in editable statuses (draft/generated/edited) */}
-                                {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+                                {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && statusStr !== Status.Failed && (
                                   <>
                                     <Button
                                       onClick={() => toggleCourseExpand(course.courseId)}
@@ -820,6 +1005,18 @@ export function CoursesListView() {
                                       Rychlé úpravy
                                     </Button>
                                   </>
+                                )}
+
+                                {/* Restart generování - selhaný kurz nebo koncept bez modulů */}
+                                {canRetryGeneration(course) && (
+                                  <Button
+                                    onClick={() => requestRetryGeneration(course)}
+                                    disabled={statusLoading === course.courseId}
+                                    size="pill" variant="soft-tip"
+                                  >
+                                    <RefreshCw className="size-3" />
+                                    {statusLoading === course.courseId ? 'Spouštím...' : 'Spustit znovu'}
+                                  </Button>
                                 )}
 
                                 {/* Submit for review - owner can submit when in editable status */}
@@ -934,6 +1131,9 @@ export function CoursesListView() {
                             <ExpandedModuleList
                               course={course}
                               modules={courseModules[course.courseId] || []}
+                              modulesLoading={courseModules[course.courseId] === undefined && !moduleLoadErrors.has(course.courseId)}
+                              modulesError={moduleLoadErrors.has(course.courseId)}
+                              onRetryModules={() => retryLoadModules(course.courseId)}
                               onEditCourse={() => goToCourseContent(course.courseId)}
                               onClose={closeCourseExpand}
                               onEditModuleContent={(module) => goToCourseContent(course.courseId, module.moduleId)}
@@ -956,7 +1156,7 @@ export function CoursesListView() {
           </div>
 
           {/* Mobile Card View */}
-          <div key={`mobile-page-${page}`} className="md:hidden divide-y divide-border min-h-[320px]">
+          <div key={`mobile-page-${page}-${sortOrder}`} className="md:hidden divide-y divide-border min-h-[320px]">
             {!coursesLoading && courses.length > 0 && filteredCourses.length === 0 && (
               <div className="px-4 py-12 text-center text-sm text-muted-foreground">
                 Žádné kurzy neodpovídají zvoleným filtrům.
@@ -967,7 +1167,13 @@ export function CoursesListView() {
               <MobileCourseCard
                 course={course}
                 isExpanded={expandedCourse === course.courseId}
+                generating={generation.getProgress(course.courseId)}
+                canRetryGeneration={canRetryGeneration(course)}
+                onRetryGeneration={() => requestRetryGeneration(course)}
                 modules={courseModules[course.courseId] || []}
+                modulesLoading={courseModules[course.courseId] === undefined && !moduleLoadErrors.has(course.courseId)}
+                modulesError={moduleLoadErrors.has(course.courseId)}
+                onRetryModules={() => retryLoadModules(course.courseId)}
                 onToggleExpand={() => toggleCourseExpand(course.courseId)}
                 onTogglePublish={() => requestTogglePublish(course)}
                 onDelete={() => handleDeleteClick(course.courseId)}
@@ -1139,6 +1345,60 @@ function CoursePagination({
   );
 }
 
+// Kostra řádků modulů během načítání. Počet řádků odhadne z `modulesCount`,
+// aby panel po načtení pokud možno neposkočil.
+function skeletonRowCount(course: Course) {
+  return Math.min(Math.max(course.modulesCount ?? 0, 2), 6);
+}
+
+function ModuleListSkeleton({ rows, compact = false }: { rows: number; compact?: boolean }) {
+  return (
+    <div role="status" aria-live="polite" aria-busy="true" className={compact ? 'space-y-2' : 'divide-y'}>
+      <span className="sr-only">Načítám moduly…</span>
+      {Array.from({ length: rows }).map((_, i) =>
+        compact ? (
+          <div key={i} className="bg-card rounded-md p-3 row-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-14 mt-1.5" />
+            <Skeleton className="h-5 w-16 rounded-full mt-2" />
+          </div>
+        ) : (
+          <div key={i} className="p-4 flex items-center gap-4 row-fade-in" style={{ animationDelay: `${i * 40}ms` }}>
+            <div className="flex-1 min-w-0">
+              {/* Různě dlouhé „názvy", ať kostra nepůsobí jako mřížka */}
+              <Skeleton className="h-4" style={{ width: `${60 - (i % 3) * 12}%` }} />
+            </div>
+            <div className="w-24 shrink-0 flex justify-center">
+              <Skeleton className="h-4 w-14" />
+            </div>
+            <div className="w-32 shrink-0">
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Skeleton className="h-6 w-16 rounded-md" />
+              <Skeleton className="h-6 w-24 rounded-md" />
+              <Skeleton className="h-6 w-20 rounded-md" />
+              <Skeleton className="h-6 w-16 rounded-md" />
+            </div>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function ModuleListError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="p-6 flex flex-col items-center gap-3 text-center">
+      <p className="text-sm text-destructive">Moduly se nepodařilo načíst.</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        <RotateCcw data-icon="inline-start" />
+        Zkusit znovu
+      </Button>
+    </div>
+  );
+}
+
 function LockedEditCourseButton({ reason, className }: { reason: string; className?: string }) {
   const reasonId = useId();
   return (
@@ -1170,6 +1430,9 @@ function LockedEditCourseButton({ reason, className }: { reason: string; classNa
 interface ExpandedModuleListProps {
   course: Course;
   modules: Module[];
+  modulesLoading: boolean;
+  modulesError: boolean;
+  onRetryModules: () => void;
   onEditCourse: () => void;
   onClose: () => void;
   onEditModuleContent: (module: Module) => void;
@@ -1182,6 +1445,9 @@ interface ExpandedModuleListProps {
 function ExpandedModuleList({
   course,
   modules,
+  modulesLoading,
+  modulesError,
+  onRetryModules,
   onEditCourse,
   onClose,
   onEditModuleContent,
@@ -1192,7 +1458,7 @@ function ExpandedModuleList({
 }: ExpandedModuleListProps) {
   const lockReason = getCourseEditLockReason(course);
   return (
-    <div className="p-6">
+    <div className="p-6 view-fade-in">
       <div className="bg-card rounded-lg shadow-sm">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="text-lg font-semibold text-foreground">Přehled modulů</h3>
@@ -1213,9 +1479,20 @@ function ExpandedModuleList({
           </div>
         </div>
 
+        {modulesLoading ? (
+          <ModuleListSkeleton rows={skeletonRowCount(course)} />
+        ) : modulesError ? (
+          <ModuleListError onRetry={onRetryModules} />
+        ) : modules.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">Kurz zatím nemá žádné moduly.</p>
+        ) : (
         <div className="divide-y">
           {modules.map((module, index) => (
-            <div key={module.moduleId} className="p-4 flex items-center gap-4 hover:bg-muted/50">
+            <div
+              key={module.moduleId}
+              className="p-4 flex items-center gap-4 hover:bg-muted/50 row-fade-in"
+              style={{ animationDelay: `${index * 40}ms` }}
+            >
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-foreground">{module.title}</div>
               </div>
@@ -1239,6 +1516,7 @@ function ExpandedModuleList({
             </div>
           ))}
         </div>
+        )}
 
         {/* Možnost "Přidat modul" dočasně skryta
         <div className="p-4 border-t">
@@ -1261,7 +1539,14 @@ function ExpandedModuleList({
 interface MobileCourseCardProps {
   course: Course;
   isExpanded: boolean;
+  /** Průběh běžícího AI generování; null = negeneruje se */
+  generating: { step: number; total: number; label: string } | null;
+  canRetryGeneration: boolean;
+  onRetryGeneration: () => void;
   modules: Module[];
+  modulesLoading: boolean;
+  modulesError: boolean;
+  onRetryModules: () => void;
   onToggleExpand: () => void;
   onTogglePublish: () => void;
   onDelete: () => void;
@@ -1287,7 +1572,13 @@ interface MobileCourseCardProps {
 function MobileCourseCard({
   course,
   isExpanded,
+  generating,
+  canRetryGeneration,
+  onRetryGeneration,
   modules,
+  modulesLoading,
+  modulesError,
+  onRetryModules,
   onToggleExpand,
   onTogglePublish,
   onDelete,
@@ -1318,7 +1609,7 @@ function MobileCourseCard({
           {moduleCount} {czechPlural(moduleCount, 'modul', 'moduly', 'modulů')} · {course.ownerDisplayName ?? '—'}
         </p>
         <div className="mt-2 flex flex-wrap gap-1">
-          <StatusBadge status={course.status} />
+          {generating ? <GeneratingBadge progress={generating} /> : <StatusBadge status={course.status} />}
           {(course.status === Status.Approved || course.status === Status.Archived) && (
             <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
               course.isPublished ? 'bg-success/20 text-success' : 'bg-brand-accent/20 text-brand-accent'
@@ -1330,7 +1621,9 @@ function MobileCourseCard({
       </div>
 
       <div data-accordion-keep className="mt-3 flex flex-wrap items-center gap-1.5">
-        {statusStr === Status.Archived ? (
+        {generating ? (
+          <span className="text-xs text-muted-foreground" title={generating.label}>Probíhá generování…</span>
+        ) : statusStr === Status.Archived ? (
           <>
             {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
             {canPublish && (
@@ -1353,8 +1646,13 @@ function MobileCourseCard({
         ) : (
           <>
             {/* Edit - only in editable statuses */}
-            {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && (
+            {canEdit && statusStr !== Status.InReview && statusStr !== Status.Approved && statusStr !== Status.Failed && (
               <EditActionButton onClick={onToggleExpand} title="Zobrazit moduly" iconSize={14} />
+            )}
+            {canRetryGeneration && (
+              <Button onClick={onRetryGeneration} disabled={statusLoading} variant="plain" size="icon" className={cn(BTN_KEEP_BOX, "p-2 rounded-md bg-tip text-primary-foreground hover:bg-tip/80")} title="Spustit generování znovu">
+                <RefreshCw size={14} />
+              </Button>
             )}
             {canSubmitReview && (
               <ApproveActionButton onClick={onSubmitForReview} isApproved={false} isLoading={false} iconSize={14} />
@@ -1376,16 +1674,27 @@ function MobileCourseCard({
 
       {/* Expanded Module List - Mobile */}
       {isExpanded && (
-        <div data-accordion-panel className="mt-4 bg-muted/50 rounded-lg p-3">
+        <div data-accordion-panel className="mt-4 bg-muted/50 rounded-lg p-3 view-fade-in">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-foreground text-sm">Moduly</h4>
             <Button onClick={onCloseExpand} variant="plain" className={cn(BTN_KEEP_BOX, "p-0 text-muted-foreground hover:text-foreground")}>
               <X size={18} />
             </Button>
           </div>
+          {modulesLoading ? (
+            <ModuleListSkeleton rows={skeletonRowCount(course)} compact />
+          ) : modulesError ? (
+            <ModuleListError onRetry={onRetryModules} />
+          ) : modules.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">Kurz zatím nemá žádné moduly.</p>
+          ) : (
           <div className="space-y-2">
             {modules.map((module, index) => (
-              <div key={module.moduleId} className="bg-card rounded-md p-3">
+              <div
+                key={module.moduleId}
+                className="bg-card rounded-md p-3 row-fade-in"
+                style={{ animationDelay: `${index * 40}ms` }}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground truncate">{module.title}</p>
@@ -1403,6 +1712,7 @@ function MobileCourseCard({
               </div>
             ))}
           </div>
+          )}
           {/* Možnost "Přidat modul" dočasně skryta
           <Button
             onClick={onAddModule}

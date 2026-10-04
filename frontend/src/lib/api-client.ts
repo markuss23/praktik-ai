@@ -348,18 +348,19 @@ export async function getCourseGenerationProgress(courseId: number): Promise<Cou
   return res.json();
 }
 
-export async function getActiveCourseGeneration(): Promise<number | null> {
+/** ID kurzů, jejichž generování právě běží na serveru (pro obnovu sledování po refreshi). */
+export async function listActiveCourseGenerations(): Promise<number[]> {
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generation`), {
+  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generations`), {
     method: 'GET',
     headers,
   });
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  if (res.status === 401 || res.status === 403 || res.status === 404) return [];
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
-  return typeof data === 'number' ? data : null;
+  const data: unknown = await res.json();
+  return Array.isArray(data) ? data.filter((v): v is number => typeof v === 'number') : [];
 }
 
 //  Course Status & Published API functions 

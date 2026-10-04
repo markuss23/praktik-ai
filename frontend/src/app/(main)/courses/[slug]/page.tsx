@@ -8,7 +8,7 @@ import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api
 import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseCategories, CourseDetailSkeleton, Input } from "@/components/ui";
+import { CourseCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ export default function CoursePage() {
   const courseId = Number(slug);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useCurrentUser();
+  const toast = useToast();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -130,7 +131,7 @@ export default function CoursePage() {
       setTimeout(() => setJustEnrolled(false), 1500);
     } catch (err) {
       console.error('Failed to enroll:', err);
-      alert('Nepodařilo se zapsat do kurzu.');
+      toast.error(err, 'Nepodařilo se zapsat do kurzu.');
     } finally {
       setEnrollLoading(false);
     }
@@ -144,7 +145,7 @@ export default function CoursePage() {
       setEnrollment(null);
     } catch (err) {
       console.error('Failed to leave:', err);
-      alert('Nepodařilo se opustit kurz.');
+      toast.error(err, 'Nepodařilo se opustit kurz.');
     } finally {
       setEnrollLoading(false);
     }

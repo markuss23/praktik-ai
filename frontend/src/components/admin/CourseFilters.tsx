@@ -1,10 +1,12 @@
 'use client';
 
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, ArrowDownUp } from 'lucide-react';
 import { CourseBlock, CourseTarget, CourseSubject, Difficulty, Status } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
+import { COURSE_SORT_OPTIONS, type CourseSortOrder } from '@/lib/course-sort';
 import {
   Button,
+  Checkbox,
   Input,
   Select,
   SelectContent,
@@ -44,11 +46,14 @@ const STATUS_OPTIONS: { value: Status; label: string }[] = [
   { value: Status.InReview, label: 'Ke schválení' },
   { value: Status.Approved, label: 'Schváleno' },
   { value: Status.Archived, label: 'Archivováno' },
+  { value: Status.Failed, label: 'Selhalo' },
 ];
 
 interface CourseFiltersProps {
   value: CourseFilterState;
   onChange: (next: CourseFilterState) => void;
+  sortOrder: CourseSortOrder;
+  onSortChange: (next: CourseSortOrder) => void;
   blocks: CourseBlock[];
   targets: CourseTarget[];
   subjects: CourseSubject[];
@@ -67,6 +72,8 @@ const selectClass =
 export function CourseFilters({
   value,
   onChange,
+  sortOrder,
+  onSortChange,
   blocks,
   targets,
   subjects,
@@ -76,15 +83,19 @@ export function CourseFilters({
   const set = <K extends keyof CourseFilterState>(key: K, v: CourseFilterState[K]) =>
     onChange({ ...value, [key]: v });
 
-  const isFiltered =
-    value.onlyMine ||
-    value.difficulty !== '' ||
-    value.status !== '' ||
-    value.published !== 'all' ||
-    value.blockId !== 0 ||
-    value.targetId !== 0 ||
-    value.subjectId !== 0 ||
-    value.search.trim() !== '';
+  // Počet aktivních filtrů — ukazuje se vedle popisku „Filtry", ať je na první
+  // pohled vidět, že seznam není kompletní, i když je některý select mimo obraz.
+  const activeFilterCount = [
+    value.onlyMine,
+    value.difficulty !== '',
+    value.status !== '',
+    value.published !== 'all',
+    value.blockId !== 0,
+    value.targetId !== 0,
+    value.subjectId !== 0,
+    value.search.trim() !== '',
+  ].filter(Boolean).length;
+  const isFiltered = activeFilterCount > 0;
 
   const reset = () => onChange({ ...DEFAULT_COURSE_FILTERS });
 
@@ -116,15 +127,10 @@ export function CourseFilters({
   ];
 
   return (
-    <div className="px-3 sm:px-6 py-3 border-b bg-muted/50">
+    <div className="px-3 sm:px-6 py-3 border-b bg-muted/50 space-y-2.5">
+      {/* Řádek 1: hledání vlevo, řazení a počet vpravo — s tím se pracuje nejčastěji */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div className="h-9 flex items-center gap-1.5 text-muted-foreground text-sm font-medium mr-1">
-          <SlidersHorizontal size={16} />
-          <span className="hidden sm:inline">Filtry</span>
-        </div>
-
-        {/* Hledání podle názvu */}
-        <div className="relative w-full sm:w-56">
+        <div className="relative w-full sm:w-72">
           <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
@@ -135,13 +141,57 @@ export function CourseFilters({
           />
         </div>
 
-        {/* Pouze moje kurzy */}
+        {/* Řazení není filtr: „Zrušit filtry" ho nemění a drží se i po návratu
+            z editace (viz CoursesListView). */}
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <Select
+            items={COURSE_SORT_OPTIONS}
+            value={sortOrder}
+            onValueChange={(v) => onSortChange(v as CourseSortOrder)}
+          >
+            <SelectTrigger className={cn(selectClass, 'w-48 sm:w-48')} aria-label="Řazení kurzů">
+              {/* Ikona a hodnota v jednom spanu, jinak je `justify-between` roztáhne od sebe */}
+              <span className="flex items-center gap-1.5 min-w-0">
+                <ArrowDownUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <SelectValue />
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {COURSE_SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+            Zobrazeno {filteredCount} z {totalCount}
+          </span>
+        </div>
+      </div>
+
+      {/* Řádek 2: filtry. Na užší obrazovce se selecty zalomí, popisek i tlačítko
+          „Zrušit filtry" ale zůstávají na krajích. */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="h-9 flex items-center gap-1.5 text-muted-foreground text-sm font-medium">
+          <SlidersHorizontal size={16} />
+          <span className="hidden sm:inline">Filtry</span>
+          {activeFilterCount > 0 && (
+            <span
+              className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-tip/15 px-1.5 text-xs font-semibold text-tip tabular-nums"
+              aria-label={`Aktivní filtry: ${activeFilterCount}`}
+            >
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+
+        {/* Pouze moje kurzy — kitový Checkbox uvnitř labelu (button je labelable, klik na text přepíná) */}
         <label className="h-9 flex items-center gap-2 px-2.5 bg-card border border-border rounded-md text-sm text-foreground cursor-pointer select-none hover:bg-muted/50 whitespace-nowrap">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={value.onlyMine}
-            onChange={(e) => set('onlyMine', e.target.checked)}
-            className="accent-blue-600"
+            onCheckedChange={(checked) => set('onlyMine', checked === true)}
           />
           Pouze moje kurzy
         </label>
@@ -261,7 +311,7 @@ export function CourseFilters({
           onClick={reset}
           tabIndex={isFiltered ? 0 : -1}
           aria-hidden={!isFiltered}
-          className={cn(BTN_KEEP_BOX, `h-9 flex items-center gap-1 px-2.5 text-sm rounded-md transition-colors whitespace-nowrap ${
+          className={cn(BTN_KEEP_BOX, `ml-auto h-9 flex items-center gap-1 px-2.5 text-sm rounded-md transition-colors whitespace-nowrap ${
             isFiltered
               ? 'text-muted-foreground hover:text-foreground hover:bg-muted'
               : 'invisible pointer-events-none'
@@ -269,10 +319,6 @@ export function CourseFilters({
         >
           <X size={14} /> Zrušit filtry
         </Button>
-
-        <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-          Zobrazeno {filteredCount} z {totalCount}
-        </span>
       </div>
     </div>
   );

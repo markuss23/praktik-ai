@@ -149,31 +149,32 @@ async def get_course_generation_progress(
 
 
 @router.get(
-    "/active-course-generation",
-    operation_id="get_active_course_generation",
+    "/active-course-generations",
+    operation_id="list_active_course_generations",
     dependencies=[require_role("lector")],
 )
-async def get_active_course_generation(
+async def list_active_course_generations(
     db: SessionSqlSessionDependency, user: CurrentUser
-) -> int | None:
-    """Vrátí course_id právě běžící generace pro přihlášeného uživatele,
-    nebo ``null`` pokud žádná neběží.
+) -> list[int]:
+    """Vrátí course_id všech právě běžících generací, které přihlášený
+    uživatel smí vidět (prázdný seznam, pokud žádná neběží).
 
-    Slouží frontendu k obnovení UI po refreshi stránky uprostřed generování.
+    Slouží frontendu k obnovení sledování průběhu po refreshi stránky.
     Superadmin vidí i cizí běžící generace, ostatní jen svoje vlastní.
     """
     candidates = list_running_course_ids()
     if not candidates:
-        return None
+        return []
 
     is_super = user.role == "superadmin"
+    visible: list[int] = []
     for course_id in candidates:
         course = db.get(models.Course, course_id)
         if course is None:
             continue
         if is_super or course.owner_id == user.user_id:
-            return course_id
-    return None
+            visible.append(course_id)
+    return visible
 
 
 @router.post(

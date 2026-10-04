@@ -9,7 +9,8 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
 import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
-import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea } from '@/components/ui';
+import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea, useToast } from '@/components/ui';
+import { readApiErrorDetail } from '@/lib/api-error';
 
 const QUESTION_TYPE_OPTIONS = [
   { value: 'closed', label: 'Uzavřená' },
@@ -55,6 +56,7 @@ interface CourseTestsViewProps {
 // Editor testů/otázek pro moduly kurzu
 export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
+  const toast = useToast();
   const { isOwner } = useCurrentUser();
   const {
     loading,
@@ -385,7 +387,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       invalidateCourseCache(courseId);
     } catch (err) {
       console.error('Failed to save test content:', err);
-      alert('Nepodařilo se uložit obsah testu');
+      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah testu');
       throw err;
     }
   };

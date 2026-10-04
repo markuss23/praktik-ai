@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, ModuleCategoryFields, type CreationTab, type CourseStep } from '@/components/admin';
-import { Button, Drawer, DrawerContent, Modal, Input, Textarea } from '@/components/ui';
+import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -236,6 +236,7 @@ function ModuleItem({
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
   const { goToCourseTests, goToCourseSummary, goBack } = useAdminNavigation();
+  const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
   const { neuroPrinciples, krauuCompetences, bloomLevels, loading: catalogsLoading } = useCatalogData();
@@ -543,7 +544,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       return updatedModules;
     } catch (err) {
       console.error('Failed to save content:', err);
-      alert((await readApiErrorDetail(err)) ?? 'Nepodařilo se uložit obsah');
+      // Hláška z backendu (např. chybějící kategorie modulu) má přednost před obecným textem
+      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah');
       throw err;
     }
   };

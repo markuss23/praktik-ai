@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from 'lucide-react';
+import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
+import { createCourse, uploadCourseFile, generateCourseWithAI, type CourseGenerationProgress } from '@/lib/api-client';
 import { CoursePageHeader, CourseCategoryFields } from '@/components/admin';
+import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
 import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
 import { Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
@@ -13,8 +14,18 @@ import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
-// Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
-const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
+// Průběh zobrazený hned po spuštění, než backend vrátí první stav.
+const INITIAL_PROGRESS: CourseGenerationProgress = {
+  step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null,
+};
+
+const GENERATION_STEPS = [
+  { n: 1, label: 'Načítání kurzu z databáze' },
+  { n: 2, label: 'Načítání podkladů' },
+  { n: 3, label: 'Zpracování podkladů (AI)' },
+  { n: 4, label: 'Plánování modulů, číselníky a otázky (AI)' },
+  { n: 5, label: 'Ukládání kurzu' },
+];
 
 // Tvorba kurzu pomocí AI generování
 export function CourseAICreateView() {
@@ -24,10 +35,14 @@ export function CourseAICreateView() {
   const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<CourseGenerationProgress | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const activeCourseIdRef = useRef<number | null>(null);
-  const didResumeRef = useRef(false);
+  // Kurz založený v tomto formuláři. Jeho generování sleduje CourseGenerationProvider
+  // (polling přežije odchod ze stránky) — tady se jen čte průběh a reaguje na dokončení.
+  const [activeCourseId, setActiveCourseId] = useState<number | null>(null);
+  const generation = useCourseGeneration();
+  const progress = activeCourseId !== null ? generation.getProgress(activeCourseId) : null;
+  // Generace jiných kurzů běžící na pozadí (po refreshi nebo spuštěné z přehledu)
+  const backgroundGenerations = Array.from(generation.generations.values())
+    .filter((g) => g.courseId !== activeCourseId);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -66,133 +81,48 @@ export function CourseAICreateView() {
     crossSubjectIds: [],
   });
 
-  // Zastavení polling timeru při unmountu
+  // Dokončení generování kurzu z tohoto formuláře (událost vysílá provider):
+  // hotový kurz rovnou otevřeme v editoru, selhání ukážeme v modalu s „Zkusit znovu".
   useEffect(() => {
-    return () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
+    if (activeCourseId === null) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<CourseGenerationFinishedDetail>).detail;
+      if (detail.courseId !== activeCourseId) return;
+      if (detail.status === 'completed') {
+        goToCourseContent(activeCourseId);
+        return;
       }
+      setGenerationError(
+        detail.status === 'failed'
+          ? (detail.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.')
+          : 'Server o běžícím generování neví, nejspíš byl mezitím restartován. Spusťte generování znovu.',
+      );
+      setStep('form');
+      setLoading(false);
     };
-  }, []);
+    window.addEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+    return () => window.removeEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+  }, [activeCourseId, goToCourseContent]);
 
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  }, []);
-
-  const clearActiveGeneration = useCallback(() => {
-    activeCourseIdRef.current = null;
+  // Spuštění generování už založeného kurzu (první pokus i „Zkusit znovu").
+  // Backend task spustí na pozadí a hned se vrátí; průběh přebírá provider.
+  const startGeneration = async (courseId: number, title: string) => {
+    setGenerationError(null);
+    setStep('generating');
+    setLoading(true);
     try {
-      localStorage.removeItem(ACTIVE_GENERATION_KEY);
-    } catch {
-      // localStorage může být nedostupný (private mode) — ignorujeme
+      await generateCourseWithAI(courseId);
+    } catch (genErr: unknown) {
+      setGenerationError(
+        (await readApiErrorDetail(genErr))
+          ?? (genErr instanceof Error && genErr.message ? genErr.message : 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.'),
+      );
+      setStep('form');
+      setLoading(false);
+      return;
     }
-  }, []);
-
-  const rememberActiveGeneration = useCallback((courseId: number) => {
-    activeCourseIdRef.current = courseId;
-    try {
-      localStorage.setItem(ACTIVE_GENERATION_KEY, String(courseId));
-    } catch {
-      // localStorage může být nedostupný — bez persistencí jen ztratíme možnost resume po refreshi, ale generace na backendu beží dál
-    }
-  }, []);
-
-  const startProgressPolling = useCallback((courseId: number, initialProgress?: CourseGenerationProgress) => {
-    stopPolling();
-    rememberActiveGeneration(courseId);
-    setProgress(initialProgress ?? { step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null });
-    pollTimerRef.current = setInterval(async () => {
-      try {
-        const p = await getCourseGenerationProgress(courseId);
-        setProgress(prev => {
-          if (!prev) return p;
-          if (prev.status === 'running' && p.status === 'running' && p.step < prev.step) {
-            return prev;
-          }
-          return p;
-        });
-        if (p.status === 'completed') {
-          stopPolling();
-          clearActiveGeneration();
-          goToCourseContent(courseId);
-        } else if (p.status === 'failed') {
-          stopPolling();
-          clearActiveGeneration();
-          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
-          setProgress(null);
-          setStep('form');
-          setLoading(false);
-        }
-      } catch {
-        // Ignoruj jednotlivé chyby pollingu zkusí znovu příští tick
-      }
-    }, 1500);
-  }, [stopPolling, rememberActiveGeneration, clearActiveGeneration, goToCourseContent]);
-
-  // Resume po refreshi
-  useEffect(() => {
-    if (didResumeRef.current) return;
-    didResumeRef.current = true;
-    let cancelled = false;
-    async function resume() {
-      let savedId: number | null = null;
-      try {
-        const raw = localStorage.getItem(ACTIVE_GENERATION_KEY);
-        if (raw) {
-          const parsed = Number(raw);
-          if (Number.isFinite(parsed) && parsed > 0) savedId = parsed;
-        }
-      } catch {
-        // ignore
-      }
-
-      // Backend lookup je primárním zdrojem pravdy o tom, co aktuálně běží.
-      // localStorage používáme jen jako fallback (offline backend) a k zachycení
-      // situace, kdy generace stihla doběhnout dříve, než se uživatel vrátil.
-      let backendActive: number | null = null;
-      let backendOk = true;
-      try {
-        backendActive = await getActiveCourseGeneration();
-      } catch {
-        backendOk = false;
-      }
-
-      const activeId = backendActive ?? (backendOk ? savedId : savedId);
-      if (cancelled || activeId === null) return;
-
-      try {
-        const p = await getCourseGenerationProgress(activeId);
-        if (cancelled) return;
-        if (p.status === 'completed') {
-          clearActiveGeneration();
-          goToCourseContent(activeId);
-          return;
-        }
-        if (p.status === 'failed') {
-          clearActiveGeneration();
-          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
-          return;
-        }
-        if (backendActive === null && backendOk && p.status === 'pending') {
-          // Backend potvrdil, že nic neběží, a o uloženém kurzu nic neví 
-          clearActiveGeneration();
-          return;
-        }
-        setStep('generating');
-        setLoading(true);
-        startProgressPolling(activeId, p);
-      } catch {
-        // Pokud kurz neexistuje nebo na něj nemáme práva
-        clearActiveGeneration();
-      }
-    }
-    resume();
-    return () => { cancelled = true; };
-  }, [startProgressPolling, clearActiveGeneration, goToCourseContent]);
+    generation.track(courseId, title);
+  };
 
   // Po načtení katalogů předvyplníme povinné selecty první položkou (blok a obor
   // jsou volitelné, zůstávají „Neurčeno“).
@@ -335,36 +265,11 @@ export function CourseAICreateView() {
         await uploadCourseFile(course.courseId, file);
       }
 
-      // Generování kurzu pomocí AI — backend ho spustí na pozadí a vrátí se ihned;
-      // polling progresu se postará o navigaci po dokončení i o chybové stavy.
-      setStep('generating');
-      startProgressPolling(course.courseId);
-      try {
-        await generateCourseWithAI(course.courseId);
-      } catch (genErr: unknown) {
-        stopPolling();
-        clearActiveGeneration();
-        let message = 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.';
-        if (genErr && typeof genErr === 'object' && 'response' in genErr) {
-          const response = (genErr as { response: Response }).response;
-          try {
-            const data = await response.json();
-            message = data.detail || `Chyba serveru: ${response.status}`;
-          } catch {
-            message = `Chyba serveru: ${response.status}`;
-          }
-        } else if (genErr instanceof Error && genErr.message) {
-          message = genErr.message;
-        }
-        setGenerationError(message);
-        setProgress(null);
-        setStep('form');
-        setLoading(false);
-      }
+      // Generování kurzu pomocí AI — kurz i podklady už jsou uložené, takže
+      // případné selhání jde zopakovat bez nového vyplňování formuláře.
+      setActiveCourseId(course.courseId);
+      await startGeneration(course.courseId, formData.title.trim());
     } catch (err: unknown) {
-      stopPolling();
-      clearActiveGeneration();
-      setProgress(null);
       if (err instanceof Error) {
         setError(err.message);
       } else if (err && typeof err === 'object' && 'response' in err) {
@@ -417,6 +322,24 @@ export function CourseAICreateView() {
           </div>
         )}
 
+        {step !== 'generating' && backgroundGenerations.length > 0 && (
+          <div className="mb-4 p-3 sm:p-4 bg-tip/10 border border-tip/30 rounded-md text-sm flex flex-col sm:flex-row sm:items-center gap-3">
+            <Loader2 className="size-4 animate-spin text-tip shrink-0" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground break-words">
+                Na pozadí běží generování: {backgroundGenerations.map((g) => (g.title ? `„${g.title}"` : `kurz #${g.courseId}`)).join(', ')}
+              </p>
+              <p className="text-muted-foreground">Můžete pokračovat v práci, průběh uvidíte v přehledu kurzů.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={goToCourses} className="shrink-0">
+              Přehled kurzů
+            </Button>
+          </div>
+        )}
+
+        {step === 'generating' ? (
+          <GenerationProgressCard progress={progress ?? INITIAL_PROGRESS} onGoToCourses={goToCourses} />
+        ) : (
         <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Název kurzu */}
@@ -723,6 +646,7 @@ export function CourseAICreateView() {
             </div>
           </form>
         </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -751,91 +675,6 @@ export function CourseAICreateView() {
           </motion.div>
         )}
 
-        {step === 'generating' && progress && progress.status !== 'failed' && (
-          <motion.div
-            key="progress-generate"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/40" />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Průběh generování kurzu"
-            >
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-foreground">AI generuje váš kurz</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Toto může trvat několik minut. Prosím neopouštějte stránku.
-                </p>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Loader2 size={12} className="animate-spin text-gradient-r" />
-                    {progress.label}
-                  </span>
-                  <span className="tabular-nums">
-                    {Math.min(progress.step, progress.total)} / {progress.total}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-gradient-r to-primary rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${Math.round((Math.min(progress.step, progress.total) / progress.total) * 100)}%`,
-                    }}
-                    transition={{ duration: 0.4, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-
-              {/* Steps list */}
-              <ul className="space-y-2 text-sm">
-                {[
-                  { n: 1, label: 'Načítání kurzu z databáze' },
-                  { n: 2, label: 'Načítání podkladů' },
-                  { n: 3, label: 'Zpracování podkladů (AI)' },
-                  { n: 4, label: 'Plánování modulů (AI)' },
-                  { n: 5, label: 'Ukládání kurzu' },
-                ].map(({ n, label }) => {
-                  const done = progress.step > n || progress.status === 'completed';
-                  const active = progress.step === n && progress.status === 'running';
-                  return (
-                    <li
-                      key={n}
-                      className={`flex items-center gap-2 ${
-                        done ? 'text-muted-foreground' : active ? 'text-foreground font-medium' : 'text-muted-foreground'
-                      }`}
-                    >
-                      <span className="size-5 flex items-center justify-center shrink-0">
-                        {done ? (
-                          <Check size={14} className="text-success" />
-                        ) : active ? (
-                          <Loader2 size={14} className="animate-spin text-gradient-r" />
-                        ) : (
-                          <span className="size-1.5 bg-muted rounded-full" />
-                        )}
-                      </span>
-                      <span>{label}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </motion.div>
-          </motion.div>
-        )}
-
       </AnimatePresence>
 
       {/* Chyba generování — kitový Modal */}
@@ -848,22 +687,38 @@ export function CourseAICreateView() {
         title="Generování kurzu selhalo"
         maxWidth="max-w-md"
         footer={
-          <Button
-            size="lg"
-            onClick={() => {
-              setGenerationError(null);
-              goToCourses();
-            }}
-          >
-            Přejít na kurzy
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setGenerationError(null);
+                goToCourses();
+              }}
+            >
+              Přejít na kurzy
+            </Button>
+            {activeCourseId !== null && (
+              <Button size="lg" onClick={() => void startGeneration(activeCourseId, formData.title.trim())}>
+                <RefreshCw data-icon="inline-start" />
+                Zkusit znovu
+              </Button>
+            )}
+          </div>
         }
       >
         <div className="flex items-start gap-3">
           <div className="shrink-0 rounded-lg bg-destructive/20 p-2">
             <AlertTriangle className="size-5 text-destructive" />
           </div>
-          <p className="text-sm break-words text-muted-foreground">{generationError}</p>
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm break-words text-muted-foreground">{generationError}</p>
+            {activeCourseId !== null && (
+              <p className="text-sm text-muted-foreground">
+                Kurz s nahranými podklady zůstal uložený, generování můžete spustit znovu i později z přehledu kurzů.
+              </p>
+            )}
+          </div>
         </div>
       </Modal>
     </div>
@@ -871,3 +726,74 @@ export function CourseAICreateView() {
 }
 
 export default CourseAICreateView;
+
+// Průběh generování místo formuláře. Nic neblokuje: generování běží na serveru
+// a provider ho sleduje, i když uživatel odejde (dokončení ohlásí toast).
+function GenerationProgressCard({
+  progress,
+  onGoToCourses,
+}: {
+  progress: CourseGenerationProgress;
+  onGoToCourses: () => void;
+}) {
+  const step = Math.min(progress.step, progress.total);
+  return (
+    <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8 max-w-2xl view-fade-in" role="status" aria-live="polite">
+      <div className="mb-4">
+        <h3 className="text-lg font-bold text-foreground">AI generuje váš kurz</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Můžete stránku opustit, generování běží na serveru. Průběh uvidíte i v přehledu kurzů
+          a po dokončení vás upozorníme.
+        </p>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Loader2 size={12} className="animate-spin text-gradient-r" />
+            {progress.label}
+          </span>
+          <span className="tabular-nums">{step} / {progress.total}</span>
+        </div>
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-gradient-r to-primary rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.round((step / progress.total) * 100)}%` }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          />
+        </div>
+      </div>
+
+      <ul className="space-y-2 text-sm">
+        {GENERATION_STEPS.map(({ n, label }) => {
+          const done = progress.step > n || progress.status === 'completed';
+          const active = progress.step === n && progress.status === 'running';
+          return (
+            <li
+              key={n}
+              className={`flex items-center gap-2 ${active ? 'text-foreground font-medium' : 'text-muted-foreground'}`}
+            >
+              <span className="size-5 flex items-center justify-center shrink-0">
+                {done ? (
+                  <Check size={14} className="text-success" />
+                ) : active ? (
+                  <Loader2 size={14} className="animate-spin text-gradient-r" />
+                ) : (
+                  <span className="size-1.5 bg-muted rounded-full" />
+                )}
+              </span>
+              <span>{label}</span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button variant="outline" onClick={onGoToCourses}>
+          Přejít na přehled kurzů
+        </Button>
+      </div>
+    </div>
+  );
+}

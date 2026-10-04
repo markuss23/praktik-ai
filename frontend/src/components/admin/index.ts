@@ -14,6 +14,13 @@ export { CourseRubric } from './CourseRubric';
 export { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from './CourseFilters';
 export { CourseCategoryFields } from './CourseCategoryFields';
 export { ModuleCategoryFields } from './ModuleCategoryFields';
+export {
+  CourseGenerationProvider,
+  useCourseGeneration,
+  COURSE_GENERATION_FINISHED_EVENT,
+  type CourseGenerationFinishedDetail,
+  type TrackedGeneration,
+} from './CourseGenerationProvider';
 
 // Views - exported separately for lazy loading
 export * from './views';

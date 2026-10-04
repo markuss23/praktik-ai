@@ -16,12 +16,19 @@ import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export type ToastVariant = 'info' | 'success' | 'error' | 'warning';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: number;
   variant: ToastVariant;
   title?: string;
   message: string;
   durationMs: number;
+  /** Volitelná akce pod textem (např. „Otevřít editor"); po kliknutí se toast zavře. */
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -154,6 +161,19 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       <div className="min-w-0 flex-1">
         {toast.title && <p className="text-sm font-semibold mb-0.5">{toast.title}</p>}
         <p className="text-sm leading-snug break-words">{toast.message}</p>
+        {toast.action && (
+          <Button
+            variant="plain"
+            type="button"
+            onClick={() => {
+              toast.action?.onClick();
+              onDismiss(toast.id);
+            }}
+            className={cn(BTN_KEEP_BOX, "mt-1.5 text-sm font-semibold underline-offset-2 hover:underline")}
+          >
+            {toast.action.label}
+          </Button>
+        )}
       </div>
       <Button
         variant="plain"

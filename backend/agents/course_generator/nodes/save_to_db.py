@@ -92,9 +92,20 @@ def save_to_db_node(state: AgentState) -> AgentState:
             ).all()
         )
         if not krauu_ids:
+            # Backend u modulu vyžaduje aspoň jednu kompetenci (jinak každá
+            # úprava končí 422) — převezmeme kompetence kurzu, stejně jako to
+            # dělá frontend u ručně založeného modulu.
+            krauu_ids = set(
+                db.scalars(
+                    select(models.CourseKrauuCompetence.krauu_id).where(
+                        models.CourseKrauuCompetence.course_id == course_id,
+                        models.CourseKrauuCompetence.is_active.is_(True),
+                    )
+                ).all()
+            )
             print(
                 f"   -> WARN: Modul '{module.title}' nemá platné KRAUU kompetence "
-                f"({enrichment.krauu_competence_codes}), nic nenapojeno"
+                f"({enrichment.krauu_competence_codes}), použity kompetence kurzu"
             )
         for krauu_id in krauu_ids:
             db.add(
@@ -113,9 +124,18 @@ def save_to_db_node(state: AgentState) -> AgentState:
             ).all()
         )
         if not bloom_ids:
+            # Stejný fallback jako u KRAUU — Bloomovy úrovně kurzu.
+            bloom_ids = set(
+                db.scalars(
+                    select(models.CourseBloomLevel.bloom_id).where(
+                        models.CourseBloomLevel.course_id == course_id,
+                        models.CourseBloomLevel.is_active.is_(True),
+                    )
+                ).all()
+            )
             print(
                 f"   -> WARN: Modul '{module.title}' nemá platné Bloomovy úrovně "
-                f"({enrichment.bloom_level_codes}), nic nenapojeno"
+                f"({enrichment.bloom_level_codes}), použity úrovně kurzu"
             )
         for bloom_id in bloom_ids:
             db.add(
