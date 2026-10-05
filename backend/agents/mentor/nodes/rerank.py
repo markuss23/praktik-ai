@@ -4,16 +4,6 @@ from langchain_core.messages.ai import AIMessage
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState, ChunkData
 
-DEFAULT_MODEL = "gpt-4o-mini"
-
-DEFAULT_PROMPT = (
-    "Máš seznam dokumentů a otázku uživatele.\n"
-    "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
-    "Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího "
-    "(např: 3, 7, 1, 5).\n"
-    "Odpověz pouze čísly oddělenými čárkami, nic dalšího."
-)
-
 
 def rerank_documents(state: AgentState) -> dict:
     """LLM reranking dokumentů podle relevance k otázce."""
@@ -27,12 +17,7 @@ def rerank_documents(state: AgentState) -> dict:
         print("Málo dokumentů, přeskakuji reranking")
         return {}  # Necháme původní pořadí
 
-    cfg = get_llm_config(
-        db,
-        "mentor_reranker",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
+    cfg = get_llm_config(db, "mentor_reranker")
     llm = create_chat_llm(cfg.model, temperature=0)
 
     # Vytvoř prompt s dokumenty

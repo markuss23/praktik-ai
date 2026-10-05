@@ -358,7 +358,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "assessment_generator",
         "name": "Generátor otázek",
-        "model": "gpt-5.2",
+        "model": "claude-opus-5",
         "prompt": (
             "Jsi odborný lektor. Na základě níže uvedeného výukového textu "
             "vytvoř jednu otevřenou kontrolní otázku.\n\n"
@@ -374,7 +374,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "assessment_evaluator",
         "name": "Evaluátor odpovědí",
-        "model": "claude-sonnet-4-6",
+        "model": "claude-opus-5",
         "prompt": (
             "Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.\n\n"
             "K dispozici máš:\n"
@@ -403,7 +403,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "mentor_reranker",
         "name": "Mentor – reranker",
-        "model": "gpt-4o-mini",
+        "model": "claude-opus-5",
         "prompt": (
             "Máš seznam dokumentů a otázku uživatele.\n"
             "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
@@ -416,7 +416,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "mentor_answer",
         "name": "Mentor – odpověď",
-        "model": "gpt-5-mini",
+        "model": "claude-opus-5",
         "prompt": (
             "Jsi AI asistent pro výuku - mentor studenta.\n"
             "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
@@ -430,6 +430,65 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
             "- odpověd maximálně 500 znaků"
         ),
         "description": "LLM pro generování odpovědí AI mentora na otázky studentů.",
+    },
+    {
+        "key": "practice_generator_open",
+        "name": "Procvičování – otevřená otázka",
+        "model": "claude-opus-5",
+        "prompt": (
+            "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
+            "vytvoř jednu otevřenou procvičovací otázku v češtině.\n\n"
+            "Pravidla:\n"
+            "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
+            "- Otázka má prověřit porozumění, nikoli pouhou reprodukci\n"
+            "- Odpověz POUZE samotnou otázkou, bez dalšího textu"
+        ),
+        "description": "LLM pro generování otevřených procvičovacích otázek z výukového obsahu.",
+    },
+    {
+        "key": "practice_generator_closed",
+        "name": "Procvičování – uzavřená otázka",
+        "model": "claude-opus-5",
+        "prompt": (
+            "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
+            "vytvoř jednu uzavřenou procvičovací otázku se 4 možnostmi (A–D) v češtině.\n\n"
+            "Pravidla:\n"
+            "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
+            "- Právě jedna možnost musí být správná\n"
+            "- Ostatní tři možnosti musí být věrohodné, ale nesprávné\n\n"
+            "Odpověz PŘESNĚ v tomto formátu (nic jiného):\n"
+            "QUESTION: <otázka>\n"
+            "A: <možnost>\n"
+            "B: <možnost>\n"
+            "C: <možnost>\n"
+            "D: <možnost>\n"
+            "CORRECT: <písmeno A, B, C nebo D>"
+        ),
+        "description": "LLM pro generování uzavřených procvičovacích otázek z výukového obsahu.",
+    },
+    {
+        "key": "practice_answer_evaluator",
+        "name": "Procvičování – evaluátor odpovědí",
+        "model": "claude-opus-5",
+        "prompt": (
+            "Jsi laskavý, ale důsledný lektor. Vyhodnoť odpověď studenta na otevřenou procvičovací otázku.\n\n"
+            "K dispozici máš:\n"
+            "1. Výukový text (zdroj správných informací)\n"
+            "2. Procvičovací otázku\n"
+            "3. Odpověď studenta\n\n"
+            "Pravidla hodnocení:\n"
+            "- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu\n"
+            "- Odpověď je správná, pokud zachycuje podstatu — nevyžaduj doslovnou shodu\n"
+            "- Zcela nesouvisející nebo prázdná odpověď = nesprávná\n\n"
+            "Pravidla pro zpětnou vazbu:\n"
+            "- Zpětná vazba má být motivující a konstruktivní\n"
+            "- Při správné odpovědi pochval a případně doplň zajímavost\n"
+            "- Při nesprávné naznač, kde má student mezeru, ale NEPROZRAZUJ správnou odpověď\n\n"
+            "Odpověz PŘESNĚ v tomto formátu (2 řádky, nic jiného):\n"
+            "CORRECT: <true nebo false>\n"
+            "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině>"
+        ),
+        "description": "LLM pro vyhodnocení otevřených odpovědí studentů na procvičovací otázky.",
     },
 ]
 
