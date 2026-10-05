@@ -21,7 +21,7 @@ import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Inp
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
 import {
-  courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
+  courseToUpdate, crossSubjectsRule, subjectAllowed, moduleCategoryValues, moduleToUpdate,
   validateCourseCategories, validateModuleCategories,
 } from "@/lib/course-categories";
 import { readApiErrorDetail } from "@/lib/api-error";
@@ -863,19 +863,19 @@ export function CoursesListView() {
       return;
     }
 
-    // Změna bloku mění pravidlo pro průřezové obory (A/B povinné, C zakázané).
+    // Změna bloku mění pravidlo pro průřezové obory (A/B povinné, jinak volitelné).
     const rule = crossSubjectsRule(blocks, quickEditData.courseBlockId || null);
     const update = courseToUpdate(existingCourse, {
       title,
       description: description || null,
       // 0 = „Neurčeno" — blok i obor jsou volitelné.
       courseBlockId: quickEditData.courseBlockId || null,
-      courseTargetId: quickEditData.courseTargetId,
-      courseSubjectId: quickEditData.courseSubjectId || null,
+      courseTargetId: quickEditData.courseTargetId || null,
+      courseSubjectId: subjectAllowed(blocks, quickEditData.courseBlockId) ? quickEditData.courseSubjectId || null : null,
       durationMinutes,
       difficulty: quickEditData.difficulty,
     });
-    update.crossSubjectIds = crossSubjectIdsFor(rule, update.crossSubjectIds ?? []);
+    update.crossSubjectIds = update.crossSubjectIds ?? [];
     const categoryError = validateCourseCategories(
       { krauuCompetenceIds: update.krauuCompetenceIds, bloomLevelIds: update.bloomLevelIds, crossSubjectIds: update.crossSubjectIds },
       rule,
@@ -1179,12 +1179,14 @@ export function CoursesListView() {
                                   value={quickEditData.courseTargetId}
                                   onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseTargetId: next }))}
                                   options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                                  emptyLabel="Bez skupiny"
                                   aria-label="Cílová skupina"
                                   className={QUICK_EDIT_SELECT_CLASS}
                                 />
                                 <CatalogSelect
-                                  value={quickEditData.courseSubjectId}
+                                  value={subjectAllowed(blocks, quickEditData.courseBlockId) ? quickEditData.courseSubjectId : 0}
                                   onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseSubjectId: next }))}
+                                  disabled={!subjectAllowed(blocks, quickEditData.courseBlockId)}
                                   options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                                   emptyLabel="Bez oboru"
                                   aria-label="Předmět"

@@ -12,6 +12,7 @@ from agents.base.loaders.base import MAX_FILE_SIZE, SUPPORTED_EXTENSIONS
 from api import models
 from api.src.catalogs.controllers import (
     resolve_cross_subject_ids,
+    validate_subject_for_block,
     sync_bloom_levels,
     sync_cross_subjects,
     sync_krauu_competences,
@@ -43,7 +44,7 @@ def create_course(
             status_code=400, detail="Tematický blok s tímto ID neexistuje"
         )
 
-    if (
+    if course_data.course_target_id is not None and (
         db.execute(
             select(models.CourseTarget).where(
                 models.CourseTarget.target_id == course_data.course_target_id,
@@ -131,6 +132,9 @@ def create_course(
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
     validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    validate_subject_for_block(
+        db, course_data.course_block_id, course_data.course_subject_id
+    )
     cross_subject_ids = resolve_cross_subject_ids(
         db, course_data.course_block_id, course_data.cross_subject_ids
     )

@@ -23,7 +23,7 @@ class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     course_block_id: int | None = None
-    course_target_id: int
+    course_target_id: int | None = None
     course_subject_id: int | None = None
     course_requirement_id: int | None = None
     course_eqf_level_id: int
@@ -57,7 +57,7 @@ KRAUU_IDS_FIELD = Field(
 
 CROSS_SUBJECT_IDS_FIELD = Field(
     default=[],
-    description="ID průřezových oborů (povinné pro Bloky A a B, u Bloku C se nezadává)",
+    description="ID průřezových oborů (1–3; povinné pro Bloky A a B, jinak volitelné)",
 )
 
 
@@ -104,7 +104,7 @@ class CourseCreated(ORMModel):
     is_published: bool
     status: Status
     course_block: CourseBlock | None = None
-    course_target: CourseTarget
+    course_target: CourseTarget | None = None
     course_subject: CourseSubject | None = None
     course_requirement: CourseRequirement | None = None
     course_eqf_level: CourseEqfLevel

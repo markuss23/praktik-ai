@@ -13,7 +13,7 @@ import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useCatalogData } from '@/hooks/useCatalogData';
-import { crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
+import { crossSubjectsRule, subjectAllowed, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
 // Průběh zobrazený hned po spuštění, než backend vrátí první stav.
 const INITIAL_PROGRESS: CourseGenerationProgress = {
@@ -125,11 +125,10 @@ export function CourseAICreateView() {
     catalogDefaultsRef.current = true;
     setFormData(prev => ({
       ...prev,
-      courseTargetId: prev.courseTargetId || (targets[0]?.targetId ?? 0),
       courseEqfLevelId: prev.courseEqfLevelId || (eqfLevels[0]?.eqfLevelId ?? 0),
       courseTypeId: prev.courseTypeId || (types[0]?.typeId ?? 0),
     }));
-  }, [catalogsLoading, targets, eqfLevels, types]);
+  }, [catalogsLoading, eqfLevels, types]);
 
   useEffect(() => {
     if (catalogsError) setError('Nepodařilo se načíst katalogy');
@@ -224,7 +223,7 @@ export function CourseAICreateView() {
     try {
       setStep('uploading');
       
-      if (formData.courseTargetId === 0 || formData.courseEqfLevelId === 0 || formData.courseTypeId === 0) {
+      if (formData.courseEqfLevelId === 0 || formData.courseTypeId === 0) {
         throw new Error('Prosím vyplňte všechny katalogové údaje');
       }
 
@@ -237,15 +236,15 @@ export function CourseAICreateView() {
           durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : formData.moduleCount * 20,
           // 0 = „Neurčeno“ — blok, obor a povinnost jsou na backendu volitelné.
           courseBlockId: formData.courseBlockId || null,
-          courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId || null,
+          courseTargetId: formData.courseTargetId || null,
+          courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
           courseRequirementId: formData.courseRequirementId || undefined,
           courseEqfLevelId: formData.courseEqfLevelId,
           courseTypeId: formData.courseTypeId,
           difficulty: formData.difficulty,
           krauuCompetenceIds: formData.krauuCompetenceIds,
           bloomLevelIds: formData.bloomLevelIds,
-          crossSubjectIds: crossSubjectIdsFor(crossRule, formData.crossSubjectIds),
+          crossSubjectIds: formData.crossSubjectIds,
         });
       } catch (createErr: unknown) {
         const detail = await readApiErrorDetail(createErr);
@@ -378,7 +377,7 @@ export function CourseAICreateView() {
                     value={formData.courseTargetId}
                     onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
                     options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
-                    emptyLabel="Vyberte skupinu..."
+                    emptyLabel="Neurčeno"
                     aria-label="Cílová skupina"
                     className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
                   />
@@ -388,8 +387,9 @@ export function CourseAICreateView() {
                     Obor
                   </label>
                   <CatalogSelect
-                    value={formData.courseSubjectId}
+                    value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
                     onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    disabled={!subjectAllowed(blocks, formData.courseBlockId)}
                     options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                     emptyLabel="Neurčeno"
                     aria-label="Obor"
@@ -398,26 +398,24 @@ export function CourseAICreateView() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    EQF úroveň
+                    EQF úroveň *
                   </label>
                   <CatalogSelect
                     value={formData.courseEqfLevelId}
                     onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
                     options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
-                    emptyLabel="Vyberte úroveň..."
                     aria-label="EQF úroveň"
                     className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">
-                    Typ kurzu
+                    Typ kurzu *
                   </label>
                   <CatalogSelect
                     value={formData.courseTypeId}
                     onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
                     options={types.map((t) => ({ value: t.typeId, label: t.name }))}
-                    emptyLabel="Vyberte typ..."
                     aria-label="Typ kurzu"
                     className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
                   />

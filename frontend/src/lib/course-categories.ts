@@ -8,24 +8,29 @@ import type {
   NeuroPrinciple,
 } from '@/api';
 
-// Stejné kódy jako backend (catalogs/controllers.py → resolve_cross_subject_ids):
-// Blok A/B průřezový obor vyžaduje, Blok C ho zakazuje, bez bloku je volitelný.
-const BLOCK_WITHOUT_CROSS_SUBJECTS = 'blok.c';
+// Stejné kódy jako backend (catalogs/controllers.py):
+// Blok A/B průřezový obor vyžaduje, jinak je volitelný (nejvýše 3); obor jen u Bloku C.
+const BLOCK_WITH_SUBJECT = 'blok.c';
 const BLOCKS_REQUIRING_CROSS_SUBJECTS = ['blok.a', 'blok.b'];
+const MAX_CROSS_SUBJECTS = 3;
 
 /** Výchozí neurovědní princip — stejný, jaký backend dosazuje modulům bez principu. */
 export const DEFAULT_NEURO_PRINCIPLE_CODE = 'NP-01';
 
-export type CrossSubjectsRule = 'required' | 'forbidden' | 'optional';
+export type CrossSubjectsRule = 'required' | 'optional';
 
 export function crossSubjectsRule(
   blocks: CourseBlock[],
   blockId: number | null | undefined,
 ): CrossSubjectsRule {
   const code = blocks.find((b) => b.blockId === blockId)?.code;
-  if (code === BLOCK_WITHOUT_CROSS_SUBJECTS) return 'forbidden';
   if (code && BLOCKS_REQUIRING_CROSS_SUBJECTS.includes(code)) return 'required';
   return 'optional';
+}
+
+/** Obor (školní předmět) se volí pouze u Bloku C. */
+export function subjectAllowed(blocks: CourseBlock[], blockId: number | null | undefined): boolean {
+  return blocks.find((b) => b.blockId === blockId)?.code === BLOCK_WITH_SUBJECT;
 }
 
 /** Popisek položky číselníku ve formuláři: „kód – název". */
@@ -73,12 +78,10 @@ export function validateCourseCategories(
   if (rule === 'required' && values.crossSubjectIds.length === 0) {
     return 'Pro kurzy Bloků A a B vyberte alespoň jeden průřezový obor.';
   }
+  if (values.crossSubjectIds.length > MAX_CROSS_SUBJECTS) {
+    return `Vyberte nejvýše ${MAX_CROSS_SUBJECTS} průřezové obory.`;
+  }
   return null;
-}
-
-/** U Bloku C backend průřezové obory odmítne — ve formuláři je držíme, ale neposíláme. */
-export function crossSubjectIdsFor(rule: CrossSubjectsRule, ids: number[]): number[] {
-  return rule === 'forbidden' ? [] : ids;
 }
 
 /**
@@ -92,7 +95,7 @@ export function courseToUpdate(course: Course, overrides: Partial<CourseUpdate> 
     title: course.title,
     description: course.description,
     courseBlockId: course.courseBlockId ?? null,
-    courseTargetId: course.courseTargetId,
+    courseTargetId: course.courseTargetId ?? null,
     courseSubjectId: course.courseSubjectId ?? null,
     courseRequirementId: course.courseRequirementId ?? null,
     courseEqfLevelId: course.courseEqfLevelId,

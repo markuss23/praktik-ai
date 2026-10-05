@@ -8,7 +8,7 @@ import { useCatalogData } from '@/hooks/useCatalogData';
 import { Button, CatalogSelect, Input, Textarea } from '@/components/ui';
 import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
-import { crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories } from '@/lib/course-categories';
+import { crossSubjectsRule, subjectAllowed, validateCourseCategories } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
 // Nahrání souboru pro vytvoření kurzu
 export function CourseUploadView() {
@@ -45,11 +45,10 @@ export function CourseUploadView() {
     catalogDefaultsRef.current = true;
     setFormData(prev => ({
       ...prev,
-      courseTargetId: prev.courseTargetId || (targets[0]?.targetId ?? 0),
       courseEqfLevelId: prev.courseEqfLevelId || (eqfLevels[0]?.eqfLevelId ?? 0),
       courseTypeId: prev.courseTypeId || (types[0]?.typeId ?? 0),
     }));
-  }, [catalogsLoading, targets, eqfLevels, types]);
+  }, [catalogsLoading, eqfLevels, types]);
 
   const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
@@ -109,14 +108,14 @@ export function CourseUploadView() {
         title: formData.title,
         description: formData.description || undefined,
         courseBlockId: formData.courseBlockId || null,
-        courseTargetId: formData.courseTargetId,
-        courseSubjectId: formData.courseSubjectId || null,
+        courseTargetId: formData.courseTargetId || null,
+        courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
         courseRequirementId: formData.courseRequirementId || undefined,
         courseEqfLevelId: formData.courseEqfLevelId,
         courseTypeId: formData.courseTypeId,
         krauuCompetenceIds: formData.krauuCompetenceIds,
         bloomLevelIds: formData.bloomLevelIds,
-        crossSubjectIds: crossSubjectIdsFor(crossRule, formData.crossSubjectIds),
+        crossSubjectIds: formData.crossSubjectIds,
       });
       
       await uploadCourseFile(course.courseId, file);
@@ -230,6 +229,7 @@ export function CourseUploadView() {
                     value={formData.courseTargetId}
                     onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
                     options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                    emptyLabel="Neurčeno"
                     aria-label="Cílová skupina"
                     className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
                   />
@@ -237,8 +237,9 @@ export function CourseUploadView() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Obor</label>
                   <CatalogSelect
-                    value={formData.courseSubjectId}
+                    value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
                     onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    disabled={!subjectAllowed(blocks, formData.courseBlockId)}
                     options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                     emptyLabel="Neurčeno"
                     aria-label="Obor"
@@ -246,7 +247,7 @@ export function CourseUploadView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň *</label>
                   <CatalogSelect
                     value={formData.courseEqfLevelId}
                     onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
@@ -256,7 +257,7 @@ export function CourseUploadView() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu *</label>
                   <CatalogSelect
                     value={formData.courseTypeId}
                     onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}

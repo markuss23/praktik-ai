@@ -128,7 +128,7 @@ export async function createCourse(data: {
   modulesCountAiGenerated?: number;
   durationMinutes?: number;
   courseBlockId?: number | null;
-  courseTargetId: number;
+  courseTargetId?: number | null;
   courseSubjectId?: number | null;
   courseRequirementId?: number | null;
   courseEqfLevelId: number;

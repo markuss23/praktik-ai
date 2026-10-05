@@ -119,8 +119,25 @@ def sync_krauu_competences(
     sync_m2m_links(db, link_model, owner_column, owner_id, "krauu_id", krauu_ids)
 
 
-BLOCK_WITHOUT_CROSS_SUBJECTS = "blok.c"
+BLOCK_WITH_SUBJECT = "blok.c"
 BLOCKS_REQUIRING_CROSS_SUBJECTS = ("blok.a", "blok.b")
+MAX_CROSS_SUBJECTS = 3
+
+
+def validate_subject_for_block(
+    db: Session, course_block_id: int | None, subject_id: int | None
+) -> None:
+    """Obor (školní předmět) se volí pouze u Bloku C."""
+    if subject_id is None:
+        return
+    block_code = db.scalar(
+        select(CourseBlock.code).where(CourseBlock.block_id == course_block_id)
+    )
+    if block_code != BLOCK_WITH_SUBJECT:
+        raise HTTPException(
+            status_code=400,
+            detail="Obor se zadává pouze u kurzů Bloku C",
+        )
 
 
 def get_cross_subjects(db: Session) -> list[CrossSubject]:
@@ -135,17 +152,15 @@ def get_cross_subjects(db: Session) -> list[CrossSubject]:
 def resolve_cross_subject_ids(
     db: Session, course_block_id: int | None, cross_ids: list[int]
 ) -> list[int]:
-    """Blok A/B: průřezový obor je povinný. Blok C: nesmí se zadat."""
+    """Blok A/B: průřezový obor je povinný. Jinak volitelný. Nejvýše 3."""
+    if len(cross_ids) > MAX_CROSS_SUBJECTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Kurz může mít nejvýše {MAX_CROSS_SUBJECTS} průřezové obory",
+        )
     block_code = db.scalar(
         select(CourseBlock.code).where(CourseBlock.block_id == course_block_id)
     )
-    if block_code == BLOCK_WITHOUT_CROSS_SUBJECTS:
-        if cross_ids:
-            raise HTTPException(
-                status_code=400,
-                detail="Pro kurzy Bloku C se průřezové obory nezadávají",
-            )
-        return []
     if block_code in BLOCKS_REQUIRING_CROSS_SUBJECTS and not cross_ids:
         raise HTTPException(
             status_code=400,

@@ -565,8 +565,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     course_block_id: Mapped[int | None] = mapped_column(
         ForeignKey("course_block.block_id"), nullable=True
     )
-    course_target_id: Mapped[int] = mapped_column(
-        ForeignKey("course_target.target_id"), nullable=False
+    course_target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_target.target_id"), nullable=True
     )
     course_subject_id: Mapped[int | None] = mapped_column(
         ForeignKey("course_subject.subject_id"), nullable=True
@@ -619,7 +619,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     )
 
     course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
-    course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
+    course_target: Mapped[CourseTarget | None] = relationship(back_populates="courses")
     course_subject: Mapped[CourseSubject] = relationship(back_populates="courses")
     course_requirement: Mapped[CourseRequirement | None] = relationship(
         back_populates="courses"

@@ -6,7 +6,7 @@ import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-cli
 import { Course } from '@/api';
 import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
 import {
-  courseCategoryValues, crossSubjectIdsFor, crossSubjectsRule, moduleCategoryValues, moduleToUpdate,
+  courseCategoryValues, crossSubjectsRule, subjectAllowed, moduleCategoryValues, moduleToUpdate,
   validateCourseCategories, type CourseCategoryValues,
 } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
@@ -158,14 +158,14 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           description: formData.description || undefined,
           // 0 = „Neurčeno“; null hodnotu na backendu vymaže.
           courseBlockId: formData.courseBlockId || null,
-          courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId || null,
+          courseTargetId: formData.courseTargetId || null,
+          courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
           courseRequirementId: formData.courseRequirementId || null,
           courseEqfLevelId: formData.courseEqfLevelId,
           courseTypeId: formData.courseTypeId,
           krauuCompetenceIds: formData.krauuCompetenceIds,
           bloomLevelIds: formData.bloomLevelIds,
-          crossSubjectIds: crossSubjectIdsFor(crossRule, formData.crossSubjectIds),
+          crossSubjectIds: formData.crossSubjectIds,
         },
       });
       goToCourses();
@@ -264,6 +264,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                 value={formData.courseTargetId}
                 onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
                 options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                emptyLabel="Neurčeno"
                 aria-label="Cílová skupina"
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
               />
@@ -271,8 +272,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Předmět</label>
               <CatalogSelect
-                value={formData.courseSubjectId}
+                value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
                 onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                disabled={!subjectAllowed(blocks, formData.courseBlockId)}
                 options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
                 emptyLabel="Neurčeno"
                 aria-label="Předmět"
@@ -280,7 +282,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">EQF úroveň</label>
+              <label className="block text-sm font-medium text-foreground mb-2">EQF úroveň *</label>
               <CatalogSelect
                 value={formData.courseEqfLevelId}
                 onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
@@ -290,7 +292,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Typ kurzu</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Typ kurzu *</label>
               <CatalogSelect
                 value={formData.courseTypeId}
                 onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.src.catalogs.controllers import (
     resolve_cross_subject_ids,
+    validate_subject_for_block,
     sync_bloom_levels,
     sync_cross_subjects,
     sync_krauu_competences,
@@ -33,7 +34,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Tematický blok s tímto ID neexistuje")
 
-    if db.execute(
+    if course_data.course_target_id is not None and db.execute(
         select(models.CourseTarget).where(
             models.CourseTarget.target_id == course_data.course_target_id,
             models.CourseTarget.is_active.is_(True),
@@ -86,6 +87,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
     validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    validate_subject_for_block(
+        db, course_data.course_block_id, course_data.course_subject_id
+    )
     cross_subject_ids = resolve_cross_subject_ids(
         db, course_data.course_block_id, course_data.cross_subject_ids
     )

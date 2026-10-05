@@ -9,7 +9,7 @@ import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
-  courseCategoryValues, courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories,
+  courseCategoryValues, courseToUpdate, crossSubjectsRule, validateCourseCategories,
   moduleCategoryValues, moduleToUpdate, validateModuleCategories,
   type CourseCategoryValues,
 } from '@/lib/course-categories';
@@ -229,7 +229,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       title: editedTitle,
       description: editedDescription,
       ...editedCategories,
-      crossSubjectIds: crossSubjectIdsFor(crossRule, editedCategories.crossSubjectIds),
+      crossSubjectIds: editedCategories.crossSubjectIds,
     }));
   };
 

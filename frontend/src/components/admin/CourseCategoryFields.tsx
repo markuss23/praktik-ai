@@ -74,20 +74,16 @@ export function CourseCategoryFields({
         <label className={labelClassName}>
           Průřezové obory{crossRule === 'required' ? ' *' : ''}
         </label>
-        {crossRule === 'forbidden' ? (
-          <p className="text-sm text-muted-foreground">Kurzy Bloku C průřezové obory nemají.</p>
-        ) : (
-          <CatalogMultiSelect
-            values={values.crossSubjectIds}
-            onValueChange={(next) => onChange({ ...values, crossSubjectIds: next })}
-            options={crossSubjects.map((c) => ({ value: c.crossId, label: catalogLabel(c) }))}
-            placeholder={crossRule === 'required' ? 'Vyberte obory...' : 'Neurčeno'}
-            aria-label="Průřezové obory"
-            invalid={showErrors && crossRule === 'required' && values.crossSubjectIds.length === 0}
-            disabled={disabled}
-            className={triggerClassName}
-          />
-        )}
+        <CatalogMultiSelect
+          values={values.crossSubjectIds}
+          onValueChange={(next) => onChange({ ...values, crossSubjectIds: next })}
+          options={crossSubjects.map((c) => ({ value: c.crossId, label: catalogLabel(c) }))}
+          placeholder={crossRule === 'required' ? 'Vyberte obory...' : 'Neurčeno'}
+          aria-label="Průřezové obory"
+          invalid={showErrors && ((crossRule === 'required' && values.crossSubjectIds.length === 0) || values.crossSubjectIds.length > 3)}
+          disabled={disabled}
+          className={triggerClassName}
+        />
       </div>
     </div>
   );
