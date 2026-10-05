@@ -5,7 +5,9 @@ from pydantic import Field, model_validator
 from api.enums import AttachType, Difficulty, EduLevel, PubResourceStatus
 from api.src.catalogs.schemas import (
     BloomLevel,
+    CourseBlock,
     CourseEqfLevel,
+    CourseLevel,
     CourseSubject,
     CourseTarget,
     CourseType,
@@ -23,6 +25,8 @@ class PubResourceBase(ORMModel):
     difficulty_level: Difficulty = Field(default=Difficulty.slightly_advanced)
     eqf_level_id: int
     course_type_id: int
+    block_id: int | None = None
+    level_id: int | None = None
     allow_forks: bool = False
 
 
@@ -72,6 +76,8 @@ class PubResourceCreated(ORMModel):
     difficulty_level: Difficulty
     eqf_level: CourseEqfLevel
     course_type: CourseType
+    block: CourseBlock | None = None
+    level: CourseLevel | None = None
     status: PubResourceStatus
     author_id: int
     allow_forks: bool
@@ -125,6 +131,8 @@ class PubResource(PubResourceBase):
     target: CourseTarget | None = None
     eqf_level: CourseEqfLevel
     course_type: CourseType
+    block: CourseBlock | None = None
+    level: CourseLevel | None = None
     krauu_competences: list[KrauuCompetence] = Field(
         default=[], validation_alias="krauu_competence_list"
     )

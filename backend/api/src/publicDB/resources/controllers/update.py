@@ -27,7 +27,7 @@ def update_resource(
 ) -> PubResource:
     """Aktualizuje existující veřejný materiál (v draft stavu)"""
 
-    # Kontrola existence pro obor a cílovou skupinu
+    # Kontrola existence
     if (
         db.execute(
             select(models.CourseSubject).where(
@@ -73,6 +73,32 @@ def update_resource(
         is None
     ):
         raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
+    if (
+        resource_data.block_id is not None
+        and db.execute(
+            select(models.CourseBlock).where(
+                models.CourseBlock.block_id == resource_data.block_id,
+                models.CourseBlock.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Tematický blok s tímto ID neexistuje"
+        )
+
+    if (
+        resource_data.level_id is not None
+        and db.execute(
+            select(models.CourseLevel).where(
+                models.CourseLevel.level_id == resource_data.level_id,
+                models.CourseLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
 
     resource = get_or_404(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"

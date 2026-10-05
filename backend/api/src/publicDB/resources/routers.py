@@ -24,6 +24,8 @@ from api.src.common.annotations import (
     RESROURCE_ORIGINAL_ID_ANNOTATION,
     COURSE_EQF_LEVEL_ID_ANNOTATION,
     COURSE_TYPE_ID_ANNOTATION,
+    COURSE_BLOCK_ID_ANNOTATION,
+    COURSE_LEVEL_ID_ANNOTATION,
 )
 
 from api.src.publicDB.resources.schemas import (
@@ -77,6 +79,8 @@ async def list_resources(
     resource_subject_id: RESOURCE_SUBJECT_ID_ANNOTATION = None,
     resource_course_type_id: COURSE_TYPE_ID_ANNOTATION = None,
     resource_eqf_level_id: COURSE_EQF_LEVEL_ID_ANNOTATION = None,
+    resource_block_id: COURSE_BLOCK_ID_ANNOTATION = None,
+    resource_level_id: COURSE_LEVEL_ID_ANNOTATION = None,
     status: RESOURCE_STATUS_ANNOTATION = None,
     is_fork: RESOURCE_IS_FORK_ANNOTATION = None,
     original_id: RESROURCE_ORIGINAL_ID_ANNOTATION = None,
@@ -92,6 +96,8 @@ async def list_resources(
         resource_subject_id=resource_subject_id,
         resource_course_type_id=resource_course_type_id,
         resource_eqf_level_id=resource_eqf_level_id,
+        resource_block_id=resource_block_id,
+        resource_level_id=resource_level_id,
         status=status,
         is_fork=is_fork,
         original_id=original_id,
