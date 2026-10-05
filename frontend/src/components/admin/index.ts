@@ -1,5 +1,5 @@
 export { CourseModal } from './CourseModal';
-export { ModuleModal } from './ModuleModal';
+export { ModuleModal, MODULE_PEREX_MAX_LENGTH, type ModuleFormData } from './ModuleModal';
 export { AdminSidebar } from './AdminSidebar';
 export { CoursePageHeader } from './CoursePageHeader';
 export { PageFooterActions } from './PageFooterActions';

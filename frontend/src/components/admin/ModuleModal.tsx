@@ -1,12 +1,20 @@
 'use client';
 
-import { Course } from "@/api";
-import { Alert, AlertDescription, Button, Input, Label, Modal } from "@/components/ui";
+import type { BloomLevel, Course, KrauuCompetence, NeuroPrinciple } from "@/api";
+import { Alert, AlertDescription, Button, Input, Label, Modal, Textarea } from "@/components/ui";
+import { ModuleCategoryFields } from "./ModuleCategoryFields";
+import type { ModuleCategoryValues } from "@/lib/course-categories";
 
-interface ModuleFormData {
+/** Stejný limit jako backend (`Module.perex`: String(255)). */
+export const MODULE_PEREX_MAX_LENGTH = 255;
+
+export interface ModuleFormData {
   moduleId: number | null;
   title: string;
+  perex: string;
   courseId: number;
+  /** Neurovědní principy, KRAUU kompetence a Bloomova taxonomie modulu. */
+  categories: ModuleCategoryValues;
 }
 
 interface ModuleModalProps<T extends ModuleFormData> {
@@ -14,6 +22,11 @@ interface ModuleModalProps<T extends ModuleFormData> {
   mode: 'create' | 'edit';
   formData: T;
   courses: Course[];
+  neuroPrinciples: NeuroPrinciple[];
+  krauuCompetences: KrauuCompetence[];
+  bloomLevels: BloomLevel[];
+  /** Zvýraznit prázdné povinné číselníky (po neúspěšném odeslání). */
+  showCategoryErrors?: boolean;
   loading: boolean;
   error: string;
   onClose: () => void;
@@ -23,11 +36,19 @@ interface ModuleModalProps<T extends ModuleFormData> {
 
 const FORM_ID = "module-modal-form";
 
+/**
+ * Formulář modulu: název, perex a pedagogické zařazení. AI generátor tato pole
+ * naplní sám, autor je ale musí mít možnost upravit i mimo editor obsahu.
+ */
 export function ModuleModal<T extends ModuleFormData>({
   isOpen,
   mode,
   formData,
   courses,
+  neuroPrinciples,
+  krauuCompetences,
+  bloomLevels,
+  showCategoryErrors = false,
   loading,
   error,
   onClose,
@@ -79,6 +100,32 @@ export function ModuleModal<T extends ModuleFormData>({
             placeholder="např. Co je prompt a jak funguje AI"
           />
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="module-perex">Perex</Label>
+          <Textarea
+            id="module-perex"
+            rows={3}
+            maxLength={MODULE_PEREX_MAX_LENGTH}
+            value={formData.perex}
+            onChange={(e) => onChange({ ...formData, perex: e.target.value })}
+            placeholder="Krátké shrnutí, o čem modul je…"
+            className="field-sizing-fixed min-h-0 resize-none"
+          />
+          <span className="text-xs text-muted-foreground">{formData.perex.length}/{MODULE_PEREX_MAX_LENGTH}</span>
+        </div>
+
+        <ModuleCategoryFields
+          values={formData.categories}
+          onChange={(categories) => onChange({ ...formData, categories })}
+          neuroPrinciples={neuroPrinciples}
+          krauuCompetences={krauuCompetences}
+          bloomLevels={bloomLevels}
+          showErrors={showCategoryErrors}
+          columns={1}
+          labelClassName="flex items-center text-sm leading-none font-medium mb-1.5"
+          triggerClassName="w-full"
+        />
       </form>
     </Modal>
   );

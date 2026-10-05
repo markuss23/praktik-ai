@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
-import { getCourse, updateCourse, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, CourseCategoryFields, type CreationTab, type CourseStep } from '@/components/admin';
+import { getCourse, updateCourse, updateModule, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
+import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, CourseCategoryFields, ModuleModal, type CreationTab, type CourseStep, type ModuleFormData } from '@/components/admin';
 import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   courseCategoryValues, courseToUpdate, crossSubjectIdsFor, crossSubjectsRule, validateCourseCategories,
+  moduleCategoryValues, moduleToUpdate, validateModuleCategories,
   type CourseCategoryValues,
 } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
@@ -18,6 +19,7 @@ import {
   ChevronUp,
   Download,
   FileText,
+  Pencil,
   X,
 } from 'lucide-react';
 
@@ -45,8 +47,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   });
   // Chyba uložení se ukazuje u formuláře — `error` přepíná celý pohled na ErrorState.
   const [saveError, setSaveError] = useState('');
-  const { blocks, krauuCompetences, bloomLevels, crossSubjects, loading: catalogsLoading } = useCatalogData();
+  const { blocks, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects, loading: catalogsLoading } = useCatalogData();
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
+  // Úprava modulu (název, perex, číselníky) — AI je naplní, autor je ale musí
+  // umět opravit i tady, ne jen v editoru obsahu. `null` = modal zavřený.
+  const [moduleForm, setModuleForm] = useState<ModuleFormData | null>(null);
+  const [moduleSaving, setModuleSaving] = useState(false);
+  const [moduleError, setModuleError] = useState('');
+  const [showModuleCategoryErrors, setShowModuleCategoryErrors] = useState(false);
   const [courseFiles, setCourseFiles] = useState<CourseFileItem[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
@@ -119,6 +127,76 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
   const handleBack = () => {
     goToCourseTests(courseId);
+  };
+
+  const openModuleEdit = (module: Module) => {
+    setModuleForm({
+      moduleId: module.moduleId,
+      title: module.title,
+      perex: module.perex ?? '',
+      courseId: module.courseId,
+      // Chybějící KRAUU / Bloom modul zdědí z kurzu — autor je vidí a může upravit.
+      categories: moduleCategoryValues(module, course, neuroPrinciples),
+    });
+    setModuleError('');
+    setShowModuleCategoryErrors(false);
+  };
+
+  const closeModuleEdit = () => {
+    if (moduleSaving) return;
+    setModuleForm(null);
+    setModuleError('');
+    setShowModuleCategoryErrors(false);
+  };
+
+  const handleModuleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!moduleForm?.moduleId) return;
+    const existing = modules.find(m => m.moduleId === moduleForm.moduleId);
+    if (!existing) {
+      setModuleError('Modul se nepodařilo najít. Obnovte stránku a zkuste to znovu.');
+      return;
+    }
+    if (!moduleForm.title.trim()) {
+      setModuleError('Zadejte název modulu.');
+      return;
+    }
+    // Backend chce u modulu alespoň jeden princip, KRAUU i Bloom —
+    // chybějící položky zvýrazníme přímo ve formuláři.
+    const categoryError = validateModuleCategories(moduleForm.categories);
+    if (categoryError) {
+      setShowModuleCategoryErrors(true);
+      setModuleError(categoryError);
+      return;
+    }
+
+    setModuleSaving(true);
+    setModuleError('');
+    try {
+      const updated = await updateModule(
+        moduleForm.moduleId,
+        moduleToUpdate(existing, moduleForm.categories, {
+          title: moduleForm.title.trim(),
+          perex: moduleForm.perex.trim(),
+        }),
+      );
+      // PUT vrací modul bez otázek a bloků — ty si necháme z načteného kurzu,
+      // aby souhrn dál počítal otázky správně.
+      setModules(prev => prev.map(m => (
+        m.moduleId === updated.moduleId
+          ? { ...m, ...updated, learnBlocks: m.learnBlocks, practiceQuestions: m.practiceQuestions }
+          : m
+      )));
+      setModuleForm(null);
+      setShowModuleCategoryErrors(false);
+    } catch (err) {
+      setModuleError(
+        (await readApiErrorDetail(err))
+          ?? (err instanceof Error && err.message ? err.message : 'Nepodařilo se uložit modul'),
+      );
+    } finally {
+      setModuleSaving(false);
+    }
   };
 
   // Přepnutí mezi fázemi tvorby přes krokový přepínač
@@ -339,6 +417,17 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                       )}
                       <ModuleCategories module={module} className="mt-2" />
                     </div>
+                    <Button
+                      variant="plain"
+                      type="button"
+                      onClick={() => openModuleEdit(module)}
+                      disabled={catalogsLoading}
+                      className={cn(BTN_KEEP_BOX, "shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50")}
+                      title="Upravit název, perex a zařazení modulu"
+                      aria-label={`Upravit modul ${module.title}`}
+                    >
+                      <Pencil size={14} />
+                    </Button>
                   </div>
                 ))}
                 
@@ -414,6 +503,25 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           </DrawerContent>
         </Drawer>
       </div>
+
+      {/* Úprava modulu — stejný formulář jako v přehledu kurzů */}
+      {moduleForm && (
+        <ModuleModal
+          isOpen
+          mode="edit"
+          formData={moduleForm}
+          courses={[course]}
+          neuroPrinciples={neuroPrinciples}
+          krauuCompetences={krauuCompetences}
+          bloomLevels={bloomLevels}
+          showCategoryErrors={showModuleCategoryErrors}
+          loading={moduleSaving}
+          error={moduleError}
+          onClose={closeModuleEdit}
+          onSubmit={handleModuleSubmit}
+          onChange={setModuleForm}
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { Course, Difficulty, Status, Module, UpdateCourseStatusStatusEnum } from
 import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X, BicepsFlexed, Upload, RotateCcw, RefreshCw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
-import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton } from "@/components/admin";
+import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton, type ModuleFormData } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
 import { compareCourses, DEFAULT_COURSE_SORT, isCourseSortOrder, type CourseSortOrder } from "@/lib/course-sort";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
@@ -152,7 +152,7 @@ function getCourseEditLockReason(course: Course): string | null {
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
-  const { blocks, targets, subjects, neuroPrinciples } = useCatalogData();
+  const { blocks, targets, subjects, neuroPrinciples, krauuCompetences, bloomLevels } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
   // Průběh AI generování (polling drží CourseGenerationProvider v admin layoutu)
@@ -274,12 +274,17 @@ export function CoursesListView() {
   //   courseBlockId: 0,
   // });
 
-  // Data formuláře modulu
-  const [moduleFormData, setModuleFormData] = useState({
-    moduleId: null as number | null,
+  // Data formuláře modulu — název, perex i číselníky (AI je naplní, autor je
+  // ale musí umět upravit i odsud, ne jen v editoru obsahu).
+  const [moduleFormData, setModuleFormData] = useState<ModuleFormData>({
+    moduleId: null,
     title: '',
+    perex: '',
     courseId: 0,
+    categories: { neuroPrincipleIds: [], krauuCompetenceIds: [], bloomLevelIds: [] },
   });
+  // Prázdné povinné číselníky zvýrazníme až po neúspěšném odeslání.
+  const [showModuleCategoryErrors, setShowModuleCategoryErrors] = useState(false);
 
   //  Permissions helpers 
 
@@ -647,13 +652,31 @@ export function CoursesListView() {
   // };
 
   const openCreateModuleModal = (courseId: number) => {
-    setModuleFormData({ moduleId: null, title: '', courseId: courseId });
+    const course = courses.find(c => c.courseId === courseId) ?? null;
+    setModuleFormData({
+      moduleId: null,
+      title: '',
+      perex: '',
+      courseId,
+      // Nový modul přebírá KRAUU a Bloom z kurzu, princip je výchozí NP-01.
+      categories: moduleCategoryValues(null, course, neuroPrinciples),
+    });
+    setShowModuleCategoryErrors(false);
     setModalError('');
     setActiveModal('module-create');
   };
 
   const openEditModuleModal = (module: Module) => {
-    setModuleFormData({ moduleId: module.moduleId, title: module.title, courseId: module.courseId });
+    const course = courses.find(c => c.courseId === module.courseId) ?? null;
+    setModuleFormData({
+      moduleId: module.moduleId,
+      title: module.title,
+      perex: module.perex ?? '',
+      courseId: module.courseId,
+      // Chybějící KRAUU / Bloom modul zdědí z kurzu — autor je vidí a může upravit.
+      categories: moduleCategoryValues(module, course, neuroPrinciples),
+    });
+    setShowModuleCategoryErrors(false);
     setModalError('');
     setActiveModal('module-edit');
   };
@@ -661,6 +684,7 @@ export function CoursesListView() {
   const closeModal = () => {
     setActiveModal(null);
     setModalError('');
+    setShowModuleCategoryErrors(false);
   };
 
   // Rychlé vytvoření kurzu — vypnuto, viz `courseFormData` výše.
@@ -722,7 +746,21 @@ export function CoursesListView() {
     setModalError('');
 
     try {
-      const course = courses.find(c => c.courseId === moduleFormData.courseId) ?? null;
+      const { categories } = moduleFormData;
+      const title = moduleFormData.title.trim();
+      const perex = moduleFormData.perex.trim();
+      if (!title) {
+        setModalError('Zadejte název modulu.');
+        return;
+      }
+      // Backend chce u modulu alespoň jeden princip, KRAUU i Bloom —
+      // chybějící položky zvýrazníme přímo ve formuláři.
+      const categoryError = validateModuleCategories(categories);
+      if (categoryError) {
+        setShowModuleCategoryErrors(true);
+        setModalError(categoryError);
+        return;
+      }
       if (moduleFormData.moduleId) {
         const existingModule = (courseModules[moduleFormData.courseId] ?? [])
           .find(m => m.moduleId === moduleFormData.moduleId);
@@ -730,15 +768,9 @@ export function CoursesListView() {
           setModalError('Modul se nepodařilo najít. Obnovte stránku a zkuste to znovu.');
           return;
         }
-        const categories = moduleCategoryValues(existingModule, course, neuroPrinciples);
-        const categoryError = validateModuleCategories(categories);
-        if (categoryError) {
-          setModalError(`${categoryError} Doplňte je u modulu v editoru obsahu kurzu.`);
-          return;
-        }
         await sharedModulesApi.updateModule({
           moduleId: moduleFormData.moduleId,
-          moduleUpdate: moduleToUpdate(existingModule, categories, { title: moduleFormData.title }),
+          moduleUpdate: moduleToUpdate(existingModule, categories, { title, perex }),
         });
         if (moduleFormData.courseId) {
           const modules = await getModules({ courseId: moduleFormData.courseId });
@@ -750,15 +782,7 @@ export function CoursesListView() {
           setModalError('Chybí kurz pro nový modul.');
           return;
         }
-        // Nový modul dědí KRAUU a Bloom z kurzu, princip je výchozí NP-01 —
-        // upravit je jde v editoru obsahu kurzu.
-        const categories = moduleCategoryValues(null, course, neuroPrinciples);
-        const categoryError = validateModuleCategories(categories);
-        if (categoryError) {
-          setModalError('Kurz nemá vyplněné KRAUU kompetence a Bloomovu taxonomii, které nový modul přebírá. Doplňte je v souhrnu kurzu.');
-          return;
-        }
-        await createModule({ courseId: moduleFormData.courseId, title: moduleFormData.title, ...categories });
+        await createModule({ courseId: moduleFormData.courseId, title, perex, ...categories });
         const modules = await getModules({ courseId: moduleFormData.courseId });
         setCourseModules(prev => ({ ...prev, [moduleFormData.courseId]: modules }));
         await loadCoursesList();
@@ -1325,6 +1349,10 @@ export function CoursesListView() {
         mode={activeModal === 'module-create' ? 'create' : 'edit'}
         formData={moduleFormData}
         courses={courses}
+        neuroPrinciples={neuroPrinciples}
+        krauuCompetences={krauuCompetences}
+        bloomLevels={bloomLevels}
+        showCategoryErrors={showModuleCategoryErrors}
         loading={modalLoading}
         error={modalError}
         onClose={closeModal}
@@ -1601,7 +1629,7 @@ function ExpandedModuleList({
               {!lockReason && (
                 <div className="flex items-center gap-1.5 text-xs shrink-0">
                   <Button onClick={() => onEditModuleContent(module)} size="pill" variant="soft-tip">Upravit</Button>
-                  <Button onClick={() => onEditModuleName(module)} size="pill" variant="soft-success">Upravit název</Button>
+                  <Button onClick={() => onEditModuleName(module)} size="pill" variant="soft-success">Upravit údaje</Button>
                   <Button onClick={() => onToggleModuleActive(module)} size="pill" variant="soft-accent">
                     {module.isActive ? 'Deaktivovat' : 'Aktivovat'}
                   </Button>

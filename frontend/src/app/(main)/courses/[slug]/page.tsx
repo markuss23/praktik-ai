@@ -8,7 +8,7 @@ import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api
 import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
+import { CourseCategories, ModuleCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from '@/lib/utils';
@@ -400,6 +400,8 @@ export default function CoursePage() {
                       {module.perex && (
                         <p className="text-sm text-muted-foreground mb-3 break-words">{module.perex}</p>
                       )}
+                      {/* Zařazení modulu — stejné štítky jako u kurzu v hlavičce */}
+                      <ModuleCategories module={module} className="mb-3" />
 
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">
