@@ -93,6 +93,32 @@ def create_resource(
     ):
         raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
 
+    if (
+        data.block_id is not None
+        and db.execute(
+            select(models.CourseBlock).where(
+                models.CourseBlock.block_id == data.block_id,
+                models.CourseBlock.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Tematický blok s tímto ID neexistuje"
+        )
+
+    if (
+        data.level_id is not None
+        and db.execute(
+            select(models.CourseLevel).where(
+                models.CourseLevel.level_id == data.level_id,
+                models.CourseLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
+
     validate_krauu_competence_ids(db, data.krauu_competence_ids)
     validate_bloom_level_ids(db, data.bloom_level_ids)
 
@@ -236,6 +262,8 @@ def create_resource_fork(
     resource_data["difficulty_level"] = original.difficulty_level
     resource_data["eqf_level_id"] = original.eqf_level_id
     resource_data["course_type_id"] = original.course_type_id
+    resource_data["block_id"] = original.block_id
+    resource_data["level_id"] = original.level_id
 
     forked = models.PubResource(
         **resource_data,

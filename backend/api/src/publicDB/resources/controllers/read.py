@@ -21,6 +21,8 @@ def get_resources(
     resource_subject_id: int | None = None,
     resource_course_type_id: int | None = None,
     resource_eqf_level_id: int | None = None,
+    resource_block_id: int | None = None,
+    resource_level_id: int | None = None,
     status: str | None = None,
     is_fork: bool | None = None,
     original_id: int | None = None,
@@ -110,6 +112,8 @@ def get_resources(
             joinedload(models.PubResource.author),
             joinedload(models.PubResource.subject),
             joinedload(models.PubResource.target),
+            joinedload(models.PubResource.block),
+            joinedload(models.PubResource.level),
             selectinload(models.PubResource.krauu_competences).joinedload(
                 models.PubResourceKrauuCompetence.competence
             ),
@@ -151,6 +155,12 @@ def get_resources(
 
     if resource_eqf_level_id is not None:
         stm = stm.where(models.PubResource.eqf_level_id == resource_eqf_level_id)
+
+    if resource_block_id is not None:
+        stm = stm.where(models.PubResource.block_id == resource_block_id)
+
+    if resource_level_id is not None:
+        stm = stm.where(models.PubResource.level_id == resource_level_id)
 
     if status is not None:
         stm = stm.where(models.PubResource.status == status)
