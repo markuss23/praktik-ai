@@ -18,7 +18,10 @@ from api.src.agents.schemas import (
 )
 from agents.practice_question_generator.service import PracticeQuestionGenerator
 from agents.practice_answer_evaluator.service import PracticeAnswerEvaluator
-from agents.open_question_evaluator import OpenQuestionEvaluation, evaluate_open_question
+from agents.open_question_evaluator import (
+    OpenQuestionEvaluation,
+    evaluate_open_question,
+)
 
 
 async def generate_practice_question(

@@ -12,7 +12,9 @@ from api import models
 
 
 class OpenQuestionEvaluation(BaseModel):
-    is_correct: bool = Field(description="Zda odpověď zachycuje podstatu vzorové odpovědi")
+    is_correct: bool = Field(
+        description="Zda odpověď zachycuje podstatu vzorové odpovědi"
+    )
     feedback: str = Field(description="Zpětná vazba v 1-3 větách, v češtině")
 
 
