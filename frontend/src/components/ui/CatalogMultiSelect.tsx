@@ -30,11 +30,9 @@ export interface CatalogOptionGroup {
 interface CatalogMultiSelectProps {
   values: number[];
   onValueChange: (next: number[]) => void;
-  /** Buď plochý seznam, nebo skupiny (např. oblasti KRAUU) — ne obojí. */
   options?: CatalogOption[];
   groups?: CatalogOptionGroup[];
   placeholder: string;
-  /** Třídy pro trigger — viz poznámka u `CatalogSelect`. */
   className?: string;
   id?: string;
   "aria-label"?: string;
