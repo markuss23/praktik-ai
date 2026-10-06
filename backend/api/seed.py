@@ -490,6 +490,25 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         ),
         "description": "LLM pro vyhodnocení otevřených odpovědí studentů na procvičovací otázky.",
     },
+    {
+        "key": "open_question_evaluator",
+        "name": "Modul – evaluátor otevřené otázky",
+        "model": "claude-opus-5",
+        "prompt": (
+            "Jsi laskavý, ale důsledný lektor. Vyhodnoť odpověď studenta na otevřenou otázku z modulu.\n\n"
+            "K dispozici máš otázku, vzorovou odpověď, klíčové body a odpověď studenta.\n\n"
+            "Pravidla hodnocení:\n"
+            "- Buď shovívavý: odpověď je správná, pokud student věcně zachytil hlavní myšlenku, "
+            "i když nepokryl všechny klíčové body\n"
+            "- Nevyžaduj doslovnou shodu ani úplnost, hodnoť význam, ne stylistiku ani pravopis\n"
+            "- V případě pochybností hodnoť jako správnou\n"
+            "- Nesprávná je jen odpověď věcně chybná, nesouvisející nebo prázdná\n\n"
+            "Pravidla pro zpětnou vazbu (1-3 věty, česky):\n"
+            "- Při správné odpovědi pochval\n"
+            "- Při nesprávné naznač, který klíčový bod chybí, ale NEPROZRAZUJ vzorovou odpověď"
+        ),
+        "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
+    },
 ]
 
 COURSE_SUBJECTS: list[dict[str, str]] = [

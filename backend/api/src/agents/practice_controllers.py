@@ -18,6 +18,7 @@ from api.src.agents.schemas import (
 )
 from agents.practice_question_generator.service import PracticeQuestionGenerator
 from agents.practice_answer_evaluator.service import PracticeAnswerEvaluator
+from agents.open_question_evaluator import OpenQuestionEvaluation, evaluate_open_question
 
 
 async def generate_practice_question(
@@ -153,6 +154,26 @@ def _evaluate_closed(
         is_correct=is_correct,
         ai_response=None,
     )
+
+
+async def evaluate_open_question_answer(
+    db: Session,
+    question_id: int,
+    user_input: str,
+    user: models.User,
+) -> OpenQuestionEvaluation:
+    question = get_or_404(
+        db, models.PracticeQuestion, question_id, detail="Otázka nenalezena"
+    )
+    if question.question_type != QuestionType.open:
+        raise HTTPException(status_code=400, detail="Otázka není otevřená")
+
+    check_enrollment(db, user, question.module.course, bypass_for_owner=True)
+
+    try:
+        return await evaluate_open_question(db, question, user_input)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 def list_practice_questions(

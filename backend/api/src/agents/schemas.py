@@ -111,6 +111,13 @@ class EvaluatePracticeAnswerResponse(BaseModel):
     )
 
 
+class EvaluateOpenQuestionRequest(BaseModel):
+    """Request pro vyhodnocení odpovědi na otevřenou otázku modulu (nic se neukládá)"""
+
+    question_id: int = Field(..., description="ID otevřené PracticeQuestion")
+    user_input: str = Field(..., min_length=1, description="Odpověď studenta")
+
+
 class PracticeAttempt(BaseModel):
     """Jeden pokus na procvičovací otázku"""
 

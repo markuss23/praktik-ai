@@ -11,6 +11,7 @@ from api.src.agents.schemas import (
     CourseGenerationProgressResponse,
     EvaluateAssessmentRequest,
     EvaluateAssessmentResponse,
+    EvaluateOpenQuestionRequest,
     EvaluatePracticeAnswerRequest,
     EvaluatePracticeAnswerResponse,
     GenerateAssessmentRequest,
@@ -39,7 +40,9 @@ from api.database import SessionLocal
 from api.src.agents.practice_controllers import (
     generate_practice_question,
     evaluate_practice_answer,
+    evaluate_open_question_answer,
 )
+from agents.open_question_evaluator import OpenQuestionEvaluation
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.mentor.service import MentorService
@@ -445,6 +448,24 @@ async def endp_evaluate_practice_answer(
     return await evaluate_practice_answer(
         db=db,
         user_question_id=body.user_question_id,
+        user_input=body.user_input,
+        user=user,
+    )
+
+
+@router.post(
+    "/evaluate-open-question",
+    operation_id="evaluate_open_question",
+)
+async def endp_evaluate_open_question(
+    body: EvaluateOpenQuestionRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> OpenQuestionEvaluation:
+    """Vyhodnotí odpověď na otevřenou otázku modulu. Nic neukládá."""
+    return await evaluate_open_question_answer(
+        db=db,
+        question_id=body.question_id,
         user_input=body.user_input,
         user=user,
     )
