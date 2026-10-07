@@ -12,12 +12,16 @@ import {
 import { readApiErrorDetail } from '@/lib/api-error';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { LoadingState, ErrorState } from '@/components/admin';
-import { CatalogSelect, ConfirmModal, Button, Input, Textarea } from '@/components/ui';
+import {
+  LoadingState, ErrorState, CoursePageHeader, CourseStepsCard, courseStepLabel, moduleCountHint,
+  useCourseStepNavigation, useAdminChrome, type CourseStep,
+} from '@/components/admin';
+import { StudentPreview } from '@/components/admin/StudentPreview';
+import { CatalogSelect, ConfirmModal, Button, Drawer, DrawerContent, Input, Textarea } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRole } from '@/hooks/useRole';
-import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 
 interface CourseEditViewProps {
   courseId: number;
@@ -43,6 +47,10 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editModuleData, setEditModuleData] = useState({ title: '' });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -137,14 +145,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canEdit) return;
+  // Uložení kurzu; true = uloženo. Používá ho formulář i přechod na další
+  // krok v kartě „Tvorba kurzu".
+  const saveCourse = async (): Promise<boolean> => {
+    if (!canEdit) return false;
 
     const categoryError = validateCourseCategories(formData, crossRule);
     if (categoryError) {
       setError(categoryError);
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -168,13 +177,24 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           crossSubjectIds: formData.crossSubjectIds,
         },
       });
-      goToCourses();
+      return true;
     } catch (err) {
       console.error('Update error:', err);
       setError((await readApiErrorDetail(err)) ?? (err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz'));
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await saveCourse()) goToCourses();
+  };
+
+  const handleStepNavigate = async (step: CourseStep) => {
+    if (step === 'description') return;
+    if (await saveCourse()) goToStep(step);
   };
 
   const handleDelete = async () => {
@@ -208,9 +228,59 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     );
   }
 
+  const totalQuestions = modules.reduce((total, m) => total + (m.practiceQuestions?.length ?? 0), 0);
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+  };
+
+  // Náhled pro studenta — stránka kurzu s rozpracovaným názvem, popisem a zařazením
+  const previewCourse = {
+    title: formData.title,
+    description: formData.description,
+    krauuCompetences: krauuCompetences.filter((k) => formData.krauuCompetenceIds.includes(k.krauuId)),
+    bloomLevels: bloomLevels.filter((b) => formData.bloomLevelIds.includes(b.bloomId)),
+    crossSubjects: crossSubjects.filter((c) => formData.crossSubjectIds.includes(c.crossId)),
+  };
+
   return (
-    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-foreground">Editovat kurz</h1>
+    <div className="flex-1 flex flex-col h-full bg-muted">
+      <CoursePageHeader
+        breadcrumb={`Kurzy / ${courseData?.title ?? formData.title} / Popis kurzu`}
+        title="Popis kurzu"
+        stepLabel={courseStepLabel('description')}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
+        showButtons
+        onMenuClick={() => setMobileStepsOpen(true)}
+      />
+
+      {previewOpen ? (
+        <StudentPreview
+          course={previewCourse}
+          modules={modules}
+          start={{ screen: 'course' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      ) : (
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
+        {!focusMode && (
+          <CourseStepsCard current="description" onNavigate={handleStepNavigate} hints={stepHints} />
+        )}
+
+        <Drawer open={mobileStepsOpen} onOpenChange={setMobileStepsOpen} swipeDirection="left">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="description"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileStepsOpen(false)}
+            />
+          </DrawerContent>
+        </Drawer>
+
+      <div className="flex-1 min-w-0 min-h-0 lg:overflow-y-auto">
+      {/* Nadpis „Editovat kurz“ nahradila hlavička kroku „Popis kurzu“ */}
 
       {error && (
         <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
@@ -463,6 +533,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           )}
         </div>
       </form>
+      </div>
+      </div>
+      )}
 
       <ConfirmModal
         isOpen={showDeleteConfirm}

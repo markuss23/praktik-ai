@@ -2,7 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { exchangeCodeForTokens, parseJwt, storeTokens } from "@/lib/keycloak";
+import {
+  consumeLoginReturnTo,
+  exchangeCodeForTokens,
+  parseJwt,
+  storeTokens,
+} from "@/lib/keycloak";
 import { backendUrl } from "@/lib/constants";
 import { AuthSkeleton, Button } from "@/components/ui";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
@@ -41,7 +46,7 @@ function AuthCallbackContent() {
         }
         const user = parseJwt(tokens.access_token);
         console.log("Přihlášen:", user?.preferred_username ?? user?.email);
-        router.replace("/");
+        router.replace(consumeLoginReturnTo() ?? "/");
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "Přihlášení se nezdařilo.";

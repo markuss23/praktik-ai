@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Module, Course } from '@/api';
 import { getCourse, updateCourse, updateModule, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, CourseCategoryFields, ModuleModal, type CreationTab, type CourseStep, type ModuleFormData } from '@/components/admin';
+import {
+  CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseCategoryFields, ModuleModal,
+  CourseStepsCard, courseStepLabel, moduleCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type ModuleFormData,
+} from '@/components/admin';
+import { StudentPreview } from '@/components/admin/StudentPreview';
 import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
@@ -29,7 +34,10 @@ interface CourseSummaryViewProps {
 
 // Souhrn kurzu s přehledem modulů
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
-  const { goToCourseTests, goToCourseContent, goToCourses } = useAdminNavigation();
+  const { goToCourseTests, goToCourses } = useAdminNavigation();
+  const goToStep = useCourseStepNavigation(courseId);
+  const { focusMode } = useAdminChrome();
+  const [previewOpen, setPreviewOpen] = useState(false);
   
   const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [loading, setLoading] = useState(true);
@@ -199,7 +207,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     }
   };
 
-  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'summary') return;
     try {
@@ -208,8 +216,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       await reportSaveError(err);
       return;
     }
-    if (step === 'content') goToCourseContent(courseId);
-    else goToCourseTests(courseId);
+    goToStep(step);
   };
 
   const [savingOnly, setSavingOnly] = useState(false);
@@ -277,67 +284,101 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     return <ErrorState message={error || 'Kurz nenalezen'} />;
   }
 
-  const outlinePanelInner = (
-    <>
-      <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
-        <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
-        <Button
-          variant="plain"
-          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
-          onClick={() => setMobileOutlineOpen(false)}
-          aria-label="Zavřít osnovu"
-        >
-          <X size={16} className="text-muted-foreground" />
-        </Button>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {modules.map((module, index) => (
-          <div key={module.moduleId} className="border-b border-border last:border-b-0">
-            <div
-              className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/50 border-l-4 border-l-transparent"
-              onClick={() => toggleOutlineItem(index)}
-            >
-              {expandedOutlineItems.has(index) ? (
-                <ChevronDown size={16} className="text-muted-foreground" />
-              ) : (
-                <ChevronUp size={16} className="text-muted-foreground" />
-              )}
-              <span className="text-sm text-foreground font-medium truncate">{module.title}</span>
-            </div>
-            {expandedOutlineItems.has(index) && (
-              <div className="pb-2 pl-10 pr-4">
-                <span className="text-xs text-muted-foreground">
-                  {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
-                </span>
-              </div>
-            )}
-          </div>
-        ))}
+  const totalQuestions = getTotalQuestions();
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+  };
 
-        {modules.length === 0 && (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            Žádné moduly
-          </div>
-        )}
-      </div>
-    </>
-  );
+  // Náhled pro studenta — rozpracovaný název, popis a zařazení kurzu
+  const previewCourse = {
+    title: editedTitle,
+    description: editedDescription,
+    krauuCompetences: krauuCompetences.filter((k) => editedCategories.krauuCompetenceIds.includes(k.krauuId)),
+    bloomLevels: bloomLevels.filter((b) => editedCategories.bloomLevelIds.includes(b.bloomId)),
+    crossSubjects: crossSubjects.filter((c) => editedCategories.crossSubjectIds.includes(c.crossId)),
+  };
+
+  // Osnova kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentované použití v JSX).
+  // const outlinePanelInner = (
+  //   <>
+  //     <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+  //       <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
+  //       <Button
+  //         variant="plain"
+  //         className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
+  //         onClick={() => setMobileOutlineOpen(false)}
+  //         aria-label="Zavřít osnovu"
+  //       >
+  //         <X size={16} className="text-muted-foreground" />
+  //       </Button>
+  //     </div>
+  //     <div className="flex-1 overflow-y-auto">
+  //       {modules.map((module, index) => (
+  //         <div key={module.moduleId} className="border-b border-border last:border-b-0">
+  //           <div
+  //             className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-muted/50 border-l-4 border-l-transparent"
+  //             onClick={() => toggleOutlineItem(index)}
+  //           >
+  //             {expandedOutlineItems.has(index) ? (
+  //               <ChevronDown size={16} className="text-muted-foreground" />
+  //             ) : (
+  //               <ChevronUp size={16} className="text-muted-foreground" />
+  //             )}
+  //             <span className="text-sm text-foreground font-medium truncate">{module.title}</span>
+  //           </div>
+  //           {expandedOutlineItems.has(index) && (
+  //             <div className="pb-2 pl-10 pr-4">
+  //               <span className="text-xs text-muted-foreground">
+  //                 {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
+  //               </span>
+  //             </div>
+  //           )}
+  //         </div>
+  //       ))}
+  //
+  //       {modules.length === 0 && (
+  //         <div className="p-4 text-center text-muted-foreground text-sm">
+  //           Žádné moduly
+  //         </div>
+  //       )}
+  //     </div>
+  //   </>
+  // );
 
   return (
     <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
         breadcrumb={`Kurzy / ${course.title} / Souhrn kurzu`}
         title="Souhrn kurzu"
+        stepLabel={courseStepLabel('summary')}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         onSave={handleSave}
         saving={savingOnly}
         saved={savedFeedback}
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
       />
-      <CourseStepNav current="summary" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="summary" onNavigate={handleStepNavigate} /> */}
+      {previewOpen ? (
+        <StudentPreview
+          course={previewCourse}
+          modules={modules}
+          start={{ screen: 'course' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      ) : (
+      <>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (ta byla vpravo) */}
+        {!focusMode && (
+          <CourseStepsCard current="summary" onNavigate={handleStepNavigate} hints={stepHints} />
+        )}
+
         {/* Left Content - Summary */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
           <div className="p-4 border-b border-border">
@@ -491,18 +532,27 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           />
         </div>
 
-        {/* Right Sidebar - Course Outline (desktop) */}
+        {/* Right Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
         <div className="hidden lg:flex w-64 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
           {outlinePanelInner}
         </div>
+        */}
 
-        {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
+        {/* Mobile Drawer — kitový Drawer řeší overlay i stacking */}
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
-          <DrawerContent className="lg:hidden" aria-label="Struktura kurzu">
-            {outlinePanelInner}
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="summary"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            />
+            {/* {outlinePanelInner} — Osnova kurzu nahrazena kartou „Tvorba kurzu“ */}
           </DrawerContent>
         </Drawer>
       </div>
+      </>
+      )}
 
       {/* Úprava modulu — stejný formulář jako v přehledu kurzů */}
       {moduleForm && (

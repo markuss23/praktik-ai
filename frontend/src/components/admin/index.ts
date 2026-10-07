@@ -9,7 +9,19 @@ export { GenerateEmbeddingsButton } from './GenerateEmbeddingsButton';
 export { CourseActionButtons, EditActionButton, PublishActionButton, DeleteActionButton, ApproveActionButton } from './CourseActionButtons';
 export { CourseOutlineSidebar } from './CourseOutlineSidebar';
 export { CourseCreationTabs, type CreationTab } from './CourseCreationTabs';
-export { CourseStepNav, type CourseStep } from './CourseStepNav';
+export { CourseStepNav } from './CourseStepNav';
+export {
+  CourseStepsCard,
+  StepModuleList,
+  COURSE_STEPS,
+  courseStepLabel,
+  moduleCountHint,
+  questionCountHint,
+  useCourseStepNavigation,
+  type CourseStep,
+  type StepModuleItem,
+} from './CourseStepsCard';
+export { AdminChromeProvider, useAdminChrome } from './AdminChromeProvider';
 export { CourseRubric } from './CourseRubric';
 export { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from './CourseFilters';
 export { CourseCategoryFields } from './CourseCategoryFields';

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createCourse, uploadCourseFile, generateCourseWithAI, type CourseGenerationProgress } from '@/lib/api-client';
-import { CoursePageHeader, CourseCategoryFields } from '@/components/admin';
+import { CoursePageHeader, CourseCategoryFields, CourseStepsCard, courseStepLabel } from '@/components/admin';
 import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
 import { BackgroundGenerationsBanner, GenerationProgressCard } from '@/components/admin/GenerationProgress';
 import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
@@ -302,15 +302,25 @@ export function CourseAICreateView() {
         <CoursePageHeader
           breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
           title="Popis kurzu"
+          stepLabel={courseStepLabel('description')}
           onSave={handleSave}
           showButtons={false}
         />
       </div>
 
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
+      {/* Karta „Tvorba kurzu“ — nový kurz zatím nemá ID, další kroky jsou
+          dostupné až po vygenerování (pak se otevřou Podklady) */}
+      <CourseStepsCard
+        current="description"
+        disabledSteps={['content', 'tests', 'summary']}
+        className="lg:mt-8 lg:ml-8"
+      />
+
       {/* Sloupcový flex, aby se karta průběhu mohla roztáhnout (flex-1) na zbytek
           výšky a vycentrovat — procentuální min-h by přes několik flex vrstev
           nemusela mít z čeho počítat */}
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+      <div className="flex-1 min-w-0 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col">
         {error && (
           <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
             {error}
@@ -634,6 +644,7 @@ export function CourseAICreateView() {
           </form>
         </div>
         )}
+      </div>
       </div>
 
       <AnimatePresence>

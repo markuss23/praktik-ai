@@ -145,8 +145,9 @@ export function useAuth() {
   }, []);
 
   // Public API
-  const login = useCallback(async () => {
-    const url = await buildLoginUrl();
+  /** `returnTo` — lokální cesta, kam se po přihlášení vrátit (výchozí "/"). */
+  const login = useCallback(async (returnTo?: string) => {
+    const url = await buildLoginUrl(undefined, returnTo);
     window.location.href = url;
   }, []);
 

@@ -9,7 +9,7 @@ import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
-import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
+import { ProfileTicketsCard, useSupportChat } from '@/components/tickets';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -75,8 +75,7 @@ export default function ProfilPage() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [sidebarTicket, setSidebarTicket] = useState<Ticket | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const { openSupportChat } = useSupportChat();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -251,20 +250,10 @@ export default function ProfilPage() {
 
           <ProfileProgressCard items={progressItems} />
 
+          {/* AI chat nad wiki + konverzace vybraného tiketu */}
           <ProfileTicketsCard
-            onTicketDetail={(ticket) => {
-              setSidebarTicket(ticket);
-              setHelpOpen(true);
-            }}
-            onOpenHelp={() => {
-              setSidebarTicket(null);
-              setHelpOpen(true);
-            }}
-            onTicketDeleted={(deleted) =>
-              setSidebarTicket((current) =>
-                current?.ticketId === deleted.ticketId ? null : current,
-              )
-            }
+            onTicketDetail={openSupportChat}
+            onOpenHelp={() => openSupportChat()}
           />
 
           <ProfileBadgesCard badges={badges} />
@@ -293,16 +282,6 @@ export default function ProfilPage() {
           )}
         </div>
       </div>
-
-      {/* Nápověda a podpora — AI chat nad wiki + konverzace vybraného tiketu */}
-      <TicketsSidebar
-        ticket={sidebarTicket}
-        open={helpOpen}
-        onClose={() => {
-          setHelpOpen(false);
-          setSidebarTicket(null);
-        }}
-      />
 
       {/* Edit profile modal */}
       {(() => {

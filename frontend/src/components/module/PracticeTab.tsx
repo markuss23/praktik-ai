@@ -36,6 +36,11 @@ interface PracticeTabProps {
   moduleId: number;
   practiceQuestions: PracticeQuestion[];
   onComplete: () => void;
+  /**
+   * Náhled pro autora kurzu (admin): stejné UI jako pro studenta, ale nic se
+   * neukládá (ani sessionStorage studenta) a AI otázky se negenerují.
+   */
+  preview?: boolean;
 }
 
 type Phase = 'static' | 'ai';
@@ -53,12 +58,13 @@ interface AIQuestion {
 
 //  component
 
-export default function PracticeTab({ moduleId, practiceQuestions, onComplete }: PracticeTabProps) {
+export default function PracticeTab({ moduleId, practiceQuestions, onComplete, preview = false }: PracticeTabProps) {
   const hasPracticeQuestions = practiceQuestions.length > 0;
 
   // Restore practice state from sessionStorage
   const storageKey = `practice-state-${moduleId}`;
   const savedState = (() => {
+    if (preview) return null;
     try {
       const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
       return raw ? JSON.parse(raw) : null;
@@ -80,6 +86,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
   // Persist practice state to sessionStorage
   useEffect(() => {
+    if (preview) return;
     try {
       const aiUserInputs: Record<number, string> = aiLoaded
         ? aiQuestions.reduce<Record<number, string>>((acc, q) => {
@@ -94,7 +101,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
         aiUserInputs,
       }));
     } catch { /* ignore */ }
-  }, [storageKey, phase, staticAnswers, staticSubmitted, aiQuestions, aiLoaded, savedAiInputs]);
+  }, [preview, storageKey, phase, staticAnswers, staticSubmitted, aiQuestions, aiLoaded, savedAiInputs]);
 
   const handleStaticAnswerChange = (questionId: number, value: number | string) => {
     setStaticAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -183,10 +190,10 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
   // When switching to AI phase, load existing AI questions
   useEffect(() => {
-    if (phase === 'ai') {
+    if (phase === 'ai' && !preview) {
       loadAiQuestions();
     }
-  }, [phase, loadAiQuestions]);
+  }, [phase, preview, loadAiQuestions]);
 
   const handleGenerate = async (type: 'open' | 'closed') => {
     setShowTypeSelector(false);
@@ -458,7 +465,26 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                 </Button>
               </div>
             )}
-            {aiLoading ? (
+            {preview ? (
+              <div className="rounded-lg border border-dashed border-gradient-r/40 bg-gradient-r/5 px-5 py-8 text-center">
+                <p className="font-medium text-foreground">Tady by si student generoval další otázky pomocí AI.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {hasPracticeQuestions
+                    ? 'V náhledu se AI otázky negenerují — pokračujte tlačítkem Dokončit.'
+                    : 'Modul nemá žádné připravené otázky, student by tedy začal rovnou otázkami od AI. V náhledu se negenerují.'}
+                </p>
+                <div className="flex justify-end mt-8 pt-6 border-t border-border">
+                  <Button
+                    variant="plain"
+                    onClick={onComplete}
+                    className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
+                    style={{ backgroundColor: 'var(--primary)' }}
+                  >
+                    Dokončit
+                  </Button>
+                </div>
+              </div>
+            ) : aiLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="size-8 animate-spin text-gradient-r" />

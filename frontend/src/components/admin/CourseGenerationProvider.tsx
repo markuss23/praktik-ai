@@ -60,14 +60,9 @@ interface CourseGenerationContextValue {
 }
 
 const STORAGE_KEY = 'praktik-ai:active-course-generations';
-// Starší klíč s jediným ID — přečte se jednou a smaže, ať se neztratí generace
-// spuštěná před nasazením téhle verze.
 const LEGACY_STORAGE_KEY = 'praktik-ai:active-course-generation';
 
 const POLL_INTERVAL_MS = 1500;
-// Kolik po sobě jdoucích „pending" odpovědí tolerujeme, než generaci prohlásíme
-// za ztracenou. Backend průběh drží jen v paměti: po restartu o kurzu neví a
-// vrací „pending" napořád. Těsně po spuštění může jeden tik předběhnout zápis.
 const MAX_PENDING_TICKS = 6;
 
 const INITIAL_PROGRESS: CourseGenerationProgress = {
@@ -130,7 +125,6 @@ function isProgress(value: unknown): value is CourseGenerationProgress {
   );
 }
 
-/** Stavový kód z chyby `getCourseGenerationProgress` („API error: 404"). */
 function errorStatus(err: unknown): number | null {
   const message = err instanceof Error ? err.message : '';
   const match = message.match(/API error: (\d{3})/);
@@ -143,8 +137,7 @@ export function CourseGenerationProvider({ children }: { children: React.ReactNo
   const toast = useToast();
   const router = useRouter();
 
-  // Uložené generace jdou rovnou do výchozího stavu — kdyby se načítaly až
-  // efektem, persist-efekt níže by úložiště stihl přepsat prázdným seznamem.
+  // Uložené generace jdou rovnou do výchozího stavu
   const [generations, setGenerations] = useState<Map<number, TrackedGeneration>>(
     () => new Map(readStoredGenerations().map((g) => [g.courseId, { ...g, progress: INITIAL_PROGRESS }])),
   );

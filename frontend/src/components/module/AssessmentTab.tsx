@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import {
@@ -12,9 +12,22 @@ import {
 } from '@/lib/api-client';
 import { ModuleCompletedCard } from './ModuleCompletedCard';
 import { Button, Textarea } from '@/components/ui';
+import { readApiErrorDetail } from '@/lib/api-error';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PASSING_SCORE = 75;
+
+// Odpověď v testu se jen píše. Víc znaků najednou než slovo z našeptávače
+// nebo opravy překlepu = vložený text (schránka mobilní klávesnice,
+// rozšíření prohlížeče, automatické vyplnění). Serverová kontrola rychlosti
+// psaní (typing_guard.py) je pojistka pro obejití v prohlížeči.
+const MAX_INSERT_CHARS = 30;
+const BLOCKED_INPUT_TYPES = new Set([
+  'insertFromPaste',
+  'insertFromPasteAsQuotation',
+  'insertFromDrop',
+  'insertFromYank',
+]);
 
 interface AssessmentTabProps {
   moduleId: number;
@@ -49,6 +62,33 @@ export default function AssessmentTab({
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [question, setQuestion] = useState<string>('');
   const [userAnswer, setUserAnswer] = useState('');
+  // Pokus o kopírování/vložení — ukáže se vysvětlení, proč se nic nestalo.
+  const [clipboardBlocked, setClipboardBlocked] = useState(false);
+  const blockClipboard = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    setClipboardBlocked(true);
+  };
+  // Undo/redo smí vrátit i delší, dřív napsaný úsek — onChange ho pak nebere jako vložení.
+  const allowLongChangeRef = useRef(false);
+  // Nativní `beforeinput` zná typ vstupu (vložení, přetažení…) a dá se zrušit
+  // dřív, než se text vůbec objeví. Callback ref vrací úklid (React 19), pole
+  // se totiž montuje až po načtení otázky.
+  const guardAnswerInput = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    const onBeforeInput = (e: InputEvent) => {
+      if (e.inputType.startsWith('history')) {
+        allowLongChangeRef.current = true;
+        return;
+      }
+      const inserted = e.data ?? e.dataTransfer?.getData('text/plain') ?? '';
+      if (BLOCKED_INPUT_TYPES.has(e.inputType) || inserted.length > MAX_INSERT_CHARS) {
+        e.preventDefault();
+        setClipboardBlocked(true);
+      }
+    };
+    el.addEventListener('beforeinput', onBeforeInput);
+    return () => el.removeEventListener('beforeinput', onBeforeInput);
+  }, []);
   const [attempts, setAttempts] = useState<AttemptResult[]>([]);
   const [passed, setPassed] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -177,7 +217,10 @@ export default function AssessmentTab({
       }
     } catch (err) {
       console.error('Failed to evaluate assessment:', err);
-      setErrorMsg('Nepodařilo se vyhodnotit odpověď. Zkuste to znovu.');
+      // Pokus se nezapočítal — stejnou odpověď jde odeslat znovu. Hláška ze
+      // serveru (např. kontrola rychlosti psaní) má přednost před obecnou.
+      setLastSubmittedAnswer('');
+      setErrorMsg((await readApiErrorDetail(err)) ?? 'Nepodařilo se vyhodnotit odpověď. Zkuste to znovu.');
     } finally {
       setSubmitting(false);
     }
@@ -293,15 +336,44 @@ export default function AssessmentTab({
           >
             {/* Answer textarea — větší výchozí velikost; uživatel si může
                 ručně rozšířit (vertikálně) přes resize handle v rohu. */}
+            {/* Odpověď se v testu jen píše — vkládání (klávesnice, kontextové
+                menu i mobil spouští `paste`), kopírování, vyjmutí a přetažení
+                textu dovnitř i ven jsou zablokované. */}
             <Textarea
+              ref={guardAnswerInput}
               value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                const allowLong = allowLongChangeRef.current;
+                allowLongChangeRef.current = false;
+                // Poslední pojistka: změna, kterou nevyvolal uživatel (skript,
+                // rozšíření), nebo skok o víc znaků, než se dá napsat jedním
+                // úhozem (vložení, které beforeinput zrušit nejde — IME,
+                // mobilní klávesnice). Řízené pole pak React vrátí na původní text.
+                if (!e.nativeEvent.isTrusted || (!allowLong && next.length - userAnswer.length > MAX_INSERT_CHARS)) {
+                  setClipboardBlocked(true);
+                  return;
+                }
+                setUserAnswer(next);
+                setClipboardBlocked(false);
+              }}
+              onPaste={blockClipboard}
+              onCopy={blockClipboard}
+              onCut={blockClipboard}
+              onDrop={blockClipboard}
+              onDragStart={blockClipboard}
+              aria-describedby={clipboardBlocked ? 'assessment-clipboard-note' : undefined}
               placeholder="Napište svou odpověď..."
               rows={8}
               disabled={submitting}
               style={{ minHeight: 200, resize: 'vertical' }}
               className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 mb-3")}
             />
+            {clipboardBlocked && (
+              <p id="assessment-clipboard-note" role="status" className="-mt-1 mb-3 text-xs text-muted-foreground">
+                Kopírování a vkládání je v testu vypnuté — odpověď napište vlastními slovy.
+              </p>
+            )}
 
             {/* Last attempt feedback */}
             {lastAttempt && (

@@ -63,6 +63,18 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* SupportChatWidget*/
+  --support-fab-size: 3rem;
+  --support-fab-offset: 1rem;
+  --support-fab-clearance: calc(var(--support-fab-offset) + var(--support-fab-size) + 0.75rem);
+}
+
+@media (width >= 40rem) {
+  :root {
+    --support-fab-size: 3.5rem;
+    --support-fab-offset: 1.5rem;
+  }
 }
 
 @theme inline {

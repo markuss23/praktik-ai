@@ -1,26 +1,30 @@
 'use client';
 
-import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
+import { Check, Eye, Loader2, Maximize, Menu, MessageSquare, Minimize, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
 import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { useAdminChrome } from './AdminChromeProvider';
 
 interface CoursePageHeaderProps {
   breadcrumb: string;
   title: string;
+  stepLabel?: string;
   onSave?: () => void;
   saving?: boolean;
   saved?: boolean;
   // Když je předán, místo tlačítka Uložit se zobrazí informativní indikátor autosave.
   saveStatus?: SaveStatus;
-  onPreview?: () => void;
+  /** Náhled pro studenta — přepínač mezi editorem a studentským pohledem. */
+  preview?: { active: boolean; onToggle: () => void };
+ showFullscreenToggle?: boolean;
   showButtons?: boolean;
   onMenuClick?: () => void;
   onCommentsClick?: () => void;
   commentsCount?: number;
 }
 
-// Neklikatelný indikátor stavu autosave – jen dva stavy: Ukládám / Uloženo.
+// indikátor stavu autosave
 function SaveStatusIndicator({ status }: { status: SaveStatus }) {
   const isSaving = status === 'saving' || status === 'pending';
 
@@ -52,12 +56,16 @@ export function CoursePageHeader({
   saving = false,
   saved = false,
   saveStatus,
-  onPreview,
+  stepLabel,
+  preview,
+  showFullscreenToggle = false,
   showButtons = false,
   onMenuClick,
   onCommentsClick,
   commentsCount,
 }: CoursePageHeaderProps) {
+  const { focusMode, toggleFocusMode } = useAdminChrome();
+
   return (
     <div className="bg-card border-b">
       <div className="px-4 sm:px-6 py-3 sm:py-4">
@@ -69,7 +77,7 @@ export function CoursePageHeader({
                 type="button"
                 onClick={onMenuClick}
                 className={cn(BTN_KEEP_BOX, "lg:hidden p-2 -ml-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
-                aria-label="Otevřít osnovu"
+                aria-label="Otevřít kroky tvorby a moduly"
               >
                 <Menu size={20} />
               </Button>
@@ -78,7 +86,12 @@ export function CoursePageHeader({
               <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1 truncate">
                 {breadcrumb}
               </p>
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
+              <div className="flex items-baseline gap-2 sm:gap-3 min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
+                {stepLabel && (
+                  <span className="shrink-0 text-xs sm:text-sm text-muted-foreground">{stepLabel}</span>
+                )}
+              </div>
             </div>
             {onCommentsClick && (
               <Button
@@ -98,15 +111,38 @@ export function CoursePageHeader({
             )}
           </div>
           {showButtons && (
-            <div className="flex items-center gap-2 sm:gap-3">
-              {onPreview && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {preview && (
                 <Button
-                  variant="plain"
+                  variant={preview.active ? 'brand-solid' : 'outline'}
+                  size="lg"
                   type="button"
-                  onClick={onPreview}
-                  className={cn(BTN_KEEP_BOX, "text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors")}
+                  onClick={preview.onToggle}
+                  aria-pressed={preview.active}
+                  aria-label={preview.active ? 'Ukončit náhled' : 'Náhled pro studenta'}
+                  className="px-3"
                 >
-                  Živý náhled kurzu
+                  <Eye data-icon="inline-start" />
+                  <span className="hidden sm:inline">
+                    {preview.active ? 'Ukončit náhled' : 'Náhled pro studenta'}
+                  </span>
+                </Button>
+              )}
+              {showFullscreenToggle && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  type="button"
+                  onClick={toggleFocusMode}
+                  aria-pressed={focusMode}
+                  aria-label={focusMode ? 'Zavřít celou obrazovku' : 'Celá obrazovka'}
+                  title={focusMode ? 'Zavřít celou obrazovku (Esc)' : 'Celá obrazovka'}
+                  // Mimo fokus režim jen na desktopu (panely, které schovává, jsou
+                  // jen tam); v něm vždy — fullscreen může layout zúžit pod lg.
+                  className={cn('px-3', focusMode ? 'inline-flex' : 'hidden lg:inline-flex')}
+                >
+                  {focusMode ? <Minimize data-icon="inline-start" /> : <Maximize data-icon="inline-start" />}
+                  <span className="hidden sm:inline">{focusMode ? 'Zavřít celou obrazovku' : 'Celá obrazovka'}</span>
                 </Button>
               )}
               {saveStatus !== undefined ? (

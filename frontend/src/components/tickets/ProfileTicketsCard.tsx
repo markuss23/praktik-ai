@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/constants";
 import { TicketCard } from "./TicketCard";
 import { TicketDeleteModal } from "./TicketDeleteModal";
 import { listMyTickets } from "./api";
+import { TICKET_CREATED_EVENT } from "./draft";
 import { Ticket } from "./types";
 
 interface ProfileTicketsCardProps {
@@ -48,8 +49,22 @@ export function ProfileTicketsCard({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+    // Tiket založený z AI chatu ve widgetu — karta se obnoví bez skeletonu.
+    const refresh = () => {
+      listMyTickets()
+        .then((data) => {
+          if (!cancelled) setTickets(data);
+        })
+        .catch(() => {
+          // obnova je best-effort, dosavadní seznam necháme
+        });
+    };
+    window.addEventListener(TICKET_CREATED_EVENT, refresh);
+
     return () => {
       cancelled = true;
+      window.removeEventListener(TICKET_CREATED_EVENT, refresh);
     };
   }, []);
 

@@ -28,7 +28,7 @@ export default function TicketDetailPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      login();
+      login(window.location.pathname);
     }
   }, [authLoading, user, login]);
 

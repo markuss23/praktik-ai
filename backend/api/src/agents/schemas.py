@@ -155,7 +155,13 @@ class LearnBlocksChatResponse(BaseModel):
 class WikiChatRequest(BaseModel):
     """Request pro chat nad projektovou wiki"""
 
-    message: str = Field(..., description="Zpráva od uživatele (otázka o projektu)")
+    # Endpoint je veřejný
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Zpráva od uživatele (otázka o projektu)",
+    )
 
 
 class WikiChatResponse(BaseModel):

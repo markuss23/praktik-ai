@@ -26,6 +26,7 @@ from api.src.agents.schemas import (
     WikiChatResponse,
     WikiSyncResponse,
 )
+from api.src.agents.typing_guard import typed_too_fast
 from api.src.agents.progress import (
     get_progress,
     is_running,
@@ -54,6 +55,8 @@ from api.database import SessionSqlSessionDependency
 from api import models
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+# Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
+public_router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 async def _run_course_generation(course_id: int) -> None:
@@ -259,7 +262,7 @@ async def learn_blocks_chat(
     return LearnBlocksChatResponse(answer=result.answer)
 
 
-@router.post("/wiki-chat", operation_id="wiki_chat")
+@public_router.post("/wiki-chat", operation_id="wiki_chat")
 async def wiki_chat(
     user_input: WikiChatRequest, db: SessionSqlSessionDependency
 ) -> WikiChatResponse:
@@ -395,6 +398,23 @@ async def evaluate_assessment(
         raise HTTPException(
             status_code=409,
             detail=f"Vyčerpali jste maximální počet pokusů ({module.max_task_attempts}) pro tento modul",
+        )
+
+    # Odpověď se v testu musí napsat — nereálně rychle vzniklou odpověď
+    # (vložený text) odmítneme dřív, než se pokus započítá a zavolá se AI.
+    previous_attempts = [a for a in session.attempts if a.is_active]
+    last_attempt = previous_attempts[-1] if previous_attempts else None
+    if typed_too_fast(
+        previous=last_attempt.user_response if last_attempt else "",
+        current=body.user_response,
+        since=last_attempt.created_at if last_attempt else session.created_at,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Odpověď vznikla rychleji, než je možné ji napsat. V testu je potřeba "
+                "odpověď napsat vlastními slovy — pokus se nezapočítal."
+            ),
         )
 
     service = EvaluationService(

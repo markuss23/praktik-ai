@@ -175,7 +175,7 @@ export function Header() {
               <Button
                 variant="brand"
                 size="lg"
-                onClick={login}
+                onClick={() => login()}
                 title="Přihlásit se"
                 aria-label="Přihlásit se"
               >

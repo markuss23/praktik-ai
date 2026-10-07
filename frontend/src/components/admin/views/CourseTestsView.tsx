@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { QuestionType, FeedbackItem, Status } from '@/api';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { QuestionType, FeedbackItem, Status, type PracticeQuestion } from '@/api';
 import {
   updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption,
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
+import {
+  CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepsCard, StepModuleList,
+  courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type StepModuleItem,
+} from '@/components/admin';
+import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
+// Osnova kurzu je nahrazená kartou „Tvorba kurzu" (viz zakomentované použití níže).
+// import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
 import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea, useToast } from '@/components/ui';
 import { readApiErrorDetail } from '@/lib/api-error';
 
@@ -53,6 +59,48 @@ interface CourseTestsViewProps {
   initialModuleId?: number;
 }
 
+// Co se o existující otázce posílá na PUT. Slouží i jako otisk pro
+// porovnání s naposledy uloženým stavem — autosave posílá jen změněné.
+function questionPayload(question: QuestionItem) {
+  const correctOption = question.options.find((opt) => opt.isCorrect);
+  return {
+    question: question.question,
+    questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
+    correctAnswer: correctOption?.text ?? question.correctAnswer,
+    exampleAnswer: question.exampleAnswer,
+  };
+}
+
+// Rozpracované otázky editoru → tvar, který čte studentské Procvičování
+// (náhled pro studenta). Neuložené otázky/možnosti dostanou záporná ID;
+// klíčová slova otevřených otázek editor neupravuje, berou se z uložených.
+function toPracticeQuestions(
+  moduleId: number,
+  items: QuestionItem[],
+  saved: PracticeQuestion[] = [],
+): PracticeQuestion[] {
+  return items
+    .filter((q) => q.question.trim().length > 0)
+    .map((q, index) => {
+      const questionId = q.questionId ?? -(index + 1);
+      const isClosed = q.type === 'closed';
+      return {
+        questionId,
+        moduleId,
+        question: q.question,
+        questionType: isClosed ? QuestionType.Closed : QuestionType.Open,
+        correctAnswer: isClosed ? (q.options.find((o) => o.isCorrect)?.text ?? q.correctAnswer ?? null) : null,
+        exampleAnswer: isClosed ? null : (q.exampleAnswer ?? null),
+        closedOptions: isClosed
+          ? q.options
+              .filter((o) => o.text.trim().length > 0)
+              .map((o, oIndex) => ({ optionId: o.optionId ?? -(oIndex + 1), questionId, text: o.text }))
+          : [],
+        openKeywords: saved.find((sq) => sq.questionId === q.questionId)?.openKeywords ?? [],
+      };
+    });
+}
+
 // Editor testů/otázek pro moduly kurzu
 export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
@@ -76,6 +124,9 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
 
   // Feedback state
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
@@ -154,6 +205,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
   const [questionsInitialized, setQuestionsInitialized] = useState(false);
+  // Naposledy uložený stav na serveru (otisk otázky podle questionId, text
+  // možnosti podle optionId) — ukládá se jen to, co se od něj liší.
+  const savedQuestionKeysRef = useRef(new Map<number, string>());
+  const savedOptionTextsRef = useRef(new Map<number, string>());
 
   // Inicializace otázek z courseData
   if (courseData && !questionsInitialized) {
@@ -177,6 +232,15 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       } else {
         allModuleQuestions[moduleIndex] = [];
       }
+    });
+    // Výchozí stav pro porovnání = to, co právě přišlo ze serveru.
+    savedQuestionKeysRef.current = new Map();
+    savedOptionTextsRef.current = new Map();
+    Object.values(allModuleQuestions).flat().forEach((q) => {
+      if (q.questionId) savedQuestionKeysRef.current.set(q.questionId, JSON.stringify(questionPayload(q)));
+      q.options.forEach((opt) => {
+        if (opt.optionId) savedOptionTextsRef.current.set(opt.optionId, opt.text);
+      });
     });
     setModuleQuestions(allModuleQuestions);
     setQuestionsInitialized(true);
@@ -278,8 +342,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
 
   const saveTestContent = async (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions) => {
     try {
-      const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1] }[] = [];
-      const optionUpdatePromises: Promise<unknown>[] = [];
+      const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1]; key: string }[] = [];
+      // Úpravy možností se spouští až po otázkách — kdyby se odpálily hned,
+      // selhání otázky by skočilo do catch a jejich odmítnutí by zůstala
+      // neošetřená (unhandled rejection za každou možnost).
+      const optionUpdates: { optionId: number; text: string }[] = [];
       const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
       const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
 
@@ -291,24 +358,20 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           const question = questionsForModule[qIndex];
 
           if (question.questionId) {
-            const correctOption = question.options.find(opt => opt.isCorrect);
-            questionUpdates.push({
-              questionId: question.questionId,
-              data: {
-                question: question.question,
-                questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
-                correctAnswer: correctOption?.text ?? question.correctAnswer,
-                exampleAnswer: question.exampleAnswer,
-              },
-            });
+            // Jen otázky a možnosti, které se od posledního uložení změnily
+            const data = questionPayload(question);
+            const key = JSON.stringify(data);
+            if (savedQuestionKeysRef.current.get(question.questionId) !== key) {
+              questionUpdates.push({ questionId: question.questionId, data, key });
+            }
 
             if (question.type === 'closed') {
               for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
                 const option = question.options[optIndex];
                 if (option.optionId) {
-                  optionUpdatePromises.push(
-                    updatePracticeOption(option.optionId, { text: option.text })
-                  );
+                  if (savedOptionTextsRef.current.get(option.optionId) !== option.text) {
+                    optionUpdates.push({ optionId: option.optionId, text: option.text });
+                  }
                 } else {
                   newOptionsForExistingQuestions.push({
                     moduleIndex: Number(moduleIndex), questionIndex: qIndex, optionIndex: optIndex, option, questionId: question.questionId,
@@ -322,14 +385,20 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         }
       }
 
-      for (const { questionId, data } of questionUpdates) {
+      // Uložený stav se posouvá po každém úspěšném zápisu — co selže, zkusí příští uložení.
+      for (const { questionId, data, key } of questionUpdates) {
         await updatePracticeQuestion(questionId, data);
+        savedQuestionKeysRef.current.set(questionId, key);
       }
 
-      await Promise.all(optionUpdatePromises);
+      await Promise.all(optionUpdates.map(async ({ optionId, text }) => {
+        await updatePracticeOption(optionId, { text });
+        savedOptionTextsRef.current.set(optionId, text);
+      }));
 
       for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
         const createdOption = await createPracticeOption({ questionId, text: option.text });
+        savedOptionTextsRef.current.set(createdOption.optionId, option.text);
         setModuleQuestions(prev => {
           const updated = { ...prev };
           if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -354,6 +423,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           correctAnswer: correctOption?.text ?? question.correctAnswer,
           exampleAnswer: question.exampleAnswer,
         });
+        savedQuestionKeysRef.current.set(createdQuestion.questionId, JSON.stringify(questionPayload(question)));
 
         setModuleQuestions(prev => {
           const updated = { ...prev };
@@ -370,6 +440,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             const createdOption = await createPracticeOption({
               questionId: createdQuestion.questionId, text: option.text,
             });
+            savedOptionTextsRef.current.set(createdOption.optionId, option.text);
             setModuleQuestions(prev => {
               const updated = { ...prev };
               if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -483,7 +554,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     goToCourseContent(courseId);
   };
 
-  // Přepnutí mezi fázemi tvorby (podklady → testy → souhrn) přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'tests') return;
     const pruned = pruneEmptyQuestions();
@@ -492,8 +563,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     } catch {
       // i při chybě uložení umožníme přechod (alert je už zobrazen)
     }
-    if (step === 'content') goToCourseContent(courseId);
-    else goToCourseSummary(courseId);
+    goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
   const isLastModule = selectedModuleIndex >= modules.length - 1;
@@ -508,6 +578,15 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
   };
+
+  // Náhled pro studenta — rozpracované otázky přes uložená data modulů.
+  const previewModules = useMemo<PreviewModule[]>(
+    () => modules.map((module, index) => ({
+      ...module,
+      practiceQuestions: toPracticeQuestions(module.moduleId, moduleQuestions[index] || [], module.practiceQuestions),
+    })),
+    [modules, moduleQuestions],
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -636,34 +715,91 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   );
 
   // Outline items pro sidebar
-  const outlineItems = modules.map((module, index) => {
-    const questionsForModule = moduleQuestions[index] || [];
-    return {
-      id: index,
+  // Data pro Osnovu kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentovaný blok v JSX).
+  // const outlineItems = modules.map((module, index) => {
+  //   const questionsForModule = moduleQuestions[index] || [];
+  //   return {
+  //     id: index,
+  //     title: module.title,
+  //     isExpanded: expandedOutlineItems.has(index),
+  //     isSelected: selectedModuleIndex === index,
+  //     feedbackCount: feedbackCountByModule(module.moduleId),
+  //     subItems: questionsForModule.map((q, qIdx) => ({
+  //       id: `q-${index}-${q.id}`,
+  //       label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
+  //       questionIndex: qIdx,
+  //     })),
+  //   };
+  // });
+
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: questionCountHint(questions.length),
+  };
+
+  // Odkazy na otázky pod vybraným modulem v kartě (dřív v rozbalené osnově)
+  const questionLinks = (moduleIndex: number, onPicked?: () => void) => {
+    const moduleQs = moduleQuestions[moduleIndex] || [];
+    if (moduleQs.length === 0) return null;
+    return (
+      <ul className="mt-0.5 mb-1 ml-6 border-l border-border pl-1">
+        {moduleQs.map((q, qIndex) => (
+          <li key={q.id}>
+            <Button
+              variant="plain"
+              type="button"
+              onClick={() => {
+                scrollToQuestion(moduleIndex, qIndex);
+                onPicked?.();
+              }}
+              className={cn(BTN_KEEP_BOX, "h-auto w-full justify-start rounded px-2 py-1 text-left text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground")}
+            >
+              <span className="truncate">{qIndex + 1}. {q.question || 'Bez zadání'}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
+      id: module.moduleId,
       title: module.title,
-      isExpanded: expandedOutlineItems.has(index),
-      isSelected: selectedModuleIndex === index,
-      feedbackCount: feedbackCountByModule(module.moduleId),
-      subItems: questionsForModule.map((q, qIdx) => ({
-        id: `q-${index}-${q.id}`,
-        label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
-        questionIndex: qIdx,
-      })),
-    };
-  });
+      selected: index === selectedModuleIndex,
+      badge: feedbackCountByModule(module.moduleId),
+      onSelect: () => {
+        selectModule(index);
+        onPicked?.();
+      },
+      extra: questionLinks(index, onPicked),
+    }));
 
   return (
     <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
         title="Tvorba obsahu testu"
+        stepLabel={courseStepLabel('tests')}
         saveStatus={saveStatus}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
-      <CourseStepNav current="tests" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="tests" onNavigate={handleStepNavigate} /> */}
+      {previewOpen ? (
+        <StudentPreview
+          course={courseData ?? { title: courseTitle }}
+          modules={previewModules}
+          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      ) : (
+      <>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
@@ -708,7 +844,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       )}
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
-        {/* Left Sidebar - Course Outline (desktop) */}
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
+        {!focusMode && (
+          <CourseStepsCard current="tests" onNavigate={handleStepNavigate} hints={stepHints}>
+            <StepModuleList items={stepModuleItems()} />
+          </CourseStepsCard>
+        )}
+
+        {/* Left Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
         <CourseOutlineSidebar
           items={outlineItems}
           onToggle={(index) => {
@@ -738,10 +881,20 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             );
           }}
         />
+        */}
 
         {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
-          <DrawerContent className="lg:hidden" aria-label="Osnova kurzu">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="tests"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            >
+              <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />
+            </CourseStepsCard>
+            {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
             <CourseOutlineSidebar
                 className="flex w-full flex-1 flex-col bg-card overflow-hidden"
                 items={outlineItems}
@@ -777,6 +930,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   );
                 }}
             />
+            */}
           </DrawerContent>
         </Drawer>
 
@@ -898,7 +1052,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && (
+        {showCommentsPanel && !focusMode && (
           <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
@@ -913,6 +1067,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </Drawer>
         )}
       </div>
+      </>
+      )}
       </>
       )}
     </div>

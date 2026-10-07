@@ -7,7 +7,12 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, ModuleCategoryFields, type CreationTab, type CourseStep } from '@/components/admin';
+import {
+  CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type StepModuleItem,
+} from '@/components/admin';
+import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
 import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
@@ -235,7 +240,7 @@ function ModuleItem({
 
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
-  const { goToCourseTests, goToCourseSummary, goBack } = useAdminNavigation();
+  const { goToCourseTests, goBack } = useAdminNavigation();
   const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
@@ -252,6 +257,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
   const [moduleMetaOpen, setModuleMetaOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
   // Chyba kategorií modulu — ukazuje se v editoru místo alertu, aby autosave
   // při neplatném stavu nevyskakoval opakovaně.
   const [moduleMetaError, setModuleMetaError] = useState('');
@@ -570,7 +578,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     goBack();
   };
 
-  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'content') return;
     let savedModules: LocalModule[] | undefined;
@@ -579,12 +587,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     } catch {
       return; // uložení selhalo (alert je zobrazen), zůstaneme na místě
     }
-    if (step === 'tests') {
-      const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
-      goToCourseTests(courseId, selectedModule?.moduleId);
-    } else {
-      goToCourseSummary(courseId);
-    }
+    goToStep(step, (savedModules ?? modules)[selectedModuleIndex]?.moduleId);
   };
 
   // Pro autosave sledujeme jen názvy a text obsahu, ne ID/learnId
@@ -601,11 +604,60 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     { delay: 3000, enabled: contentInitialized },
   );
 
+  // Náhled pro studenta — rozpracovaný obsah a zařazení přes uložená data.
+  // Editor upravuje první část příručky; další části zůstávají uložené.
+  const previewModules = useMemo<PreviewModule[]>(
+    () => modules.map((module, index) => {
+      const saved = courseData?.modules?.find((m) => m.moduleId === module.moduleId);
+      const savedBlocks = saved?.learnBlocks ?? [];
+      const edited = moduleContents[index];
+      // Modul bez uložené příručky má v editoru jen výchozí text, který se
+      // neukládá — student by tam neviděl nic (nový modul se uloží celý).
+      const firstBlock = edited && (edited.learnId || module.isTemporary)
+        ? [{ learnId: edited.learnId ?? -1, moduleId: module.moduleId, title: module.title, content: edited.content }]
+        : savedBlocks.slice(0, 1);
+      return {
+        moduleId: module.moduleId,
+        title: module.title,
+        perex: module.perex,
+        maxTaskAttempts: module.maxTaskAttempts,
+        learnBlocks: [...firstBlock, ...savedBlocks.slice(1)],
+        practiceQuestions: saved?.practiceQuestions ?? [],
+        neuroPrinciples: neuroPrinciples.filter((n) => module.categories.neuroPrincipleIds.includes(n.principleId)),
+        krauuCompetences: krauuCompetences.filter((k) => module.categories.krauuCompetenceIds.includes(k.krauuId)),
+        bloomLevels: bloomLevels.filter((b) => module.categories.bloomLevelIds.includes(b.bloomId)),
+      };
+    }),
+    [modules, moduleContents, courseData, neuroPrinciples, krauuCompetences, bloomLevels],
+  );
+
   if (courseLoading) return <LoadingState />;
   if (courseError) return <ErrorState message={courseError} />;
 
   const selectedModule = modules[selectedModuleIndex] as LocalModule | undefined;
   const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
+
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: questionCountHint(
+      courseData?.modules?.find((m) => m.moduleId === selectedModule?.moduleId)?.practiceQuestions?.length ?? 0,
+    ),
+  };
+
+  // Moduly pod aktivním krokem karty „Tvorba kurzu" (dřív Osnova kurzu)
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
+      id: module.moduleId,
+      title: module.title,
+      selected: index === selectedModuleIndex,
+      badge: feedbackCountByModule(module.moduleId),
+      isNew: module.isTemporary,
+      onSelect: () => {
+        setSelectedModuleIndex(index);
+        onPicked?.();
+      },
+      onDelete: module.isTemporary ? () => handleDeleteModule(index) : undefined,
+    }));
 
   const commentsPanelInner = (
     <>
@@ -735,13 +787,27 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
+        stepLabel={courseStepLabel('content')}
         saveStatus={saveStatus}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
-      <CourseStepNav current="content" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="content" onNavigate={handleStepNavigate} /> */}
+      {previewOpen && (
+        <StudentPreview
+          course={courseData ?? { title: courseTitle }}
+          modules={previewModules}
+          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'prirucka' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      )}
+      {/* Editor při náhledu jen schováme — rich text editor tak nepřijde o stav */}
+      <div className={previewOpen ? 'hidden' : 'contents'}>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
@@ -771,7 +837,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       )} */}
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
-        {/* Left Sidebar - Course Outline (desktop) */}
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
+        {!focusMode && (
+          <CourseStepsCard current="content" onNavigate={handleStepNavigate} hints={stepHints}>
+            <StepModuleList items={stepModuleItems()} onAdd={() => setShowAddModuleModal(true)} />
+          </CourseStepsCard>
+        )}
+
+        {/* Left Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
         <div className="hidden lg:flex w-56 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
           <OutlineHeader
             onAdd={() => setShowAddModuleModal(true)}
@@ -787,10 +860,23 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             onDelete={handleDeleteModule}
           />
         </div>
+        */}
 
         {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
-          <DrawerContent className="lg:hidden" aria-label="Struktura kurzu">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="content"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            >
+              <StepModuleList
+                items={stepModuleItems(() => setMobileOutlineOpen(false))}
+                onAdd={() => setShowAddModuleModal(true)}
+              />
+            </CourseStepsCard>
+            {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
             <OutlineHeader
               onAdd={() => setShowAddModuleModal(true)}
               onClose={() => setMobileOutlineOpen(false)}
@@ -805,6 +891,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
               onToggle={toggleOutlineItem}
               onDelete={handleDeleteModule}
             />
+            */}
           </DrawerContent>
         </Drawer>
 
@@ -886,7 +973,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && (
+        {showCommentsPanel && !focusMode && (
           <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
@@ -939,6 +1026,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       </div>
       </>
       )}
+      </div>
     </div>
   );
 }

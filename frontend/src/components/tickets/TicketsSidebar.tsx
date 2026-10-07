@@ -2,8 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Bot, Eraser, MessageCircleQuestion, SendHorizontal, TicketPlus, X } from "lucide-react";
+import {
+  Bot,
+  Eraser,
+  LogIn,
+  MessageCircleQuestion,
+  SendHorizontal,
+  TicketPlus,
+  X,
+} from "lucide-react";
 
+import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/lib/constants";
 import {
   Button,
@@ -19,6 +28,7 @@ import { wikiChat } from "@/lib/api-client";
 import { TicketConversation } from "./TicketConversation";
 import { TicketCreateModal } from "./TicketCreateModal";
 import { TICKET_MESSAGING_UNAVAILABLE } from "./api";
+import { NEW_TICKET_RETURN_PATH, saveTicketDraft } from "./draft";
 import { buildTicketConversation, formatTicketCode, Ticket, TicketMessage } from "./types";
 
 interface TicketsSidebarProps {
@@ -32,6 +42,8 @@ interface TicketsSidebarProps {
   onClose: () => void;
   /** Zavolá se po založení tiketu z eskalace („Nepomohlo? Založit tiket"). */
   onTicketCreated?: (ticket: Ticket) => void;
+  /** Zavolá se, když dorazí odpověď AI — widget podle toho značí nepřečtené. */
+  onAiAnswer?: () => void;
 }
 
 /**
@@ -96,7 +108,9 @@ export function TicketsSidebar({
   open,
   onClose,
   onTicketCreated,
+  onAiAnswer,
 }: TicketsSidebarProps) {
+  const { isAuthenticated, login } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<TicketMessage[]>(readStoredMessages);
   const [sending, setSending] = useState(false);
@@ -161,6 +175,7 @@ export function TicketsSidebar({
           timestamp: new Date(),
         },
       ]);
+      onAiAnswer?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Odpověď se nepodařilo načíst.");
     } finally {
@@ -171,6 +186,13 @@ export function TicketsSidebar({
   const handleClear = () => {
     setMessages([GREETING]);
     setError(null);
+  };
+
+  // Tiket může založit jen přihlášený. Dotaz odložíme a po přihlášení
+  // (nebo registraci) /moje-tikety rovnou otevře předvyplněný formulář.
+  const handleLoginToCreate = () => {
+    saveTicketDraft({ title: titleFromQuestion(lastQuestion), reason: lastQuestion });
+    login(NEW_TICKET_RETURN_PATH);
   };
 
   return (
@@ -261,6 +283,22 @@ export function TicketsSidebar({
                   </Link>{" "}
                   byl založen — odpoví na něj lektor kurzu.
                 </p>
+              ) : !isAuthenticated ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Nepomohlo? Předejte dotaz lektorovi kurzu. Tiket můžete založit
+                    po přihlášení — dotaz z chatu vám předvyplníme.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={handleLoginToCreate}
+                  >
+                    <LogIn data-icon="inline-start" />
+                    Přihlásit se a založit tiket
+                  </Button>
+                </>
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
@@ -290,6 +328,7 @@ export function TicketsSidebar({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Zeptejte se na cokoliv o projektu…"
+              maxLength={2000}
               disabled={sending}
               className="flex-1 rounded-full px-4"
             />
