@@ -5,10 +5,20 @@ from agents.image_generator.course.state import CourseContext, CourseImageGenera
 from api import models
 
 
+def format_krauu_competences(competences: list[models.KrauuCompetence]) -> list[str]:
+    """Zformátuje KRAUU kompetence kurzu na řádky pro user prompt."""
+    return [
+        f"{c.code} {c.name} - {c.description}"
+        if c.description
+        else f"{c.code} {c.name}"
+        for c in sorted(competences, key=lambda c: c.code)
+    ]
+
+
 def load_course_context_node(
     state: CourseImageGeneratorState,
 ) -> CourseImageGeneratorState:
-    """Node pro načtení kontextu kurzu (title, description, summary, číselníky) z databáze."""
+    """Node pro načtení kontextu kurzu (title, description, summary, číselníky, KRAUU) z databáze."""
     print("Načítám kontext kurzu z databáze...")
 
     db: Session = state["db"]
@@ -36,6 +46,7 @@ def load_course_context_node(
         target_name=target.name if target else None,
         target_description=target.description if target else None,
         subject_name=subject.name if subject else None,
+        krauu_competences=format_krauu_competences(course.krauu_competence_list),
     )
 
     print(f"Načten kurz: {course.title}")

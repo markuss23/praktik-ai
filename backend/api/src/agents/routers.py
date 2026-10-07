@@ -1,11 +1,7 @@
 import asyncio
 import base64
-import json
-import zipfile
-from io import BytesIO
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
 from sqlalchemy import func, select, update
 
 from agents.sql_agent.service import SQLAgentResult, SQLAgentService
@@ -24,6 +20,8 @@ from api.src.agents.schemas import (
     GenerateCourseImagesRequest,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
+    GenerateImagesResponse,
+    GeneratedImageFile,
     GenerateModuleImagesRequest,
     GeneratePracticeQuestionRequest,
     GeneratePracticeQuestionResponse,
@@ -45,6 +43,7 @@ from api.src.agents.progress import (
     unregister_task,
 )
 from api.database import SessionLocal
+from api.storage import seaweedfs
 from api.src.agents.practice_controllers import (
     generate_practice_question,
     evaluate_practice_answer,
@@ -227,54 +226,38 @@ async def generate_course_embeddings(
     )
 
 
-def _images_zip_response(
-    result: ImageGenerationResult, spec_key: str, filename: str
-) -> Response:
-    """Zabalí výsledek image generátoru do ZIP odpovědi.
+def _upload_images_to_seaweedfs(
+    result: ImageGenerationResult, remote_dir: str
+) -> GenerateImagesResponse:
+    """Nahraje obrázky úspěšných modelů do SeaweedFS a vrátí jejich cesty."""
+    remote_dir = remote_dir.strip("/")
+    files: list[GeneratedImageFile] = []
 
-    ZIP obsahuje manifest.json (spec, prompt, latence a chyby modelů) a pro každý
-    model buď obrázek `<model>.<ext>`, nebo `<model>.error.txt`.
-
-    Args:
-        result: Výsledek běhu generátoru (kurz / modul).
-        spec_key: Klíč, pod kterým je v manifestu uložen image spec ("cover_spec" / "image_spec").
-        filename: Název staženého ZIP souboru.
-    """
-    buffer = BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        manifest = {
-            spec_key: result.image_spec.model_dump(),
-            "image_prompt": result.image_prompt,
-            "results": [],
-        }
-
-        for r in result.results:
-            manifest["results"].append(
-                {
-                    "model_name": r.model_name,
-                    "latency_ms": r.latency_ms,
-                    "error": r.error,
-                }
-            )
-
-            if r.error is not None or r.image_url is None:
-                zip_file.writestr(
-                    f"{r.model_name}.error.txt", r.error or "unknown error"
-                )
-                continue
-
+    for r in result.results:
+        file_path: str | None = None
+        if r.error is None and r.image_url is not None:
             # image_url je data URI "data:<mime>;base64,<data>"
             header, b64_data = r.image_url.split(",", 1)
             mime = header.removeprefix("data:").split(";", 1)[0]
             ext = "svg" if "svg" in mime else mime.split("/", 1)[1]
-            zip_file.writestr(f"{r.model_name}.{ext}", base64.b64decode(b64_data))
+            # nazev bude nazev modelu + přípona
+            filename = f"{r.model_name}.{ext}"
+            file_path = f"{remote_dir}/{filename}"
+            seaweedfs.upload_file(file_path, base64.b64decode(b64_data), filename, mime)
 
-        zip_file.writestr("manifest.json", json.dumps(manifest, indent=2))
+        files.append(
+            GeneratedImageFile(
+                model_name=r.model_name,
+                latency_ms=r.latency_ms,
+                error=r.error,
+                file_path=file_path,
+            )
+        )
 
-    return Response(
-        content=buffer.getvalue(),
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    return GenerateImagesResponse(
+        image_spec=result.image_spec.model_dump(),
+        image_prompt=result.image_prompt,
+        results=files,
     )
 
 
@@ -282,16 +265,14 @@ def _images_zip_response(
     "/generate-course-images",
     operation_id="generate_course_images",
     dependencies=[require_role("lector")],
-    response_class=Response,
-    responses={200: {"content": {"application/zip": {}}}},
 )
 async def generate_course_images(
     course_id: int,
     body: GenerateCourseImagesRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-) -> Response:
-    """Vygeneruje z kontextu kurzu jeden image prompt a porovná ho napříč zadanými modely."""
+) -> GenerateImagesResponse:
+    """Vygeneruje z kontextu kurzu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -302,25 +283,21 @@ async def generate_course_images(
     )
     result = await service.generate()
 
-    return _images_zip_response(
-        result, spec_key="cover_spec", filename=f"course_{course_id}_images.zip"
-    )
+    return _upload_images_to_seaweedfs(result, remote_dir=f"course-images/{course_id}")
 
 
 @router.post(
     "/generate-module-images",
     operation_id="generate_module_images",
     dependencies=[require_role("lector")],
-    response_class=Response,
-    responses={200: {"content": {"application/zip": {}}}},
 )
 async def generate_module_images(
     module_id: int,
     body: GenerateModuleImagesRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-) -> Response:
-    """Vygeneruje z kontextu modulu jeden image prompt a porovná ho napříč zadanými modely."""
+) -> GenerateImagesResponse:
+    """Vygeneruje z kontextu modulu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
 
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
@@ -331,9 +308,7 @@ async def generate_module_images(
     )
     result = await service.generate()
 
-    return _images_zip_response(
-        result, spec_key="image_spec", filename=f"module_{module_id}_images.zip"
-    )
+    return _upload_images_to_seaweedfs(result, remote_dir=f"module-images/{module_id}")
 
 
 @router.post("/learn-blocks-chat", operation_id="learn_blocks_chat")

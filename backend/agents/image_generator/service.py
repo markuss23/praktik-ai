@@ -25,7 +25,7 @@ class BaseImageGeneratorService(ABC):
 
     def __init__(self, db: Session, models_to_compare: list[str]):
         self.db = db
-        # Deduplikace se zachováním pořadí - stejný model 2x by v ZIPu přepsal sám sebe
+        # Deduplikace se zachováním pořadí - stejný model 2x by v SeaweedFS přepsal sám sebe
         self.models_to_compare = list(dict.fromkeys(models_to_compare))
 
     @abstractmethod
