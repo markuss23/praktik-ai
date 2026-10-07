@@ -57,7 +57,7 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
 
     try:
         response = llm.invoke(messages)
-        answer = response.content
+        answer = response.text
         print(f"Odpoved vygenerovana ({len(answer)} znaku)")
         return {**state, "answer": answer}
     except Exception as e:

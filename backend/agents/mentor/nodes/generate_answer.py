@@ -62,7 +62,7 @@ def generate_answer(state: AgentState) -> AgentState:
 
     try:
         response = llm.invoke(messages)
-        answer = response.content
+        answer = response.text
 
         print(f"Odpověď vygenerována ({len(answer)} znaků)")
 
