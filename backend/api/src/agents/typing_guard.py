@@ -8,7 +8,7 @@ prohlížeče zfalšovat nejde, dá se jen počkat.
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from difflib import SequenceMatcher
 
 # Rychlý písař vydrží zhruba 8–10 znaků za sekundu; 12 nechává rezervu, aby
@@ -41,6 +41,6 @@ def inserted_chars(previous: str, current: str) -> int:
 
 def typed_too_fast(previous: str, current: str, since: datetime) -> bool:
     """True, když by nový text vyžadoval nereálnou rychlost psaní."""
-    elapsed = (datetime.now(timezone.utc) - since).total_seconds()
+    elapsed = (datetime.now(UTC) - since).total_seconds()
     allowed = FREE_CHARS + MAX_CHARS_PER_SECOND * max(elapsed, 0.0)
     return inserted_chars(previous, current) > allowed
