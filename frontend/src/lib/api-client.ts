@@ -706,6 +706,13 @@ export async function evaluatePracticeAnswer(userQuestionId: number, userInput: 
   });
 }
 
+/** Vyhodnotí odpověď na předem připravenou otevřenou otázku modulu (nic neukládá). */
+export async function evaluateOpenQuestion(questionId: number, userInput: string) {
+  return agentsApi.evaluateOpenQuestion({
+    evaluateOpenQuestionRequest: { questionId, userInput },
+  });
+}
+
 //  Feedbacks API functions 
 
 export async function getFeedbackSection(courseId: number) {

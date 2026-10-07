@@ -3,6 +3,12 @@ interface ValidationIssue {
   loc?: (string | number)[];
 }
 
+/** HTTP status chybové odpovědi generovaného klienta; null u síťové chyby. */
+export function readApiErrorStatus(err: unknown): number | null {
+  const status = (err as { response?: { status?: unknown } } | null)?.response?.status;
+  return typeof status === 'number' ? status : null;
+}
+
 /**
  * Přečte `detail` z chybové odpovědi backendu (ResponseError generovaného
  * klienta). U 400 je to česká hláška z controlleru, u 422 pole validačních

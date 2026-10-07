@@ -10,12 +10,87 @@ import {
   completeModule,
   getCourseProgress,
 } from '@/lib/api-client';
+import type { ModuleAssessmentQuestion } from '@/api';
 import { ModuleCompletedCard } from './ModuleCompletedCard';
 import { Button, Textarea } from '@/components/ui';
-import { readApiErrorDetail } from '@/lib/api-error';
+import { readApiErrorDetail, readApiErrorStatus } from '@/lib/api-error';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PASSING_SCORE = 75;
+
+interface LoadedAssessment {
+  sessionId: number;
+  question: string;
+  status: string;
+  attempts: AttemptResult[];
+  attemptsUsed: number;
+  maxAttempts: number | null;
+}
+
+const fromExisting = (existing: ModuleAssessmentQuestion): LoadedAssessment => ({
+  sessionId: existing.sessionId,
+  question: existing.generatedTask,
+  status: existing.status,
+  attempts: (existing.attempts ?? []).map((a) => ({
+    attemptId: a.attemptId,
+    aiScore: a.aiScore,
+    isPassed: a.isPassed,
+    aiFeedback: a.aiFeedback ?? '',
+  })),
+  attemptsUsed: existing.attemptsUsed ?? 0,
+  maxAttempts: existing.maxAttempts ?? null,
+});
+
+// Jen 404 znamená „test ještě nemá“. Síťová chyba nebo 5xx se nesmí brát jako
+// chybějící test — generování by pak skončilo na 409 (aktivní test existuje).
+async function fetchExistingAssessment(moduleId: number): Promise<ModuleAssessmentQuestion | null> {
+  try {
+    return await getModuleAssessment(moduleId);
+  } catch (err) {
+    if (readApiErrorStatus(err) === 404) return null;
+    throw err;
+  }
+}
+
+async function fetchOrGenerateAssessment(moduleId: number): Promise<LoadedAssessment> {
+  const existing = await fetchExistingAssessment(moduleId);
+  // Neúspěšný (failed) test se nahrazuje novým.
+  if (existing && existing.status !== 'failed') return fromExisting(existing);
+
+  try {
+    const resp = await generateAssessment(moduleId);
+    return {
+      sessionId: resp.sessionId,
+      question: resp.generatedQuestion,
+      status: 'in_progress',
+      attempts: [],
+      attemptsUsed: 0,
+      maxAttempts: null,
+    };
+  } catch (err) {
+    // 409 = aktivní nebo splněný test mezitím vznikl jinde (jiná záložka prohlížeče).
+    if (readApiErrorStatus(err) === 409) {
+      const created = await fetchExistingAssessment(moduleId);
+      if (created && created.status !== 'failed') return fromExisting(created);
+    }
+    throw err;
+  }
+}
+
+// Generování otázky trvá i desítky sekund a backend session uloží až s hotovou
+// otázkou. Když student mezitím odejde na jinou záložku modulu a vrátí se,
+// komponenta se namontuje znovu — navážeme na rozběhnutý požadavek, místo
+// abychom spustili druhé generování.
+const pendingAssessments = new Map<number, Promise<LoadedAssessment>>();
+
+function loadAssessment(moduleId: number): Promise<LoadedAssessment> {
+  let pending = pendingAssessments.get(moduleId);
+  if (!pending) {
+    pending = fetchOrGenerateAssessment(moduleId).finally(() => pendingAssessments.delete(moduleId));
+    pendingAssessments.set(moduleId, pending);
+  }
+  return pending;
+}
 
 // Odpověď v testu se jen píše. Víc znaků najednou než slovo z našeptávače
 // nebo opravy překlepu = vložený text (schránka mobilní klávesnice,
@@ -105,69 +180,47 @@ export default function AssessmentTab({
   const attemptsRemaining = maxAttempts - attemptsUsed;
 
   // Load existing session or generate a new one
-  const initAssessment = useCallback(async () => {
+  const initAssessment = useCallback(async (isCancelled: () => boolean = () => false) => {
+    setLoading(true);
+    setErrorMsg(null);
+    setSessionId(null);
+    setQuestion('');
+    setUserAnswer('');
+    setLastSubmittedAnswer('');
+    setAttempts([]);
+    setPassed(false);
+    setFailed(false);
+
     try {
-      setLoading(true);
-      setErrorMsg(null);
-      setQuestion('');
-      setUserAnswer('');
-      setLastSubmittedAnswer('');
-      setAttempts([]);
-      setPassed(false);
-      setFailed(false);
+      const loaded = await loadAssessment(moduleId);
+      if (isCancelled()) return;
 
-      // Check for an existing session first
-      try {
-        const existing = await getModuleAssessment(moduleId);
-        if (existing) {
-          setSessionId(existing.sessionId);
-          setQuestion(existing.generatedTask);
+      setSessionId(loaded.sessionId);
+      setQuestion(loaded.question);
+      setAttempts(loaded.attempts);
 
-          // Restore attempt history from backend
-          if (existing.attempts && existing.attempts.length > 0) {
-            setAttempts(existing.attempts.map((a) => ({
-              attemptId: a.attemptId,
-              aiScore: a.aiScore,
-              isPassed: a.isPassed,
-              aiFeedback: a.aiFeedback ?? '',
-            })));
-          }
-
-          if (existing.status === 'passed') {
-            // Module already passed — go straight to completion
-            setPassed(true);
-            setModuleCompleted(true);
-            return;
-          }
-          if (existing.status === 'in_progress') {
-            // Check if all attempts exhausted
-            const used = existing.attemptsUsed ?? 0;
-            const max = existing.maxAttempts ?? maxAttempts;
-            if (used >= max) {
-              setFailed(true);
-            }
-            return;
-          }
-          // status === 'failed' — fall through to generate a new one
-        }
-      } catch {
-        // No existing session
+      if (loaded.status === 'passed') {
+        // Module already passed — go straight to completion
+        setPassed(true);
+        setModuleCompleted(true);
+      } else if (loaded.attemptsUsed >= (loaded.maxAttempts ?? maxAttempts)) {
+        setFailed(true);
       }
-
-      // Generate a fresh assessment
-      const resp = await generateAssessment(moduleId);
-      setSessionId(resp.sessionId);
-      setQuestion(resp.generatedQuestion);
     } catch (err) {
+      if (isCancelled()) return;
       console.error('Failed to init assessment:', err);
-      setErrorMsg('Nepodařilo se načíst test. Zkuste to znovu.');
+      setErrorMsg((await readApiErrorDetail(err)) ?? 'Nepodařilo se načíst test. Zkuste to znovu.');
     } finally {
-      setLoading(false);
+      if (!isCancelled()) setLoading(false);
     }
-  }, [moduleId]);
+  }, [moduleId, maxAttempts]);
 
   useEffect(() => {
-    initAssessment();
+    let cancelled = false;
+    initAssessment(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [initAssessment]);
 
   // Submit answer
@@ -235,6 +288,28 @@ export default function AssessmentTab({
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 animate-spin text-gradient-r" />
           <p className="text-sm text-muted-foreground">Připravuji test...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Test se nepodařilo načíst ani vygenerovat — bez otázky nemá smysl ukazovat pole pro odpověď.
+  if (!sessionId) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <XCircle className="size-8 text-destructive" />
+          <p role="alert" className="text-sm text-muted-foreground">
+            {errorMsg ?? 'Nepodařilo se načíst test. Zkuste to znovu.'}
+          </p>
+          <Button
+            variant="plain"
+            onClick={() => initAssessment()}
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90")}
+            style={{ backgroundColor: 'var(--gradient-r)' }}
+          >
+            Zkusit znovu
+          </Button>
         </div>
       </div>
     );

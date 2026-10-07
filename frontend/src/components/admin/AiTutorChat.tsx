@@ -304,11 +304,13 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
         {chatOpen ? (
           renderChat('inline')
         ) : (
-          /* Collapsed state - click to open */
+          /* Collapsed state - click to open.
+             Kitový Button je inline-flex, centruje, nezalamuje a má rámeček
+             kolem dokola — tady potřebujeme blok s víceřádkovým textem a jen horní linkou. */
           <Button
             variant="plain"
             onClick={() => setChatOpen(true)}
-            className={cn(BTN_KEEP_BOX, "w-full px-4 py-3 border-t border-border text-left hover:bg-muted/50 transition-colors")}
+            className={cn(BTN_KEEP_BOX, "block w-full whitespace-normal font-normal rounded-none border-0 border-t border-border px-4 py-3 text-left hover:bg-muted/50 transition-colors")}
           >
             <div className="flex items-start gap-2">
               <div className="size-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
