@@ -4,34 +4,31 @@ from typing import Annotated, Literal, NotRequired, TypedDict
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+# ---------- Společný kontext (číselníky kurzu) ----------
 
-# ---------- Vstupní data kurzu ----------
 
+class ImageContext(BaseModel):
+    """Společná část kontextu pro všechny image generátory.
 
-class CourseContext(BaseModel):
-    """Kontext kurzu načtený z DB, ze kterého se sestavuje image prompt.
-
-    Kromě textů kurzu obsahuje i číselníky (blok, cílová skupina, předmět),
-    podle kterých LLM volí obor a tón.
+    Obsahuje zařazení kurzu v číselnících (předmět, blok, cílová skupina),
+    podle kterých LLM volí obor, tón a úroveň abstrakce. Konkrétní agenti
+    (kurz, modul) ji rozšiřují o svá vlastní textová pole.
     """
 
-    title: str
-    description: str | None
-    summary: str | None
+    subject_name: str | None = None
     block_name: str | None = None
     block_description: str | None = None
     target_name: str | None = None
     target_description: str | None = None
-    subject_name: str | None = None
 
 
-# ---------- Specifikace coveru (structured output z LLM) ----------
+# ---------- Specifikace obrázku (structured output z LLM) ----------
 
 Tone = Literal["purple", "green", "blue", "rose", "orange"]
 
 
-class CoverSpec(BaseModel):
-    """Proměnné části coveru - jediné, o čem rozhoduje LLM. Styl je pevný v šabloně."""
+class ImageSpec(BaseModel):
+    """Proměnné části obrázku - jediné, o čem rozhoduje LLM. Styl je pevný v šabloně."""
 
     mechanism: str = Field(
         description=(
@@ -77,14 +74,19 @@ class GeneratedImageResult(BaseModel):
 
 
 class ImageGeneratorState(TypedDict):
-    course_id: int
+    """Společný state grafu.
+
+    Konkrétní agenti přidávají jen svůj vstupní identifikátor (course_id / module_id);
+    ``context`` plní jejich vlastní load node.
+    """
+
     db: Session
     models: list[str]
-    # Vstupní data z DB
-    course_context: NotRequired[CourseContext]
-    # Proměnné části coveru vybrané LLM
-    cover_spec: NotRequired[CoverSpec]
-    # Finální prompt (šablona + cover_spec), jednotný pro všechny modely
+    # Vstupní data z DB (CourseContext / ModuleContext)
+    context: NotRequired[ImageContext]
+    # Proměnné části obrázku vybrané LLM
+    image_spec: NotRequired[ImageSpec]
+    # Finální prompt (šablona + image_spec), jednotný pro všechny modely
     image_prompt: NotRequired[str]
     # Nastaveno jen uvnitř jedné fan-out větve (přes Send) - který model má tato větev generovat
     model_name: NotRequired[str]

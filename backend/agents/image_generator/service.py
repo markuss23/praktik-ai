@@ -1,35 +1,48 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from agents.image_generator.graph import create_graph
-from agents.image_generator.state import CourseContext, CoverSpec, GeneratedImageResult
+from agents.image_generator.state import GeneratedImageResult, ImageContext, ImageSpec
 
 
 @dataclass
 class ImageGenerationResult:
-    course_context: CourseContext
-    cover_spec: CoverSpec
+    """Výsledek běhu image generátoru: načtený kontext, spec a prompt + obrázky všech modelů."""
+
+    context: ImageContext
+    image_spec: ImageSpec
     image_prompt: str
     results: list[GeneratedImageResult]
 
 
-class ImageGeneratorService:
-    """Service pro generování a porovnání obrázků kurzu pomocí LangGraph."""
+class BaseImageGeneratorService(ABC):
+    """Společný service pro generování a porovnání obrázků pomocí LangGraph.
 
-    def __init__(self, db: Session, course_id: int, models_to_compare: list[str]):
+    Potomek dodá zkompilovaný graf a vstupní state (id kurzu / modulu);
+    deduplikace modelů, spuštění grafu a seřazení výsledků je společné.
+    """
+
+    def __init__(self, db: Session, models_to_compare: list[str]):
         self.db = db
-        self.course_id = course_id
         # Deduplikace se zachováním pořadí - stejný model 2x by v ZIPu přepsal sám sebe
         self.models_to_compare = list(dict.fromkeys(models_to_compare))
 
+    @abstractmethod
+    def _create_graph(self):
+        """Vrátí zkompilovaný LangGraph graf konkrétního generátoru."""
+
+    @abstractmethod
+    def _initial_state(self) -> dict:
+        """Vrátí pole state specifická pro konkrétní generátor (např. course_id)."""
+
     async def generate(self) -> ImageGenerationResult:
-        """Sestaví a spustí graf, vrátí kontext kurzu, prompt a výsledky všech modelů."""
-        app = create_graph()
+        """Sestaví a spustí graf, vrátí kontext, prompt a výsledky všech modelů."""
+        app = self._create_graph()
 
         result = await app.ainvoke(
             {
-                "course_id": self.course_id,
+                **self._initial_state(),
                 "db": self.db,
                 "models": self.models_to_compare,
             }
@@ -38,8 +51,8 @@ class ImageGeneratorService:
         order = {name: i for i, name in enumerate(self.models_to_compare)}
 
         return ImageGenerationResult(
-            course_context=result["course_context"],
-            cover_spec=result["cover_spec"],
+            context=result["context"],
+            image_spec=result["image_spec"],
             image_prompt=result["image_prompt"],
             results=sorted(result["results"], key=lambda r: order.get(r.model_name, 0)),
         )

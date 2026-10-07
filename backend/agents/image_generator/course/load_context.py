@@ -1,12 +1,14 @@
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
+from agents.image_generator.course.state import CourseContext, CourseImageGeneratorState
 from api import models
-from agents.image_generator.state import CourseContext, ImageGeneratorState
 
 
-def load_course_context_node(state: ImageGeneratorState) -> ImageGeneratorState:
-    """Node pro načtení kontextu kurzu (title, description, summary) z databáze."""
+def load_course_context_node(
+    state: CourseImageGeneratorState,
+) -> CourseImageGeneratorState:
+    """Node pro načtení kontextu kurzu (title, description, summary, číselníky) z databáze."""
     print("Načítám kontext kurzu z databáze...")
 
     db: Session = state["db"]
@@ -19,13 +21,13 @@ def load_course_context_node(state: ImageGeneratorState) -> ImageGeneratorState:
     )
 
     if course is None:
-        raise ValueError(f"Kurz s id {course_id} nebyl nalezn")
+        raise ValueError(f"Kurz s id {course_id} nebyl nalezen")
 
     block = course.course_block
     target = course.course_target
     subject = course.course_subject
 
-    state["course_context"] = CourseContext(
+    state["context"] = CourseContext(
         title=course.title,
         description=course.description,
         summary=course.summary,

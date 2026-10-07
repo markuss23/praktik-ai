@@ -1,14 +1,14 @@
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
+from agents.image_generator.module.state import ModuleContext, ModuleImageGeneratorState
 from api import models
-from agents.module_image_generator.state import ModuleContext, ModuleImageGeneratorState
 
 
 def load_module_context_node(
     state: ModuleImageGeneratorState,
 ) -> ModuleImageGeneratorState:
-    """Node pro načtení kontextu modulu (title, obsah, kontext kurzu) z databáze."""
+    """Node pro načtení kontextu modulu (title, obsah, číselníky kurzu) z databáze."""
     print("Načítám kontext modulu z databáze...")
 
     db: Session = state["db"]
@@ -30,7 +30,7 @@ def load_module_context_node(
 
     active_learn_block = next(iter(module.learn_blocks), None)
 
-    state["module_context"] = ModuleContext(
+    state["context"] = ModuleContext(
         module_title=module.title,
         learn_block_content=active_learn_block.content if active_learn_block else None,
         course_title=course.title,
