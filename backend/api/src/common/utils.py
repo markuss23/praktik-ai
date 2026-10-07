@@ -1,9 +1,42 @@
 from __future__ import annotations
 
+import mimetypes
+import unicodedata
+from urllib.parse import quote
+
 from fastapi import HTTPException
+from fastapi.responses import Response
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 from api import models
+
+
+def attachment_response(content: bytes, filename: str) -> Response:
+    """Vrátí obsah souboru jako přílohu ke stažení.
+
+    Název souboru posíláme dvakrát: ASCII varianta v `filename=` (fallback pro
+    staré klienty) a původní název v `filename*=UTF-8''…` podle RFC 5987.
+    Hlavičky se kódují do latin-1, takže surová diakritika by skončila 500.
+    """
+    ascii_name = (
+        unicodedata.normalize("NFKD", filename)
+        .encode("ascii", "ignore")
+        .decode()
+        .replace('"', "")
+        .strip()
+    ) or "soubor"
+
+    return Response(
+        content=content,
+        media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{ascii_name}"; '
+                f"filename*=UTF-8''{quote(filename)}"
+            ),
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 def get_or_404[T](

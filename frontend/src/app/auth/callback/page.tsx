@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { exchangeCodeForTokens, parseJwt, storeTokens } from "@/lib/keycloak";
 import { backendUrl } from "@/lib/constants";
-import { AuthSkeleton } from "@/components/ui";
+import { AuthSkeleton, Button } from "@/components/ui";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -50,18 +51,19 @@ function AuthCallbackContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-xl shadow-md p-8 max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h1 className="text-xl font-bold text-gray-800 mb-2">Chyba přihlášení</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
+      <div className="min-h-screen flex items-center justify-center bg-muted/50">
+        <div className="bg-card rounded-xl shadow-md p-8 max-w-md w-full text-center">
+          <div className="text-destructive text-5xl mb-4">⚠️</div>
+          <h1 className="text-xl font-bold text-foreground mb-2">Chyba přihlášení</h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Button
+            variant="plain"
             onClick={() => router.replace("/")}
-            className="px-6 py-2 text-white font-semibold rounded-md"
-            style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
+            className={cn(BTN_KEEP_BOX, "px-6 py-2 text-primary-foreground font-semibold rounded-md")}
+            style={{ background: "linear-gradient(90deg, var(--gradient-l) 0%, var(--gradient-r) 100%)" }}
           >
             Zpět na hlavní stránku
-          </button>
+          </Button>
         </div>
       </div>
     );

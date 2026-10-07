@@ -3,7 +3,7 @@ Controllery pro čtení veřejných materiálů.
 """
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from api import models
 from api.src.common.utils import get_or_404
@@ -19,6 +19,10 @@ def get_resources(
     difficulty_level: int | None = None,
     resource_target_id: int | None = None,
     resource_subject_id: int | None = None,
+    resource_course_type_id: int | None = None,
+    resource_eqf_level_id: int | None = None,
+    resource_block_id: int | None = None,
+    resource_level_id: int | None = None,
     status: str | None = None,
     is_fork: bool | None = None,
     original_id: int | None = None,
@@ -108,6 +112,14 @@ def get_resources(
             joinedload(models.PubResource.author),
             joinedload(models.PubResource.subject),
             joinedload(models.PubResource.target),
+            joinedload(models.PubResource.block),
+            joinedload(models.PubResource.level),
+            selectinload(models.PubResource.krauu_competences).joinedload(
+                models.PubResourceKrauuCompetence.competence
+            ),
+            selectinload(models.PubResource.bloom_levels).joinedload(
+                models.PubResourceBloomLevel.bloom_level
+            ),
         )
         .order_by(models.PubResource.resource_id.desc())
     )
@@ -137,6 +149,18 @@ def get_resources(
 
     if resource_subject_id is not None:
         stm = stm.where(models.PubResource.subject_id == resource_subject_id)
+
+    if resource_course_type_id is not None:
+        stm = stm.where(models.PubResource.course_type_id == resource_course_type_id)
+
+    if resource_eqf_level_id is not None:
+        stm = stm.where(models.PubResource.eqf_level_id == resource_eqf_level_id)
+
+    if resource_block_id is not None:
+        stm = stm.where(models.PubResource.block_id == resource_block_id)
+
+    if resource_level_id is not None:
+        stm = stm.where(models.PubResource.level_id == resource_level_id)
 
     if status is not None:
         stm = stm.where(models.PubResource.status == status)

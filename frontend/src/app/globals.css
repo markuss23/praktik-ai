@@ -6,12 +6,18 @@
 
 :root {
 
+  /* Škála vrstev. Shadcn kit (Base UI) drží všechny své portály — overlay,
+     drawer, dialog, select, tooltip, menu — napevno na `z-50` a pořadí mezi
+     nimi řeší pořadím v DOM. Appka se proto musí vejít kolem té padesátky:
+     hlavička pod ni (jinak by překryla otevřený drawer/dialog), vlastní
+     nedismissovatelné overlaye nad ni. Kit soubory needitujeme — přepsal by
+     je `shadcn add`. */
   --z-base: 0;
-  --z-dropdown: 500;
-  --z-header: 1000;
-  --z-overlay: 1500;
-  --z-modal: 2000;
-  --z-toast: 2500;
+  --z-dropdown: 30;
+  --z-header: 45;
+  --z-overlay: 55;
+  --z-modal: 60;
+  --z-toast: 70;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -30,6 +36,7 @@
   /* Figma alert palette (697:1823) */
   --destructive: oklch(0.5507 0.2224 23.35); /* Error   #D5002A */
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
+  --warning-foreground: oklch(0.145 0 0); /* tmavý text na amber ploše */
   --success: oklch(0.6777 0.1137 154.05); /* Succes  #59AC77 */
   --tip: oklch(0.4981 0.2645 270.9); /* Tip     #383BF5 */
 
@@ -61,7 +68,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --font-display: var(--font-bricolage);
@@ -83,6 +90,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-tip: var(--tip);
   --color-brand-accent: var(--brand-accent);
@@ -498,6 +506,8 @@ body.module-fullscreen footer {
   --destructive: oklch(0.704 0.191 23.35); /* Error   #D5002A */
 
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
+
+  --warning-foreground: oklch(0.145 0 0); /* amber zůstává světlý i v dark */
 
   --success: oklch(0.72 0.1137 154.05); /* Succes  #59AC77 */
 

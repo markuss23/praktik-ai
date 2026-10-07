@@ -17,6 +17,7 @@ import {
   LearnBlockCreate,
   LearnBlockUpdate,
   ModuleCreate,
+  ModuleUpdate,
   PracticeQuestionCreate,
   PracticeQuestionUpdate,
   PracticeOptionCreate,
@@ -40,6 +41,7 @@ import {
   UpdateResourceStatusNewStatusEnum,
 } from "@/api";
 import { API_BASE_URL, backendUrl } from "./constants";
+import { saveBlob } from "./download";
 import { getValidAccessToken } from "./keycloak";
 
 
@@ -125,10 +127,16 @@ export async function createCourse(data: {
   description?: string;
   modulesCountAiGenerated?: number;
   durationMinutes?: number;
-  courseBlockId: number;
-  courseTargetId: number;
-  courseSubjectId: number;
+  courseBlockId?: number | null;
+  courseTargetId?: number | null;
+  courseSubjectId?: number | null;
+  courseRequirementId?: number | null;
+  courseEqfLevelId: number;
+  courseTypeId: number;
   difficulty?: import('@/api').Difficulty;
+  krauuCompetenceIds: number[];
+  bloomLevelIds: number[];
+  crossSubjectIds?: number[];
 }) {
   return coursesApi.createCourse({
     courseCreate: {
@@ -139,7 +147,13 @@ export async function createCourse(data: {
       courseBlockId: data.courseBlockId,
       courseTargetId: data.courseTargetId,
       courseSubjectId: data.courseSubjectId,
+      courseRequirementId: data.courseRequirementId,
+      courseEqfLevelId: data.courseEqfLevelId,
+      courseTypeId: data.courseTypeId,
       difficulty: data.difficulty,
+      krauuCompetenceIds: data.krauuCompetenceIds,
+      bloomLevelIds: data.bloomLevelIds,
+      crossSubjectIds: data.crossSubjectIds,
     },
   });
 }
@@ -172,9 +186,7 @@ export async function createModule(data: ModuleCreate) {
   return modulesApi.createModule({ moduleCreate: data });
 }
 
-export async function updateModule(moduleId: number, data: {
-  title: string;
-}) {
+export async function updateModule(moduleId: number, data: ModuleUpdate) {
   return modulesApi.updateModule({
     moduleId,
     moduleUpdate: data,
@@ -230,15 +242,7 @@ export async function downloadCourseFile(courseId: number, fileId: number, filen
     headers,
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+  saveBlob(await res.blob(), filename);
 }
 
 export async function deleteCourse(courseId: number) {
@@ -258,6 +262,70 @@ export async function learnBlocksChat(learnBlockId: number, message: string) {
 
 export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
+}
+
+// Wiki agent API functions
+//
+// /agents/wiki-chat a /agents/wiki-sync zatím nejsou v generovaném klientovi
+// (src/api se generuje z běžícího backendu) — voláme je přímo fetchem se
+// stejným tokenem, stejně jako course-progress níže. Po `npm run
+// generate:openapi` je lze nahradit `agentsApi.wikiChat()` / `wikiSync()`.
+
+async function agentsPost<T>(path: string, body?: unknown, fallback?: string): Promise<T> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(backendUrl(path), {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let detail = fallback ?? `Požadavek selhal (${res.status})`;
+    try {
+      const parsed = await res.json();
+      if (parsed?.detail) detail = typeof parsed.detail === 'string' ? parsed.detail : detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Dotaz na wiki agenta. Endpoint je bezstavový — historii konverzace si
+ * drží klient, backend dostane vždy jen aktuální zprávu.
+ */
+export async function wikiChat(message: string): Promise<string> {
+  const data = await agentsPost<{ answer: string }>(
+    '/api/v1/agents/wiki-chat',
+    { message },
+    'Nepodařilo se získat odpověď od AI asistenta.',
+  );
+  return data.answer;
+}
+
+export interface WikiSyncResult {
+  pagesProcessed: number;
+  message: string;
+}
+
+/**
+ * Ruční synchronizace a re-indexace wiki (jen superadmin). Na pozadí běží
+ * i periodicky — interval nastavuje `WIKI__SYNC_INTERVAL_HOURS`.
+ */
+export async function wikiSync(): Promise<WikiSyncResult> {
+  const data = await agentsPost<{ pages_processed: number; message: string }>(
+    '/api/v1/agents/wiki-sync',
+    undefined,
+    'Synchronizace wiki selhala.',
+  );
+  return { pagesProcessed: data.pages_processed, message: data.message };
 }
 
 export interface CourseGenerationProgress {
@@ -280,18 +348,19 @@ export async function getCourseGenerationProgress(courseId: number): Promise<Cou
   return res.json();
 }
 
-export async function getActiveCourseGeneration(): Promise<number | null> {
+/** ID kurzů, jejichž generování právě běží na serveru (pro obnovu sledování po refreshi). */
+export async function listActiveCourseGenerations(): Promise<number[]> {
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generation`), {
+  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generations`), {
     method: 'GET',
     headers,
   });
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  if (res.status === 401 || res.status === 403 || res.status === 404) return [];
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
-  return typeof data === 'number' ? data : null;
+  const data: unknown = await res.json();
+  return Array.isArray(data) ? data.filter((v): v is number => typeof v === 'number') : [];
 }
 
 //  Course Status & Published API functions 
@@ -330,6 +399,34 @@ export async function getCourseTargets() {
 
 export async function getCourseSubjects() {
   return catalogsApi.listCourseSubjects();
+}
+
+export async function getCourseRequirements() {
+  return catalogsApi.listCourseRequirements();
+}
+
+export async function getCourseEqfLevels() {
+  return catalogsApi.listCourseEqfLevels();
+}
+
+export async function getCourseTypes() {
+  return catalogsApi.listCourseTypes();
+}
+
+export async function getNeuroPrinciples() {
+  return catalogsApi.listNeuroPrinciples();
+}
+
+export async function getKrauuCompetences() {
+  return catalogsApi.listKrauuCompetences();
+}
+
+export async function getBloomLevels() {
+  return catalogsApi.listBloomLevels();
+}
+
+export async function getCrossSubjects() {
+  return catalogsApi.listCrossSubjects();
 }
 
 //  Activities API functions 
@@ -421,17 +518,33 @@ function parseMyEnrollment(raw: Record<string, unknown>): MyEnrollmentExtended {
   };
 }
 
+// Několik komponent si zápisy vyžádá naráz (profil sám + ProfileTicketsCard
+// přes listMyTickets, detail kurzu + CourseSection...). Sdílíme jen *rozběhnutý*
+// request — jakmile doběhne, reference se zahodí, takže žádná odpověď se
+// necachuje a každé nové volání jde znovu na server jako dosud.
+let _myEnrollmentsInFlight: Promise<MyEnrollmentExtended[]> | null = null;
+
 export async function getMyEnrollments(): Promise<MyEnrollmentExtended[]> {
-  const token = await getValidAccessToken();
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
-    method: 'GET',
-    headers,
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = (await res.json()) as Record<string, unknown>[];
-  return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+  if (_myEnrollmentsInFlight) return _myEnrollmentsInFlight;
+
+  _myEnrollmentsInFlight = (async () => {
+    const token = await getValidAccessToken();
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(backendUrl(`/api/v1/enrollments/my`), {
+      method: 'GET',
+      headers,
+    });
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    const data = (await res.json()) as Record<string, unknown>[];
+    return Array.isArray(data) ? data.map(parseMyEnrollment) : [];
+  })();
+
+  try {
+    return await _myEnrollmentsInFlight;
+  } finally {
+    _myEnrollmentsInFlight = null;
+  }
 }
 
 /** Tichý tracking: označí, že uživatel právě otevřel daný modul. Server
@@ -733,6 +846,40 @@ export async function uploadResourceFile(resourceId: number, file: File) {
   return resourcesApi.uploadResourceFile({ resourceId, file: file as Blob });
 }
 
+// v DB je jen klíč v SeaweedFS, ne veřejná URL- zatím není v generovaném klientovi, voláme ho tedy přes fetch.
+export async function fetchResourceFileBlob(
+  resourceId: number,
+  fileId: number,
+): Promise<Blob> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(
+    backendUrl(`/api/v1/resources/${resourceId}/files/${fileId}`),
+    { method: 'GET', headers },
+  );
+  if (!res.ok) {
+    let detail = `Stažení selhalo (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  return res.blob();
+}
+
+/** Stáhne přílohu materiálu a vyvolá download dialog v prohlížeči. */
+export async function downloadResourceFile(
+  resourceId: number,
+  fileId: number,
+  filename: string,
+): Promise<void> {
+  saveBlob(await fetchResourceFileBlob(resourceId, fileId), filename);
+}
+
 // Vytvoří fork
 export async function createResourceFork(
   resourceId: number,
@@ -757,6 +904,38 @@ export async function createResourceReview(
   data: PubResourceReviewCreate,
 ): Promise<PubResource> {
   return reviewsApi.createReview({ resourceId, pubResourceReviewCreate: data });
+}
+
+//  Editor Images (obrázky vkládané v rich-text editoru) API functions
+//
+//  Tento endpoint zatím není v generovaném klientovi – voláme ho přímo přes
+//  fetch se stejným tokenem jako generovaný klient.
+
+export interface EditorImageUploadResult {
+  url: string;
+}
+
+export async function uploadEditorImage(file: File): Promise<EditorImageUploadResult> {
+  const token = await getValidAccessToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(backendUrl("/api/v1/editor-images"), {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+  if (!res.ok) {
+    let detail = `Nahrání selhalo (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = body.detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+  const data = (await res.json()) as { url: string };
+  return { url: backendUrl(data.url) };
 }
 
 //  Public Resource Comments (komentáře ke schvalování) API functions

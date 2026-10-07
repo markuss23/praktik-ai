@@ -48,28 +48,28 @@ export function QuickStats({ enrollments }: QuickStatsProps) {
         label: 'Do dokončení nejbližšího kurzu',
         value: closest ? `${closest.remaining} ${closest.remaining === 1 ? 'modul' : closest.remaining >= 2 && closest.remaining <= 4 ? 'moduly' : 'modulů'}` : '—',
         hint: closest?.title ?? 'Žádný rozpracovaný kurz',
-        accentColor: '#8B5BA8',
+        accentColor: 'var(--gradient-r)',
       },
       {
         icon: <TrendingUp size={20} />,
         label: 'Nejvíc rozpracovaný',
         value: mostActive ? `${mostActive.pct}%` : '—',
         hint: mostActive?.title ?? 'Začni nějaký kurz',
-        accentColor: '#6366F1',
+        accentColor: 'var(--tip)',
       },
       {
         icon: <Trophy size={20} />,
         label: 'Dokončené kurzy',
         value: String(completed.length),
         hint: `z ${enrollments.length} zapsaných`,
-        accentColor: '#00C896',
+        accentColor: 'var(--primary)',
       },
       {
         icon: <Zap size={20} />,
         label: 'Celkový pokrok',
         value: `${overallPct}%`,
         hint: `${doneModulesAll}/${totalModulesAll} modulů`,
-        accentColor: '#F59E0B',
+        accentColor: 'var(--warning)',
       },
     ];
   }, [enrollments]);
@@ -79,20 +79,20 @@ export function QuickStats({ enrollments }: QuickStatsProps) {
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 flex flex-col"
+          className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-5 flex flex-col"
         >
           <div className="flex items-center justify-between mb-2">
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center"
+              className="size-9 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: `${stat.accentColor}15`, color: stat.accentColor }}
             >
               {stat.icon}
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold text-gray-900 leading-none">{stat.value}</div>
-          <div className="text-xs sm:text-sm font-medium text-gray-700 mt-2">{stat.label}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-foreground leading-none">{stat.value}</div>
+          <div className="text-xs sm:text-sm font-medium text-foreground mt-2">{stat.label}</div>
           {stat.hint && (
-            <div className="text-xs text-gray-500 mt-0.5 line-clamp-1" title={stat.hint}>
+            <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1" title={stat.hint}>
               {stat.hint}
             </div>
           )}

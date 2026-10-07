@@ -2,6 +2,8 @@
 
 import { Check, Loader2, Menu, MessageSquare, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface CoursePageHeaderProps {
   breadcrumb: string;
@@ -29,8 +31,8 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
       title="Změny se ukládají automaticky"
       className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md border text-sm font-medium select-none cursor-default ${
         isSaving
-          ? 'bg-blue-50 text-blue-700 border-blue-200'
-          : 'bg-emerald-50 text-emerald-700 border-emerald-200 save-status-pop'
+          ? 'bg-tip/10 text-tip border-tip/30'
+          : 'bg-success/10 text-success border-success/30 save-status-pop'
       }`}
     >
       {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -57,62 +59,66 @@ export function CoursePageHeader({
   commentsCount,
 }: CoursePageHeaderProps) {
   return (
-    <div className="bg-white border-b">
+    <div className="bg-card border-b">
       <div className="px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-start gap-2 sm:gap-3 min-w-0">
             {onMenuClick && (
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={onMenuClick}
-                className="lg:hidden p-2 -ml-2 mt-0.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
+                className={cn(BTN_KEEP_BOX, "lg:hidden p-2 -ml-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
                 aria-label="Otevřít osnovu"
               >
                 <Menu size={20} />
-              </button>
+              </Button>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm text-gray-500 mb-0.5 sm:mb-1 truncate">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-0.5 sm:mb-1 truncate">
                 {breadcrumb}
               </p>
-              <h1 className="text-lg sm:text-2xl font-bold text-black truncate">{title}</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
             </div>
             {onCommentsClick && (
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={onCommentsClick}
-                className="lg:hidden relative p-2 -mr-2 mt-0.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
+                className={cn(BTN_KEEP_BOX, "lg:hidden relative p-2 -mr-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
                 aria-label="Zobrazit komentáře"
               >
                 <MessageSquare size={20} />
                 {commentsCount !== undefined && commentsCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  <span className="absolute -top-0.5 -right-0.5 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                     {commentsCount}
                   </span>
                 )}
-              </button>
+              </Button>
             )}
           </div>
           {showButtons && (
             <div className="flex items-center gap-2 sm:gap-3">
               {onPreview && (
-                <button
+                <Button
+                  variant="plain"
                   type="button"
                   onClick={onPreview}
-                  className="text-xs sm:text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  className={cn(BTN_KEEP_BOX, "text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors")}
                 >
                   Živý náhled kurzu
-                </button>
+                </Button>
               )}
               {saveStatus !== undefined ? (
                 <SaveStatusIndicator status={saveStatus} />
               ) : onSave ? (
-                <button
+                <Button
+                  variant="plain"
                   onClick={onSave}
                   disabled={saving}
-                  className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md transition-colors text-sm text-white disabled:opacity-70 ${
-                    saved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-green-600 hover:bg-green-700'
-                  }`}
+                  className={cn(BTN_KEEP_BOX, `flex items-center gap-2 px-4 sm:px-5 py-2 rounded-md transition-colors text-sm text-primary-foreground disabled:opacity-70 ${
+                    saved ? 'bg-primary hover:bg-primary/80' : 'bg-primary hover:bg-primary/80'
+                  }`)}
                 >
                   {saving ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -122,7 +128,7 @@ export function CoursePageHeader({
                     <Save size={16} />
                   )}
                   <span>{saving ? 'Ukládám...' : saved ? 'Uloženo' : 'Uložit'}</span>
-                </button>
+                </Button>
               ) : null}
             </div>
           )}

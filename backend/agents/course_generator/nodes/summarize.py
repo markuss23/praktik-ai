@@ -1,6 +1,7 @@
 from langchain_core.messages.ai import AIMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
+from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
 from api.src.agents.progress import set_progress
@@ -25,31 +26,27 @@ def summarize_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_id is not available in state")
 
     cfg = get_llm_config(db, "course_summarizer")
-    model = create_chat_llm(cfg.model)
-
-    modules_count = course_input.modules_count_ai_generated
-    duration_minutes = course_input.duration_minutes
-    duration_info = f"{duration_minutes} minut" if duration_minutes is not None else "neurčena"
+    # Souhrn má ~7 000 znaků na téma; u kurzů s mnoha moduly by výchozích
+    # 16k tokenů nestačilo a souhrn by se tiše uřízl (chyběla by poslední témata).
+    model = create_chat_llm(cfg.model, max_tokens=32000)
 
     prompt: str = f"""{cfg.prompt}
 
-                KURZ: {course_input.title}
-                POPIS: {course_input.description}
-                POČET MODULŮ: {modules_count}
-                DÉLKA KURZU: {duration_info}
+{build_input_block(course_input, include_summary_limit=True)}
 
-                ZDROJOVÝ OBSAH:
-                {source_content}"""
+ZDROJOVÝ OBSAH:
+{source_content}"""
 
     output: AIMessage = model.invoke(prompt)
+    summary = output.text
 
-    if not output.content.strip():
+    if not summary.strip():
         raise ValueError(
             "LLM vrátil prázdnou sumarizaci. Zkontroluj zdrojový obsah a nastavení modelu."
         )
 
-    state["summarize_content"] = output.content
-    print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(output.content)} znaků)")
-    print(f"   -> Náhled souhrnu: {output.content[:200]}...")
+    state["summarize_content"] = summary
+    print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(summary)} znaků)")
+    print(f"   -> Náhled souhrnu: {summary[:200]}...")
 
     return state
