@@ -35,6 +35,12 @@ interface MaterialCardProps {
   onEdit?: (materialId: string) => void;
   /** Callback pro publikaci/skrytí schváleného materiálu (zobrazí se jen u schválených). */
   onTogglePublic?: (materialId: string, nextIsPublic: boolean) => Promise<void> | void;
+  /**
+   * Zda materiál patří přihlášenému uživateli. Backend pustí úpravu, odeslání
+   * ke schválení i změnu viditelnosti jen vlastníkovi (nebo superadminovi), takže
+   * u cizích materiálů tyto akce nezobrazujeme — jinak by končily chybou 403.
+   */
+  isOwner?: boolean;
   /** Přepíše cíl tlačítka šipky (např. odkaz na review detail místo veřejného detailu). */
   detailHref?: string;
 }
@@ -52,6 +58,7 @@ export function MaterialCard({
   onSubmitForReview,
   onEdit,
   onTogglePublic,
+  isOwner = true,
   detailHref,
 }: MaterialCardProps) {
   const resolvedDetailHref = detailHref ?? `${ROUTES.PUBLIC_DATABASE}/${material.id}`;
@@ -74,10 +81,12 @@ export function MaterialCard({
 
   // Upravit i odeslat ke schválení lze u konceptu i vráceného (k přepracování) materiálu
   const isEditable = material.status === "draft" || material.status === "rejected";
-  const canSubmit = isEditable && !!onSubmitForReview;
-  const canEdit = isEditable && !!onEdit;
-  // Publikovat/skrýt lze jen u schváleného materiálu
-  const canTogglePublic = material.status === "approved" && !!onTogglePublic;
+  const canSubmit = isOwner && isEditable && !!onSubmitForReview;
+  const canEdit = isOwner && isEditable && !!onEdit;
+  // Publikovat/skrýt lze jen u vlastního schváleného materiálu
+  const canTogglePublic = isOwner && material.status === "approved" && !!onTogglePublic;
+  // Do sbírky backend pustí jen schválený materiál (u cizích navíc jen veřejný).
+  const canAddToFolder = material.status === "approved";
 
   const handleSubmit = async () => {
     if (submitting || !onSubmitForReview) return;
@@ -229,6 +238,8 @@ export function MaterialCard({
             folders={folders}
             onCreateFolder={onCreateFolder}
             onMoved={(folderId) => onMoved?.(material.id, folderId)}
+            disabled={!canAddToFolder}
+            disabledReason="Do složky lze zařadit až schválený materiál."
           />
           <Button
             render={<Link href={resolvedDetailHref} />}

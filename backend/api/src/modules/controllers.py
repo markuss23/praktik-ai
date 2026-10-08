@@ -6,7 +6,54 @@ from sqlalchemy.orm import Session
 from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion, AssessmentAttemptDetail
 from api import enums, models
+from api.src.catalogs.controllers import (
+    sync_bloom_levels,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 from api.authorization import validate_owner_or_superadmin
+
+
+def _validate_neuro_principle_ids(db: Session, principle_ids: list[int]) -> None:
+    found_ids = set(
+        db.execute(
+            select(models.NeuroPrinciple.principle_id).where(
+                models.NeuroPrinciple.principle_id.in_(principle_ids),
+                models.NeuroPrinciple.is_active.is_(True),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    missing = set(principle_ids) - found_ids
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Neurovědní princip(y) s ID {sorted(missing)} neexistují",
+        )
+
+
+def _sync_neuro_principles(db: Session, module: models.Module, principle_ids: list[int]) -> None:
+    wanted = set(principle_ids)
+    existing_links: Sequence[models.ModuleNeuroPrinciple] = db.execute(
+        select(models.ModuleNeuroPrinciple).where(
+            models.ModuleNeuroPrinciple.module_id == module.module_id,
+        )
+    ).scalars().all()
+
+    existing_by_principle = {link.principle_id: link for link in existing_links}
+
+    for principle_id, link in existing_by_principle.items():
+        link.is_active = principle_id in wanted
+
+    for principle_id in wanted - existing_by_principle.keys():
+        db.add(
+            models.ModuleNeuroPrinciple(
+                module_id=module.module_id,
+                principle_id=principle_id,
+            )
+        )
 
 
 def get_modules(
@@ -47,10 +94,35 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     # Validace vlastnictví kurzu
     validate_owner_or_superadmin(course, user, "modul")
 
-    obj = models.Module(**data.model_dump())
+    _validate_neuro_principle_ids(db, data.neuro_principle_ids)
+    validate_krauu_competence_ids(db, data.krauu_competence_ids)
+    validate_bloom_level_ids(db, data.bloom_level_ids)
+
+    module_data = data.model_dump(
+        exclude={"neuro_principle_ids", "krauu_competence_ids", "bloom_level_ids"}
+    )
+    obj = models.Module(**module_data)
     obj.is_active = True
 
     db.add(obj)
+    db.flush()  # získání module_id před přidáním principů
+
+    _sync_neuro_principles(db, obj, data.neuro_principle_ids)
+    sync_krauu_competences(
+        db,
+        models.ModuleKrauuCompetence,
+        "module_id",
+        obj.module_id,
+        data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.ModuleBloomLevel,
+        "module_id",
+        obj.module_id,
+        data.bloom_level_ids,
+    )
+
     db.commit()
     db.refresh(obj)
     return Module.model_validate(obj)
@@ -93,9 +165,31 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
                 detail="Modul s tímto názvem pro daný kurz již existuje.",
             )
 
+    _validate_neuro_principle_ids(db, module_data.neuro_principle_ids)
+    validate_krauu_competence_ids(db, module_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, module_data.bloom_level_ids)
+
     module.title = module_data.title
+    module.perex = module_data.perex
     module.max_task_attempts = module_data.max_task_attempts
     db.add(module)
+
+    _sync_neuro_principles(db, module, module_data.neuro_principle_ids)
+    sync_krauu_competences(
+        db,
+        models.ModuleKrauuCompetence,
+        "module_id",
+        module.module_id,
+        module_data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.ModuleBloomLevel,
+        "module_id",
+        module.module_id,
+        module_data.bloom_level_ids,
+    )
+
     db.commit()
     db.refresh(module)
 

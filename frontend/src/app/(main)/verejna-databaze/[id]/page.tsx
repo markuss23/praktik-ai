@@ -13,7 +13,7 @@ import {
 import { MaterialAttachments } from "@/components/material/MaterialAttachments";
 import { MaterialForkModal } from "@/components/material/MaterialForkModal";
 import { RatingsSection } from "@/components/material/RatingsSection";
-import { MaterialDetailSkeleton, Button } from "@/components/ui";
+import { MaterialCategories, MaterialDetailSkeleton, Button } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import type { Material, MaterialCategory } from "@/components/material/types";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
@@ -81,7 +81,7 @@ export default function MaterialDetailPage({ params }: PageProps) {
             <Button
               variant="default"
               type="button"
-              onClick={login}
+              onClick={() => login()}
               className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
             >
               <LogIn size={15} strokeWidth={1.75} />
@@ -153,6 +153,7 @@ function MaterialDetail({
               </div>
             ))}
           </div>
+          <MaterialCategories material={material} className="mt-4 border-t border-border pt-4" />
         </div>
       )}
 

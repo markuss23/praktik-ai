@@ -1,28 +1,43 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Folder, FolderPlus, Globe, EyeOff, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Folder, FolderInput, FolderPlus, Globe, EyeOff, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
-import { FilterSelect, type FilterOption } from "@/components/ui";
+import { FilterMultiSelect, FilterSelect, type FilterOption } from "@/components/ui";
 import { FolderNameModal } from "@/components/material/FolderNameModal";
+import { FolderAddMaterialModal } from "@/components/material/FolderAddMaterialModal";
 import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
 import { MaterialEditModal } from "@/components/material/MaterialEditModal";
 import { ConfirmModal, useToast, Button, Input } from "@/components/ui";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
+  addMaterialToFolder,
   createFolder,
   renameFolder,
   deleteFolder,
   setFolderPublic,
   removeMaterialFromFolder,
   fetchCollectionMaterials,
+  fetchMatchingMaterialIds,
   fetchMyFolders,
+  fetchResourceCatalogFilters,
   fetchResourceTargets,
+  hasMaterialsFilter,
   submitResourceForReview,
   updateResourcePublicState,
+  EMPTY_RESOURCE_CATALOG_FILTERS,
+  type MaterialsFilter,
+  type ResourceCatalogFilters,
   type ResourceTargetOption,
 } from "@/components/material/api";
+import {
+  CatalogFilterSelects,
+  catalogFilterParams,
+  EMPTY_CATALOG_FILTER_VALUES,
+  type CatalogFilterValues,
+} from "@/components/material/CatalogFilterSelects";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS, EDU_LEVEL_ORDER } from "@/lib/edu-level";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
@@ -35,25 +50,37 @@ interface MyCollectionClientProps {
 }
 
 // Volby filtrů pocházejí z číselníků/enumů, ne z natvrdo psaných stringů.
-// Filtrace v Mojí sbírce je klientská (vlastní malá sada), proto porovnáváme
-// podle českých popisků — hodnota selectu = zobrazený popisek.
+// Filtry vyhodnocuje backend (viz fetchMatchingMaterialIds), proto je hodnota
+// selectu to, co čeká API — enum nebo ID z číselníku.
 const DIFFICULTY_FILTER_OPTIONS: FilterOption[] = DIFFICULTY_ORDER.map((d) => ({
-  value: DIFFICULTY_LABELS[d],
+  value: d,
   label: DIFFICULTY_LABELS[d],
 }));
+// Úroveň vzdělání je výjimka — je to multivýběr a backend umí filtrovat jen podle
+// jedné hodnoty, proto ji porovnáváme na klientu proti `educationLevelValue`.
 const EDU_LEVEL_FILTER_OPTIONS: FilterOption[] = EDU_LEVEL_ORDER.map((lvl) => ({
-  value: EDU_LEVEL_LABELS[lvl],
+  value: lvl,
   label: EDU_LEVEL_LABELS[lvl],
 }));
 
 export function MyCollectionClient({ materials, folders, onMaterialCreated, onMaterialUpdated }: MyCollectionClientProps) {
   const toast = useToast();
+  const { currentUser } = useCurrentUser();
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [targetAudience, setTargetAudience] = useState("");
-  const [educationLevel, setEducationLevel] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState(""); // debounced verze searchInput
+  const [targetId, setTargetId] = useState("");
+  const [educationLevels, setEducationLevels] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<CatalogFilterValues>(EMPTY_CATALOG_FILTER_VALUES);
   const [targets, setTargets] = useState<ResourceTargetOption[]>([]);
+  const [catalogs, setCatalogs] = useState<ResourceCatalogFilters>(EMPTY_RESOURCE_CATALOG_FILTERS);
+
+  // Výsledek serverového filtru — ID vyhovujících materiálů; null = žádný filtr není aktivní.
+  const [matchingIds, setMatchingIds] = useState<Set<string> | null>(null);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [filterError, setFilterError] = useState<string | null>(null);
+  const [filterReloadKey, setFilterReloadKey] = useState(0);
   const [localFolders, setLocalFolders] = useState<MaterialFolder[]>(folders);
 
   // Obsah aktivní složky (sbírky) — načítá se ze serveru, může obsahovat i cizí uložené materiály.
@@ -67,6 +94,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const [deleting, setDeleting] = useState(false);
   const [togglingPublic, setTogglingPublic] = useState(false);
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [addToFolderOpen, setAddToFolderOpen] = useState(false);
   const [editResourceId, setEditResourceId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -75,13 +103,65 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
   useEffect(() => {
     let cancelled = false;
-    fetchResourceTargets().then((data) => {
-      if (!cancelled) setTargets(data);
-    });
+    Promise.all([fetchResourceTargets(), fetchResourceCatalogFilters()]).then(
+      ([targetData, catalogData]) => {
+        if (cancelled) return;
+        setTargets(targetData);
+        setCatalogs(catalogData);
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Debounce hledání (300 ms), ať netlučíme dotaz na každý stisk
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const serverFilter: MaterialsFilter = useMemo(
+    () => ({
+      textSearch: search || undefined,
+      targetId: targetId ? Number(targetId) : undefined,
+      difficultyLevel: difficulty || undefined,
+      ...catalogFilterParams(catalogFilter),
+    }),
+    [search, targetId, difficulty, catalogFilter],
+  );
+  const serverFilterActive = hasMaterialsFilter(serverFilter);
+
+  // Serverový filtr. Ptáme se znovu i po změně vlastních materiálů (vytvoření,
+  // úprava) — upravený materiál mohl filtru začít nebo přestat odpovídat.
+  useEffect(() => {
+    if (!serverFilterActive) {
+      setMatchingIds(null);
+      setFilterError(null);
+      setFilterLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setFilterLoading(true);
+    setFilterError(null);
+    fetchMatchingMaterialIds(serverFilter)
+      .then((ids) => {
+        if (!cancelled) setMatchingIds(ids);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          // Nefiltrovaný seznam by se tvářil jako výsledek filtru — radši nic.
+          setMatchingIds(new Set());
+          setFilterError(err instanceof Error ? err.message : String(err));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFilterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serverFilter, serverFilterActive, materials, filterReloadKey]);
 
   const activeFolder = useMemo(
     () => localFolders.find((f) => f.id === activeFolderId) ?? null,
@@ -90,6 +170,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
   // Načtení obsahu aktivní složky
   useEffect(() => {
+    setAddToFolderOpen(false);
     if (!activeFolderId) {
       setFolderMaterials([]);
       return;
@@ -124,7 +205,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   }, [toast]);
 
   const targetOptions: FilterOption[] = useMemo(
-    () => targets.map((t) => ({ value: t.label, label: t.label })),
+    () => targets.map((t) => ({ value: String(t.id), label: t.label })),
     [targets],
   );
 
@@ -132,28 +213,35 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const baseMaterials = activeFolderId ? folderMaterials : materials;
 
   const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
     return baseMaterials.filter((material) => {
-      if (difficulty && material.difficultyLabel !== difficulty) return false;
-      if (targetAudience && material.targetAudience && material.targetAudience !== targetAudience) {
+      // Serverový filtr: zůstanou jen materiály, které backend vrátil jako vyhovující.
+      if (matchingIds && !matchingIds.has(material.id)) return false;
+      // Obsah složky se načítá odlehčeně (bez úrovně vzdělání), proto materiál
+      // bez této informace filtrem projde — jinak by složka vypadala prázdná.
+      if (
+        educationLevels.length > 0 &&
+        material.educationLevelValue &&
+        !educationLevels.includes(material.educationLevelValue)
+      ) {
         return false;
       }
-      if (educationLevel && material.educationLevel && material.educationLevel !== educationLevel) {
-        return false;
-      }
-      if (!needle) return true;
-      return (
-        material.title.toLowerCase().includes(needle) ||
-        material.description.toLowerCase().includes(needle)
-      );
+      return true;
     });
-  }, [baseMaterials, search, targetAudience, educationLevel, difficulty]);
+  }, [baseMaterials, matchingIds, educationLevels]);
+
+  // Do složky backend pustí jen schválený materiál; ty už zařazené nenabízíme.
+  const addableMaterials = useMemo(() => {
+    const inFolder = new Set(folderMaterials.map((m) => m.id));
+    return materials.filter((m) => m.status === "approved" && !inFolder.has(m.id));
+  }, [materials, folderMaterials]);
 
   const resetFilters = () => {
+    setSearchInput("");
     setSearch("");
-    setTargetAudience("");
-    setEducationLevel("");
+    setTargetId("");
+    setEducationLevels([]);
     setDifficulty("");
+    setCatalogFilter(EMPTY_CATALOG_FILTER_VALUES);
   };
 
   const handleFolderSubmit = async (name: string) => {
@@ -238,6 +326,23 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
   const handleMaterialCreated = (resource: PubResource) => {
     onMaterialCreated?.(resource);
+    // Nový materiál vzniká jako koncept a do sbírky smí až po schválení, takže
+    // by se v otevřené složce vůbec neobjevil — přepneme na „Vše" a řekneme proč.
+    if (activeFolderId) {
+      setActiveFolderId(null);
+      toast.info(
+        "Materiál byl vytvořen jako koncept. Do složky ho zařadíš, až projde schválením.",
+      );
+    }
+  };
+
+  const handleAddExistingToFolder = async (materialId: string) => {
+    if (!activeFolderId) return;
+    await addMaterialToFolder(materialId, activeFolderId);
+    const added = materials.find((m) => m.id === materialId);
+    if (added) setFolderMaterials((prev) => [added, ...prev]);
+    void refreshFolders();
+    toast.success("Materiál byl vložen do složky.");
   };
 
   const handleSubmitForReview = async (materialId: string) => {
@@ -259,6 +364,13 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const handleMovedToFolder = () => {
     void refreshFolders();
   };
+
+  // Ve složce můžou ležet i cizí veřejné materiály — u nich backend úpravu,
+  // odeslání ke schválení ani změnu viditelnosti nepovolí. Mimo složku je
+  // seznam z definice vlastní, takže tam kontrolu nepotřebujeme.
+  const myUserId = currentUser ? String(currentUser.userId) : null;
+  const ownsMaterial = (material: Material) =>
+    !activeFolderId || (myUserId !== null && material.ownerId === myUserId);
 
   return (
     <div className="space-y-6">
@@ -347,6 +459,15 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
             <Button
               variant="plain"
               type="button"
+              onClick={() => setAddToFolderOpen(true)}
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50")}
+            >
+              <FolderInput size={14} strokeWidth={1.75} />
+              Vložit materiál
+            </Button>
+            <Button
+              variant="plain"
+              type="button"
               onClick={handleTogglePublicFolder}
               disabled={togglingPublic}
               className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-60")}
@@ -389,22 +510,22 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           />
           <Input
             type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Hledat"
             className={cn("h-auto", "w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30")}
           />
         </div>
 
         <FilterSelect
-          value={targetAudience}
-          onChange={setTargetAudience}
+          value={targetId}
+          onChange={setTargetId}
           placeholder="Cílová skupina"
           options={targetOptions}
         />
-        <FilterSelect
-          value={educationLevel}
-          onChange={setEducationLevel}
+        <FilterMultiSelect
+          values={educationLevels}
+          onChange={setEducationLevels}
           placeholder="Úroveň vzdělání"
           options={EDU_LEVEL_FILTER_OPTIONS}
         />
@@ -413,6 +534,11 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           onChange={setDifficulty}
           placeholder="Obtížnost"
           options={DIFFICULTY_FILTER_OPTIONS}
+        />
+        <CatalogFilterSelects
+          catalogs={catalogs}
+          values={catalogFilter}
+          onChange={setCatalogFilter}
         />
 
         <Button
@@ -427,7 +553,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
       <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {!activeFolderId && <CreateMaterialCard onClick={() => setMaterialModalOpen(true)} />}
+          <CreateMaterialCard onClick={() => setMaterialModalOpen(true)} />
           {filtered.map((material) => (
             <MaterialCard
               key={material.id}
@@ -437,6 +563,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               showBookmarkAction={false}
               variant="compact"
               folders={localFolders}
+              isOwner={ownsMaterial(material)}
               onCreateFolder={handleCreateFolderFromPicker}
               onMoved={handleMovedToFolder}
               onRemoveFromFolder={activeFolderId ? handleRemoveFromFolder : undefined}
@@ -453,7 +580,28 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           </p>
         )}
 
-        {!folderLoading && filtered.length === 0 && (
+        {!folderLoading && filterLoading && (
+          <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
+            Filtruji materiály…
+          </p>
+        )}
+
+        {!folderLoading && !filterLoading && filterError && (
+          <div className="mt-4 bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+            <p className="text-sm text-destructive mb-3">Filtr se nepodařilo použít: {filterError}</p>
+            <Button
+              variant="default"
+              type="button"
+              onClick={() => setFilterReloadKey((k) => k + 1)}
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
+            >
+              <RotateCcw size={15} strokeWidth={1.75} />
+              Zkusit znovu
+            </Button>
+          </div>
+        )}
+
+        {!folderLoading && !filterLoading && !filterError && filtered.length === 0 && (
           <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             {activeFolderId
               ? "Tato složka je prázdná nebo neodpovídá zvolenému filtru."
@@ -486,6 +634,14 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         loading={deleting}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <FolderAddMaterialModal
+        isOpen={addToFolderOpen && activeFolder !== null}
+        onClose={() => setAddToFolderOpen(false)}
+        folderName={activeFolder?.name ?? ""}
+        materials={addableMaterials}
+        onConfirm={handleAddExistingToFolder}
       />
 
       <MaterialCreateModal

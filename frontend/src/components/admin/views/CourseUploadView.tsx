@@ -2,11 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Upload, X, Loader2 } from 'lucide-react';
-import { createCourse, uploadCourseFile, getCourseBlocks, getCourseTargets, getCourseSubjects } from '@/lib/api-client';
-import { CourseBlock, CourseTarget, CourseSubject } from '@/api';
+import { createCourse, uploadCourseFile } from '@/lib/api-client';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
+import { useCatalogData } from '@/hooks/useCatalogData';
 import { Button, CatalogSelect, Input, Textarea } from '@/components/ui';
+import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { crossSubjectsRule, subjectAllowed, validateCourseCategories } from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
+import { COURSE_FILE_ACCEPT, COURSE_FILE_FORMATS_LABEL, courseFileError } from '@/lib/course-files';
 // Nahrání souboru pro vytvoření kurzu
 export function CourseUploadView() {
   const { goToCourses, goToCourseEdit } = useAdminNavigation();
@@ -14,11 +18,13 @@ export function CourseUploadView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
-  const [targets, setTargets] = useState<CourseTarget[]>([]);
-  const [subjects, setSubjects] = useState<CourseSubject[]>([]);
-  const [catalogsLoading, setCatalogsLoading] = useState(true);
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading,
+  } = useCatalogData();
+  const [showCategoryErrors, setShowCategoryErrors] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -26,56 +32,41 @@ export function CourseUploadView() {
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
+    krauuCompetenceIds: [] as number[],
+    bloomLevelIds: [] as number[],
+    crossSubjectIds: [] as number[],
   });
 
+  // Povinné selecty předvyplníme první položkou; blok a obor jsou volitelné.
+  const catalogDefaultsRef = useRef(false);
   useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [b, t, s] = await Promise.all([
-          getCourseBlocks(),
-          getCourseTargets(),
-          getCourseSubjects(),
-        ]);
-        setBlocks(b);
-        setTargets(t);
-        setSubjects(s);
-        setFormData(prev => ({
-          ...prev,
-          courseBlockId: b.length > 0 ? b[0].blockId : 0,
-          courseTargetId: t.length > 0 ? t[0].targetId : 0,
-          courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
-        }));
-      } catch (err) {
-        console.error('Failed to load catalogs:', err);
-      } finally {
-        setCatalogsLoading(false);
-      }
-    }
-    loadCatalogs();
-  }, []);
+    if (catalogsLoading || catalogDefaultsRef.current) return;
+    catalogDefaultsRef.current = true;
+    setFormData(prev => ({
+      ...prev,
+      courseEqfLevelId: prev.courseEqfLevelId || (eqfLevels[0]?.eqfLevelId ?? 0),
+      courseTypeId: prev.courseTypeId || (types[0]?.typeId ?? 0),
+    }));
+  }, [catalogsLoading, eqfLevels, types]);
+
+  const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'text/markdown',
-        'text/plain',
-      ];
-      
-      const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.md', '.txt'];
-      const fileExt = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
-      
-      if (allowedTypes.includes(selectedFile.type) || allowedExtensions.includes(fileExt)) {
-        setFile(selectedFile);
-        setError('');
-      } else {
-        setError('Nepodporovaný formát souboru. Povolené formáty: PDF, Word, Excel, Markdown');
+      // Backend rozhoduje podle přípony, ne podle MIME typu.
+      const rejection = courseFileError(selectedFile);
+      if (rejection) {
+        setFileError(rejection);
         setFile(null);
+        e.target.value = '';
+      } else {
+        setFile(selectedFile);
+        setFileError('');
+        setError('');
       }
     }
   };
@@ -95,6 +86,13 @@ export function CourseUploadView() {
       return;
     }
 
+    const categoryError = validateCourseCategories(formData, crossRule);
+    if (categoryError) {
+      setShowCategoryErrors(true);
+      setError(categoryError);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -102,9 +100,15 @@ export function CourseUploadView() {
       const course = await createCourse({
         title: formData.title,
         description: formData.description || undefined,
-        courseBlockId: formData.courseBlockId,
-        courseTargetId: formData.courseTargetId,
-        courseSubjectId: formData.courseSubjectId,
+        courseBlockId: formData.courseBlockId || null,
+        courseTargetId: formData.courseTargetId || null,
+        courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
+        courseRequirementId: formData.courseRequirementId || undefined,
+        courseEqfLevelId: formData.courseEqfLevelId,
+        courseTypeId: formData.courseTypeId,
+        krauuCompetenceIds: formData.krauuCompetenceIds,
+        bloomLevelIds: formData.bloomLevelIds,
+        crossSubjectIds: formData.crossSubjectIds,
       });
       
       await uploadCourseFile(course.courseId, file);
@@ -112,16 +116,11 @@ export function CourseUploadView() {
       // Přechod na editaci kurzu
       goToCourseEdit(course.courseId);
     } catch (err: unknown) {
-      if (err instanceof Error) {
+      const detail = await readApiErrorDetail(err);
+      if (detail) {
+        setError(detail);
+      } else if (err instanceof Error) {
         setError(err.message);
-      } else if (err && typeof err === 'object' && 'response' in err) {
-        const response = (err as { response: Response }).response;
-        try {
-          const data = await response.json();
-          setError(data.detail || 'Nepodařilo se vytvořit kurz');
-        } catch {
-          setError(`Chyba serveru: ${response.status}`);
-        }
       } else {
         setError('Nepodařilo se vytvořit kurz');
       }
@@ -212,6 +211,7 @@ export function CourseUploadView() {
                     value={formData.courseBlockId}
                     onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
                     options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                    emptyLabel="Neurčeno"
                     aria-label="Tematický blok"
                     className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
                   />
@@ -222,6 +222,7 @@ export function CourseUploadView() {
                     value={formData.courseTargetId}
                     onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
                     options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                    emptyLabel="Neurčeno"
                     aria-label="Cílová skupina"
                     className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
                   />
@@ -229,13 +230,61 @@ export function CourseUploadView() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Obor</label>
                   <CatalogSelect
-                    value={formData.courseSubjectId}
+                    value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
                     onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    disabled={!subjectAllowed(blocks, formData.courseBlockId)}
                     options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                    emptyLabel="Neurčeno"
                     aria-label="Obor"
                     className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň *</label>
+                  <CatalogSelect
+                    value={formData.courseEqfLevelId}
+                    onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
+                    options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                    aria-label="EQF úroveň"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu *</label>
+                  <CatalogSelect
+                    value={formData.courseTypeId}
+                    onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
+                    options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                    aria-label="Typ kurzu"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Povinnost kurzu</label>
+                  <CatalogSelect
+                    value={formData.courseRequirementId}
+                    onValueChange={(next) => setFormData({ ...formData, courseRequirementId: next })}
+                    options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Povinnost kurzu"
+                    className="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                  />
+                </div>
+              </div>
+            )}
+            {!catalogsLoading && (
+              <div className="mt-4">
+                <CourseCategoryFields
+                  values={formData}
+                  onChange={(next) => setFormData({ ...formData, ...next })}
+                  krauuCompetences={krauuCompetences}
+                  bloomLevels={bloomLevels}
+                  crossSubjects={crossSubjects}
+                  crossRule={crossRule}
+                  showErrors={showCategoryErrors}
+                  labelClassName="block text-sm font-medium text-foreground mb-1"
+                  triggerClassName="w-full px-3 py-2 border border-border rounded-md text-foreground bg-card text-sm data-[size=default]:h-auto"
+                />
               </div>
             )}
           </div>
@@ -254,12 +303,12 @@ export function CourseUploadView() {
                   Klikněte pro výběr souboru
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  PDF, Word, Excel, Markdown
+                  {COURSE_FILE_FORMATS_LABEL}
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.md,.txt"
+                  accept={COURSE_FILE_ACCEPT}
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -285,6 +334,7 @@ export function CourseUploadView() {
                 </Button>
               </div>
             )}
+            {fileError && <p className="mt-2 text-xs text-destructive">{fileError}</p>}
           </div>
 
           {/* Tlačítka */}

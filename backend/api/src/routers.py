@@ -6,7 +6,10 @@ from api.src.courses.routers import (
 )
 from api.src.modules.routers import router as modules_router
 from api.src.activities.routers import router as activities_router
-from api.src.agents.routers import router as agents_router
+from api.src.agents.routers import (
+    router as agents_router,
+    public_router as agents_public_router,
+)
 from api.src.auth.routers import router as auth_router
 from api.src.users.routers import router as users_router
 from api.src.enrollments.routers import router as enrollments_router
@@ -34,6 +37,7 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(courses_public_router)
 router.include_router(catalogs_router)
+router.include_router(agents_public_router)
 
 # Všechny ostatní routery s povinnou autentizací
 router.include_router(courses_router, dependencies=[Depends(auth.get_current_user)])

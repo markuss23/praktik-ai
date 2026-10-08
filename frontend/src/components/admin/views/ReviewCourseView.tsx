@@ -30,7 +30,7 @@ import {
   CornerDownRight,
   Check,
 } from 'lucide-react';
-import { PageSpinner, Button, Tabs, TabsList, TabsTrigger, Textarea } from '@/components/ui';
+import { PageSpinner, Button, Tabs, TabsList, TabsTrigger, Textarea, CourseCategories, ModuleCategories } from '@/components/ui';
 import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 // Plný (ne podtržený) aktivní stav — kitový `line` variant kreslí podtržení
@@ -412,6 +412,27 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
             <h2 className="font-semibold text-foreground mb-3">
               {selectedModule?.title ?? 'Výběr modulu'}
             </h2>
+            {selectedModule?.perex && (
+              <p className="text-sm text-muted-foreground -mt-1 mb-3 break-words">{selectedModule.perex}</p>
+            )}
+            {/* Zařazení kurzu i vybraného modulu — garant ho při schvalování kontroluje */}
+            <details className="mb-3 text-sm">
+              <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+                Zařazení kurzu a modulu
+              </summary>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-foreground mb-2">Kurz</p>
+                  <CourseCategories course={course} />
+                </div>
+                {selectedModule && (
+                  <div>
+                    <p className="text-xs font-semibold text-foreground mb-2">Modul</p>
+                    <ModuleCategories module={selectedModule} />
+                  </div>
+                )}
+              </div>
+            </details>
             {/* Tabs — freely switchable */}
             <Tabs
               value={activeTab}

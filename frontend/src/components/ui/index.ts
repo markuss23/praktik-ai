@@ -6,6 +6,12 @@
 // Zbytek jsou projektové komponenty postavené nad těmito primitivy.
 
 // ── shadcn UI kit (primitiva) ────────────────────────────────────────────────
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "../ui-kit/accordion";
 export { Button, buttonVariants } from "../ui-kit/button";
 export { Badge, badgeVariants, type BadgeVariant } from "../ui-kit/badge";
 export {
@@ -109,9 +115,12 @@ export {
 // ── Projektové komponenty ────────────────────────────────────────────────────
 export { Dropdown, SimpleBotIcon } from "./Dropdown";
 export { FilterSelect, type FilterOption } from "./FilterSelect";
+export { FilterMultiSelect } from "./FilterMultiSelect";
 export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
+export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
+export { CategoryGroup, CourseCategories, MaterialCategories, ModuleCategories } from "./CategoryTags";
 export { CourseCard } from "./CourseCard";
-export { StatusBadge, PublishBadge, ModuleActiveBadge } from "./Badge";
+export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
 export { RichTextEditor, useRichTextEditor } from "./RichTextEditor";
@@ -134,4 +143,4 @@ export {
 // Toasty jedou na vlastním providerů z `./Toast` (mountovaný v app/layout.tsx),
 // ne na kitovém Base UI toastu — ten je zatím jen v showcase na /ui-kit.
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";
-export type { Toast, ToastVariant } from "./Toast";
+export type { Toast, ToastAction, ToastVariant } from "./Toast";

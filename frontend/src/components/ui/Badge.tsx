@@ -1,4 +1,5 @@
 import { Status } from '@/api';
+import { Loader2 } from 'lucide-react';
 
 import { Badge, type BadgeVariant } from '../ui-kit/badge';
 
@@ -14,6 +15,7 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   in_review: 'waiting',
   [Status.Approved]: 'resolved',
   [Status.Archived]: 'closed',
+  [Status.Failed]: 'danger',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -23,11 +25,29 @@ const STATUS_LABELS: Record<string, string> = {
   in_review: 'Ke schválení',
   [Status.Approved]: 'Schváleno',
   [Status.Archived]: 'Archivováno',
+  [Status.Failed]: 'Selhalo',
 };
 
 export function StatusBadge({ status }: { status?: Status | string }) {
   const key = status ?? '';
   return <Badge variant={STATUS_VARIANTS[key] ?? 'closed'}>{STATUS_LABELS[key] ?? status}</Badge>;
+}
+
+// ─── Generating Badge ────────────────────────────────────────────────────────
+
+/** Místo stavu, dokud na serveru běží AI generování kurzu. Popis kroku je v tooltipu. */
+export function GeneratingBadge({ progress }: { progress: { step: number; total: number; label: string } }) {
+  const step = Math.min(progress.step, progress.total);
+  return (
+    <Badge
+      variant="open"
+      title={progress.label}
+      aria-label={`Generuje se, krok ${step} z ${progress.total}: ${progress.label}`}
+    >
+      <Loader2 className="animate-spin" aria-hidden="true" />
+      Generuje se {step}/{progress.total}
+    </Badge>
+  );
 }
 
 // ─── Publish Badge ───────────────────────────────────────────────────────────

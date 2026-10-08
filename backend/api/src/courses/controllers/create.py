@@ -2,11 +2,23 @@
 Controllery pro vytváření zdrojů kurzu.
 """
 
+from pathlib import Path
+
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agents.base.loaders.base import MAX_FILE_SIZE, SUPPORTED_EXTENSIONS
 from api import models
+from api.src.catalogs.controllers import (
+    resolve_cross_subject_ids,
+    validate_subject_for_block,
+    sync_bloom_levels,
+    sync_cross_subjects,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404
 from api.src.courses.schemas import CourseCreate, CourseCreated, CourseFile, CourseLink
 from api import enums
@@ -19,7 +31,8 @@ def create_course(
 ) -> CourseCreated:
     """Vytvoří nový kurz ve stavu draft"""
     if (
-        db.execute(
+        course_data.course_block_id is not None
+        and db.execute(
             select(models.CourseBlock).where(
                 models.CourseBlock.block_id == course_data.course_block_id,
                 models.CourseBlock.is_active.is_(True),
@@ -31,7 +44,7 @@ def create_course(
             status_code=400, detail="Tematický blok s tímto ID neexistuje"
         )
 
-    if (
+    if course_data.course_target_id is not None and (
         db.execute(
             select(models.CourseTarget).where(
                 models.CourseTarget.target_id == course_data.course_target_id,
@@ -56,6 +69,57 @@ def create_course(
     ):
         raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
+    if (
+        course_data.course_requirement_id is not None
+        and db.execute(
+            select(models.CourseRequirement).where(
+                models.CourseRequirement.requirement_id
+                == course_data.course_requirement_id,
+                models.CourseRequirement.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
+        )
+
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == course_data.course_eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="EQF úroveň s tímto ID neexistuje"
+        )
+
+    if (
+        course_data.course_level_id is not None
+        and db.execute(
+            select(models.CourseLevel).where(
+                models.CourseLevel.level_id == course_data.course_level_id,
+                models.CourseLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == course_data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
     if db.execute(
         select(models.Course).where(
             models.Course.title == course_data.title,
@@ -66,8 +130,41 @@ def create_course(
             status_code=400, detail="Kurz s tímto názvem již existuje"
         )
 
-    course = models.Course(**course_data.model_dump(), owner_id=user.user_id)
+    validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    validate_subject_for_block(
+        db, course_data.course_block_id, course_data.course_subject_id
+    )
+    cross_subject_ids = resolve_cross_subject_ids(
+        db, course_data.course_block_id, course_data.cross_subject_ids
+    )
+
+    course = models.Course(
+        **course_data.model_dump(
+            exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"}
+        ),
+        owner_id=user.user_id,
+    )
     db.add(course)
+    db.flush()  # získání course_id před přidáním vazeb
+
+    sync_krauu_competences(
+        db,
+        models.CourseKrauuCompetence,
+        "course_id",
+        course.course_id,
+        course_data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.CourseBloomLevel,
+        "course_id",
+        course.course_id,
+        course_data.bloom_level_ids,
+    )
+    sync_cross_subjects(
+        db, models.CourseCrossSubject, "course_id", course.course_id, cross_subject_ids
+    )
     db.commit()
     db.refresh(course)
 
@@ -87,9 +184,21 @@ async def upload_course_file(
             status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
         )
 
+    if Path(file.filename or "").suffix.lower() not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Nepodporovaný typ souboru. Povolené přípony: "
+            + ", ".join(SUPPORTED_EXTENSIONS),
+        )
+
     remote_path = f"courses/{course_id}/{file.filename}"
 
     content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400, detail="Soubor je příliš velký (max 25 MB)"
+        )
+
     seaweedfs.upload_file(
         remote_path,
         content,

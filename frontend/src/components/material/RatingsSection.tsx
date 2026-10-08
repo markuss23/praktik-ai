@@ -327,7 +327,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
               <Button
                 variant="default"
                 type="button"
-                onClick={login}
+                onClick={() => login()}
                 className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors self-start sm:self-auto")}
               >
                 <LogIn size={15} strokeWidth={1.75} />

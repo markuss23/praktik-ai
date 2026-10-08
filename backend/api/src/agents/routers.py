@@ -1,4 +1,5 @@
 import asyncio
+import base64
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select, update
@@ -11,12 +12,17 @@ from api.src.agents.schemas import (
     CourseGenerationProgressResponse,
     EvaluateAssessmentRequest,
     EvaluateAssessmentResponse,
+    EvaluateOpenQuestionRequest,
     EvaluatePracticeAnswerRequest,
     EvaluatePracticeAnswerResponse,
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
+    GenerateCourseImagesRequest,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
+    GenerateImagesResponse,
+    GeneratedImageFile,
+    GenerateModuleImagesRequest,
     GeneratePracticeQuestionRequest,
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
@@ -25,6 +31,7 @@ from api.src.agents.schemas import (
     WikiChatResponse,
     WikiSyncResponse,
 )
+from api.src.agents.typing_guard import typed_too_fast
 from api.src.agents.progress import (
     get_progress,
     is_running,
@@ -36,12 +43,18 @@ from api.src.agents.progress import (
     unregister_task,
 )
 from api.database import SessionLocal
+from api.storage import seaweedfs
 from api.src.agents.practice_controllers import (
     generate_practice_question,
     evaluate_practice_answer,
+    evaluate_open_question_answer,
 )
+from agents.open_question_evaluator import OpenQuestionEvaluation
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
+from agents.image_generator.course.service import CourseImageGeneratorService
+from agents.image_generator.module.service import ModuleImageGeneratorService
+from agents.image_generator.service import ImageGenerationResult
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
 from agents.wiki.agent.service import sync_wiki
@@ -51,6 +64,8 @@ from api.database import SessionSqlSessionDependency
 from api import models
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+# Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
+public_router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 async def _run_course_generation(course_id: int) -> None:
@@ -149,31 +164,32 @@ async def get_course_generation_progress(
 
 
 @router.get(
-    "/active-course-generation",
-    operation_id="get_active_course_generation",
+    "/active-course-generations",
+    operation_id="list_active_course_generations",
     dependencies=[require_role("lector")],
 )
-async def get_active_course_generation(
+async def list_active_course_generations(
     db: SessionSqlSessionDependency, user: CurrentUser
-) -> int | None:
-    """Vrátí course_id právě běžící generace pro přihlášeného uživatele,
-    nebo ``null`` pokud žádná neběží.
+) -> list[int]:
+    """Vrátí course_id všech právě běžících generací, které přihlášený
+    uživatel smí vidět (prázdný seznam, pokud žádná neběží).
 
-    Slouží frontendu k obnovení UI po refreshi stránky uprostřed generování.
+    Slouží frontendu k obnovení sledování průběhu po refreshi stránky.
     Superadmin vidí i cizí běžící generace, ostatní jen svoje vlastní.
     """
     candidates = list_running_course_ids()
     if not candidates:
-        return None
+        return []
 
     is_super = user.role == "superadmin"
+    visible: list[int] = []
     for course_id in candidates:
         course = db.get(models.Course, course_id)
         if course is None:
             continue
         if is_super or course.owner_id == user.user_id:
-            return course_id
-    return None
+            visible.append(course_id)
+    return visible
 
 
 @router.post(
@@ -208,6 +224,91 @@ async def generate_course_embeddings(
         blocks_processed=result.blocks_processed,
         chunks_created=result.chunks_created,
     )
+
+
+def _upload_images_to_seaweedfs(
+    result: ImageGenerationResult, remote_dir: str
+) -> GenerateImagesResponse:
+    """Nahraje obrázky úspěšných modelů do SeaweedFS a vrátí jejich cesty."""
+    remote_dir = remote_dir.strip("/")
+    files: list[GeneratedImageFile] = []
+
+    for r in result.results:
+        file_path: str | None = None
+        if r.error is None and r.image_url is not None:
+            # image_url je data URI "data:<mime>;base64,<data>"
+            header, b64_data = r.image_url.split(",", 1)
+            mime = header.removeprefix("data:").split(";", 1)[0]
+            ext = "svg" if "svg" in mime else mime.split("/", 1)[1]
+            # nazev bude nazev modelu + přípona
+            filename = f"{r.model_name}.{ext}"
+            file_path = f"{remote_dir}/{filename}"
+            seaweedfs.upload_file(file_path, base64.b64decode(b64_data), filename, mime)
+
+        files.append(
+            GeneratedImageFile(
+                model_name=r.model_name,
+                latency_ms=r.latency_ms,
+                error=r.error,
+                file_path=file_path,
+            )
+        )
+
+    return GenerateImagesResponse(
+        image_spec=result.image_spec.model_dump(),
+        image_prompt=result.image_prompt,
+        results=files,
+    )
+
+
+@router.post(
+    "/generate-course-images",
+    operation_id="generate_course_images",
+    dependencies=[require_role("lector")],
+)
+async def generate_course_images(
+    course_id: int,
+    body: GenerateCourseImagesRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> GenerateImagesResponse:
+    """Vygeneruje z kontextu kurzu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
+
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+
+    validate_owner_or_superadmin(course, user, "kurz")
+
+    service = CourseImageGeneratorService(
+        db=db, course_id=course_id, models_to_compare=body.models
+    )
+    result = await service.generate()
+
+    return _upload_images_to_seaweedfs(result, remote_dir=f"course-images/{course_id}")
+
+
+@router.post(
+    "/generate-module-images",
+    operation_id="generate_module_images",
+    dependencies=[require_role("lector")],
+)
+async def generate_module_images(
+    module_id: int,
+    body: GenerateModuleImagesRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> GenerateImagesResponse:
+    """Vygeneruje z kontextu modulu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
+
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+
+    validate_owner_or_superadmin(module, user, "modul")
+
+    service = ModuleImageGeneratorService(
+        db=db, module_id=module_id, models_to_compare=body.models
+    )
+    result = await service.generate()
+
+    return _upload_images_to_seaweedfs(result, remote_dir=f"module-images/{module_id}")
 
 
 @router.post("/learn-blocks-chat", operation_id="learn_blocks_chat")
@@ -255,7 +356,7 @@ async def learn_blocks_chat(
     return LearnBlocksChatResponse(answer=result.answer)
 
 
-@router.post("/wiki-chat", operation_id="wiki_chat")
+@public_router.post("/wiki-chat", operation_id="wiki_chat")
 async def wiki_chat(
     user_input: WikiChatRequest, db: SessionSqlSessionDependency
 ) -> WikiChatResponse:
@@ -393,6 +494,23 @@ async def evaluate_assessment(
             detail=f"Vyčerpali jste maximální počet pokusů ({module.max_task_attempts}) pro tento modul",
         )
 
+    # Odpověď se v testu musí napsat — nereálně rychle vzniklou odpověď
+    # (vložený text) odmítneme dřív, než se pokus započítá a zavolá se AI.
+    previous_attempts = [a for a in session.attempts if a.is_active]
+    last_attempt = previous_attempts[-1] if previous_attempts else None
+    if typed_too_fast(
+        previous=last_attempt.user_response if last_attempt else "",
+        current=body.user_response,
+        since=last_attempt.created_at if last_attempt else session.created_at,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Odpověď vznikla rychleji, než je možné ji napsat. V testu je potřeba "
+                "odpověď napsat vlastními slovy — pokus se nezapočítal."
+            ),
+        )
+
     service = EvaluationService(
         db=db,
         session_id=body.session_id,
@@ -444,6 +562,24 @@ async def endp_evaluate_practice_answer(
     return await evaluate_practice_answer(
         db=db,
         user_question_id=body.user_question_id,
+        user_input=body.user_input,
+        user=user,
+    )
+
+
+@router.post(
+    "/evaluate-open-question",
+    operation_id="evaluate_open_question",
+)
+async def endp_evaluate_open_question(
+    body: EvaluateOpenQuestionRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> OpenQuestionEvaluation:
+    """Vyhodnotí odpověď na otevřenou otázku modulu. Nic neukládá."""
+    return await evaluate_open_question_answer(
+        db=db,
+        question_id=body.question_id,
         user_input=body.user_input,
         user=user,
     )

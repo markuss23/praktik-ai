@@ -29,11 +29,11 @@ npx shadcn@latest add tooltip     # spadne do src/components/ui-kit/
 
 ## Co kit obsahuje
 
-`alert`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`, `dropdown-menu`, `input`,
-`label`, `progress`, `select`, `separator`, `skeleton`, `status-select`, `switch`, `table`,
+`accordion`, `alert`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`, `dropdown-menu`,
+`input`, `label`, `progress`, `select`, `separator`, `skeleton`, `status-select`, `switch`, `table`,
 `tabs`, `textarea`, `toast`, `tooltip`.
 
-Chybí-li něco (accordion, popover, radio-group, command, pagination…), přidej to CLI příkazem výše —
+Chybí-li něco (popover, radio-group, command, pagination…), přidej to CLI příkazem výše —
 neimplementuj vlastní.
 
 ## Tlačítka

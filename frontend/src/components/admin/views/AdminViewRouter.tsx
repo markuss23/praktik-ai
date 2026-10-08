@@ -1,8 +1,9 @@
 'use client';
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useAdminNavigation, AdminView } from '@/hooks/useAdminNavigation';
 import { PageSpinner } from '@/components/ui';
+import { useAdminChrome } from '../AdminChromeProvider';
 
 // Lazy loading - komponenty se načtou až když jsou potřeba
 const CoursesListView = lazy(() => import('./CoursesListView'));
@@ -14,9 +15,20 @@ const CourseUploadView = lazy(() => import('./CourseUploadView'));
 const CourseEditView = lazy(() => import('./CourseEditView'));
 const ModuleEditView = lazy(() => import('./ModuleEditView'));
 
+// Pohledy s tlačítkem celá obrazovka
+const FOCUS_MODE_VIEWS: AdminView[] = ['course-edit', 'course-content', 'course-tests', 'course-summary'];
+
 // Router používá query params + shallow routing (bez reload stránky)
 export function AdminViewRouter() {
   const { currentView, courseId, moduleId } = useAdminNavigation();
+  const { exitFocusMode } = useAdminChrome();
+
+  useEffect(() => {
+    if (!FOCUS_MODE_VIEWS.includes(currentView)) exitFocusMode();
+  }, [currentView, exitFocusMode]);
+
+  // Odchod z /admin (statistiky, schvalován) fokus režim také ukončí.
+  useEffect(() => () => exitFocusMode(), [exitFocusMode]);
 
   const renderView = () => {
     switch (currentView) {

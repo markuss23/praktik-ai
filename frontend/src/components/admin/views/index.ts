@@ -13,3 +13,4 @@ export { ReviewListView } from './ReviewListView';
 export { ReviewCourseView } from './ReviewCourseView';
 export { ReviewMaterialView } from './ReviewMaterialView';
 export { AiMentorView } from './AiMentorView';
+export { WikiSyncView } from './WikiSyncView';

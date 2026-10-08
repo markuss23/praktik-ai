@@ -83,7 +83,7 @@ def generate_query(state: AgentState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    return {"query": str(response.content).strip()}
+    return {"query": response.text.strip()}
 
 
 _FORBIDDEN = {"insert", "update", "delete", "drop", "truncate", "alter", "create"}
@@ -131,7 +131,7 @@ def format_answer(state: AgentState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    return {"answer": str(response.content).strip()}
+    return {"answer": response.text.strip()}
 
 
 def create_graph():

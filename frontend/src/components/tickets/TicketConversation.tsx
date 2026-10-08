@@ -1,8 +1,15 @@
 "use client";
 
-import { memo } from "react";
+import { lazy, memo, Suspense } from "react";
 import { Bot, UserRound } from "lucide-react";
 import { formatMessageTime, TicketMessage } from "./types";
+
+// react-markdown potřebují jen AI bubliny — do hlavního balíku tiketů ho
+// netaháme. Než se chunk načte, fallback ukáže holý text, takže bublina
+// nepoletí (žádný layout shift).
+const ChatMarkdown = lazy(() =>
+  import("./ChatMarkdown").then((m) => ({ default: m.ChatMarkdown })),
+);
 
 interface TicketConversationProps {
   messages: TicketMessage[];
@@ -61,13 +68,21 @@ export const TicketConversation = memo(function TicketConversation({
                 </span>
               )}
               <div
-                className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-foreground whitespace-pre-wrap break-words ${
+                className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-foreground break-words ${
                   message.author === "ai"
                     ? "border border-border bg-card"
-                    : "bg-muted"
+                    : "whitespace-pre-wrap bg-muted"
                 }`}
               >
-                {message.text}
+                {message.author === "ai" ? (
+                  <Suspense
+                    fallback={<span className="whitespace-pre-wrap">{message.text}</span>}
+                  >
+                    <ChatMarkdown text={message.text} />
+                  </Suspense>
+                ) : (
+                  message.text
+                )}
               </div>
             </div>
           </div>

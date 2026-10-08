@@ -39,7 +39,7 @@ export function AdminRoleGuard({ children }: { children: React.ReactNode }) {
             {!isAuthenticated && (
               <Button
                 variant="brand-solid"
-                onClick={login}
+                onClick={() => login()}
                 className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium transition-colors")}
               >
                 Přihlásit se

@@ -5,7 +5,9 @@ import { FileText, ListChecks, ClipboardCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
-export type CourseStep = 'content' | 'tests' | 'summary';
+// Typ kroků je sdílený s kartou „Tvorba kurzu", která tuto lištu nahradila.
+import type { CourseStep } from './CourseStepsCard';
+export type { CourseStep };
 
 interface CourseStepNavProps {
   current: CourseStep;
@@ -20,9 +22,8 @@ const STEPS: { key: CourseStep; label: string; icon: typeof FileText }[] = [
 ];
 
 /**
- * Krokový přepínač mezi fázemi tvorby kurzu (podklady → testy → souhrn).
- * Umožňuje pohyb mezi fázemi i jinak než tlačítky Zpět / Pokračovat.
- */
+ * Krokový přepínač (podklady → testy → souhrn).
+*/
 export function CourseStepNav({ current, onNavigate, disabled = false }: CourseStepNavProps) {
   const [pending, setPending] = useState<CourseStep | null>(null);
 

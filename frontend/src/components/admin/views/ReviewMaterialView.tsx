@@ -32,7 +32,7 @@ import {
   Send,
   Trash2,
 } from 'lucide-react';
-import { PageSpinner, Button, Textarea } from '@/components/ui';
+import { MaterialCategories, PageSpinner, Button, Textarea } from '@/components/ui';
 import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface ReviewMaterialViewProps {
@@ -293,6 +293,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                     </div>
                   ))}
                 </div>
+                <MaterialCategories material={material} className="mt-4 border-t border-border pt-4" />
               </div>
             )}
 

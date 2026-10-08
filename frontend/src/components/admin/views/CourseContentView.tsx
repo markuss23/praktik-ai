@@ -7,14 +7,24 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Button, Drawer, DrawerContent, Modal, Input, Textarea } from '@/components/ui';
+import {
+  CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type StepModuleItem,
+} from '@/components/admin';
+import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
+import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import {
+  moduleCategoryValues, moduleToUpdate, validateModuleCategories, type ModuleCategoryValues,
+} from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 import {
   Plus,
   Trash2,
@@ -35,11 +45,20 @@ interface ModuleContent {
 interface LocalModule {
   moduleId: number;
   title: string;
+  perex: string;
+  maxTaskAttempts?: number;
+  categories: ModuleCategoryValues;
   isActive?: boolean;
   courseId?: number;
   learnBlocks?: LearnBlock[];
   isTemporary?: boolean;
 }
+
+const PEREX_MAX_LENGTH = 255;
+
+// Co z modulu posíláme na PUT /modules — podle toho poznáme, jestli se změnil.
+const moduleMetaKey = (m: LocalModule) =>
+  JSON.stringify([m.title, m.perex, m.categories]);
 
 interface CourseContentViewProps {
   courseId: number;
@@ -221,9 +240,11 @@ function ModuleItem({
 
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
-  const { goToCourseTests, goToCourseSummary, goBack } = useAdminNavigation();
+  const { goToCourseTests, goBack } = useAdminNavigation();
+  const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
+  const { neuroPrinciples, krauuCompetences, bloomLevels, loading: catalogsLoading } = useCatalogData();
 
   const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [modules, setModules] = useState<LocalModule[]>([]);
@@ -235,6 +256,17 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [moduleMetaOpen, setModuleMetaOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
+  // Chyba kategorií modulu — ukazuje se v editoru místo alertu, aby autosave
+  // při neplatném stavu nevyskakoval opakovaně.
+  const [moduleMetaError, setModuleMetaError] = useState('');
+  // Naposledy uložený stav metadat každého modulu (moduleMetaKey) — PUT posíláme
+  // jen změněným modulům. Starší moduly bez KRAUU / Bloom tak neselžou na
+  // validaci, dokud na ně autor nesáhne.
+  const savedModuleMetaRef = useRef<Record<number, string>>({});
 
   const selectModuleAndClose = (index: number) => {
     setSelectedModuleIndex(index);
@@ -336,17 +368,24 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   // Stav (ne jen ref) pro zapnutí autosave až po inicializaci dat.
   const [contentInitialized, setContentInitialized] = useState(false);
   useEffect(() => {
-    if (!courseData || !editor || initRef.current) return;
+    if (!courseData || !editor || catalogsLoading || initRef.current) return;
 
     const localModules: LocalModule[] = (courseData.modules || []).map((m) => ({
       moduleId: m.moduleId,
       title: m.title,
+      perex: m.perex ?? '',
+      maxTaskAttempts: m.maxTaskAttempts,
+      // Chybějící KRAUU / Bloom modul zdědí z kurzu (uloží se až se změnou modulu).
+      categories: moduleCategoryValues(m, courseData, neuroPrinciples),
       isActive: m.isActive,
       courseId: m.courseId,
       learnBlocks: m.learnBlocks,
       isTemporary: false,
     }));
     setModules(localModules);
+    savedModuleMetaRef.current = Object.fromEntries(
+      localModules.map((m) => [m.moduleId, moduleMetaKey(m)]),
+    );
 
     if (initialModuleId) {
       const idx = localModules.findIndex(m => m.moduleId === initialModuleId);
@@ -374,7 +413,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
     initRef.current = true;
     setContentInitialized(true);
-  }, [courseData, editor, initialModuleId]);
+  }, [courseData, editor, initialModuleId, catalogsLoading, neuroPrinciples]);
 
   // Aktualizace obsahu editoru při změně modulu
   useEffect(() => {
@@ -401,6 +440,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     const newModule: LocalModule = {
       moduleId: nextTempId,
       title: newModuleTitle.trim(),
+      perex: '',
+      // Nový modul přebírá KRAUU a Bloom z kurzu, princip je výchozí NP-01.
+      categories: moduleCategoryValues(null, courseData, neuroPrinciples),
       isTemporary: true,
     };
     setModules([...modules, newModule]);
@@ -432,8 +474,25 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
   };
 
+  const updateSelectedModule = (patch: Partial<LocalModule>) => {
+    setModules(prev => prev.map((m, i) => (i === selectedModuleIndex ? { ...m, ...patch } : m)));
+  };
+
   const saveContent = async () => {
     if (!courseId) return modules;
+
+    // Backend chce u každého modulu alespoň jeden princip, KRAUU i Bloom —
+    // zkontrolujeme jen moduly, které se opravdu budou posílat.
+    const invalid = modules
+      .filter(m => m.isTemporary || moduleMetaKey(m) !== savedModuleMetaRef.current[m.moduleId])
+      .map(m => ({ module: m, message: validateModuleCategories(m.categories) }))
+      .find(item => item.message);
+    if (invalid) {
+      setModuleMetaError(`Modul „${invalid.module.title}“: ${invalid.message}`);
+      setModuleMetaOpen(true);
+      throw new Error(invalid.message ?? '');
+    }
+
     try {
       const updatedModules = [...modules];
       const updatedContents = { ...moduleContents };
@@ -443,8 +502,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         const content = updatedContents[i];
 
         if (mod.isTemporary) {
-          const createdModule = await createModule({ courseId, title: mod.title });
+          const createdModule = await createModule({
+            courseId,
+            title: mod.title,
+            perex: mod.perex,
+            ...mod.categories,
+          });
           updatedModules[i] = { ...mod, moduleId: createdModule.moduleId, isTemporary: false };
+          savedModuleMetaRef.current[createdModule.moduleId] = moduleMetaKey(updatedModules[i]);
 
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
@@ -461,8 +526,12 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       for (let i = 0; i < updatedModules.length; i++) {
         const mod = updatedModules[i];
         if (mod.isTemporary) continue;
-        await updateModule(mod.moduleId, { title: mod.title });
+        const metaKey = moduleMetaKey(mod);
+        if (metaKey === savedModuleMetaRef.current[mod.moduleId]) continue;
+        await updateModule(mod.moduleId, moduleToUpdate(mod, mod.categories));
+        savedModuleMetaRef.current[mod.moduleId] = metaKey;
       }
+      setModuleMetaError('');
 
       const learnBlockPromises: Promise<unknown>[] = [];
       for (let i = 0; i < updatedModules.length; i++) {
@@ -483,23 +552,33 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       return updatedModules;
     } catch (err) {
       console.error('Failed to save content:', err);
-      alert('Nepodařilo se uložit obsah');
+      // Hláška z backendu (např. chybějící kategorie modulu) má přednost před obecným textem
+      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah');
       throw err;
     }
   };
 
   const handleContinue = async () => {
-    const savedModules = await saveContent();
+    let savedModules: LocalModule[] | undefined;
+    try {
+      savedModules = await saveContent();
+    } catch {
+      return; // uložení selhalo (chyba je zobrazena), zůstaneme na místě
+    }
     const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
     goToCourseTests(courseId, selectedModule?.moduleId);
   };
 
   const handleBack = async () => {
-    await saveContent();
+    try {
+      await saveContent();
+    } catch {
+      return;
+    }
     goBack();
   };
 
-  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'content') return;
     let savedModules: LocalModule[] | undefined;
@@ -508,18 +587,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     } catch {
       return; // uložení selhalo (alert je zobrazen), zůstaneme na místě
     }
-    if (step === 'tests') {
-      const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
-      goToCourseTests(courseId, selectedModule?.moduleId);
-    } else {
-      goToCourseSummary(courseId);
-    }
+    goToStep(step, (savedModules ?? modules)[selectedModuleIndex]?.moduleId);
   };
 
   // Pro autosave sledujeme jen názvy a text obsahu, ne ID/learnId
   // (ty se mění po uložení temp modulů a vznikla by smyčka ukládání).
   const autosaveValue = useMemo(() => ({
     titles: modules.map(m => m.title),
+    meta: modules.map(m => [m.perex, m.categories]),
     contents: modules.map((_, i) => moduleContents[i]?.content ?? ''),
   }), [modules, moduleContents]);
 
@@ -529,8 +604,60 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     { delay: 3000, enabled: contentInitialized },
   );
 
+  // Náhled pro studenta — rozpracovaný obsah a zařazení přes uložená data.
+  // Editor upravuje první část příručky; další části zůstávají uložené.
+  const previewModules = useMemo<PreviewModule[]>(
+    () => modules.map((module, index) => {
+      const saved = courseData?.modules?.find((m) => m.moduleId === module.moduleId);
+      const savedBlocks = saved?.learnBlocks ?? [];
+      const edited = moduleContents[index];
+      // Modul bez uložené příručky má v editoru jen výchozí text, který se
+      // neukládá — student by tam neviděl nic (nový modul se uloží celý).
+      const firstBlock = edited && (edited.learnId || module.isTemporary)
+        ? [{ learnId: edited.learnId ?? -1, moduleId: module.moduleId, title: module.title, content: edited.content }]
+        : savedBlocks.slice(0, 1);
+      return {
+        moduleId: module.moduleId,
+        title: module.title,
+        perex: module.perex,
+        maxTaskAttempts: module.maxTaskAttempts,
+        learnBlocks: [...firstBlock, ...savedBlocks.slice(1)],
+        practiceQuestions: saved?.practiceQuestions ?? [],
+        neuroPrinciples: neuroPrinciples.filter((n) => module.categories.neuroPrincipleIds.includes(n.principleId)),
+        krauuCompetences: krauuCompetences.filter((k) => module.categories.krauuCompetenceIds.includes(k.krauuId)),
+        bloomLevels: bloomLevels.filter((b) => module.categories.bloomLevelIds.includes(b.bloomId)),
+      };
+    }),
+    [modules, moduleContents, courseData, neuroPrinciples, krauuCompetences, bloomLevels],
+  );
+
   if (courseLoading) return <LoadingState />;
   if (courseError) return <ErrorState message={courseError} />;
+
+  const selectedModule = modules[selectedModuleIndex] as LocalModule | undefined;
+  const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
+
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: questionCountHint(
+      courseData?.modules?.find((m) => m.moduleId === selectedModule?.moduleId)?.practiceQuestions?.length ?? 0,
+    ),
+  };
+
+  // Moduly pod aktivním krokem karty „Tvorba kurzu" (dřív Osnova kurzu)
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
+      id: module.moduleId,
+      title: module.title,
+      selected: index === selectedModuleIndex,
+      badge: feedbackCountByModule(module.moduleId),
+      isNew: module.isTemporary,
+      onSelect: () => {
+        setSelectedModuleIndex(index);
+        onPicked?.();
+      },
+      onDelete: module.isTemporary ? () => handleDeleteModule(index) : undefined,
+    }));
 
   const commentsPanelInner = (
     <>
@@ -660,13 +787,27 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
+        stepLabel={courseStepLabel('content')}
         saveStatus={saveStatus}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
-      <CourseStepNav current="content" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="content" onNavigate={handleStepNavigate} /> */}
+      {previewOpen && (
+        <StudentPreview
+          course={courseData ?? { title: courseTitle }}
+          modules={previewModules}
+          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'prirucka' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      )}
+      {/* Editor při náhledu jen schováme — rich text editor tak nepřijde o stav */}
+      <div className={previewOpen ? 'hidden' : 'contents'}>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
@@ -696,7 +837,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       )} */}
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
-        {/* Left Sidebar - Course Outline (desktop) */}
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
+        {!focusMode && (
+          <CourseStepsCard current="content" onNavigate={handleStepNavigate} hints={stepHints}>
+            <StepModuleList items={stepModuleItems()} onAdd={() => setShowAddModuleModal(true)} />
+          </CourseStepsCard>
+        )}
+
+        {/* Left Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
         <div className="hidden lg:flex w-56 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
           <OutlineHeader
             onAdd={() => setShowAddModuleModal(true)}
@@ -712,10 +860,23 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             onDelete={handleDeleteModule}
           />
         </div>
+        */}
 
         {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
-          <DrawerContent className="lg:hidden" aria-label="Struktura kurzu">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="content"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            >
+              <StepModuleList
+                items={stepModuleItems(() => setMobileOutlineOpen(false))}
+                onAdd={() => setShowAddModuleModal(true)}
+              />
+            </CourseStepsCard>
+            {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
             <OutlineHeader
               onAdd={() => setShowAddModuleModal(true)}
               onClose={() => setMobileOutlineOpen(false)}
@@ -730,6 +891,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
               onToggle={toggleOutlineItem}
               onDelete={handleDeleteModule}
             />
+            */}
           </DrawerContent>
         </Drawer>
 
@@ -738,6 +900,62 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Úpravy podkladů ke kurzu</h2>
           </div>
+
+          {/* Perex a pedagogické zařazení vybraného modulu */}
+          {selectedModule && (
+            <div className="border-b border-border shrink-0">
+              <Button
+                variant="plain"
+                type="button"
+                onClick={() => setModuleMetaOpen(open => !open)}
+                aria-expanded={moduleMetaOpen}
+                className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50")}
+              >
+                <span className="font-medium truncate">Perex a zařazení modulu</span>
+                <span className="flex items-center gap-2 shrink-0">
+                  {selectedModuleIncomplete && (
+                    <span className="text-xs text-warning">Chybí povinné kategorie</span>
+                  )}
+                  {moduleMetaOpen ? (
+                    <ChevronUp size={16} className="text-muted-foreground" />
+                  ) : (
+                    <ChevronDown size={16} className="text-muted-foreground" />
+                  )}
+                </span>
+              </Button>
+              {moduleMetaError && (
+                <div className="mx-4 mb-3 p-2.5 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
+                  {moduleMetaError}
+                </div>
+              )}
+              {moduleMetaOpen && (
+                <div className="px-4 pb-4 space-y-4 max-h-[50vh] overflow-y-auto">
+                  <div>
+                    <label htmlFor="module-perex" className="block text-sm font-medium text-foreground mb-1">Perex</label>
+                    <Textarea
+                      id="module-perex"
+                      rows={2}
+                      maxLength={PEREX_MAX_LENGTH}
+                      value={selectedModule.perex}
+                      onChange={(e) => updateSelectedModule({ perex: e.target.value })}
+                      placeholder="Krátké shrnutí, o čem modul je..."
+                      className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm resize-none")}
+                    />
+                    <span className="text-xs text-muted-foreground">{selectedModule.perex.length}/{PEREX_MAX_LENGTH}</span>
+                  </div>
+                  <ModuleCategoryFields
+                    values={selectedModule.categories}
+                    onChange={(next) => updateSelectedModule({ categories: next })}
+                    neuroPrinciples={neuroPrinciples}
+                    krauuCompetences={krauuCompetences}
+                    bloomLevels={bloomLevels}
+                    showErrors
+                    triggerClassName="w-full px-3 py-2 border border-border rounded-md text-sm text-foreground bg-card data-[size=default]:h-auto"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <EditorToolbar editor={editor} />
 
@@ -755,7 +973,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && (
+        {showCommentsPanel && !focusMode && (
           <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
@@ -808,6 +1026,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       </div>
       </>
       )}
+      </div>
     </div>
   );
 }

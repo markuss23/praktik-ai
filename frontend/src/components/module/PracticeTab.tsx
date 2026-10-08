@@ -7,7 +7,9 @@ import {
   listPracticeQuestions,
   generatePracticeQuestion,
   evaluatePracticeAnswer,
+  evaluateOpenQuestion,
 } from '@/lib/api-client';
+import { readApiErrorDetail } from '@/lib/api-error';
 import type {
   PracticeQuestion,
   PracticeQuestionWithAttempts,
@@ -18,17 +20,6 @@ import type {
 import { QuestionType } from '@/api';
 import { Button, Textarea } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
-// Normalizace textu pro porovnávání klíčových slov:
-// odstraní diakritiku (háčky, čárky), převede na lowercase a sjednotí whitespace,
-// aby se shody nelišily kvůli velikosti písmen ani akcentům.
-function normalizeForMatch(input: string): string {
-  return input
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 // types
 
@@ -36,6 +27,12 @@ interface PracticeTabProps {
   moduleId: number;
   practiceQuestions: PracticeQuestion[];
   onComplete: () => void;
+  /**
+   * Náhled pro autora kurzu (admin): stejné UI jako pro studenta, ale nic se
+   * neukládá (ani sessionStorage studenta) a AI otázky se negenerují.
+   * Otevřené odpovědi vyhodnotí backend stejně jako studentovi (endpoint nic neukládá).
+   */
+  preview?: boolean;
 }
 
 type Phase = 'static' | 'ai';
@@ -51,14 +48,23 @@ interface AIQuestion {
   submitting: boolean;
 }
 
+// Výsledek vyhodnocení otevřené otázky na backendu. `answer` je odpověď, ke
+// které patří — po její změně se výsledek nepoužije a otázka se vyhodnotí znovu.
+interface OpenEvaluation {
+  answer: string;
+  isCorrect: boolean;
+  feedback: string;
+}
+
 //  component
 
-export default function PracticeTab({ moduleId, practiceQuestions, onComplete }: PracticeTabProps) {
+export default function PracticeTab({ moduleId, practiceQuestions, onComplete, preview = false }: PracticeTabProps) {
   const hasPracticeQuestions = practiceQuestions.length > 0;
 
   // Restore practice state from sessionStorage
   const storageKey = `practice-state-${moduleId}`;
   const savedState = (() => {
+    if (preview) return null;
     try {
       const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
       return raw ? JSON.parse(raw) : null;
@@ -69,6 +75,9 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
   const [phase, setPhase] = useState<Phase>(savedState?.phase ?? (hasPracticeQuestions ? 'static' : 'ai'));
   const [staticAnswers, setStaticAnswers] = useState<Record<number, number | string>>(savedState?.staticAnswers ?? {});
   const [staticSubmitted, setStaticSubmitted] = useState(savedState?.staticSubmitted ?? false);
+  const [openEvaluations, setOpenEvaluations] = useState<Record<number, OpenEvaluation>>(savedState?.openEvaluations ?? {});
+  const [evaluating, setEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
 
   // AI-generated questions 
   const [aiQuestions, setAiQuestions] = useState<AIQuestion[]>([]);
@@ -80,6 +89,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
   // Persist practice state to sessionStorage
   useEffect(() => {
+    if (preview) return;
     try {
       const aiUserInputs: Record<number, string> = aiLoaded
         ? aiQuestions.reduce<Record<number, string>>((acc, q) => {
@@ -91,14 +101,26 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
         phase,
         staticAnswers,
         staticSubmitted,
+        openEvaluations,
         aiUserInputs,
       }));
     } catch { /* ignore */ }
-  }, [storageKey, phase, staticAnswers, staticSubmitted, aiQuestions, aiLoaded, savedAiInputs]);
+  }, [preview, storageKey, phase, staticAnswers, staticSubmitted, openEvaluations, aiQuestions, aiLoaded, savedAiInputs]);
 
   const handleStaticAnswerChange = (questionId: number, value: number | string) => {
     setStaticAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
+
+  const openAnswerOf = (q: PracticeQuestion) => String(staticAnswers[q.questionId] ?? '').trim();
+
+  // Otevřené otázky s odpovědí, ke které ještě není výsledek z backendu.
+  // Prázdná odpověď je nesprávná bez volání AI.
+  const unevaluatedOpenQuestions = practiceQuestions.filter((q) => {
+    if (q.questionType !== 'open') return false;
+    const answer = openAnswerOf(q);
+    return answer.length > 0 && openEvaluations[q.questionId]?.answer !== answer;
+  });
+  const showStaticResults = staticSubmitted && unevaluatedOpenQuestions.length === 0;
 
   const calculateStaticScore = () => {
     let correct = 0;
@@ -106,49 +128,94 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
       questionId: number;
       isCorrect: boolean;
       userAnswer: string;
-      correctAnswer: string;
+      correctAnswer?: string;
+      feedback?: string;
       question: string;
-      matchedKeywords?: string[];
-      missingKeywords?: string[];
     }[] = [];
 
     practiceQuestions.forEach((q) => {
       const answer = staticAnswers[q.questionId];
       let isCorrect = false;
       let userAnswerText = '';
-      const correctAnswerText = q.correctAnswer || q.exampleAnswer || '';
-      let matchedKeywords: string[] | undefined;
-      let missingKeywords: string[] | undefined;
+      let correctAnswer: string | undefined;
+      let feedback: string | undefined;
 
       if (q.questionType === 'closed') {
         const selectedOption = (q.closedOptions ?? []).find((o) => o.optionId === answer);
         userAnswerText = selectedOption?.text || '';
         isCorrect = !!(q.correctAnswer && userAnswerText === q.correctAnswer);
+        correctAnswer = q.correctAnswer ?? undefined;
       } else {
         userAnswerText = String(answer || '');
-        const keywords = (q.openKeywords ?? []).map((k) => k.keyword);
-        if (keywords.length > 0) {
-          const normalizedAnswer = normalizeForMatch(userAnswerText);
-          matchedKeywords = keywords.filter((kw) => normalizedAnswer.includes(normalizeForMatch(kw)));
-          missingKeywords = keywords.filter((kw) => !normalizedAnswer.includes(normalizeForMatch(kw)));
-          isCorrect = matchedKeywords.length > 0;
-        } else {
-          isCorrect = userAnswerText.trim().length > 0;
+        const evaluation = openEvaluations[q.questionId];
+        if (evaluation && evaluation.answer === openAnswerOf(q)) {
+          isCorrect = evaluation.isCorrect;
+          feedback = evaluation.feedback;
         }
       }
 
       if (isCorrect) correct++;
-      results.push({ questionId: q.questionId, isCorrect, userAnswer: userAnswerText, correctAnswer: correctAnswerText, question: q.question, matchedKeywords, missingKeywords });
+      results.push({ questionId: q.questionId, isCorrect, userAnswer: userAnswerText, correctAnswer, feedback, question: q.question });
     });
 
     return { correct, total: practiceQuestions.length, results };
   };
 
-  const handleStaticSubmit = () => {
-    setStaticSubmitted(true);
+  // Otevřené odpovědi vyhodnotí backend (AI), uzavřené se porovnají se správnou
+  // možností. Výsledky se zobrazí, až jsou vyhodnocené všechny otevřené otázky.
+  const handleStaticSubmit = async () => {
+    setEvaluationError(null);
+    if (unevaluatedOpenQuestions.length === 0) {
+      setStaticSubmitted(true);
+      return;
+    }
+    // Rozpracovaná otázka v náhledu autora ještě nemá ID na backendu.
+    if (unevaluatedOpenQuestions.some((q) => q.questionId < 0)) {
+      setEvaluationError('Některé otázky ještě nejsou uložené. Počkejte na uložení a zkuste to znovu.');
+      return;
+    }
+
+    setEvaluating(true);
+    const settled = await Promise.allSettled(
+      unevaluatedOpenQuestions.map(async (q) => {
+        const answer = openAnswerOf(q);
+        const resp = await evaluateOpenQuestion(q.questionId, answer);
+        return { questionId: q.questionId, answer, isCorrect: resp.isCorrect, feedback: resp.feedback };
+      }),
+    );
+
+    const evaluated: Record<number, OpenEvaluation> = {};
+    let failure: unknown = null;
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        const { questionId, ...evaluation } = result.value;
+        evaluated[questionId] = evaluation;
+      } else if (failure === null) {
+        failure = result.reason;
+      }
+    }
+    // Úspěšně vyhodnocené odpovědi si necháme, opakovaný pokus pošle jen ty zbylé.
+    setOpenEvaluations((prev) => ({ ...prev, ...evaluated }));
+
+    if (failure !== null) {
+      console.error('Failed to evaluate open question:', failure);
+      setEvaluationError(
+        (await readApiErrorDetail(failure)) ?? 'Některé odpovědi se nepodařilo vyhodnotit. Zkuste to prosím znovu.',
+      );
+    } else {
+      setStaticSubmitted(true);
+    }
+    setEvaluating(false);
   };
 
-  const staticScore = staticSubmitted ? calculateStaticScore() : null;
+  const handleStaticRetry = () => {
+    setStaticSubmitted(false);
+    setStaticAnswers({});
+    setOpenEvaluations({});
+    setEvaluationError(null);
+  };
+
+  const staticScore = showStaticResults ? calculateStaticScore() : null;
   const staticPercentage = staticScore ? (staticScore.total > 0 ? Math.round((staticScore.correct / staticScore.total) * 100) : 0) : 0;
   const staticPassed = staticPercentage >= 75;
 
@@ -183,10 +250,10 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
   // When switching to AI phase, load existing AI questions
   useEffect(() => {
-    if (phase === 'ai') {
+    if (phase === 'ai' && !preview) {
       loadAiQuestions();
     }
-  }, [phase, loadAiQuestions]);
+  }, [phase, preview, loadAiQuestions]);
 
   const handleGenerate = async (type: 'open' | 'closed') => {
     setShowTypeSelector(false);
@@ -250,7 +317,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
       <AnimatePresence mode="wait">
         {/* 
             PHASE 1 – Static course questions */}
-        {phase === 'static' && !staticSubmitted && (
+        {phase === 'static' && !showStaticResults && (
           <motion.div
             key="static-questions"
             initial={{ opacity: 0, y: 12 }}
@@ -283,6 +350,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                             value={opt.optionId}
                             checked={staticAnswers[q.questionId] === opt.optionId}
                             onChange={() => handleStaticAnswerChange(q.questionId, opt.optionId)}
+                            disabled={evaluating}
                             className="size-4 text-gradient-r focus:ring-gradient-r/30"
                           />
                           <span className="text-sm text-foreground">{opt.text}</span>
@@ -296,6 +364,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                       <Textarea
                         value={String(staticAnswers[q.questionId] || '')}
                         onChange={(e) => handleStaticAnswerChange(q.questionId, e.target.value)}
+                        disabled={evaluating}
                         placeholder="Napište svou odpověď..."
                         rows={3}
                         className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none")}
@@ -307,17 +376,30 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             </div>
 
             {practiceQuestions.length > 0 && (
-              <div className="flex justify-end mt-8 pt-6 border-t border-border">
+              <div className="flex flex-wrap items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
+                {evaluationError && (
+                  <p role="alert" className="text-sm text-destructive mr-auto">{evaluationError}</p>
+                )}
                 <Button
                   variant="plain"
                   onClick={handleStaticSubmit}
-                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90")}
+                  disabled={evaluating}
+                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed")}
                   style={{ backgroundColor: 'var(--gradient-r)' }}
                 >
-                  Odevzdat
-                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  {evaluating ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Vyhodnocuji...
+                    </>
+                  ) : (
+                    <>
+                      Odevzdat
+                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </>
+                  )}
                 </Button>
               </div>
             )}
@@ -326,7 +408,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
 
         {/*
             PHASE 1 – Evaluation results */}
-        {phase === 'static' && staticSubmitted && staticScore && (
+        {phase === 'static' && staticScore && (
           <motion.div
             key="static-results"
             initial={{ opacity: 0, y: 12 }}
@@ -363,28 +445,13 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                       <p className="text-sm text-muted-foreground mt-1">
                         Vaše odpověď: <span className="font-medium">{r.userAnswer || '(bez odpovědi)'}</span>
                       </p>
-                      {!r.isCorrect && r.correctAnswer && !r.missingKeywords && (
+                      {!r.isCorrect && r.correctAnswer && (
                         <p className="text-sm text-success mt-1">
                           Správná odpověď: <span className="font-medium">{r.correctAnswer}</span>
                         </p>
                       )}
-                      {r.matchedKeywords && r.matchedKeywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {r.matchedKeywords.map((kw) => (
-                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/20 text-success">
-                              <CheckCircle className="size-3" /> {kw}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {r.missingKeywords && r.missingKeywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {r.missingKeywords.map((kw) => (
-                            <span key={kw} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/20 text-destructive">
-                              <XCircle className="size-3" /> {kw}
-                            </span>
-                          ))}
-                        </div>
+                      {r.feedback && (
+                        <p className="text-sm text-muted-foreground mt-1">{r.feedback}</p>
                       )}
                     </div>
                   </div>
@@ -396,7 +463,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
             <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-border">
               <Button
                 variant="plain"
-                onClick={() => { setStaticSubmitted(false); setStaticAnswers({}); }}
+                onClick={handleStaticRetry}
                 className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground font-medium text-sm self-center sm:self-auto")}
               >
                 Zkusit znovu
@@ -458,7 +525,26 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete }:
                 </Button>
               </div>
             )}
-            {aiLoading ? (
+            {preview ? (
+              <div className="rounded-lg border border-dashed border-gradient-r/40 bg-gradient-r/5 px-5 py-8 text-center">
+                <p className="font-medium text-foreground">Tady by si student generoval další otázky pomocí AI.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {hasPracticeQuestions
+                    ? 'V náhledu se AI otázky negenerují — pokračujte tlačítkem Dokončit.'
+                    : 'Modul nemá žádné připravené otázky, student by tedy začal rovnou otázkami od AI. V náhledu se negenerují.'}
+                </p>
+                <div className="flex justify-end mt-8 pt-6 border-t border-border">
+                  <Button
+                    variant="plain"
+                    onClick={onComplete}
+                    className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
+                    style={{ backgroundColor: 'var(--primary)' }}
+                  >
+                    Dokončit
+                  </Button>
+                </div>
+              </div>
+            ) : aiLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="size-8 animate-spin text-gradient-r" />

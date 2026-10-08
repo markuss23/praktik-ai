@@ -8,7 +8,7 @@ import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api
 import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseDetailSkeleton, Input } from "@/components/ui";
+import { CourseCategories, ModuleCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ export default function CoursePage() {
   const courseId = Number(slug);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useCurrentUser();
+  const toast = useToast();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -130,7 +131,7 @@ export default function CoursePage() {
       setTimeout(() => setJustEnrolled(false), 1500);
     } catch (err) {
       console.error('Failed to enroll:', err);
-      alert('Nepodařilo se zapsat do kurzu.');
+      toast.error(err, 'Nepodařilo se zapsat do kurzu.');
     } finally {
       setEnrollLoading(false);
     }
@@ -144,7 +145,7 @@ export default function CoursePage() {
       setEnrollment(null);
     } catch (err) {
       console.error('Failed to leave:', err);
-      alert('Nepodařilo se opustit kurz.');
+      toast.error(err, 'Nepodařilo se opustit kurz.');
     } finally {
       setEnrollLoading(false);
     }
@@ -242,6 +243,7 @@ export default function CoursePage() {
         {course.description && (
           <p className="text-muted-foreground mt-3 max-w-3xl break-words">{course.description}</p>
         )}
+        <CourseCategories course={course} className="mt-5 max-w-3xl" />
       </div>
 
       {/* Module Filter */}
@@ -395,6 +397,11 @@ export default function CoursePage() {
                       >
                         {module.title}
                       </h3>
+                      {module.perex && (
+                        <p className="text-sm text-muted-foreground mb-3 break-words">{module.perex}</p>
+                      )}
+                      {/* Zařazení modulu — stejné štítky jako u kurzu v hlavičce */}
+                      <ModuleCategories module={module} className="mb-3" />
 
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">

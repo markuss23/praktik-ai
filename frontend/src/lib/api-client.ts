@@ -17,6 +17,7 @@ import {
   LearnBlockCreate,
   LearnBlockUpdate,
   ModuleCreate,
+  ModuleUpdate,
   PracticeQuestionCreate,
   PracticeQuestionUpdate,
   PracticeOptionCreate,
@@ -126,10 +127,16 @@ export async function createCourse(data: {
   description?: string;
   modulesCountAiGenerated?: number;
   durationMinutes?: number;
-  courseBlockId: number;
-  courseTargetId: number;
-  courseSubjectId: number;
+  courseBlockId?: number | null;
+  courseTargetId?: number | null;
+  courseSubjectId?: number | null;
+  courseRequirementId?: number | null;
+  courseEqfLevelId: number;
+  courseTypeId: number;
   difficulty?: import('@/api').Difficulty;
+  krauuCompetenceIds: number[];
+  bloomLevelIds: number[];
+  crossSubjectIds?: number[];
 }) {
   return coursesApi.createCourse({
     courseCreate: {
@@ -140,7 +147,13 @@ export async function createCourse(data: {
       courseBlockId: data.courseBlockId,
       courseTargetId: data.courseTargetId,
       courseSubjectId: data.courseSubjectId,
+      courseRequirementId: data.courseRequirementId,
+      courseEqfLevelId: data.courseEqfLevelId,
+      courseTypeId: data.courseTypeId,
       difficulty: data.difficulty,
+      krauuCompetenceIds: data.krauuCompetenceIds,
+      bloomLevelIds: data.bloomLevelIds,
+      crossSubjectIds: data.crossSubjectIds,
     },
   });
 }
@@ -173,9 +186,7 @@ export async function createModule(data: ModuleCreate) {
   return modulesApi.createModule({ moduleCreate: data });
 }
 
-export async function updateModule(moduleId: number, data: {
-  title: string;
-}) {
+export async function updateModule(moduleId: number, data: ModuleUpdate) {
   return modulesApi.updateModule({
     moduleId,
     moduleUpdate: data,
@@ -253,6 +264,70 @@ export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }
 
+// Wiki agent API functions
+//
+// /agents/wiki-chat a /agents/wiki-sync zatím nejsou v generovaném klientovi
+// (src/api se generuje z běžícího backendu) — voláme je přímo fetchem se
+// stejným tokenem, stejně jako course-progress níže. Po `npm run
+// generate:openapi` je lze nahradit `agentsApi.wikiChat()` / `wikiSync()`.
+
+async function agentsPost<T>(path: string, body?: unknown, fallback?: string): Promise<T> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  const res = await fetch(backendUrl(path), {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    let detail = fallback ?? `Požadavek selhal (${res.status})`;
+    try {
+      const parsed = await res.json();
+      if (parsed?.detail) detail = typeof parsed.detail === 'string' ? parsed.detail : detail;
+    } catch {
+      // odpověď nemusí být JSON
+    }
+    throw new Error(detail);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Dotaz na wiki agenta. Endpoint je bezstavový — historii konverzace si
+ * drží klient, backend dostane vždy jen aktuální zprávu.
+ */
+export async function wikiChat(message: string): Promise<string> {
+  const data = await agentsPost<{ answer: string }>(
+    '/api/v1/agents/wiki-chat',
+    { message },
+    'Nepodařilo se získat odpověď od AI asistenta.',
+  );
+  return data.answer;
+}
+
+export interface WikiSyncResult {
+  pagesProcessed: number;
+  message: string;
+}
+
+/**
+ * Ruční synchronizace a re-indexace wiki (jen superadmin). Na pozadí běží
+ * i periodicky — interval nastavuje `WIKI__SYNC_INTERVAL_HOURS`.
+ */
+export async function wikiSync(): Promise<WikiSyncResult> {
+  const data = await agentsPost<{ pages_processed: number; message: string }>(
+    '/api/v1/agents/wiki-sync',
+    undefined,
+    'Synchronizace wiki selhala.',
+  );
+  return { pagesProcessed: data.pages_processed, message: data.message };
+}
+
 export interface CourseGenerationProgress {
   step: number;
   total: number;
@@ -273,18 +348,19 @@ export async function getCourseGenerationProgress(courseId: number): Promise<Cou
   return res.json();
 }
 
-export async function getActiveCourseGeneration(): Promise<number | null> {
+/** ID kurzů, jejichž generování právě běží na serveru (pro obnovu sledování po refreshi). */
+export async function listActiveCourseGenerations(): Promise<number[]> {
   const token = await getValidAccessToken();
   const headers: Record<string, string> = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generation`), {
+  const res = await fetch(backendUrl(`/api/v1/agents/active-course-generations`), {
     method: 'GET',
     headers,
   });
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  if (res.status === 401 || res.status === 403 || res.status === 404) return [];
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
-  return typeof data === 'number' ? data : null;
+  const data: unknown = await res.json();
+  return Array.isArray(data) ? data.filter((v): v is number => typeof v === 'number') : [];
 }
 
 //  Course Status & Published API functions 
@@ -323,6 +399,34 @@ export async function getCourseTargets() {
 
 export async function getCourseSubjects() {
   return catalogsApi.listCourseSubjects();
+}
+
+export async function getCourseRequirements() {
+  return catalogsApi.listCourseRequirements();
+}
+
+export async function getCourseEqfLevels() {
+  return catalogsApi.listCourseEqfLevels();
+}
+
+export async function getCourseTypes() {
+  return catalogsApi.listCourseTypes();
+}
+
+export async function getNeuroPrinciples() {
+  return catalogsApi.listNeuroPrinciples();
+}
+
+export async function getKrauuCompetences() {
+  return catalogsApi.listKrauuCompetences();
+}
+
+export async function getBloomLevels() {
+  return catalogsApi.listBloomLevels();
+}
+
+export async function getCrossSubjects() {
+  return catalogsApi.listCrossSubjects();
 }
 
 //  Activities API functions 
@@ -599,6 +703,13 @@ export async function generatePracticeQuestion(moduleId: number, questionType: Q
 export async function evaluatePracticeAnswer(userQuestionId: number, userInput: string) {
   return agentsApi.evaluatePracticeAnswer({
     evaluatePracticeAnswerRequest: { userQuestionId, userInput },
+  });
+}
+
+/** Vyhodnotí odpověď na předem připravenou otevřenou otázku modulu (nic neukládá). */
+export async function evaluateOpenQuestion(questionId: number, userInput: string) {
+  return agentsApi.evaluateOpenQuestion({
+    evaluateOpenQuestionRequest: { questionId, userInput },
   });
 }
 

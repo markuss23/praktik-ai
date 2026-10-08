@@ -1,4 +1,5 @@
 from agents.base.llm import get_llm_config, create_chat_llm
+from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
 from api.src.agents.progress import set_progress
 
@@ -22,32 +23,15 @@ def plan_content_node(state: AgentState) -> AgentState:
     model = create_chat_llm(cfg.model, max_tokens=64000)
     # method="json_schema" použije nativní strukturované výstupy Anthropic
     # (server-side vynucené schéma), místo pouhého tool-callingu – ten model
-    # jen "navádí" a u složitě zanořených schémat (moduly -> learn_blocks/
-    # practice_questions) mohl vrátit zanořené pole jako JSON string.
+    # jen "navádí" a u zanořených schémat (kurz -> moduly) mohl vrátit
+    # zanořené pole jako JSON string.
     llm_structured = model.with_structured_output(CourseGenerated, method="json_schema")
-
-    modules_count = course_input.modules_count_ai_generated
-    title = course_input.title
-    description = course_input.description or ""
-    duration_minutes = course_input.duration_minutes
-
-    if duration_minutes is not None and modules_count > 0:
-        minutes_per_module = round(duration_minutes / modules_count)
-        duration_info = f"{duration_minutes} minut"
-        module_duration_info = f"{minutes_per_module} min/modul"
-    else:
-        duration_info = "neurčena"
-        module_duration_info = "neurčena"
 
     prompt = f"""{cfg.prompt}
 
-NÁZEV KURZU: {title}
-POPIS KURZU: {description}
-POČET MODULŮ: {modules_count}
-DÉLKA KURZU: {duration_info}
-DÉLKA NA MODUL: {module_duration_info}
+{build_input_block(course_input)}
 
-OBSAH K ZPRACOVÁNÍ:
+SOUHRN:
 {summarize_content}"""
 
     output: CourseGenerated = llm_structured.invoke(prompt)
@@ -55,6 +39,12 @@ OBSAH K ZPRACOVÁNÍ:
     if not output.modules:
         raise ValueError(
             "LLM vrátil kurz bez modulů. Zkontroluj limit max_tokens a nastavení modelu."
+        )
+
+    if len(output.modules) != course_input.modules_count_ai_generated:
+        print(
+            f"   -> WARN: LLM vrátil {len(output.modules)} modulů, "
+            f"požadováno {course_input.modules_count_ai_generated}"
         )
 
     state["course"] = output

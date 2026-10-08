@@ -22,11 +22,15 @@ import {
 import { cn } from "@/lib/utils";
 import {
   listMyTickets,
+  NEW_TICKET_QUERY_PARAM,
+  takeTicketDraft,
   Ticket,
+  TICKET_CREATED_EVENT,
   TICKET_TYPE_LABELS,
   TicketCard,
   TicketCreateModal,
   TicketDeleteModal,
+  type TicketDraft,
   TicketType,
 } from "@/components/tickets";
 
@@ -76,15 +80,34 @@ export default function MojeTiketyPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TicketsTab>("open");
   const [createOpen, setCreateOpen] = useState(false);
+  /** Dotaz odložený v AI chatu před přihlášením — předvyplní „Nový dotaz". */
+  const [createDraft, setCreateDraft] = useState<TicketDraft | null>(null);
   const [courseFilter, setCourseFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<TicketType | "">("");
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      login();
+      // Po přihlášení zpět sem — i s parametrem pro otevření „Nového dotazu".
+      login(`${window.location.pathname}${window.location.search}`);
     }
   }, [authLoading, user, login]);
+
+  // Návrat z přihlášení
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(NEW_TICKET_QUERY_PARAM)) return;
+    params.delete(NEW_TICKET_QUERY_PARAM);
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      query ? `${window.location.pathname}?${query}` : window.location.pathname,
+    );
+    setCreateDraft(takeTicketDraft());
+    setCreateOpen(true);
+  }, [isAuthenticated]);
 
   const loadTickets = useCallback((showLoading = true) => {
     if (!isAuthenticated) return;
@@ -99,6 +122,13 @@ export default function MojeTiketyPage() {
 
   useEffect(() => {
     loadTickets(true);
+  }, [loadTickets]);
+
+  // Tiket založený z AI chatu ve widgetu — seznam se obnoví bez skeletonu.
+  useEffect(() => {
+    const onCreated = () => loadTickets(false);
+    window.addEventListener(TICKET_CREATED_EVENT, onCreated);
+    return () => window.removeEventListener(TICKET_CREATED_EVENT, onCreated);
   }, [loadTickets]);
 
   // Kurzy pro filtr — unikátní názvy z načtených tiketů.
@@ -252,7 +282,12 @@ export default function MojeTiketyPage() {
 
       <TicketCreateModal
         isOpen={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setCreateOpen(false);
+          setCreateDraft(null);
+        }}
+        initialTitle={createDraft?.title}
+        initialReason={createDraft?.reason}
         onCreated={() => loadTickets(false)}
       />
 

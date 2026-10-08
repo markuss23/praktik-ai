@@ -19,6 +19,10 @@ interface MaterialCardActionsProps {
   folders?: MaterialFolder[];
   onCreateFolder?: (name: string) => Promise<MaterialFolder>;
   onMoved?: (folderId: string) => void;
+  /** Materiál nelze do sbírky zařadit (backend by akci odmítl) — tlačítko zůstane neaktivní. */
+  disabled?: boolean;
+  /** Důvod nedostupnosti; zobrazí se jako tooltip nad neaktivním tlačítkem. */
+  disabledReason?: string;
 }
 
 export function MaterialCardActions({
@@ -27,6 +31,8 @@ export function MaterialCardActions({
   folders = [],
   onCreateFolder,
   onMoved,
+  disabled = false,
+  disabledReason,
 }: MaterialCardActionsProps) {
   const toast = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -42,22 +48,27 @@ export function MaterialCardActions({
     );
   };
 
+  const hint = disabled ? (disabledReason ?? "Materiál teď nelze do složky zařadit.") : "Přidat do složky";
+
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon-lg"
-        aria-label="Přidat do složky"
-        title="Přidat do složky"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setPickerOpen(true);
-        }}
-      >
-        <Folder strokeWidth={1.75} />
-      </Button>
+      {/* Tooltip drží obalový `span` — neaktivní tlačítko myší události nepropouští. */}
+      <span title={hint} className="inline-flex">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-lg"
+          aria-label={hint}
+          disabled={disabled}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setPickerOpen(true);
+          }}
+        >
+          <Folder strokeWidth={1.75} />
+        </Button>
+      </span>
       <FolderPickerModal
         isOpen={pickerOpen}
         onClose={() => setPickerOpen(false)}

@@ -15,7 +15,8 @@ const HIDE_THRESHOLD = 160;
 /**
  * Levitující kolečko vpravo dole, které sjede na konec obsahu příručky.
  * Zobrazuje se jen dokud je kam scrollovat; z-30 je pod poznámkovým
- * panelem (z-40), aby ho otevřené poznámky překryly.
+ * panelem (z-40), aby ho otevřené poznámky překryly. Stojí nad plovoucím
+ * tlačítkem nápovědy (SupportChatWidget), vystředěné na jeho osu.
  */
 export function ScrollToBottomButton({ targetRef }: ScrollToBottomButtonProps) {
   const [visible, setVisible] = useState(false);
@@ -79,7 +80,7 @@ export function ScrollToBottomButton({ targetRef }: ScrollToBottomButtonProps) {
           onClick={scrollToBottom}
           aria-label="Sjet na konec stránky"
           title="Sjet na konec"
-          className="fixed bottom-6 right-5 z-30 flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground border border-border shadow-lg hover:text-gradient-r hover:shadow-xl transition-colors"
+          className="fixed bottom-(--support-fab-clearance) right-[calc(var(--support-fab-offset)_+_(var(--support-fab-size)_-_2.75rem)_/_2)] z-30 flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground border border-border shadow-lg hover:text-gradient-r hover:shadow-xl transition-colors"
         >
           <motion.span
             animate={{ y: [0, -3, 0] }}
