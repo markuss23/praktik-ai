@@ -6,6 +6,12 @@
 // Zbytek jsou projektové komponenty postavené nad těmito primitivy.
 
 // ── shadcn UI kit (primitiva) ────────────────────────────────────────────────
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "../ui-kit/accordion";
 export { Button, buttonVariants } from "../ui-kit/button";
 export { Badge, badgeVariants, type BadgeVariant } from "../ui-kit/badge";
 export {
