@@ -24,7 +24,7 @@ interface LoadedAssessment {
   status: string;
   attempts: AttemptResult[];
   attemptsUsed: number;
-  maxAttempts: number | null;
+  maxAttempts: number | null; 
 }
 
 const fromExisting = (existing: ModuleAssessmentQuestion): LoadedAssessment => ({

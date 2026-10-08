@@ -1,4 +1,4 @@
-import type { Course, Module } from "@/api";
+import type { Course, Module, PubResource } from "@/api";
 import { cn } from "@/lib/utils";
 
 interface CategoryItem {
@@ -71,6 +71,25 @@ export function ModuleCategories({ module, className }: ModuleCategoriesProps) {
   return (
     <div className={cn("space-y-3", className)}>
       <CategoryGroup label="Neurovědní principy" items={neuro} />
+      <CategoryGroup label="KRAUU kompetence" items={krauu} />
+      <CategoryGroup label="Bloomova taxonomie" items={bloom} />
+    </div>
+  );
+}
+
+interface MaterialCategoriesProps {
+  material: Pick<PubResource, "krauuCompetences" | "bloomLevels">;
+  className?: string;
+}
+
+/** KRAUU kompetence a Bloomova taxonomie materiálu z veřejné databáze (jen pro čtení). */
+export function MaterialCategories({ material, className }: MaterialCategoriesProps) {
+  const krauu = material.krauuCompetences ?? [];
+  const bloom = material.bloomLevels ?? [];
+  if (krauu.length + bloom.length === 0) return null;
+
+  return (
+    <div className={cn("space-y-3", className)}>
       <CategoryGroup label="KRAUU kompetence" items={krauu} />
       <CategoryGroup label="Bloomova taxonomie" items={bloom} />
     </div>

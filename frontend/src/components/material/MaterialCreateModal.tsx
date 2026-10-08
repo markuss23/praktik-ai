@@ -10,7 +10,9 @@ import {
 } from "@/lib/api-client";
 import type {
   BloomLevel,
+  CourseBlock,
   CourseEqfLevel,
+  CourseLevel,
   CourseSubject,
   CourseTarget,
   CourseType,
@@ -55,6 +57,8 @@ interface FormState {
   targetId: string;
   eqfLevelId: string;
   courseTypeId: string;
+  blockId: string;
+  levelId: string;
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
   krauuCompetenceIds: number[];
@@ -69,6 +73,8 @@ const INITIAL_FORM: FormState = {
   targetId: "",
   eqfLevelId: "",
   courseTypeId: "",
+  blockId: "",
+  levelId: "",
   educationLevel: EduLevel.Higher,
   difficultyLevel: "",
   krauuCompetenceIds: [],
@@ -86,6 +92,8 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
   const [targets, setTargets] = useState<CourseTarget[]>([]);
   const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
   const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
+  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
+  const [levels, setLevels] = useState<CourseLevel[]>([]);
   const [krauuCompetences, setKrauuCompetences] = useState<KrauuCompetence[]>([]);
   const [bloomLevels, setBloomLevels] = useState<BloomLevel[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
@@ -107,15 +115,19 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
       catalogsApi.listCourseTargets(),
       catalogsApi.listCourseEqfLevels(),
       catalogsApi.listCourseTypes(),
+      catalogsApi.listCourseBlocks(),
+      catalogsApi.listCourseLevels(),
       catalogsApi.listKrauuCompetences(),
       catalogsApi.listBloomLevels(),
     ])
-      .then(([subjectsData, targetsData, eqfData, typesData, krauuData, bloomData]) => {
+      .then(([subjectsData, targetsData, eqfData, typesData, blocksData, levelsData, krauuData, bloomData]) => {
         if (cancelled) return;
         setSubjects(subjectsData);
         setTargets(targetsData);
         setEqfLevels(eqfData);
         setCourseTypes(typesData);
+        setBlocks(blocksData);
+        setLevels(levelsData);
         setKrauuCompetences(krauuData);
         setBloomLevels(bloomData);
       })
@@ -195,6 +207,8 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
         targetId: form.targetId ? Number(form.targetId) : null,
         eqfLevelId: Number(form.eqfLevelId),
         courseTypeId: Number(form.courseTypeId),
+        blockId: form.blockId ? Number(form.blockId) : null,
+        levelId: form.levelId ? Number(form.levelId) : null,
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
         krauuCompetenceIds: form.krauuCompetenceIds,
@@ -235,6 +249,14 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
   const courseTypeItems = [
     { label: "Typ", value: null },
     ...courseTypes.map((t) => ({ label: t.name, value: String(t.typeId) })),
+  ];
+  const blockItems = [
+    { label: "Tematický blok", value: null },
+    ...blocks.map((b) => ({ label: b.name, value: String(b.blockId) })),
+  ];
+  const levelItems = [
+    { label: "Zkušenost s AI", value: null },
+    ...levels.map((l) => ({ label: l.name, value: String(l.levelId) })),
   ];
   const difficultyItems = [
     { label: "Obtížnost", value: null },
@@ -379,6 +401,42 @@ export function MaterialCreateModal({ isOpen, onClose, onCreated }: MaterialCrea
             </SelectTrigger>
             <SelectContent>
               {courseTypeItems.map((item) => (
+                <SelectItem key={item.value ?? "none"} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            items={blockItems}
+            value={form.blockId === "" ? null : form.blockId}
+            disabled={loadingCatalogs}
+            onValueChange={(value) => setForm((s) => ({ ...s, blockId: value == null ? "" : String(value) }))}
+          >
+            <SelectTrigger className="w-full" aria-label="Tematický blok">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {blockItems.map((item) => (
+                <SelectItem key={item.value ?? "none"} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            items={levelItems}
+            value={form.levelId === "" ? null : form.levelId}
+            disabled={loadingCatalogs}
+            onValueChange={(value) => setForm((s) => ({ ...s, levelId: value == null ? "" : String(value) }))}
+          >
+            <SelectTrigger className="w-full" aria-label="Zkušenost s AI">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {levelItems.map((item) => (
                 <SelectItem key={item.value ?? "none"} value={item.value}>
                   {item.label}
                 </SelectItem>

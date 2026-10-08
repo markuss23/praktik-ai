@@ -13,7 +13,9 @@ import {
 } from "@/lib/api-client";
 import type {
   BloomLevel,
+  CourseBlock,
   CourseEqfLevel,
+  CourseLevel,
   CourseSubject,
   CourseTarget,
   CourseType,
@@ -61,6 +63,8 @@ interface FormState {
   targetId: string;
   eqfLevelId: string;
   courseTypeId: string;
+  blockId: string;
+  levelId: string;
   educationLevel: EduLevel;
   difficultyLevel: Difficulty | "";
   krauuCompetenceIds: number[];
@@ -80,6 +84,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const [targets, setTargets] = useState<CourseTarget[]>([]);
   const [eqfLevels, setEqfLevels] = useState<CourseEqfLevel[]>([]);
   const [courseTypes, setCourseTypes] = useState<CourseType[]>([]);
+  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
+  const [levels, setLevels] = useState<CourseLevel[]>([]);
   const [krauuCompetences, setKrauuCompetences] = useState<KrauuCompetence[]>([]);
   const [bloomLevels, setBloomLevels] = useState<BloomLevel[]>([]);
   const [comments, setComments] = useState<ResourceComment[]>([]);
@@ -115,15 +121,19 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
       catalogsApi.listCourseTargets(),
       catalogsApi.listCourseEqfLevels(),
       catalogsApi.listCourseTypes(),
+      catalogsApi.listCourseBlocks(),
+      catalogsApi.listCourseLevels(),
       catalogsApi.listKrauuCompetences(),
       catalogsApi.listBloomLevels(),
     ])
-      .then(([resource, subjectsData, targetsData, eqfData, typesData, krauuData, bloomData]) => {
+      .then(([resource, subjectsData, targetsData, eqfData, typesData, blocksData, levelsData, krauuData, bloomData]) => {
         if (cancelled) return;
         setSubjects(subjectsData);
         setTargets(targetsData);
         setEqfLevels(eqfData);
         setCourseTypes(typesData);
+        setBlocks(blocksData);
+        setLevels(levelsData);
         setKrauuCompetences(krauuData);
         setBloomLevels(bloomData);
         setExistingFiles(resource.files ?? []);
@@ -134,6 +144,8 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
           targetId: resource.targetId != null ? String(resource.targetId) : "",
           eqfLevelId: resource.eqfLevelId != null ? String(resource.eqfLevelId) : "",
           courseTypeId: resource.courseTypeId != null ? String(resource.courseTypeId) : "",
+          blockId: resource.blockId != null ? String(resource.blockId) : "",
+          levelId: resource.levelId != null ? String(resource.levelId) : "",
           educationLevel: resource.educationLevel,
           difficultyLevel: resource.difficultyLevel ?? "",
           krauuCompetenceIds: (resource.krauuCompetences ?? []).map((k) => k.krauuId),
@@ -239,6 +251,10 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
         targetId: Number(form.targetId),
         eqfLevelId: Number(form.eqfLevelId),
         courseTypeId: Number(form.courseTypeId),
+        // Explicitní null — backend vynechaná pole při úpravě nemění, takže
+        // bez něj by výběr „Tematický blok“ / „Zkušenost s AI“ hodnotu nesmazal.
+        blockId: form.blockId ? Number(form.blockId) : null,
+        levelId: form.levelId ? Number(form.levelId) : null,
         educationLevel: form.educationLevel,
         difficultyLevel: form.difficultyLevel || undefined,
         krauuCompetenceIds: form.krauuCompetenceIds,
@@ -282,6 +298,14 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
   const courseTypeItems = [
     { label: "Typ", value: null },
     ...courseTypes.map((t) => ({ label: t.name, value: String(t.typeId) })),
+  ];
+  const blockItems = [
+    { label: "Tematický blok", value: null },
+    ...blocks.map((b) => ({ label: b.name, value: String(b.blockId) })),
+  ];
+  const levelItems = [
+    { label: "Zkušenost s AI", value: null },
+    ...levels.map((l) => ({ label: l.name, value: String(l.levelId) })),
   ];
   const difficultyItems = [
     { label: "Obtížnost", value: null },
@@ -469,6 +493,44 @@ export function MaterialEditModal({ isOpen, resourceId, onClose, onUpdated }: Ma
               </SelectTrigger>
               <SelectContent>
                 {courseTypeItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={blockItems}
+              value={form.blockId === "" ? null : form.blockId}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, blockId: value == null ? "" : String(value) } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Tematický blok">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {blockItems.map((item) => (
+                  <SelectItem key={item.value ?? "none"} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              items={levelItems}
+              value={form.levelId === "" ? null : form.levelId}
+              onValueChange={(value) =>
+                setForm((s) => (s ? { ...s, levelId: value == null ? "" : String(value) } : s))
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Zkušenost s AI">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {levelItems.map((item) => (
                   <SelectItem key={item.value ?? "none"} value={item.value}>
                     {item.label}
                   </SelectItem>

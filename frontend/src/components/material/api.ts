@@ -24,6 +24,7 @@ import {
 } from "@/lib/api-client";
 import type { PubResource, PubResourceBasic, PubCollectionDetail } from "@/api";
 import { UpdateResourceStatusNewStatusEnum } from "@/api";
+import type { FilterOption } from "@/components/ui";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS } from "@/lib/edu-level";
 
@@ -33,13 +34,32 @@ export interface ResourceTargetOption {
   label: string;
 }
 
-/** Serverové filtry pro veřejný seznam materiálů. */
-export interface PublicMaterialsFilter {
+/** Volby serverových filtrů EQF úrovně, typu, tematického bloku a zkušenosti s AI (`value` = ID z číselníku). */
+export interface ResourceCatalogFilters {
+  eqfLevels: FilterOption[];
+  courseTypes: FilterOption[];
+  blocks: FilterOption[];
+  levels: FilterOption[];
+}
+
+export const EMPTY_RESOURCE_CATALOG_FILTERS: ResourceCatalogFilters = {
+  eqfLevels: [],
+  courseTypes: [],
+  blocks: [],
+  levels: [],
+};
+
+/** Serverové filtry seznamu materiálů (`GET /resources`). */
+export interface MaterialsFilter {
   textSearch?: string;
   subjectId?: number;
   educationLevel?: string;
   difficultyLevel?: string;
   targetId?: number;
+  eqfLevelId?: number;
+  courseTypeId?: number;
+  blockId?: number;
+  levelId?: number;
 }
 
 const STATUS_MAP: Record<string, Material["status"]> = {
@@ -105,10 +125,18 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
       ...(resource.difficultyLevel
         ? [{ label: "Obtížnost", value: DIFFICULTY_LABELS[resource.difficultyLevel] ?? resource.difficultyLevel }]
         : []),
+      ...(resource.eqfLevel
+        ? [{ label: "EQF úroveň", value: `${resource.eqfLevel.code} – ${resource.eqfLevel.name}` }]
+        : []),
+      ...(resource.courseType ? [{ label: "Typ", value: resource.courseType.name }] : []),
+      ...(resource.block ? [{ label: "Tematický blok", value: resource.block.name }] : []),
+      ...(resource.level ? [{ label: "Zkušenost s AI", value: resource.level.name }] : []),
       ...(resource.authorDisplayName
         ? [{ label: "Autor", value: resource.authorDisplayName }]
         : []),
     ],
+    krauuCompetences: resource.krauuCompetences ?? [],
+    bloomLevels: resource.bloomLevels ?? [],
     // `filePath` je interní klíč v SeaweedFS, ne odkaz ke stažení — přílohy se
     // stahují přes backend podle resourceId/fileId.
     attachments: (resource.files ?? []).map((f) => ({
@@ -153,20 +181,48 @@ function mapBasicResourceToMaterial(basic: PubResourceBasic): Material {
   };
 }
 
-// chyby zde  neodchytáváme — rozlišuje stav „chyba" (btn zkusit znovu) od prázdný výsledek
-export async function fetchPublicMaterials(
-  filter: PublicMaterialsFilter = {},
-): Promise<Material[]> {
-  const resources = await listResources({
-    isPublished: true,
-    status: "approved",
+/** Převod filtru na query parametry `listResources` — jedno místo pro obě záložky. */
+function listResourcesFilterParams(filter: MaterialsFilter) {
+  return {
     textSearch: filter.textSearch || undefined,
     resourceSubjectId: filter.subjectId,
     educationLevel: filter.educationLevel || undefined,
     difficultyLevel: filter.difficultyLevel || undefined,
     resourceTargetId: filter.targetId,
+    resourceEqfLevelId: filter.eqfLevelId,
+    resourceCourseTypeId: filter.courseTypeId,
+    resourceBlockId: filter.blockId,
+    resourceLevelId: filter.levelId,
+  };
+}
+
+/** Má filtr aspoň jednu vyplněnou hodnotu? */
+export function hasMaterialsFilter(filter: MaterialsFilter): boolean {
+  return Object.values(filter).some((value) => value !== undefined && value !== "");
+}
+
+// chyby zde  neodchytáváme — rozlišuje stav „chyba" (btn zkusit znovu) od prázdný výsledek
+export async function fetchPublicMaterials(
+  filter: MaterialsFilter = {},
+): Promise<Material[]> {
+  const resources = await listResources({
+    isPublished: true,
+    status: "approved",
+    ...listResourcesFilterParams(filter),
   });
   return resources.map(mapPubResourceToMaterial);
+}
+
+/**
+ * ID materiálů, které odpovídají filtru — bez ohledu na autora, stav a viditelnost.
+ * „Moje sbírka" jimi zužuje vlastní materiály i obsah složky: filtruje backend,
+ * frontend dělá jen průnik s tím, co je v daném pohledu vidět (backend neumí
+ * filtr podle autora a obsah složky přichází bez detailů materiálu).
+ */
+export async function fetchMatchingMaterialIds(filter: MaterialsFilter): Promise<Set<string>> {
+  // includeInactive stejně jako fetchMyMaterials, aby průnik nic neztratil.
+  const resources = await listResources({ includeInactive: true, ...listResourcesFilterParams(filter) });
+  return new Set(resources.map((r) => String(r.resourceId)));
 }
 
 // Chyby propagujeme, aby stránka mohla nabídnout „Zkusit znovu".
@@ -195,6 +251,27 @@ export async function fetchResourceTargets(): Promise<ResourceTargetOption[]> {
   } catch (err) {
     console.error("fetchResourceTargets failed:", err);
     return [];
+  }
+}
+
+/** Číselníky pro filtry EQF úroveň / Typ / Tematický blok / Zkušenost s AI. */
+export async function fetchResourceCatalogFilters(): Promise<ResourceCatalogFilters> {
+  try {
+    const [eqfLevels, courseTypes, blocks, levels] = await Promise.all([
+      catalogsApi.listCourseEqfLevels(),
+      catalogsApi.listCourseTypes(),
+      catalogsApi.listCourseBlocks(),
+      catalogsApi.listCourseLevels(),
+    ]);
+    return {
+      eqfLevels: eqfLevels.map((l) => ({ value: String(l.eqfLevelId), label: `EQF ${l.code} – ${l.name}` })),
+      courseTypes: courseTypes.map((t) => ({ value: String(t.typeId), label: t.name })),
+      blocks: blocks.map((b) => ({ value: String(b.blockId), label: b.name })),
+      levels: levels.map((l) => ({ value: String(l.levelId), label: l.name })),
+    };
+  } catch (err) {
+    console.error("fetchResourceCatalogFilters failed:", err);
+    return EMPTY_RESOURCE_CATALOG_FILTERS;
   }
 }
 

@@ -8,9 +8,18 @@ import {
   fetchMaterialCategories,
   fetchMyFolders,
   fetchPublicMaterials,
+  fetchResourceCatalogFilters,
   fetchResourceTargets,
+  EMPTY_RESOURCE_CATALOG_FILTERS,
+  type ResourceCatalogFilters,
   type ResourceTargetOption,
 } from "@/components/material/api";
+import {
+  CatalogFilterSelects,
+  catalogFilterParams,
+  EMPTY_CATALOG_FILTER_VALUES,
+  type CatalogFilterValues,
+} from "@/components/material/CatalogFilterSelects";
 import { MaterialCard } from "@/components/material/MaterialCard";
 import { FilterMultiSelect, FilterSelect, type FilterOption } from "@/components/ui";
 import { MaterialGridSkeleton, Button, Input } from "@/components/ui";
@@ -70,6 +79,7 @@ export function PublicDatabaseClient() {
   // Číselníky pro filtry
   const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [targets, setTargets] = useState<ResourceTargetOption[]>([]);
+  const [catalogs, setCatalogs] = useState<ResourceCatalogFilters>(EMPTY_RESOURCE_CATALOG_FILTERS);
   // Vlastní složky uživatele (pro „Přidat do složky" na kartách)
   const [folders, setFolders] = useState<MaterialFolder[]>([]);
 
@@ -79,6 +89,7 @@ export function PublicDatabaseClient() {
   const [search, setSearch] = useState(""); // debounced verze searchInput
   const [difficulty, setDifficulty] = useState("");
   const [targetId, setTargetId] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<CatalogFilterValues>(EMPTY_CATALOG_FILTER_VALUES);
   const [sort, setSort] = useState<SortKey>("popular");
   const [page, setPage] = useState(1);
 
@@ -98,11 +109,12 @@ export function PublicDatabaseClient() {
   // Číselníky a vlastní složky načteme jednou
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchMaterialCategories(), fetchResourceTargets()]).then(
-      ([cats, tgts]) => {
+    Promise.all([fetchMaterialCategories(), fetchResourceTargets(), fetchResourceCatalogFilters()]).then(
+      ([cats, tgts, catalogData]) => {
         if (cancelled) return;
         setCategories(cats);
         setTargets(tgts);
+        setCatalogs(catalogData);
       },
     );
     // Složky jsou jen pro přihlášené – případnou chybu tiše ignorujeme.
@@ -150,6 +162,7 @@ export function PublicDatabaseClient() {
       subjectId,
       difficultyLevel: difficulty || undefined,
       targetId: targetId ? Number(targetId) : undefined,
+      ...catalogFilterParams(catalogFilter),
     })
       .then((data) => {
         if (cancelled) return;
@@ -168,7 +181,7 @@ export function PublicDatabaseClient() {
     return () => {
       cancelled = true;
     };
-  }, [search, subjectId, difficulty, targetId, reloadKey]);
+  }, [search, subjectId, difficulty, targetId, catalogFilter, reloadKey]);
 
   // Klientské filtry nesahají na server, takže si stránkování resetujeme sami.
   useEffect(() => {
@@ -222,6 +235,7 @@ export function PublicDatabaseClient() {
       eduLevels.length > 0 ||
       difficulty ||
       targetId ||
+      Object.values(catalogFilter).some(Boolean) ||
       fileType ||
       minRating ||
       authorId,
@@ -234,6 +248,7 @@ export function PublicDatabaseClient() {
     setEduLevels([]);
     setDifficulty("");
     setTargetId("");
+    setCatalogFilter(EMPTY_CATALOG_FILTER_VALUES);
     setFileType("");
     setMinRating("");
     setAuthorId("");
@@ -318,6 +333,11 @@ export function PublicDatabaseClient() {
               onChange={setTargetId}
               placeholder="Cílová skupina"
               options={targetOptions}
+            />
+            <CatalogFilterSelects
+              catalogs={catalogs}
+              values={catalogFilter}
+              onChange={setCatalogFilter}
             />
             <FilterSelect
               value={fileType}

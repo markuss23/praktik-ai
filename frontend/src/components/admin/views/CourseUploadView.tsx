@@ -10,6 +10,7 @@ import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { crossSubjectsRule, subjectAllowed, validateCourseCategories } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
+import { COURSE_FILE_ACCEPT, COURSE_FILE_FORMATS_LABEL, courseFileError } from '@/lib/course-files';
 // Nahrání souboru pro vytvoření kurzu
 export function CourseUploadView() {
   const { goToCourses, goToCourseEdit } = useAdminNavigation();
@@ -17,6 +18,7 @@ export function CourseUploadView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     blocks, targets, subjects, requirements, eqfLevels, types, krauuCompetences, bloomLevels, crossSubjects,
@@ -55,25 +57,16 @@ export function CourseUploadView() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'text/markdown',
-        'text/plain',
-      ];
-      
-      const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.md', '.txt'];
-      const fileExt = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
-      
-      if (allowedTypes.includes(selectedFile.type) || allowedExtensions.includes(fileExt)) {
-        setFile(selectedFile);
-        setError('');
-      } else {
-        setError('Nepodporovaný formát souboru. Povolené formáty: PDF, Word, Excel, Markdown');
+      // Backend rozhoduje podle přípony, ne podle MIME typu.
+      const rejection = courseFileError(selectedFile);
+      if (rejection) {
+        setFileError(rejection);
         setFile(null);
+        e.target.value = '';
+      } else {
+        setFile(selectedFile);
+        setFileError('');
+        setError('');
       }
     }
   };
@@ -310,12 +303,12 @@ export function CourseUploadView() {
                   Klikněte pro výběr souboru
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  PDF, Word, Excel, Markdown
+                  {COURSE_FILE_FORMATS_LABEL}
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.md,.txt"
+                  accept={COURSE_FILE_ACCEPT}
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -341,6 +334,7 @@ export function CourseUploadView() {
                 </Button>
               </div>
             )}
+            {fileError && <p className="mt-2 text-xs text-destructive">{fileError}</p>}
           </div>
 
           {/* Tlačítka */}

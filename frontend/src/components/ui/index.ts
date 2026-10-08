@@ -118,7 +118,7 @@ export { FilterSelect, type FilterOption } from "./FilterSelect";
 export { FilterMultiSelect } from "./FilterMultiSelect";
 export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
-export { CategoryGroup, CourseCategories, ModuleCategories } from "./CategoryTags";
+export { CategoryGroup, CourseCategories, MaterialCategories, ModuleCategories } from "./CategoryTags";
 export { CourseCard } from "./CourseCard";
 export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";

@@ -19,8 +19,10 @@ DEFAULT_PROMPT = render_system_prompt(
         "Modul o AI nemá robota, ale síť s prosvícenou cestou."
     ),
     extra_rules=[
-        "Motiv vycházej primárně z OBSAHU MODULU (název + text), nikoli z celého kurzu - modul "
-        "je jen jedna dílčí část kurzu a obrázek má odpovídat právě jí.",
+        (
+            "Motiv vycházej primárně z OBSAHU MODULU (název + text), nikoli z celého kurzu - modul "
+            "je jen jedna dílčí část kurzu a obrázek má odpovídat právě jí."
+        ),
     ],
     tone_source=(
         "Obor ber z kontextu kurzu (PŘEDMĚT / OBOR, BLOK), texty modulu jsou až druhotné."

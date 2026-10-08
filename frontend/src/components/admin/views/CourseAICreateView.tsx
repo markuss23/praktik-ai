@@ -15,6 +15,7 @@ import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { crossSubjectsRule, subjectAllowed, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
 import { readApiErrorDetail } from '@/lib/api-error';
+import { COURSE_FILE_ACCEPT, COURSE_FILE_FORMATS_LABEL, courseFileError } from '@/lib/course-files';
 // Průběh zobrazený hned po spuštění, než backend vrátí první stav.
 const INITIAL_PROGRESS: CourseGenerationProgress = {
   step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null,
@@ -136,21 +137,28 @@ export function CourseAICreateView() {
 
   const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
-  const ACCEPTED_TYPES = '.md,.docx';
-  const ACCEPTED_EXTENSIONS = ['md', 'docx'];
   const [dragActive, setDragActive] = useState(false);
+  const [fileError, setFileError] = useState('');
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
-    const valid = Array.from(incoming).filter((f) => {
-      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-      return ACCEPTED_EXTENSIONS.includes(ext);
-    });
-    if (valid.length === 0) return;
-    setFiles((prev) => {
-      const names = new Set(prev.map((f) => f.name));
-      return [...prev, ...valid.filter((f) => !names.has(f.name))];
-    });
-    setError('');
+    const all = Array.from(incoming);
+    const valid = all.filter((f) => courseFileError(f) === null);
+    // Odmítnuté soubory hlásíme hned — jinak by kurz vznikl a upload spadl až po něm.
+    const rejected = all.map(courseFileError).filter((msg): msg is string => msg !== null);
+    if (valid.length > 0) {
+      setFiles((prev) => {
+        const names = new Set(prev.map((f) => f.name));
+        return [...prev, ...valid.filter((f) => !names.has(f.name))];
+      });
+      setError('');
+    }
+    setFileError(
+      rejected.length === 0
+        ? ''
+        : rejected.length === 1
+          ? rejected[0]
+          : `${rejected[0]} Nepřidaných souborů celkem: ${rejected.length}.`,
+    );
   }, []);
 
   const removeFile = (name: string) => {
@@ -606,17 +614,18 @@ export function CourseAICreateView() {
                   Přetáhněte soubory sem nebo klikněte pro výběr
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Markdown (.md) a Word (.docx) — lze vybrat více souborů najednou
+                  {COURSE_FILE_FORMATS_LABEL} — lze vybrat více souborů najednou
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept={ACCEPTED_TYPES}
+                  accept={COURSE_FILE_ACCEPT}
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
               </div>
+              {fileError && <p className="mt-2 text-xs text-destructive">{fileError}</p>}
             </div>
 
             {/* Tlačítka */}

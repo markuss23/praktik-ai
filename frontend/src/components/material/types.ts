@@ -1,3 +1,5 @@
+import type { BloomLevel, KrauuCompetence } from "@/api";
+
 export type MaterialApprovalStatus = "draft" | "approved" | "in_review" | "rejected";
 
 export interface MaterialAttachment {
@@ -68,5 +70,7 @@ export interface Material {
   fileTypes?: string[];
   difficulty?: string;
   targets?: MaterialTarget[];
+  krauuCompetences?: KrauuCompetence[];
+  bloomLevels?: BloomLevel[];
   attachments?: MaterialAttachment[];
 }

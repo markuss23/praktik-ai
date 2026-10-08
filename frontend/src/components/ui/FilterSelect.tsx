@@ -52,7 +52,8 @@ export function FilterSelect({
       <SelectTrigger aria-label={placeholder} className={className}>
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
+      {/* popup roste s obsahem ! */}
+      <SelectContent className="w-auto min-w-[max(var(--anchor-width),9rem)] max-w-(--available-width)">
         {items.map((item) => (
           <SelectItem key={item.value ?? "none"} value={item.value}>
             {item.label}
