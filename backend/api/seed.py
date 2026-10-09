@@ -568,7 +568,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "course_summarizer",
         "name": "Sumarizátor kurzu",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Analyzuj následující obsah a vytvoř strukturovaný souhrn, ze kterého jiný model napíše vzdělávací kurz. Tento model uvidí POUZE tvůj souhrn, nikoli zdroje. Co v souhrnu chybí, v kurzu nebude.\n"
             "\n"
@@ -624,21 +624,21 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "course_planner",
         "name": "Plánovač kurzu",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": COURSE_PLANNER_PROMPT,
         "description": "LLM pro generování struktury a výkladu modulů kurzu ze sumarizace.",
     },
     {
         "key": "course_module_enricher",
         "name": "Číselníky a otázky modulu",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": COURSE_MODULE_ENRICHER_PROMPT,
         "description": "LLM pro zařazení hotového modulu do číselníků NP, KRAUU a Bloom a tvorbu otázek k procvičování.",
     },
     {
         "key": "assessment_generator",
         "name": "Generátor otázek",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi odborný lektor. Na základě níže uvedeného výukového textu "
             "vytvoř jednu otevřenou kontrolní otázku.\n\n"
@@ -654,7 +654,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "assessment_evaluator",
         "name": "Evaluátor odpovědí",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.\n\n"
             "K dispozici máš:\n"
@@ -683,7 +683,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "mentor_reranker",
         "name": "Mentor – reranker",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Máš seznam dokumentů a otázku uživatele.\n"
             "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
@@ -696,7 +696,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "mentor_answer",
         "name": "Mentor – odpověď",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi AI asistent pro výuku - mentor studenta.\n"
             "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
@@ -714,7 +714,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "practice_generator_open",
         "name": "Procvičování – otevřená otázka",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
             "vytvoř jednu otevřenou procvičovací otázku v češtině.\n\n"
@@ -728,7 +728,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "practice_generator_closed",
         "name": "Procvičování – uzavřená otázka",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
             "vytvoř jednu uzavřenou procvičovací otázku se 4 možnostmi (A–D) v češtině.\n\n"
@@ -749,7 +749,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "practice_answer_evaluator",
         "name": "Procvičování – evaluátor odpovědí",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi laskavý, ale důsledný lektor. Vyhodnoť odpověď studenta na otevřenou procvičovací otázku.\n\n"
             "K dispozici máš:\n"
@@ -773,7 +773,7 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "open_question_evaluator",
         "name": "Modul – evaluátor otevřené otázky",
-        "model": "claude-opus-5",
+        "model": "claude-opus-5-5",
         "prompt": (
             "Jsi laskavý, ale důsledný lektor. Vyhodnoť odpověď studenta na otevřenou otázku z modulu.\n\n"
             "K dispozici máš otázku, vzorovou odpověď, klíčové body a odpověď studenta.\n\n"
