@@ -7,8 +7,8 @@ from openai import AsyncOpenAI
 # gpt-image-2.5-sunburst, gpt-image-2.5-flare, gpt-image-2, gpt-image-1.5,
 # gpt-image-1, gpt-image-1-mini, chatgpt-image-latest
 
-# Nejširší landscape formát řady gpt-image (cover má poměr 590:226).
-OPENAI_SIZE = "1536x1024"
+# Nejširší landscape formát řady gpt-image.
+OPENAI_SIZE = "1280x720"
 
 
 async def generate_image_openai(model_name: str, prompt: str) -> str:

@@ -15,7 +15,7 @@ LABEL = "modulu"
 
 
 def create_graph():
-    """Vytváří graf uzlů pro generování a porovnání obrázků modulu."""
+    """Vytváří graf uzlů pro generování obrázku modulu."""
     return create_image_graph(
         state_schema=ModuleImageGeneratorState,
         load_context_node=load_module_context_node,
@@ -30,10 +30,10 @@ def create_graph():
 
 
 class ModuleImageGeneratorService(BaseImageGeneratorService):
-    """Service pro generování a porovnání obrázků modulu pomocí LangGraph."""
+    """Service pro generování obrázku modulu pomocí LangGraph."""
 
-    def __init__(self, db: Session, module_id: int, models_to_compare: list[str]):
-        super().__init__(db, models_to_compare)
+    def __init__(self, db: Session, module_id: int, progress_key: str | None = None):
+        super().__init__(db, progress_key)
         self.module_id = module_id
 
     def _create_graph(self):

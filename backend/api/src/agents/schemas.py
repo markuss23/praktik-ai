@@ -41,44 +41,40 @@ class GenerateEmbeddingsResponse(BaseModel):
     )
 
 
-class GenerateCourseImagesRequest(BaseModel):
-    """Request pro vygenerování a porovnání obrázků kurzu napříč modely"""
-
-    models: list[str] = Field(
-        default=["gpt-image-2"],
-        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
-    )
-
-
-class GenerateModuleImagesRequest(BaseModel):
-    """Request pro vygenerování a porovnání obrázků modulu napříč modely"""
-
-    models: list[str] = Field(
-        default=["gpt-image-2"],
-        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
-    )
-
-
-class GeneratedImageFile(BaseModel):
-    """Výsledek jednoho image modelu uložený do SeaweedFS"""
-
-    model_name: str
-    latency_ms: int | None = None
-    error: str | None = Field(default=None, description="Chyba modelu, pokud selhal")
-    file_path: str | None = Field(
-        default=None,
-        description="Cesta obrázku v SeaweedFS (např. „course-images/42/gpt-image-2.png“); None pokud model selhal",
-    )
-
-
-class GenerateImagesResponse(BaseModel):
-    """Response po vygenerování obrázků a jejich uložení do SeaweedFS"""
+class GenerateImageResponse(BaseModel):
+    """Response po vygenerování obrázku a jeho uložení do SeaweedFS"""
 
     image_spec: dict = Field(..., description="Proměnné části obrázku vybrané LLM")
-    image_prompt: str = Field(..., description="Finální prompt poslaný image modelům")
-    results: list[GeneratedImageFile] = Field(
-        default=[], description="Výsledky jednotlivých modelů včetně cest k obrázkům"
+    image_prompt: str = Field(..., description="Finální prompt poslaný image modelu")
+    model_name: str = Field(
+        ...,
+        description="Image model použitý pro generování (system_setting „image_generator_model“)",
     )
+    latency_ms: int = Field(..., description="Doba generování obrázku v ms")
+    file_path: str = Field(
+        ...,
+        description="Cesta obrázku v SeaweedFS (např. „course-images/42/cover.png“)",
+    )
+
+
+class ImageGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování obrázku kurzu / modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GenerateImageResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
+class ActiveImageGeneration(BaseModel):
+    """Právě běžící generování obrázku (pro obnovení sledování po refreshi stránky)."""
+
+    kind: str = Field(..., description="course | module")
+    entity_id: int = Field(..., description="course_id, resp. module_id")
 
 
 class GenerateAssessmentRequest(BaseModel):

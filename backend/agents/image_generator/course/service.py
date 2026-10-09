@@ -15,7 +15,7 @@ LABEL = "kurzu"
 
 
 def create_graph():
-    """Vytváří graf uzlů pro generování a porovnání coveru kurzu."""
+    """Vytváří graf uzlů pro generování coveru kurzu."""
     return create_image_graph(
         state_schema=CourseImageGeneratorState,
         load_context_node=load_course_context_node,
@@ -30,10 +30,10 @@ def create_graph():
 
 
 class CourseImageGeneratorService(BaseImageGeneratorService):
-    """Service pro generování a porovnání coveru kurzu pomocí LangGraph."""
+    """Service pro generování coveru kurzu pomocí LangGraph."""
 
-    def __init__(self, db: Session, course_id: int, models_to_compare: list[str]):
-        super().__init__(db, models_to_compare)
+    def __init__(self, db: Session, course_id: int, progress_key: str | None = None):
+        super().__init__(db, progress_key)
         self.course_id = course_id
 
     def _create_graph(self):
