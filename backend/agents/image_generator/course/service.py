@@ -32,8 +32,8 @@ def create_graph():
 class CourseImageGeneratorService(BaseImageGeneratorService):
     """Service pro generování coveru kurzu pomocí LangGraph."""
 
-    def __init__(self, db: Session, course_id: int):
-        super().__init__(db)
+    def __init__(self, db: Session, course_id: int, progress_key: str | None = None):
+        super().__init__(db, progress_key)
         self.course_id = course_id
 
     def _create_graph(self):

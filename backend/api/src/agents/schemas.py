@@ -57,6 +57,26 @@ class GenerateImageResponse(BaseModel):
     )
 
 
+class ImageGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování obrázku kurzu / modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GenerateImageResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
+class ActiveImageGeneration(BaseModel):
+    """Právě běžící generování obrázku (pro obnovení sledování po refreshi stránky)."""
+
+    kind: str = Field(..., description="course | module")
+    entity_id: int = Field(..., description="course_id, resp. module_id")
+
+
 class GenerateAssessmentRequest(BaseModel):
     """Request pro generování assessment otázky"""
 

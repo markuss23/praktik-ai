@@ -24,8 +24,15 @@ class BaseImageGeneratorService(ABC):
     z system_setting, ne ze vstupu.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, progress_key: str | None = None):
+        """
+        Args:
+            db: SQLAlchemy session.
+            progress_key: Klíč trackeru průběhu (image_progress.progress_key);
+                None, pokud se průběh nesleduje.
+        """
         self.db = db
+        self.progress_key = progress_key
 
     @abstractmethod
     def _create_graph(self):
@@ -39,7 +46,9 @@ class BaseImageGeneratorService(ABC):
         """Sestaví a spustí graf, vrátí kontext, prompt a vygenerovaný obrázek."""
         app = self._create_graph()
 
-        result = await app.ainvoke({**self._initial_state(), "db": self.db})
+        result = await app.ainvoke(
+            {**self._initial_state(), "db": self.db, "progress_key": self.progress_key}
+        )
 
         return ImageGenerationResult(
             context=result["context"],

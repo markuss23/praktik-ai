@@ -3,6 +3,7 @@ import time
 from agents.base.llm import get_llm_config
 from agents.image_generator.clients import generate_image_openai
 from agents.image_generator.state import GeneratedImageResult, ImageGeneratorState
+from api.src.agents.image_progress import set_image_progress
 
 # Klíč v system_setting, jehož sloupec model určuje OpenAI image model
 IMAGE_MODEL_SETTING_KEY = "image_generator_model"
@@ -29,6 +30,11 @@ async def generate_image_node(state: ImageGeneratorState) -> ImageGeneratorState
     db = state["db"]
     image_prompt: str = state["image_prompt"]
     model_name = get_image_model(db)
+    set_image_progress(
+        state.get("progress_key"),
+        step=3,
+        label=f"Generování obrázku ({model_name})",
+    )
 
     if not (model_name.startswith("gpt-image") or model_name == "chatgpt-image-latest"):
         raise ValueError(

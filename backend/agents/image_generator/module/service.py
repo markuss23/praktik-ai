@@ -32,8 +32,8 @@ def create_graph():
 class ModuleImageGeneratorService(BaseImageGeneratorService):
     """Service pro generování obrázku modulu pomocí LangGraph."""
 
-    def __init__(self, db: Session, module_id: int):
-        super().__init__(db)
+    def __init__(self, db: Session, module_id: int, progress_key: str | None = None):
+        super().__init__(db, progress_key)
         self.module_id = module_id
 
     def _create_graph(self):
