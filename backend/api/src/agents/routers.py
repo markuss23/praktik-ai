@@ -17,12 +17,9 @@ from api.src.agents.schemas import (
     EvaluatePracticeAnswerResponse,
     GenerateAssessmentRequest,
     GenerateAssessmentResponse,
-    GenerateCourseImagesRequest,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
-    GenerateImagesResponse,
-    GeneratedImageFile,
-    GenerateModuleImagesRequest,
+    GenerateImageResponse,
     GeneratePracticeQuestionRequest,
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
@@ -226,38 +223,33 @@ async def generate_course_embeddings(
     )
 
 
-def _upload_images_to_seaweedfs(
-    result: ImageGenerationResult, remote_dir: str
-) -> GenerateImagesResponse:
-    """Nahraje obrázky úspěšných modelů do SeaweedFS a vrátí jejich cesty."""
+def _upload_image_to_seaweedfs(
+    result: ImageGenerationResult, remote_dir: str, basename: str
+) -> GenerateImageResponse:
+    """Nahraje vygenerovaný obrázek do SeaweedFS a vrátí jeho cestu.
+
+    Soubor se uloží jako `<remote_dir>/<basename>.<ext>`, přípona se odvodí z MIME
+    typu v data URI.
+    Opakované generování soubor přepíše.
+
+    """
     remote_dir = remote_dir.strip("/")
-    files: list[GeneratedImageFile] = []
+    image = result.result
 
-    for r in result.results:
-        file_path: str | None = None
-        if r.error is None and r.image_url is not None:
-            # image_url je data URI "data:<mime>;base64,<data>"
-            header, b64_data = r.image_url.split(",", 1)
-            mime = header.removeprefix("data:").split(";", 1)[0]
-            ext = "svg" if "svg" in mime else mime.split("/", 1)[1]
-            # nazev bude nazev modelu + přípona
-            filename = f"{r.model_name}.{ext}"
-            file_path = f"{remote_dir}/{filename}"
-            seaweedfs.upload_file(file_path, base64.b64decode(b64_data), filename, mime)
+    # image_url je data URI "data:<mime>;base64,<data>"
+    header, b64_data = image.image_url.split(",", 1)
+    mime = header.removeprefix("data:").split(";", 1)[0]
+    ext = "svg" if "svg" in mime else mime.split("/", 1)[1]
+    filename = f"{basename}.{ext}"
+    file_path = f"{remote_dir}/{filename}"
+    seaweedfs.upload_file(file_path, base64.b64decode(b64_data), filename, mime)
 
-        files.append(
-            GeneratedImageFile(
-                model_name=r.model_name,
-                latency_ms=r.latency_ms,
-                error=r.error,
-                file_path=file_path,
-            )
-        )
-
-    return GenerateImagesResponse(
+    return GenerateImageResponse(
         image_spec=result.image_spec.model_dump(),
         image_prompt=result.image_prompt,
-        results=files,
+        model_name=image.model_name,
+        latency_ms=image.latency_ms,
+        file_path=file_path,
     )
 
 
@@ -268,22 +260,21 @@ def _upload_images_to_seaweedfs(
 )
 async def generate_course_images(
     course_id: int,
-    body: GenerateCourseImagesRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-) -> GenerateImagesResponse:
-    """Vygeneruje z kontextu kurzu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
+) -> GenerateImageResponse:
+    """Vygeneruje z kontextu kurzu image prompt, obrázek modelem z system_setting a uloží ho do SeaweedFS."""
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     validate_owner_or_superadmin(course, user, "kurz")
 
-    service = CourseImageGeneratorService(
-        db=db, course_id=course_id, models_to_compare=body.models
-    )
+    service = CourseImageGeneratorService(db=db, course_id=course_id)
     result = await service.generate()
 
-    return _upload_images_to_seaweedfs(result, remote_dir=f"course-images/{course_id}")
+    return _upload_image_to_seaweedfs(
+        result, remote_dir=f"course-images/{course_id}", basename="image"
+    )
 
 
 @router.post(
@@ -293,22 +284,21 @@ async def generate_course_images(
 )
 async def generate_module_images(
     module_id: int,
-    body: GenerateModuleImagesRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
-) -> GenerateImagesResponse:
-    """Vygeneruje z kontextu modulu jeden image prompt, porovná ho napříč zadanými modely a výsledky uloží do SeaweedFS."""
+) -> GenerateImageResponse:
+    """Vygeneruje z kontextu modulu image prompt, obrázek modelem z system_setting a uloží ho do SeaweedFS."""
 
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
     validate_owner_or_superadmin(module, user, "modul")
 
-    service = ModuleImageGeneratorService(
-        db=db, module_id=module_id, models_to_compare=body.models
-    )
+    service = ModuleImageGeneratorService(db=db, module_id=module_id)
     result = await service.generate()
 
-    return _upload_images_to_seaweedfs(result, remote_dir=f"module-images/{module_id}")
+    return _upload_image_to_seaweedfs(
+        result, remote_dir=f"module-images/{module_id}", basename="image"
+    )
 
 
 @router.post("/learn-blocks-chat", operation_id="learn_blocks_chat")

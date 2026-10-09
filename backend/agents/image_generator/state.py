@@ -1,5 +1,4 @@
-import operator
-from typing import Annotated, Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -62,12 +61,11 @@ class ImageSpec(BaseModel):
 
 
 class GeneratedImageResult(BaseModel):
-    """Výsledek generování obrázku jedním konkrétním modelem."""
+    """Výsledek generování obrázku image modelem nastaveným v system_setting."""
 
     model_name: str
-    image_url: str | None = None
-    latency_ms: int | None = None
-    error: str | None = None
+    image_url: str  # data URI "data:<mime>;base64,<data>"
+    latency_ms: int
 
 
 # ---------- State grafu ----------
@@ -81,15 +79,11 @@ class ImageGeneratorState(TypedDict):
     """
 
     db: Session
-    models: list[str]
     # Vstupní data z DB (CourseContext / ModuleContext)
     context: NotRequired[ImageContext]
     # Proměnné části obrázku vybrané LLM
     image_spec: NotRequired[ImageSpec]
-    # Finální prompt (šablona + image_spec), jednotný pro všechny modely
+    # Finální prompt (šablona + image_spec)
     image_prompt: NotRequired[str]
-    # Nastaveno jen uvnitř jedné fan-out větve (přes Send) - který model má tato větev generovat
-    model_name: NotRequired[str]
-    # Výsledky jednotlivých modelů. Annotated + operator.add, protože do tohoto pole
-    # zapisuje paralelně víc větví generate_image a výsledky se musí sčítat, ne přepisovat.
-    results: NotRequired[Annotated[list[GeneratedImageResult], operator.add]]
+    # Vygenerovaný obrázek (model se bere z system_setting, viz generate_image_node)
+    result: NotRequired[GeneratedImageResult]

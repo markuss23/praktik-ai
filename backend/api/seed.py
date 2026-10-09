@@ -19,7 +19,11 @@ from api.models import (
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
-    {"code": "blok.b", "name": "Transformace", "description": "Redesign výuky a hodnocení"},
+    {
+        "code": "blok.b",
+        "name": "Transformace",
+        "description": "Redesign výuky a hodnocení",
+    },
     {"code": "blok.c", "name": "Aplikace", "description": "Oborové kurzy"},
 ]
 
@@ -67,9 +71,21 @@ COURSE_EQF_LEVELS: list[dict[str, str]] = [
 ]
 
 COURSE_LEVELS: list[dict[str, str]] = [
-    {"code": "level.1", "name": "Vstupní", "description": "Bez předchozí zkušenosti s AI"},
-    {"code": "level.2", "name": "Středně pokročilý", "description": "Základní orientace s AI"},
-    {"code": "level.3", "name": "Pokročilý", "description": "Aktivní práce s AI ve výuce"},
+    {
+        "code": "level.1",
+        "name": "Vstupní",
+        "description": "Bez předchozí zkušenosti s AI",
+    },
+    {
+        "code": "level.2",
+        "name": "Středně pokročilý",
+        "description": "Základní orientace s AI",
+    },
+    {
+        "code": "level.3",
+        "name": "Pokročilý",
+        "description": "Aktivní práce s AI ve výuce",
+    },
 ]
 
 COURSE_TYPES: list[dict[str, str]] = [
@@ -101,85 +117,349 @@ COURSE_TYPES: list[dict[str, str]] = [
 ]
 
 NEURO_PRINCIPLES: list[dict[str, str]] = [
-    {"code": "NP-01", "name": "Neuroplasticita", "description": "Opakované učení mění strukturu synaptických sítí v mozku"},
-    {"code": "NP-02", "name": "Distribuované opakování", "description": "Učení rozložené v čase vede k trvalejšímu zapamatování"},
-    {"code": "NP-03", "name": "Aktivní vybavování", "description": "Vědomé vybavování z paměti posiluje stopu víc než pasivní čtení"},
-    {"code": "NP-04", "name": "Žádoucí obtíže", "description": "Mírná obtížnost a kognitivní zápas prohlubují zpracování a transfer"},
-    {"code": "NP-05", "name": "Prokládání", "description": "Střídání různých typů úloh podporuje rozlišování konceptů"},
-    {"code": "NP-06", "name": "Duální kódování", "description": "Kombinace verbální a vizuální reprezentace vytváří dvě paměťové stopy"},
-    {"code": "NP-07", "name": "Kognitivní zátěž", "description": "Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení blokuje učení"},
-    {"code": "NP-08", "name": "Elaborativní kódování", "description": "Propojení nové informace s existujícími znalostmi tvoří síť asociací"},
-    {"code": "NP-09", "name": "Efekt generování", "description": "Sám vytvořená informace se pamatuje lépe než pasivně přijatá"},
-    {"code": "NP-10", "name": "Testovací efekt", "description": "Samotné testování konsoliduje dlouhodobou paměť silněji než čtení"},
-    {"code": "NP-11", "name": "Predikční chyba", "description": "Dopaminový systém reaguje na rozdíl mezi očekáváním a realitou"},
-    {"code": "NP-12", "name": "Konsolidace ve spánku", "description": "Spánek přepisuje paměťové stopy z hipokampu do neokortexu"},
-    {"code": "NP-13", "name": "Pozornost a pracovní paměť", "description": "Bez selektivní pozornosti nedochází ke kódování"},
-    {"code": "NP-14", "name": "Slučování do bloků", "description": "Sdružování informací do smysluplných bloků zvyšuje kapacitu paměti"},
-    {"code": "NP-15", "name": "Metakognice", "description": "Schopnost přemýšlet o vlastním myšlení a sledovat porozumění"},
-    {"code": "NP-16", "name": "Zrcadlové neurony", "description": "Pozorování postupu druhého aktivuje stejné okruhy jako vlastní provádění"},
-    {"code": "NP-17", "name": "Stav plynutí (flow)", "description": "Optimální poměr výzvy a dovednosti maximalizuje zapojení a učení"},
-    {"code": "NP-18", "name": "Okamžitá zpětná vazba", "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív než se zafixuje"},
-    {"code": "NP-19", "name": "Vtělené poznávání", "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje zpracování"},
-    {"code": "NP-20", "name": "Schémata", "description": "Nové informace se snáze ukládají při napojení na existující schéma"},
+    {
+        "code": "NP-01",
+        "name": "Neuroplasticita",
+        "description": "Opakované učení mění strukturu synaptických sítí v mozku",
+    },
+    {
+        "code": "NP-02",
+        "name": "Distribuované opakování",
+        "description": "Učení rozložené v čase vede k trvalejšímu zapamatování",
+    },
+    {
+        "code": "NP-03",
+        "name": "Aktivní vybavování",
+        "description": "Vědomé vybavování z paměti posiluje stopu víc než pasivní čtení",
+    },
+    {
+        "code": "NP-04",
+        "name": "Žádoucí obtíže",
+        "description": "Mírná obtížnost a kognitivní zápas prohlubují zpracování a transfer",
+    },
+    {
+        "code": "NP-05",
+        "name": "Prokládání",
+        "description": "Střídání různých typů úloh podporuje rozlišování konceptů",
+    },
+    {
+        "code": "NP-06",
+        "name": "Duální kódování",
+        "description": "Kombinace verbální a vizuální reprezentace vytváří dvě paměťové stopy",
+    },
+    {
+        "code": "NP-07",
+        "name": "Kognitivní zátěž",
+        "description": "Pracovní paměť má kapacitu cca 4 ± 1 prvků; přetížení blokuje učení",
+    },
+    {
+        "code": "NP-08",
+        "name": "Elaborativní kódování",
+        "description": "Propojení nové informace s existujícími znalostmi tvoří síť asociací",
+    },
+    {
+        "code": "NP-09",
+        "name": "Efekt generování",
+        "description": "Sám vytvořená informace se pamatuje lépe než pasivně přijatá",
+    },
+    {
+        "code": "NP-10",
+        "name": "Testovací efekt",
+        "description": "Samotné testování konsoliduje dlouhodobou paměť silněji než čtení",
+    },
+    {
+        "code": "NP-11",
+        "name": "Predikční chyba",
+        "description": "Dopaminový systém reaguje na rozdíl mezi očekáváním a realitou",
+    },
+    {
+        "code": "NP-12",
+        "name": "Konsolidace ve spánku",
+        "description": "Spánek přepisuje paměťové stopy z hipokampu do neokortexu",
+    },
+    {
+        "code": "NP-13",
+        "name": "Pozornost a pracovní paměť",
+        "description": "Bez selektivní pozornosti nedochází ke kódování",
+    },
+    {
+        "code": "NP-14",
+        "name": "Slučování do bloků",
+        "description": "Sdružování informací do smysluplných bloků zvyšuje kapacitu paměti",
+    },
+    {
+        "code": "NP-15",
+        "name": "Metakognice",
+        "description": "Schopnost přemýšlet o vlastním myšlení a sledovat porozumění",
+    },
+    {
+        "code": "NP-16",
+        "name": "Zrcadlové neurony",
+        "description": "Pozorování postupu druhého aktivuje stejné okruhy jako vlastní provádění",
+    },
+    {
+        "code": "NP-17",
+        "name": "Stav plynutí (flow)",
+        "description": "Optimální poměr výzvy a dovednosti maximalizuje zapojení a učení",
+    },
+    {
+        "code": "NP-18",
+        "name": "Okamžitá zpětná vazba",
+        "description": "Rychlá konkrétní zpětná vazba umožní opravit chybu dřív než se zafixuje",
+    },
+    {
+        "code": "NP-19",
+        "name": "Vtělené poznávání",
+        "description": "Tělesné zapojení (gesta, řeč nahlas, kreslení) posiluje zpracování",
+    },
+    {
+        "code": "NP-20",
+        "name": "Schémata",
+        "description": "Nové informace se snáze ukládají při napojení na existující schéma",
+    },
 ]
 
 KRAUU_COMPETENCES: list[dict[str, str]] = [
     {"code": "1.0", "name": "Oblast 1 – Obsah a didaktika", "description": ""},
-    {"code": "1.1", "name": "Rozumí vyučovaným oborům a rozvíjí se v nich", "description": "Učitel/ka rozumí oborům, které vyučuje, a systematicky se v nich rozvíjí."},
-    {"code": "1.2", "name": "Didakticky zprostředkovává obsah žákům", "description": "Zprostředkovává obsah žákům v souladu s jejich vzdělávacími potřebami."},
-    {"code": "2.0", "name": "Oblast 2 – Plánování, vedení a reflexe výuky", "description": ""},
-    {"code": "2.1", "name": "Nastavuje cíle výuky", "description": "Stanovuje srozumitelné cíle a vede k jejich nastavování i žáky."},
-    {"code": "2.2", "name": "Poznává vzdělávací potřeby a plánuje výuku", "description": "Plánuje výuku tak, aby každý žák mohl aktivně dosahovat cílů."},
-    {"code": "2.3", "name": "Podporuje zvídavost a motivaci žáků", "description": "Podporuje u žáků zvídavost a motivaci k učení."},
-    {"code": "2.4", "name": "Efektivně vede výuku a zjišťuje porozumění", "description": "Vede výuku efektivně, zjišťuje porozumění a reaguje na potřeby žáků."},
-    {"code": "2.5", "name": "Reflektuje výuku", "description": "Reflektuje vlastní výuku a vyhodnocuje dosahování cílů."},
+    {
+        "code": "1.1",
+        "name": "Rozumí vyučovaným oborům a rozvíjí se v nich",
+        "description": "Učitel/ka rozumí oborům, které vyučuje, a systematicky se v nich rozvíjí.",
+    },
+    {
+        "code": "1.2",
+        "name": "Didakticky zprostředkovává obsah žákům",
+        "description": "Zprostředkovává obsah žákům v souladu s jejich vzdělávacími potřebami.",
+    },
+    {
+        "code": "2.0",
+        "name": "Oblast 2 – Plánování, vedení a reflexe výuky",
+        "description": "",
+    },
+    {
+        "code": "2.1",
+        "name": "Nastavuje cíle výuky",
+        "description": "Stanovuje srozumitelné cíle a vede k jejich nastavování i žáky.",
+    },
+    {
+        "code": "2.2",
+        "name": "Poznává vzdělávací potřeby a plánuje výuku",
+        "description": "Plánuje výuku tak, aby každý žák mohl aktivně dosahovat cílů.",
+    },
+    {
+        "code": "2.3",
+        "name": "Podporuje zvídavost a motivaci žáků",
+        "description": "Podporuje u žáků zvídavost a motivaci k učení.",
+    },
+    {
+        "code": "2.4",
+        "name": "Efektivně vede výuku a zjišťuje porozumění",
+        "description": "Vede výuku efektivně, zjišťuje porozumění a reaguje na potřeby žáků.",
+    },
+    {
+        "code": "2.5",
+        "name": "Reflektuje výuku",
+        "description": "Reflektuje vlastní výuku a vyhodnocuje dosahování cílů.",
+    },
     {"code": "3.0", "name": "Oblast 3 – Prostředí pro učení", "description": ""},
-    {"code": "3.1", "name": "Vytváří bezpečné prostředí pro učení", "description": "Vytváří fyzicky i psychicky bezpečné prostředí pro učení."},
-    {"code": "3.2", "name": "Vede žáky k chování podporujícímu učení", "description": "Vede žáky k chování podporujícímu vlastní učení i spolupráci."},
-    {"code": "3.3", "name": "Uspořádání fyzického a digitálního prostředí", "description": "Zajišťuje vhodné uspořádání fyzického a digitálního prostředí učení."},
+    {
+        "code": "3.1",
+        "name": "Vytváří bezpečné prostředí pro učení",
+        "description": "Vytváří fyzicky i psychicky bezpečné prostředí pro učení.",
+    },
+    {
+        "code": "3.2",
+        "name": "Vede žáky k chování podporujícímu učení",
+        "description": "Vede žáky k chování podporujícímu vlastní učení i spolupráci.",
+    },
+    {
+        "code": "3.3",
+        "name": "Uspořádání fyzického a digitálního prostředí",
+        "description": "Zajišťuje vhodné uspořádání fyzického a digitálního prostředí učení.",
+    },
     {"code": "4.0", "name": "Oblast 4 – Zpětná vazba a hodnocení", "description": ""},
-    {"code": "4.1", "name": "Hodnotí na základě kritérií", "description": "Hodnotí žáky na základě jasných kritérií a vede k tomu i žáky."},
-    {"code": "4.2", "name": "Poskytuje a přijímá zpětnou vazbu", "description": "Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá ZV od žáků."},
-    {"code": "4.3", "name": "Vede žáky k reflexi jejich učení", "description": "Vede žáky k reflexi vlastního učení a samostatné metakognici."},
+    {
+        "code": "4.1",
+        "name": "Hodnotí na základě kritérií",
+        "description": "Hodnotí žáky na základě jasných kritérií a vede k tomu i žáky.",
+    },
+    {
+        "code": "4.2",
+        "name": "Poskytuje a přijímá zpětnou vazbu",
+        "description": "Poskytuje žákům konstruktivní zpětnou vazbu a sám přijímá ZV od žáků.",
+    },
+    {
+        "code": "4.3",
+        "name": "Vede žáky k reflexi jejich učení",
+        "description": "Vede žáky k reflexi vlastního učení a samostatné metakognici.",
+    },
     {"code": "5.0", "name": "Oblast 5 – Profesní spolupráce", "description": ""},
-    {"code": "5.1", "name": "Spolupracuje s kolegy a kolegyněmi", "description": "Spolupracuje s kolegy ve prospěch žáků a společného profesního růstu."},
-    {"code": "5.2", "name": "Spolupracuje s rodiči a širší komunitou školy", "description": "Spolupracuje s rodiči a širší komunitou v zájmu žáků."},
-    {"code": "6.0", "name": "Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví", "description": ""},
-    {"code": "6.1", "name": "Utváření profesního sebepojetí a rozvoj", "description": "Systematicky pracuje na utváření profesního sebepojetí a vlastním rozvoji."},
-    {"code": "6.2", "name": "Odpovědná práce s informacemi a demokratické hodnoty", "description": "Odpovědně pracuje s informacemi a digitálními nástroji, vede k etice."},
-    {"code": "6.3", "name": "Duševní zdraví a psychohygiena", "description": "Systematicky pečuje o své duševní zdraví a psychohygienu."},
+    {
+        "code": "5.1",
+        "name": "Spolupracuje s kolegy a kolegyněmi",
+        "description": "Spolupracuje s kolegy ve prospěch žáků a společného profesního růstu.",
+    },
+    {
+        "code": "5.2",
+        "name": "Spolupracuje s rodiči a širší komunitou školy",
+        "description": "Spolupracuje s rodiči a širší komunitou v zájmu žáků.",
+    },
+    {
+        "code": "6.0",
+        "name": "Oblast 6 – Profesní sebepojetí, rozvoj, etika a duševní zdraví",
+        "description": "",
+    },
+    {
+        "code": "6.1",
+        "name": "Utváření profesního sebepojetí a rozvoj",
+        "description": "Systematicky pracuje na utváření profesního sebepojetí a vlastním rozvoji.",
+    },
+    {
+        "code": "6.2",
+        "name": "Odpovědná práce s informacemi a demokratické hodnoty",
+        "description": "Odpovědně pracuje s informacemi a digitálními nástroji, vede k etice.",
+    },
+    {
+        "code": "6.3",
+        "name": "Duševní zdraví a psychohygiena",
+        "description": "Systematicky pečuje o své duševní zdraví a psychohygienu.",
+    },
 ]
 
 BLOOM_LEVELS: list[dict[str, str]] = [
-    {"code": "1", "name": "Zapamatovat", "description": "vyjmenuje, popíše, identifikuje, rozpozná, zopakuje"},
-    {"code": "2", "name": "Porozumět", "description": "vysvětlí, shrne, klasifikuje, interpretuje, přeloží"},
-    {"code": "3", "name": "Aplikovat", "description": "použije, provede, řeší, demonstruje, implementuje"},
-    {"code": "4", "name": "Analyzovat", "description": "porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá"},
-    {"code": "5", "name": "Hodnotit", "description": "posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní"},
-    {"code": "6", "name": "Tvořit", "description": "navrhne, sestaví, vytvoří, zkonstruuje, naplánuje"},
+    {
+        "code": "1",
+        "name": "Zapamatovat",
+        "description": "vyjmenuje, popíše, identifikuje, rozpozná, zopakuje",
+    },
+    {
+        "code": "2",
+        "name": "Porozumět",
+        "description": "vysvětlí, shrne, klasifikuje, interpretuje, přeloží",
+    },
+    {
+        "code": "3",
+        "name": "Aplikovat",
+        "description": "použije, provede, řeší, demonstruje, implementuje",
+    },
+    {
+        "code": "4",
+        "name": "Analyzovat",
+        "description": "porovná, rozliší, zhodnotí strukturu, rozloží, prozkoumá",
+    },
+    {
+        "code": "5",
+        "name": "Hodnotit",
+        "description": "posoudí, obhájí, kriticky zhodnotí, doporučí, zdůvodní",
+    },
+    {
+        "code": "6",
+        "name": "Tvořit",
+        "description": "navrhne, sestaví, vytvoří, zkonstruuje, naplánuje",
+    },
 ]
 
 CROSS_SUBJECTS: list[dict[str, str]] = [
-    {"code": "O01", "name": "AI gramotnost – technický základ", "description": "Jak fungují jazykové modely, tokeny, kontextové okno, pravděpodobnostní povaha výstupu."},
-    {"code": "O02", "name": "AI gramotnost – kritické posuzování výstupů", "description": "Rozpoznávání halucinací, ověřování faktů, srovnávání nástrojů a výstupů."},
-    {"code": "O03", "name": "Etika a odpovědné využití AI", "description": "Etické principy práce s AI ve vzdělávání, hranice akceptovatelného použití, transparentnost."},
-    {"code": "O04", "name": "Ochrana dat a soukromí ve výuce", "description": "GDPR, citlivá data žáků, bezpečné nakládání s informacemi v AI nástrojích."},
-    {"code": "O05", "name": "Rozvoj kritického myšlení", "description": "Vedení žáků ke kritickému uvažování, argumentaci, posuzování zdrojů — s podporou i navzdory AI."},
-    {"code": "O06", "name": "Metakognice a sebeřízené učení", "description": "Reflexe vlastního učení, uvědomování si procesu poznávání, strategie učení."},
-    {"code": "O07", "name": "Plánování výuky a tvorba scénářů", "description": "Návrh výukových jednotek, cíle, aktivity, role AI ve scénáři, časové rozvržení."},
-    {"code": "O08", "name": "Didaktická transformace obsahu", "description": "Převod oborového obsahu do podoby srozumitelné pro žáky daného stupně."},
-    {"code": "O09", "name": "Diferenciace a inkluze (žáci se SVP)", "description": "Práce s heterogenní třídou, individuální vzdělávací plány, AI jako podpora diferenciace."},
-    {"code": "O10", "name": "Hodnocení a zpětná vazba", "description": "Formativní i sumativní hodnocení, kvalitní zpětná vazba, rubriky, AI jako asistent hodnocení."},
-    {"code": "O11", "name": "Tvorba zadání a úloh (AI-resistant + AI-supported)", "description": "Design zadání odolných vůči zneužití AI a zároveň zadání využívajících AI jako nástroj učení."},
-    {"code": "O12", "name": "Práce s prekoncepty a miskoncepty", "description": "Diagnostika a práce s chybnými představami žáků, AI jako nástroj odhalování miskonceptů."},
-    {"code": "O13", "name": "Prostředí pro učení a klima třídy", "description": "Bezpečné prostředí, pravidla práce s AI ve třídě, kultura ne/používání AI."},
-    {"code": "O14", "name": "Motivace a vedení žáků", "description": "Vnitřní motivace, vedení diskuse, zapojování žáků, AI jako nástroj individualizace motivace."},
-    {"code": "O15", "name": "Komunikace s rodiči a zákonnými zástupci", "description": "Vysvětlování role AI ve výuce rodičům, řešení obav, společná dohoda o pravidlech."},
-    {"code": "O16", "name": "Profesní spolupráce a kolegiální učení", "description": "Sdílení dobré praxe, peer review, budování AI-gramotné školy jako celku."},
-    {"code": "O17", "name": "Mentoring a uvádění začínajících učitelů", "description": "Provázení nastupujících kolegů, mentorský dialog, integrace AI do mentorské praxe."},
-    {"code": "O18", "name": "Profesní sebepojetí a reflexe vlastní praxe", "description": "Vlastní identita učitele v éře AI, reflektivní praxe, profesní rozvoj."},
-    {"code": "O19", "name": "Duševní zdraví a wellbeing učitele", "description": "Práce s kognitivní zátěží, využití AI pro snížení administrativy, hranice pracovního času."},
-    {"code": "O20", "name": "Tvořivost a designové myšlení ve výuce", "description": "Tvořivé využití AI při návrhu výukových materiálů, design thinking v pedagogice."},
+    {
+        "code": "O01",
+        "name": "AI gramotnost – technický základ",
+        "description": "Jak fungují jazykové modely, tokeny, kontextové okno, pravděpodobnostní povaha výstupu.",
+    },
+    {
+        "code": "O02",
+        "name": "AI gramotnost – kritické posuzování výstupů",
+        "description": "Rozpoznávání halucinací, ověřování faktů, srovnávání nástrojů a výstupů.",
+    },
+    {
+        "code": "O03",
+        "name": "Etika a odpovědné využití AI",
+        "description": "Etické principy práce s AI ve vzdělávání, hranice akceptovatelného použití, transparentnost.",
+    },
+    {
+        "code": "O04",
+        "name": "Ochrana dat a soukromí ve výuce",
+        "description": "GDPR, citlivá data žáků, bezpečné nakládání s informacemi v AI nástrojích.",
+    },
+    {
+        "code": "O05",
+        "name": "Rozvoj kritického myšlení",
+        "description": "Vedení žáků ke kritickému uvažování, argumentaci, posuzování zdrojů — s podporou i navzdory AI.",
+    },
+    {
+        "code": "O06",
+        "name": "Metakognice a sebeřízené učení",
+        "description": "Reflexe vlastního učení, uvědomování si procesu poznávání, strategie učení.",
+    },
+    {
+        "code": "O07",
+        "name": "Plánování výuky a tvorba scénářů",
+        "description": "Návrh výukových jednotek, cíle, aktivity, role AI ve scénáři, časové rozvržení.",
+    },
+    {
+        "code": "O08",
+        "name": "Didaktická transformace obsahu",
+        "description": "Převod oborového obsahu do podoby srozumitelné pro žáky daného stupně.",
+    },
+    {
+        "code": "O09",
+        "name": "Diferenciace a inkluze (žáci se SVP)",
+        "description": "Práce s heterogenní třídou, individuální vzdělávací plány, AI jako podpora diferenciace.",
+    },
+    {
+        "code": "O10",
+        "name": "Hodnocení a zpětná vazba",
+        "description": "Formativní i sumativní hodnocení, kvalitní zpětná vazba, rubriky, AI jako asistent hodnocení.",
+    },
+    {
+        "code": "O11",
+        "name": "Tvorba zadání a úloh (AI-resistant + AI-supported)",
+        "description": "Design zadání odolných vůči zneužití AI a zároveň zadání využívajících AI jako nástroj učení.",
+    },
+    {
+        "code": "O12",
+        "name": "Práce s prekoncepty a miskoncepty",
+        "description": "Diagnostika a práce s chybnými představami žáků, AI jako nástroj odhalování miskonceptů.",
+    },
+    {
+        "code": "O13",
+        "name": "Prostředí pro učení a klima třídy",
+        "description": "Bezpečné prostředí, pravidla práce s AI ve třídě, kultura ne/používání AI.",
+    },
+    {
+        "code": "O14",
+        "name": "Motivace a vedení žáků",
+        "description": "Vnitřní motivace, vedení diskuse, zapojování žáků, AI jako nástroj individualizace motivace.",
+    },
+    {
+        "code": "O15",
+        "name": "Komunikace s rodiči a zákonnými zástupci",
+        "description": "Vysvětlování role AI ve výuce rodičům, řešení obav, společná dohoda o pravidlech.",
+    },
+    {
+        "code": "O16",
+        "name": "Profesní spolupráce a kolegiální učení",
+        "description": "Sdílení dobré praxe, peer review, budování AI-gramotné školy jako celku.",
+    },
+    {
+        "code": "O17",
+        "name": "Mentoring a uvádění začínajících učitelů",
+        "description": "Provázení nastupujících kolegů, mentorský dialog, integrace AI do mentorské praxe.",
+    },
+    {
+        "code": "O18",
+        "name": "Profesní sebepojetí a reflexe vlastní praxe",
+        "description": "Vlastní identita učitele v éře AI, reflektivní praxe, profesní rozvoj.",
+    },
+    {
+        "code": "O19",
+        "name": "Duševní zdraví a wellbeing učitele",
+        "description": "Práce s kognitivní zátěží, využití AI pro snížení administrativy, hranice pracovního času.",
+    },
+    {
+        "code": "O20",
+        "name": "Tvořivost a designové myšlení ve výuce",
+        "description": "Tvořivé využití AI při návrhu výukových materiálů, design thinking v pedagogice.",
+    },
 ]
 
 
@@ -190,11 +470,11 @@ COURSE_MODULE_ENRICHER_PROMPT = (
     "\n"
     "ZAŘAZENÍ DO ČÍSELNÍKŮ (rozhoduj podle výkladu, ne podle názvu; kódy vybírej výhradně ze seznamů):\n"
     "- neuro_principle_code: kód PŘESNĚ JEDNOHO neurovědního principu, který nejlépe odpovídá "
-    "pedagogickému designu modulu (jak výklad vede k učení). Uveď jen kód, např. \"NP-01\".\n"
+    'pedagogickému designu modulu (jak výklad vede k učení). Uveď jen kód, např. "NP-01".\n'
     "- krauu_competence_codes: 1–3 nejrelevantnější kompetence KRAUU (MŠMT 2023), které modul rozvíjí. "
-    "Uváděj jen kódy kompetencí (např. \"1.1\", \"2.4\"), nikdy kódy oblastí končící \".0\".\n"
+    'Uváděj jen kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".\n'
     "- bloom_level_codes: 1–3 úrovně Bloomovy taxonomie, kterým odpovídají výukové cíle modulu "
-    "(co účastník po prostudování výkladu umí). Uváděj jen číselné kódy, např. \"2\", \"3\".\n"
+    '(co účastník po prostudování výkladu umí). Uváděj jen číselné kódy, např. "2", "3".\n'
     "\n"
     "OTÁZKY (procvičování; platforma je hodnotí automaticky):\n"
     "Obecně:\n"
@@ -509,6 +789,13 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         ),
         "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
     },
+    {
+        "key": "image_generator_model",
+        "name": "Image generátor – obrázkový model",
+        "model": "gpt-image-2",
+        "prompt": "",
+        "description": "LLM pro generování obrázků z textového popisu.",
+    },
 ]
 
 COURSE_SUBJECTS: list[dict[str, str]] = [
@@ -578,9 +865,7 @@ def seed_db() -> None:
             for row in KRAUU_COMPETENCES:
                 if not row["code"].endswith(".0"):
                     area_code = f"{row['code'].split('.')[0]}.0"
-                    db.add(
-                        KrauuCompetence(**row, parent_id=areas[area_code].krauu_id)
-                    )
+                    db.add(KrauuCompetence(**row, parent_id=areas[area_code].krauu_id))
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])

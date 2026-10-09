@@ -41,43 +41,19 @@ class GenerateEmbeddingsResponse(BaseModel):
     )
 
 
-class GenerateCourseImagesRequest(BaseModel):
-    """Request pro vygenerování a porovnání obrázků kurzu napříč modely"""
-
-    models: list[str] = Field(
-        default=["gpt-image-2"],
-        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
-    )
-
-
-class GenerateModuleImagesRequest(BaseModel):
-    """Request pro vygenerování a porovnání obrázků modulu napříč modely"""
-
-    models: list[str] = Field(
-        default=["gpt-image-2"],
-        description="OpenAI image modely (gpt-image-*), které dostanou stejný prompt",
-    )
-
-
-class GeneratedImageFile(BaseModel):
-    """Výsledek jednoho image modelu uložený do SeaweedFS"""
-
-    model_name: str
-    latency_ms: int | None = None
-    error: str | None = Field(default=None, description="Chyba modelu, pokud selhal")
-    file_path: str | None = Field(
-        default=None,
-        description="Cesta obrázku v SeaweedFS (např. „course-images/42/gpt-image-2.png“); None pokud model selhal",
-    )
-
-
-class GenerateImagesResponse(BaseModel):
-    """Response po vygenerování obrázků a jejich uložení do SeaweedFS"""
+class GenerateImageResponse(BaseModel):
+    """Response po vygenerování obrázku a jeho uložení do SeaweedFS"""
 
     image_spec: dict = Field(..., description="Proměnné části obrázku vybrané LLM")
-    image_prompt: str = Field(..., description="Finální prompt poslaný image modelům")
-    results: list[GeneratedImageFile] = Field(
-        default=[], description="Výsledky jednotlivých modelů včetně cest k obrázkům"
+    image_prompt: str = Field(..., description="Finální prompt poslaný image modelu")
+    model_name: str = Field(
+        ...,
+        description="Image model použitý pro generování (system_setting „image_generator_model“)",
+    )
+    latency_ms: int = Field(..., description="Doba generování obrázku v ms")
+    file_path: str = Field(
+        ...,
+        description="Cesta obrázku v SeaweedFS (např. „course-images/42/cover.png“)",
     )
 
 
