@@ -7,13 +7,24 @@ import {
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { Modal } from '@/components/ui/Modal';
+import {
+  CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type StepModuleItem,
+} from '@/components/admin';
+import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
+import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import {
+  moduleCategoryValues, moduleToUpdate, validateModuleCategories, type ModuleCategoryValues,
+} from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 import {
   Plus,
   Trash2,
@@ -34,11 +45,20 @@ interface ModuleContent {
 interface LocalModule {
   moduleId: number;
   title: string;
+  perex: string;
+  maxTaskAttempts?: number;
+  categories: ModuleCategoryValues;
   isActive?: boolean;
   courseId?: number;
   learnBlocks?: LearnBlock[];
   isTemporary?: boolean;
 }
+
+const PEREX_MAX_LENGTH = 255;
+
+// Co z modulu posíláme na PUT /modules — podle toho poznáme, jestli se změnil.
+const moduleMetaKey = (m: LocalModule) =>
+  JSON.stringify([m.title, m.perex, m.categories]);
 
 interface CourseContentViewProps {
   courseId: number;
@@ -48,25 +68,27 @@ interface CourseContentViewProps {
 // Hlavička osnovy s tlačítky pro přidání a (na mobilu) zavření drawer
 function OutlineHeader({ onAdd, onClose }: { onAdd: () => void; onClose?: () => void }) {
   return (
-    <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-      <h2 className="font-semibold text-black">Osnova kurzu</h2>
+    <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+      <h2 className="font-semibold text-foreground">Osnova kurzu</h2>
       <div className="flex items-center gap-1">
-        <button
-          className="p-1 hover:bg-gray-100 rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
           onClick={onAdd}
           title="Přidat modul"
         >
-          <Plus size={16} className="text-gray-600" />
-        </button>
+          <Plus size={16} className="text-muted-foreground" />
+        </Button>
         {onClose && (
-          <button
-            className="p-1 hover:bg-gray-100 rounded"
+          <Button
+            variant="plain"
+            className={cn(BTN_KEEP_BOX, "p-1 hover:bg-muted rounded")}
             onClick={onClose}
             title="Zavřít"
             aria-label="Zavřít osnovu"
           >
-            <X size={16} className="text-gray-600" />
-          </button>
+            <X size={16} className="text-muted-foreground" />
+          </Button>
         )}
       </div>
     </div>
@@ -96,47 +118,49 @@ function OutlineList({
   return (
     <div className="flex-1 overflow-y-auto">
       {modules.map((module, index) => (
-        <div key={module.moduleId} className="border-b border-gray-100 last:border-b-0">
+        <div key={module.moduleId} className="border-b border-border last:border-b-0">
           <div
             className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
               selectedModuleIndex === index
-                ? 'bg-purple-50 border-l-4 border-l-purple-600'
-                : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-            } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
+                ? 'bg-gradient-r/10 border-l-4 border-l-purple-600'
+                : 'hover:bg-muted/50 border-l-4 border-l-transparent'
+            } ${module.isTemporary ? 'bg-warning/10' : ''}`}
             onClick={() => onSelect(index)}
           >
-            <button
-              className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+            <Button
+              variant="plain"
+              className={cn(BTN_KEEP_BOX, "shrink-0 p-0.5 hover:bg-muted rounded")}
               onClick={(e) => { e.stopPropagation(); onToggle(index); }}
             >
               {expandedOutlineItems.has(index) ? (
-                <ChevronDown size={14} className="text-gray-400" />
+                <ChevronDown size={14} className="text-muted-foreground" />
               ) : (
-                <ChevronUp size={14} className="text-gray-400" />
+                <ChevronUp size={14} className="text-muted-foreground" />
               )}
-            </button>
-            <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
+            </Button>
+            <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
               {module.title}
-              {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+              {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
             </span>
             {feedbackCountByModule(module.moduleId) > 0 && (
-              <span className="flex-shrink-0 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              <span className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                 {feedbackCountByModule(module.moduleId)}
               </span>
             )}
             {module.isTemporary && (
-              <button
+              <Button
+                variant="plain"
                 onClick={(e) => { e.stopPropagation(); onDelete(index); }}
-                className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
+                className={cn(BTN_KEEP_BOX, "p-1 hover:bg-destructive/20 rounded text-destructive shrink-0")}
                 title="Odstranit modul"
               >
                 <Trash2 size={14} />
-              </button>
+              </Button>
             )}
           </div>
           {expandedOutlineItems.has(index) && moduleContents[index] && (
             <div
-              className="pl-10 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer truncate"
+              className="pl-10 pr-4 py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer truncate"
               onClick={() => onSelect(index)}
             >
               {moduleContents[index].content
@@ -148,7 +172,7 @@ function OutlineList({
       ))}
 
       {modules.length === 0 && (
-        <div className="p-4 text-center text-gray-500 text-sm">Žádné moduly</div>
+        <div className="p-4 text-center text-muted-foreground text-sm">Žádné moduly</div>
       )}
     </div>
   );
@@ -174,39 +198,41 @@ function ModuleItem({
     <div
       className={`flex items-center gap-1.5 px-3 py-3 cursor-pointer transition-colors ${
         isSelected
-          ? 'bg-purple-50 border-l-4 border-l-purple-600'
-          : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-      } ${module.isTemporary ? 'bg-yellow-50' : ''}`}
+          ? 'bg-gradient-r/10 border-l-4 border-l-purple-600'
+          : 'hover:bg-muted/50 border-l-4 border-l-transparent'
+      } ${module.isTemporary ? 'bg-warning/10' : ''}`}
       onClick={onSelect}
     >
-      <button
-        className="flex-shrink-0 p-0.5 hover:bg-gray-200 rounded"
+      <Button
+        variant="plain"
+        className={cn(BTN_KEEP_BOX, "shrink-0 p-0.5 hover:bg-muted rounded")}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
       >
         {isExpanded ? (
-          <ChevronDown size={14} className="text-gray-400" />
+          <ChevronDown size={14} className="text-muted-foreground" />
         ) : (
-          <ChevronUp size={14} className="text-gray-400" />
+          <ChevronUp size={14} className="text-muted-foreground" />
         )}
-      </button>
-      <span className="text-sm text-black font-medium flex-1 min-w-0 truncate">
+      </Button>
+      <span className="text-sm text-foreground font-medium flex-1 min-w-0 truncate">
         {module.title}
-        {module.isTemporary && <span className="text-xs text-yellow-600 ml-2">(nový)</span>}
+        {module.isTemporary && <span className="text-xs text-warning ml-2">(nový)</span>}
       </span>
       {module.isTemporary && onDelete && (
-        <button
+        <Button
+          variant="plain"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 hover:bg-red-100 rounded text-red-500 flex-shrink-0"
+          className={cn(BTN_KEEP_BOX, "p-1 hover:bg-destructive/20 rounded text-destructive shrink-0")}
           title="Odstranit modul"
         >
           <Trash2 size={14} />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -214,9 +240,11 @@ function ModuleItem({
 
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
-  const { goToCourseTests, goToCourseSummary, goBack } = useAdminNavigation();
+  const { goToCourseTests, goBack } = useAdminNavigation();
+  const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   const { isOwner } = useCurrentUser();
+  const { neuroPrinciples, krauuCompetences, bloomLevels, loading: catalogsLoading } = useCatalogData();
 
   const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [modules, setModules] = useState<LocalModule[]>([]);
@@ -228,6 +256,17 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [moduleMetaOpen, setModuleMetaOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
+  // Chyba kategorií modulu — ukazuje se v editoru místo alertu, aby autosave
+  // při neplatném stavu nevyskakoval opakovaně.
+  const [moduleMetaError, setModuleMetaError] = useState('');
+  // Naposledy uložený stav metadat každého modulu (moduleMetaKey) — PUT posíláme
+  // jen změněným modulům. Starší moduly bez KRAUU / Bloom tak neselžou na
+  // validaci, dokud na ně autor nesáhne.
+  const savedModuleMetaRef = useRef<Record<number, string>>({});
 
   const selectModuleAndClose = (index: number) => {
     setSelectedModuleIndex(index);
@@ -329,17 +368,24 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   // Stav (ne jen ref) pro zapnutí autosave až po inicializaci dat.
   const [contentInitialized, setContentInitialized] = useState(false);
   useEffect(() => {
-    if (!courseData || !editor || initRef.current) return;
+    if (!courseData || !editor || catalogsLoading || initRef.current) return;
 
     const localModules: LocalModule[] = (courseData.modules || []).map((m) => ({
       moduleId: m.moduleId,
       title: m.title,
+      perex: m.perex ?? '',
+      maxTaskAttempts: m.maxTaskAttempts,
+      // Chybějící KRAUU / Bloom modul zdědí z kurzu (uloží se až se změnou modulu).
+      categories: moduleCategoryValues(m, courseData, neuroPrinciples),
       isActive: m.isActive,
       courseId: m.courseId,
       learnBlocks: m.learnBlocks,
       isTemporary: false,
     }));
     setModules(localModules);
+    savedModuleMetaRef.current = Object.fromEntries(
+      localModules.map((m) => [m.moduleId, moduleMetaKey(m)]),
+    );
 
     if (initialModuleId) {
       const idx = localModules.findIndex(m => m.moduleId === initialModuleId);
@@ -367,7 +413,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
     initRef.current = true;
     setContentInitialized(true);
-  }, [courseData, editor, initialModuleId]);
+  }, [courseData, editor, initialModuleId, catalogsLoading, neuroPrinciples]);
 
   // Aktualizace obsahu editoru při změně modulu
   useEffect(() => {
@@ -394,6 +440,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     const newModule: LocalModule = {
       moduleId: nextTempId,
       title: newModuleTitle.trim(),
+      perex: '',
+      // Nový modul přebírá KRAUU a Bloom z kurzu, princip je výchozí NP-01.
+      categories: moduleCategoryValues(null, courseData, neuroPrinciples),
       isTemporary: true,
     };
     setModules([...modules, newModule]);
@@ -425,23 +474,46 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }
   };
 
+  const updateSelectedModule = (patch: Partial<LocalModule>) => {
+    setModules(prev => prev.map((m, i) => (i === selectedModuleIndex ? { ...m, ...patch } : m)));
+  };
+
   const saveContent = async () => {
     if (!courseId) return modules;
+
+    // Backend chce u každého modulu alespoň jeden princip, KRAUU i Bloom —
+    // zkontrolujeme jen moduly, které se opravdu budou posílat.
+    const invalid = modules
+      .filter(m => m.isTemporary || moduleMetaKey(m) !== savedModuleMetaRef.current[m.moduleId])
+      .map(m => ({ module: m, message: validateModuleCategories(m.categories) }))
+      .find(item => item.message);
+    if (invalid) {
+      setModuleMetaError(`Modul „${invalid.module.title}“: ${invalid.message}`);
+      setModuleMetaOpen(true);
+      throw new Error(invalid.message ?? '');
+    }
+
     try {
       const updatedModules = [...modules];
       const updatedContents = { ...moduleContents };
 
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
+        const mod = updatedModules[i];
         const content = updatedContents[i];
 
-        if (module.isTemporary) {
-          const createdModule = await createModule({ courseId, title: module.title });
-          updatedModules[i] = { ...module, moduleId: createdModule.moduleId, isTemporary: false };
+        if (mod.isTemporary) {
+          const createdModule = await createModule({
+            courseId,
+            title: mod.title,
+            perex: mod.perex,
+            ...mod.categories,
+          });
+          updatedModules[i] = { ...mod, moduleId: createdModule.moduleId, isTemporary: false };
+          savedModuleMetaRef.current[createdModule.moduleId] = moduleMetaKey(updatedModules[i]);
 
           const createdLearnBlock = await createLearnBlock({
             moduleId: createdModule.moduleId,
-            title: module.title || `Blok ${i + 1}`,
+            title: mod.title || `Blok ${i + 1}`,
             content: content?.content || '',
           });
           updatedContents[i] = { ...content, content: content?.content || '', learnId: createdLearnBlock.learnId };
@@ -452,20 +524,24 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       setModuleContents(updatedContents);
 
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
-        if (module.isTemporary) continue;
-        await updateModule(module.moduleId, { title: module.title });
+        const mod = updatedModules[i];
+        if (mod.isTemporary) continue;
+        const metaKey = moduleMetaKey(mod);
+        if (metaKey === savedModuleMetaRef.current[mod.moduleId]) continue;
+        await updateModule(mod.moduleId, moduleToUpdate(mod, mod.categories));
+        savedModuleMetaRef.current[mod.moduleId] = metaKey;
       }
+      setModuleMetaError('');
 
       const learnBlockPromises: Promise<unknown>[] = [];
       for (let i = 0; i < updatedModules.length; i++) {
-        const module = updatedModules[i];
+        const mod = updatedModules[i];
         const content = updatedContents[i];
-        if (module.isTemporary) continue;
+        if (mod.isTemporary) continue;
         if (content?.learnId) {
           learnBlockPromises.push(
             updateLearnBlock(content.learnId, {
-              title: module.title || `Blok`,
+              title: mod.title || `Blok`,
               content: content.content,
             })
           );
@@ -476,23 +552,33 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       return updatedModules;
     } catch (err) {
       console.error('Failed to save content:', err);
-      alert('Nepodařilo se uložit obsah');
+      // Hláška z backendu (např. chybějící kategorie modulu) má přednost před obecným textem
+      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah');
       throw err;
     }
   };
 
   const handleContinue = async () => {
-    const savedModules = await saveContent();
+    let savedModules: LocalModule[] | undefined;
+    try {
+      savedModules = await saveContent();
+    } catch {
+      return; // uložení selhalo (chyba je zobrazena), zůstaneme na místě
+    }
     const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
     goToCourseTests(courseId, selectedModule?.moduleId);
   };
 
   const handleBack = async () => {
-    await saveContent();
+    try {
+      await saveContent();
+    } catch {
+      return;
+    }
     goBack();
   };
 
-  // Přepnutí mezi fázemi tvorby přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'content') return;
     let savedModules: LocalModule[] | undefined;
@@ -501,18 +587,14 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     } catch {
       return; // uložení selhalo (alert je zobrazen), zůstaneme na místě
     }
-    if (step === 'tests') {
-      const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
-      goToCourseTests(courseId, selectedModule?.moduleId);
-    } else {
-      goToCourseSummary(courseId);
-    }
+    goToStep(step, (savedModules ?? modules)[selectedModuleIndex]?.moduleId);
   };
 
   // Pro autosave sledujeme jen názvy a text obsahu, ne ID/learnId
   // (ty se mění po uložení temp modulů a vznikla by smyčka ukládání).
   const autosaveValue = useMemo(() => ({
     titles: modules.map(m => m.title),
+    meta: modules.map(m => [m.perex, m.categories]),
     contents: modules.map((_, i) => moduleContents[i]?.content ?? ''),
   }), [modules, moduleContents]);
 
@@ -522,66 +604,120 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     { delay: 3000, enabled: contentInitialized },
   );
 
+  // Náhled pro studenta — rozpracovaný obsah a zařazení přes uložená data.
+  // Editor upravuje první část příručky; další části zůstávají uložené.
+  const previewModules = useMemo<PreviewModule[]>(
+    () => modules.map((module, index) => {
+      const saved = courseData?.modules?.find((m) => m.moduleId === module.moduleId);
+      const savedBlocks = saved?.learnBlocks ?? [];
+      const edited = moduleContents[index];
+      // Modul bez uložené příručky má v editoru jen výchozí text, který se
+      // neukládá — student by tam neviděl nic (nový modul se uloží celý).
+      const firstBlock = edited && (edited.learnId || module.isTemporary)
+        ? [{ learnId: edited.learnId ?? -1, moduleId: module.moduleId, title: module.title, content: edited.content }]
+        : savedBlocks.slice(0, 1);
+      return {
+        moduleId: module.moduleId,
+        title: module.title,
+        perex: module.perex,
+        maxTaskAttempts: module.maxTaskAttempts,
+        learnBlocks: [...firstBlock, ...savedBlocks.slice(1)],
+        practiceQuestions: saved?.practiceQuestions ?? [],
+        neuroPrinciples: neuroPrinciples.filter((n) => module.categories.neuroPrincipleIds.includes(n.principleId)),
+        krauuCompetences: krauuCompetences.filter((k) => module.categories.krauuCompetenceIds.includes(k.krauuId)),
+        bloomLevels: bloomLevels.filter((b) => module.categories.bloomLevelIds.includes(b.bloomId)),
+      };
+    }),
+    [modules, moduleContents, courseData, neuroPrinciples, krauuCompetences, bloomLevels],
+  );
+
   if (courseLoading) return <LoadingState />;
   if (courseError) return <ErrorState message={courseError} />;
 
+  const selectedModule = modules[selectedModuleIndex] as LocalModule | undefined;
+  const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
+
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: questionCountHint(
+      courseData?.modules?.find((m) => m.moduleId === selectedModule?.moduleId)?.practiceQuestions?.length ?? 0,
+    ),
+  };
+
+  // Moduly pod aktivním krokem karty „Tvorba kurzu" (dřív Osnova kurzu)
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
+      id: module.moduleId,
+      title: module.title,
+      selected: index === selectedModuleIndex,
+      badge: feedbackCountByModule(module.moduleId),
+      isNew: module.isTemporary,
+      onSelect: () => {
+        setSelectedModuleIndex(index);
+        onPicked?.();
+      },
+      onDelete: module.isTemporary ? () => handleDeleteModule(index) : undefined,
+    }));
+
   const commentsPanelInner = (
     <>
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-sm font-semibold text-black">
+      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+        <h2 className="text-sm font-semibold text-foreground">
           Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
         </h2>
-        <button
-          className="lg:hidden p-1 hover:bg-gray-100 rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
           onClick={() => setMobileCommentsOpen(false)}
           aria-label="Zavřít komentáře"
         >
-          <X size={16} className="text-gray-600" />
-        </button>
+          <X size={16} className="text-muted-foreground" />
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {currentModuleFeedbacks.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+          <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
         ) : (
           currentModuleFeedbacks.map(fb => (
-            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-success/30 bg-success/10/50' : 'border-border'}`}>
               <div className="px-3.5 py-2.5">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-semibold text-gray-800 text-xs">
+                  <span className="font-semibold text-foreground text-xs">
                     {fb.author.displayName ?? 'Uživatel'}
                   </span>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="plain"
                       onClick={() => handleToggleResolve(fb)}
                       disabled={resolvingFeedback === fb.feedbackId}
-                      className={`p-0.5 rounded transition-colors ${
+                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
                         fb.isResolved
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-gray-300 hover:text-green-500'
-                      }`}
+                          ? 'text-success hover:text-success'
+                          : 'text-muted-foreground hover:text-success'
+                      }`)}
                       title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
                     >
                       <CheckCircle size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {feedbackContextLabel(fb) && (
-                  <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                  <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
                 )}
 
-                <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
               </div>
 
               {fb.reply && (
                 <div className="px-3.5 pb-2.5">
-                  <div className="ml-3 bg-purple-50 rounded-lg px-3 py-2">
+                  <div className="ml-3 bg-gradient-r/10 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <CornerDownRight size={10} className="text-purple-400" />
-                      <span className="text-[10px] text-purple-500 font-medium">Vaše odpověď</span>
+                      <CornerDownRight size={10} className="text-gradient-r" />
+                      <span className="text-[10px] text-gradient-r font-medium">Vaše odpověď</span>
                     </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
                   </div>
                 </div>
               )}
@@ -590,36 +726,39 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                 <div className="px-3.5 pb-2.5">
                   {showReplyFor === fb.feedbackId ? (
                     <div>
-                      <textarea
+                      <Textarea
                         value={replyTexts[fb.feedbackId] ?? ''}
                         onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
                         rows={2}
                         placeholder="Napište odpověď..."
-                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
                       />
                       <div className="flex gap-1 mt-1">
-                        <button
+                        <Button
+                          variant="brand-solid"
                           onClick={() => handleReply(fb.feedbackId)}
                           disabled={submittingReply === fb.feedbackId}
-                          className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
+                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
                         >
                           Odeslat
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => setShowReplyFor(null)}
-                          className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
                         >
                           Zrušit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className="text-xs text-purple-600 hover:underline flex items-center gap-0.5"
+                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
                     >
                       <CornerDownRight size={11} /> Odpovědět
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -628,13 +767,13 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         )}
       </div>
 
-      <div className="p-3 border-t border-gray-200 flex-shrink-0">
+      <div className="p-3 border-t border-border shrink-0">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">
+          <span className="text-muted-foreground">
             Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
           </span>
           {allResolved && (
-            <span className="text-green-600 font-medium flex items-center gap-1">
+            <span className="text-success font-medium flex items-center gap-1">
               <CheckCircle size={12} /> Vše vyřešeno
             </span>
           )}
@@ -644,17 +783,31 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-100">
+    <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu kurzu`}
         title="Tvorba obsahu kurzu"
+        stepLabel={courseStepLabel('content')}
         saveStatus={saveStatus}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
-      <CourseStepNav current="content" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="content" onNavigate={handleStepNavigate} /> */}
+      {previewOpen && (
+        <StudentPreview
+          course={courseData ?? { title: courseTitle }}
+          modules={previewModules}
+          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'prirucka' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      )}
+      {/* Editor při náhledu jen schováme — rich text editor tak nepřijde o stav */}
+      <div className={previewOpen ? 'hidden' : 'contents'}>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
@@ -665,26 +818,34 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       <>
       {/* Resubmit banner */}
       {/* {isEdited && hasFeedbacks && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm text-amber-800">
+        <div className="bg-warning/10 border-b border-warning/30 px-6 py-2.5 flex items-center justify-between shrink-0">
+          <p className="text-sm text-warning">
             Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
           </p>
           {canResubmit && (
-            <button
+            <Button
+              variant="brand-solid"
               onClick={handleResubmit}
               disabled={resubmitLoading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
             >
               <ArrowUpCircle size={14} />
               {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
-            </button>
+            </Button>
           )}
         </div>
       )} */}
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
-        {/* Left Sidebar - Course Outline (desktop) */}
-        <div className="hidden lg:flex w-56 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
+        {!focusMode && (
+          <CourseStepsCard current="content" onNavigate={handleStepNavigate} hints={stepHints}>
+            <StepModuleList items={stepModuleItems()} onAdd={() => setShowAddModuleModal(true)} />
+          </CourseStepsCard>
+        )}
+
+        {/* Left Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
+        <div className="hidden lg:flex w-56 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
           <OutlineHeader
             onAdd={() => setShowAddModuleModal(true)}
           />
@@ -699,35 +860,102 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             onDelete={handleDeleteModule}
           />
         </div>
+        */}
 
-        {/* Mobile Outline Drawer */}
-        {mobileOutlineOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOutlineOpen(false)} />
-            <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-              <OutlineHeader
+        {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
+        <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="content"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            >
+              <StepModuleList
+                items={stepModuleItems(() => setMobileOutlineOpen(false))}
                 onAdd={() => setShowAddModuleModal(true)}
-                onClose={() => setMobileOutlineOpen(false)}
               />
-              <OutlineList
-                modules={modules}
-                selectedModuleIndex={selectedModuleIndex}
-                expandedOutlineItems={expandedOutlineItems}
-                moduleContents={moduleContents}
-                feedbackCountByModule={feedbackCountByModule}
-                onSelect={selectModuleAndClose}
-                onToggle={toggleOutlineItem}
-                onDelete={handleDeleteModule}
-              />
-            </div>
-          </div>
-        )}
+            </CourseStepsCard>
+            {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
+            <OutlineHeader
+              onAdd={() => setShowAddModuleModal(true)}
+              onClose={() => setMobileOutlineOpen(false)}
+            />
+            <OutlineList
+              modules={modules}
+              selectedModuleIndex={selectedModuleIndex}
+              expandedOutlineItems={expandedOutlineItems}
+              moduleContents={moduleContents}
+              feedbackCountByModule={feedbackCountByModule}
+              onSelect={selectModuleAndClose}
+              onToggle={toggleOutlineItem}
+              onDelete={handleDeleteModule}
+            />
+            */}
+          </DrawerContent>
+        </Drawer>
 
         {/* Center - Editor */}
-        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-black">Úpravy podkladů ke kurzu</h2>
+        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
+          <div className="p-4 border-b border-border">
+            <h2 className="font-semibold text-foreground">Úpravy podkladů ke kurzu</h2>
           </div>
+
+          {/* Perex a pedagogické zařazení vybraného modulu */}
+          {selectedModule && (
+            <div className="border-b border-border shrink-0">
+              <Button
+                variant="plain"
+                type="button"
+                onClick={() => setModuleMetaOpen(open => !open)}
+                aria-expanded={moduleMetaOpen}
+                className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-muted/50")}
+              >
+                <span className="font-medium truncate">Perex a zařazení modulu</span>
+                <span className="flex items-center gap-2 shrink-0">
+                  {selectedModuleIncomplete && (
+                    <span className="text-xs text-warning">Chybí povinné kategorie</span>
+                  )}
+                  {moduleMetaOpen ? (
+                    <ChevronUp size={16} className="text-muted-foreground" />
+                  ) : (
+                    <ChevronDown size={16} className="text-muted-foreground" />
+                  )}
+                </span>
+              </Button>
+              {moduleMetaError && (
+                <div className="mx-4 mb-3 p-2.5 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
+                  {moduleMetaError}
+                </div>
+              )}
+              {moduleMetaOpen && (
+                <div className="px-4 pb-4 space-y-4 max-h-[50vh] overflow-y-auto">
+                  <div>
+                    <label htmlFor="module-perex" className="block text-sm font-medium text-foreground mb-1">Perex</label>
+                    <Textarea
+                      id="module-perex"
+                      rows={2}
+                      maxLength={PEREX_MAX_LENGTH}
+                      value={selectedModule.perex}
+                      onChange={(e) => updateSelectedModule({ perex: e.target.value })}
+                      placeholder="Krátké shrnutí, o čem modul je..."
+                      className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm resize-none")}
+                    />
+                    <span className="text-xs text-muted-foreground">{selectedModule.perex.length}/{PEREX_MAX_LENGTH}</span>
+                  </div>
+                  <ModuleCategoryFields
+                    values={selectedModule.categories}
+                    onChange={(next) => updateSelectedModule({ categories: next })}
+                    neuroPrinciples={neuroPrinciples}
+                    krauuCompetences={krauuCompetences}
+                    bloomLevels={bloomLevels}
+                    showErrors
+                    triggerClassName="w-full px-3 py-2 border border-border rounded-md text-sm text-foreground bg-card data-[size=default]:h-auto"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <EditorToolbar editor={editor} />
 
@@ -735,7 +963,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
             {modules.length > 0 ? (
               <EditorContentComponent editor={editor} className={editorContentClass} />
             ) : (
-              <div className="text-center text-gray-500 py-12">
+              <div className="text-center text-muted-foreground py-12">
                 Nejsou k dispozici žádné moduly k úpravě
               </div>
             )}
@@ -745,20 +973,19 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && (
-          <div className="hidden lg:flex w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+        {showCommentsPanel && !focusMode && (
+          <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
         )}
 
         {/* Mobile Comments Drawer */}
-        {showCommentsPanel && mobileCommentsOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCommentsOpen(false)} />
-            <div className="relative w-80 max-w-[85%] bg-white shadow-xl flex flex-col">
+        {showCommentsPanel && (
+          <Drawer open={mobileCommentsOpen} onOpenChange={setMobileCommentsOpen} swipeDirection="right">
+            <DrawerContent className="lg:hidden" aria-label="Komentáře ke kurzu">
               {commentsPanelInner}
-            </div>
-          </div>
+            </DrawerContent>
+          </Drawer>
         )}
 
         {/* Add Module Modal */}
@@ -768,28 +995,30 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           title="Přidat nový modul"
           footer={
             <>
-              <button
+              <Button
+                variant="plain"
                 onClick={() => { setShowAddModuleModal(false); setNewModuleTitle(''); }}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                className={cn(BTN_KEEP_BOX, "px-4 py-2 text-muted-foreground hover:bg-muted rounded-md transition-colors")}
               >
                 Zrušit
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="brand-solid"
                 onClick={handleAddModule}
                 disabled={!newModuleTitle.trim()}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className={cn(BTN_KEEP_BOX, "px-4 py-2 rounded-md transition-colors disabled:bg-muted disabled:cursor-not-allowed")}
               >
                 Přidat
-              </button>
+              </Button>
             </>
           }
         >
-          <input
+          <Input
             type="text"
             value={newModuleTitle}
             onChange={(e) => setNewModuleTitle(e.target.value)}
             placeholder="Název modulu"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+            className={cn("h-auto md:text-base", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
             autoFocus
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddModule(); }}
           />
@@ -797,6 +1026,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       </div>
       </>
       )}
+      </div>
     </div>
   );
 }

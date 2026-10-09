@@ -44,7 +44,25 @@ export function getCallbackUrl(): string {
   return `${window.location.origin}/auth/callback`;
 }
 
-export async function buildLoginUrl(state?: string): Promise<string> {
+// Cesta, kam callback po přihlášení (i po registraci — Keycloak se vrací na
+// stejné redirect_uri) uživatele pošle. Vlastní klíč, ne pkce_*: ty maže
+// clearTokens(), takže by je mohl smazat i neúspěšný refresh na callbacku.
+const RETURN_TO_KEY = "auth_return_to";
+
+/** Jen lokální cesta — "//host" nebo "/\host" by byl open redirect. */
+function isSafeReturnPath(path: string): boolean {
+  return path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\");
+}
+
+/** Přečte a smaže cestu pro návrat po přihlášení; null = výchozí stránka. */
+export function consumeLoginReturnTo(): string | null {
+  if (typeof window === "undefined") return null;
+  const path = sessionStorage.getItem(RETURN_TO_KEY);
+  sessionStorage.removeItem(RETURN_TO_KEY);
+  return path && isSafeReturnPath(path) ? path : null;
+}
+
+export async function buildLoginUrl(state?: string, returnTo?: string): Promise<string> {
   const verifier = await generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
   const callbackUrl = getCallbackUrl();
@@ -52,6 +70,13 @@ export async function buildLoginUrl(state?: string): Promise<string> {
   // Persist verifier and state so the callback page can use them
   sessionStorage.setItem("pkce_verifier", verifier);
   sessionStorage.setItem("pkce_state", state ?? "");
+  // Přihlášení bez cíle cíl i maže — jinak by návrat z dřív nedokončeného
+  // přihlášení přesměroval někam, kam uživatel teď nemíří.
+  if (returnTo && isSafeReturnPath(returnTo)) {
+    sessionStorage.setItem(RETURN_TO_KEY, returnTo);
+  } else {
+    sessionStorage.removeItem(RETURN_TO_KEY);
+  }
 
   const params = new URLSearchParams({
     client_id: KC_CONFIG.clientId,

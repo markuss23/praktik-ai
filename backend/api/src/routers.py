@@ -6,7 +6,10 @@ from api.src.courses.routers import (
 )
 from api.src.modules.routers import router as modules_router
 from api.src.activities.routers import router as activities_router
-from api.src.agents.routers import router as agents_router
+from api.src.agents.routers import (
+    router as agents_router,
+    public_router as agents_public_router,
+)
 from api.src.auth.routers import router as auth_router
 from api.src.users.routers import router as users_router
 from api.src.enrollments.routers import router as enrollments_router
@@ -24,6 +27,9 @@ from api.src.publicDB.resources.routers import public_router as resources_public
 from api.src.publicDB.reviews.routers import router as review_router
 from api.src.publicDB.rating.routers import router as rating_router
 from api.src.publicDB.collections.routers import router as collections_router
+from api.src.publicDB.collections.routers import (
+    public_router as collections_public_router,
+)
 from api.dependencies import auth
 
 router = APIRouter()
@@ -32,6 +38,7 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(courses_public_router)
 router.include_router(catalogs_router)
+router.include_router(agents_public_router)
 
 # Všechny ostatní routery s povinnou autentizací
 router.include_router(courses_router, dependencies=[Depends(auth.get_current_user)])
@@ -63,6 +70,7 @@ router.include_router(
 # Bez autentizace
 router.include_router(resources_public_router)
 router.include_router(editor_images_public_router)
+router.include_router(collections_public_router)
 
 router.include_router(resources_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(review_router, dependencies=[Depends(auth.get_current_user)])

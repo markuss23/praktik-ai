@@ -31,7 +31,7 @@ export function PaperSheets({ html, contentClassName = 'module-content' }: Paper
         <div key={i} className="paper-sheet p-6 sm:p-10">
           <div className={contentClassName} dangerouslySetInnerHTML={{ __html: sheetHtml }} />
           {sheets.length > 1 && (
-            <div className="mt-8 text-center text-xs text-gray-400 select-none" aria-label={`List ${i + 1} z ${sheets.length}`}>
+            <div className="mt-8 text-center text-xs text-muted-foreground select-none" aria-label={`List ${i + 1} z ${sheets.length}`}>
               {i + 1}
             </div>
           )}

@@ -1,18 +1,32 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { QuestionType, FeedbackItem, Status } from '@/api';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { QuestionType, FeedbackItem, Status, type PracticeQuestion } from '@/api';
 import {
   updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption,
   getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
-import { CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepNav, type CreationTab, type CourseStep } from '@/components/admin';
-import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
+import {
+  CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepsCard, StepModuleList,
+  courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  type CreationTab, type CourseStep, type StepModuleItem,
+} from '@/components/admin';
+import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
+// Osnova kurzu je nahrazená kartou „Tvorba kurzu" (viz zakomentované použití níže).
+// import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
+import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea, useToast } from '@/components/ui';
+import { readApiErrorDetail } from '@/lib/api-error';
+
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'closed', label: 'Uzavřená' },
+  { value: 'open', label: 'Otevřená' },
+];
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   Plus,
   Trash2,
@@ -45,9 +59,52 @@ interface CourseTestsViewProps {
   initialModuleId?: number;
 }
 
+// Co se o existující otázce posílá na PUT. Slouží i jako otisk pro
+// porovnání s naposledy uloženým stavem — autosave posílá jen změněné.
+function questionPayload(question: QuestionItem) {
+  const correctOption = question.options.find((opt) => opt.isCorrect);
+  return {
+    question: question.question,
+    questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
+    correctAnswer: correctOption?.text ?? question.correctAnswer,
+    exampleAnswer: question.exampleAnswer,
+  };
+}
+
+// Rozpracované otázky editoru → tvar, který čte studentské Procvičování
+// (náhled pro studenta). Neuložené otázky/možnosti dostanou záporná ID;
+// klíčová slova otevřených otázek editor neupravuje, berou se z uložených.
+function toPracticeQuestions(
+  moduleId: number,
+  items: QuestionItem[],
+  saved: PracticeQuestion[] = [],
+): PracticeQuestion[] {
+  return items
+    .filter((q) => q.question.trim().length > 0)
+    .map((q, index) => {
+      const questionId = q.questionId ?? -(index + 1);
+      const isClosed = q.type === 'closed';
+      return {
+        questionId,
+        moduleId,
+        question: q.question,
+        questionType: isClosed ? QuestionType.Closed : QuestionType.Open,
+        correctAnswer: isClosed ? (q.options.find((o) => o.isCorrect)?.text ?? q.correctAnswer ?? null) : null,
+        exampleAnswer: isClosed ? null : (q.exampleAnswer ?? null),
+        closedOptions: isClosed
+          ? q.options
+              .filter((o) => o.text.trim().length > 0)
+              .map((o, oIndex) => ({ optionId: o.optionId ?? -(oIndex + 1), questionId, text: o.text }))
+          : [],
+        openKeywords: saved.find((sq) => sq.questionId === q.questionId)?.openKeywords ?? [],
+      };
+    });
+}
+
 // Editor testů/otázek pro moduly kurzu
 export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
+  const toast = useToast();
   const { isOwner } = useCurrentUser();
   const {
     loading,
@@ -67,6 +124,9 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
 
   // Feedback state
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
@@ -145,6 +205,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   // Stav otázek pro každý modul
   const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
   const [questionsInitialized, setQuestionsInitialized] = useState(false);
+  // Naposledy uložený stav na serveru (otisk otázky podle questionId, text
+  // možnosti podle optionId) — ukládá se jen to, co se od něj liší.
+  const savedQuestionKeysRef = useRef(new Map<number, string>());
+  const savedOptionTextsRef = useRef(new Map<number, string>());
 
   // Inicializace otázek z courseData
   if (courseData && !questionsInitialized) {
@@ -168,6 +232,15 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       } else {
         allModuleQuestions[moduleIndex] = [];
       }
+    });
+    // Výchozí stav pro porovnání = to, co právě přišlo ze serveru.
+    savedQuestionKeysRef.current = new Map();
+    savedOptionTextsRef.current = new Map();
+    Object.values(allModuleQuestions).flat().forEach((q) => {
+      if (q.questionId) savedQuestionKeysRef.current.set(q.questionId, JSON.stringify(questionPayload(q)));
+      q.options.forEach((opt) => {
+        if (opt.optionId) savedOptionTextsRef.current.set(opt.optionId, opt.text);
+      });
     });
     setModuleQuestions(allModuleQuestions);
     setQuestionsInitialized(true);
@@ -269,37 +342,36 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
 
   const saveTestContent = async (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions) => {
     try {
-      const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1] }[] = [];
-      const optionUpdatePromises: Promise<unknown>[] = [];
+      const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1]; key: string }[] = [];
+      // Úpravy možností se spouští až po otázkách — kdyby se odpálily hned,
+      // selhání otázky by skočilo do catch a jejich odmítnutí by zůstala
+      // neošetřená (unhandled rejection za každou možnost).
+      const optionUpdates: { optionId: number; text: string }[] = [];
       const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
       const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
 
       for (const moduleIndex of Object.keys(questionsMap)) {
         const questionsForModule = questionsMap[Number(moduleIndex)] || [];
-        const module = modules[Number(moduleIndex)];
+        const mod = modules[Number(moduleIndex)];
 
         for (let qIndex = 0; qIndex < questionsForModule.length; qIndex++) {
           const question = questionsForModule[qIndex];
 
           if (question.questionId) {
-            const correctOption = question.options.find(opt => opt.isCorrect);
-            questionUpdates.push({
-              questionId: question.questionId,
-              data: {
-                question: question.question,
-                questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
-                correctAnswer: correctOption?.text ?? question.correctAnswer,
-                exampleAnswer: question.exampleAnswer,
-              },
-            });
+            // Jen otázky a možnosti, které se od posledního uložení změnily
+            const data = questionPayload(question);
+            const key = JSON.stringify(data);
+            if (savedQuestionKeysRef.current.get(question.questionId) !== key) {
+              questionUpdates.push({ questionId: question.questionId, data, key });
+            }
 
             if (question.type === 'closed') {
               for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
                 const option = question.options[optIndex];
                 if (option.optionId) {
-                  optionUpdatePromises.push(
-                    updatePracticeOption(option.optionId, { text: option.text })
-                  );
+                  if (savedOptionTextsRef.current.get(option.optionId) !== option.text) {
+                    optionUpdates.push({ optionId: option.optionId, text: option.text });
+                  }
                 } else {
                   newOptionsForExistingQuestions.push({
                     moduleIndex: Number(moduleIndex), questionIndex: qIndex, optionIndex: optIndex, option, questionId: question.questionId,
@@ -307,20 +379,26 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 }
               }
             }
-          } else if (module?.moduleId) {
+          } else if (mod?.moduleId) {
             createdQuestions.push({ moduleIndex: Number(moduleIndex), questionIndex: qIndex, question });
           }
         }
       }
 
-      for (const { questionId, data } of questionUpdates) {
+      // Uložený stav se posouvá po každém úspěšném zápisu — co selže, zkusí příští uložení.
+      for (const { questionId, data, key } of questionUpdates) {
         await updatePracticeQuestion(questionId, data);
+        savedQuestionKeysRef.current.set(questionId, key);
       }
 
-      await Promise.all(optionUpdatePromises);
+      await Promise.all(optionUpdates.map(async ({ optionId, text }) => {
+        await updatePracticeOption(optionId, { text });
+        savedOptionTextsRef.current.set(optionId, text);
+      }));
 
       for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
         const createdOption = await createPracticeOption({ questionId, text: option.text });
+        savedOptionTextsRef.current.set(createdOption.optionId, option.text);
         setModuleQuestions(prev => {
           const updated = { ...prev };
           if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -335,16 +413,17 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       }
 
       for (const { moduleIndex, questionIndex, question } of createdQuestions) {
-        const module = modules[moduleIndex];
-        if (!module?.moduleId) continue;
+        const mod = modules[moduleIndex];
+        if (!mod?.moduleId) continue;
         const correctOption = question.options.find(opt => opt.isCorrect);
         const createdQuestion = await createPracticeQuestion({
-          moduleId: module.moduleId,
+          moduleId: mod.moduleId,
           questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
           question: question.question,
           correctAnswer: correctOption?.text ?? question.correctAnswer,
           exampleAnswer: question.exampleAnswer,
         });
+        savedQuestionKeysRef.current.set(createdQuestion.questionId, JSON.stringify(questionPayload(question)));
 
         setModuleQuestions(prev => {
           const updated = { ...prev };
@@ -361,6 +440,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             const createdOption = await createPracticeOption({
               questionId: createdQuestion.questionId, text: option.text,
             });
+            savedOptionTextsRef.current.set(createdOption.optionId, option.text);
             setModuleQuestions(prev => {
               const updated = { ...prev };
               if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
@@ -378,7 +458,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       invalidateCourseCache(courseId);
     } catch (err) {
       console.error('Failed to save test content:', err);
-      alert('Nepodařilo se uložit obsah testu');
+      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah testu');
       throw err;
     }
   };
@@ -388,8 +468,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     for (const moduleIndexStr of Object.keys(questionsMap)) {
       const moduleIndex = Number(moduleIndexStr);
       const questionsForModule = questionsMap[moduleIndex] || [];
-      const module = modules[moduleIndex];
-      const moduleName = module?.title || `Modul ${moduleIndex + 1}`;
+      const mod = modules[moduleIndex];
+      const moduleName = mod?.title || `Modul ${moduleIndex + 1}`;
 
       questionsForModule.forEach((question, qIndex) => {
         if (!question.question.trim()) {
@@ -474,7 +554,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     goToCourseContent(courseId);
   };
 
-  // Přepnutí mezi fázemi tvorby (podklady → testy → souhrn) přes krokový přepínač
+  // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === 'tests') return;
     const pruned = pruneEmptyQuestions();
@@ -483,8 +563,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     } catch {
       // i při chybě uložení umožníme přechod (alert je už zobrazen)
     }
-    if (step === 'content') goToCourseContent(courseId);
-    else goToCourseSummary(courseId);
+    goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
   const isLastModule = selectedModuleIndex >= modules.length - 1;
@@ -500,66 +579,77 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     }, 100);
   };
 
+  // Náhled pro studenta — rozpracované otázky přes uložená data modulů.
+  const previewModules = useMemo<PreviewModule[]>(
+    () => modules.map((module, index) => ({
+      ...module,
+      practiceQuestions: toPracticeQuestions(module.moduleId, moduleQuestions[index] || [], module.practiceQuestions),
+    })),
+    [modules, moduleQuestions],
+  );
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
   const commentsPanelInner = (
     <>
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-sm font-semibold text-black">
+      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+        <h2 className="text-sm font-semibold text-foreground">
           Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
         </h2>
-        <button
-          className="lg:hidden p-1 hover:bg-gray-100 rounded"
+        <Button
+          variant="plain"
+          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
           onClick={() => setMobileCommentsOpen(false)}
           aria-label="Zavřít komentáře"
         >
-          <X size={16} className="text-gray-600" />
-        </button>
+          <X size={16} className="text-muted-foreground" />
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {currentModuleFeedbacks.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">Žádné komentáře pro tento modul</p>
+          <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
         ) : (
           currentModuleFeedbacks.map(fb => (
-            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-green-200 bg-green-50/50' : 'border-gray-200'}`}>
+            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-success/30 bg-success/10/50' : 'border-border'}`}>
               <div className="px-3.5 py-2.5">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-semibold text-gray-800 text-xs">
+                  <span className="font-semibold text-foreground text-xs">
                     {fb.author.displayName ?? 'Uživatel'}
                   </span>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="plain"
                       onClick={() => handleToggleResolve(fb)}
                       disabled={resolvingFeedback === fb.feedbackId}
-                      className={`p-0.5 rounded transition-colors ${
+                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
                         fb.isResolved
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-gray-300 hover:text-green-500'
-                      }`}
+                          ? 'text-success hover:text-success'
+                          : 'text-muted-foreground hover:text-success'
+                      }`)}
                       title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
                     >
                       <CheckCircle size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {feedbackContextLabel(fb) && (
-                  <p className="text-[10px] text-purple-500 font-medium mb-1">{feedbackContextLabel(fb)}</p>
+                  <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
                 )}
 
-                <p className="text-gray-700 text-xs leading-relaxed">{fb.feedback}</p>
+                <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
               </div>
 
               {fb.reply && (
                 <div className="px-3.5 pb-2.5">
-                  <div className="ml-3 bg-purple-50 rounded-lg px-3 py-2">
+                  <div className="ml-3 bg-gradient-r/10 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <CornerDownRight size={10} className="text-purple-400" />
-                      <span className="text-[10px] text-purple-500 font-medium">Vaše odpověď</span>
+                      <CornerDownRight size={10} className="text-gradient-r" />
+                      <span className="text-[10px] text-gradient-r font-medium">Vaše odpověď</span>
                     </div>
-                    <p className="text-xs text-gray-700 leading-relaxed">{fb.reply}</p>
+                    <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
                   </div>
                 </div>
               )}
@@ -568,36 +658,39 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 <div className="px-3.5 pb-2.5">
                   {showReplyFor === fb.feedbackId ? (
                     <div>
-                      <textarea
+                      <Textarea
                         value={replyTexts[fb.feedbackId] ?? ''}
                         onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
                         rows={2}
                         placeholder="Napište odpověď..."
-                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-none"
+                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
                       />
                       <div className="flex gap-1 mt-1">
-                        <button
+                        <Button
+                          variant="brand-solid"
                           onClick={() => handleReply(fb.feedbackId)}
                           disabled={submittingReply === fb.feedbackId}
-                          className="flex-1 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
+                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
                         >
                           Odeslat
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="plain"
                           onClick={() => setShowReplyFor(null)}
-                          className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
                         >
                           Zrušit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <button
+                    <Button
+                      variant="plain"
                       onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className="text-xs text-purple-600 hover:underline flex items-center gap-0.5"
+                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
                     >
                       <CornerDownRight size={11} /> Odpovědět
-                    </button>
+                    </Button>
                   )}
                 </div>
               )}
@@ -606,13 +699,13 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         )}
       </div>
 
-      <div className="p-3 border-t border-gray-200 flex-shrink-0">
+      <div className="p-3 border-t border-border shrink-0">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">
+          <span className="text-muted-foreground">
             Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
           </span>
           {allResolved && (
-            <span className="text-green-600 font-medium flex items-center gap-1">
+            <span className="text-success font-medium flex items-center gap-1">
               <CheckCircle size={12} /> Vše vyřešeno
             </span>
           )}
@@ -622,34 +715,91 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   );
 
   // Outline items pro sidebar
-  const outlineItems = modules.map((module, index) => {
-    const questionsForModule = moduleQuestions[index] || [];
-    return {
-      id: index,
+  // Data pro Osnovu kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentovaný blok v JSX).
+  // const outlineItems = modules.map((module, index) => {
+  //   const questionsForModule = moduleQuestions[index] || [];
+  //   return {
+  //     id: index,
+  //     title: module.title,
+  //     isExpanded: expandedOutlineItems.has(index),
+  //     isSelected: selectedModuleIndex === index,
+  //     feedbackCount: feedbackCountByModule(module.moduleId),
+  //     subItems: questionsForModule.map((q, qIdx) => ({
+  //       id: `q-${index}-${q.id}`,
+  //       label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
+  //       questionIndex: qIdx,
+  //     })),
+  //   };
+  // });
+
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: questionCountHint(questions.length),
+  };
+
+  // Odkazy na otázky pod vybraným modulem v kartě (dřív v rozbalené osnově)
+  const questionLinks = (moduleIndex: number, onPicked?: () => void) => {
+    const moduleQs = moduleQuestions[moduleIndex] || [];
+    if (moduleQs.length === 0) return null;
+    return (
+      <ul className="mt-0.5 mb-1 ml-6 border-l border-border pl-1">
+        {moduleQs.map((q, qIndex) => (
+          <li key={q.id}>
+            <Button
+              variant="plain"
+              type="button"
+              onClick={() => {
+                scrollToQuestion(moduleIndex, qIndex);
+                onPicked?.();
+              }}
+              className={cn(BTN_KEEP_BOX, "h-auto w-full justify-start rounded px-2 py-1 text-left text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground")}
+            >
+              <span className="truncate">{qIndex + 1}. {q.question || 'Bez zadání'}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
+      id: module.moduleId,
       title: module.title,
-      isExpanded: expandedOutlineItems.has(index),
-      isSelected: selectedModuleIndex === index,
-      feedbackCount: feedbackCountByModule(module.moduleId),
-      subItems: questionsForModule.map((q, qIdx) => ({
-        id: `q-${index}-${q.id}`,
-        label: q.question ? (q.question.substring(0, 30) + (q.question.length > 30 ? '...' : '')) : `Otázka ${qIdx + 1}`,
-        questionIndex: qIdx,
-      })),
-    };
-  });
+      selected: index === selectedModuleIndex,
+      badge: feedbackCountByModule(module.moduleId),
+      onSelect: () => {
+        selectModule(index);
+        onPicked?.();
+      },
+      extra: questionLinks(index, onPicked),
+    }));
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-100">
+    <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
         breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
         title="Tvorba obsahu testu"
+        stepLabel={courseStepLabel('tests')}
         saveStatus={saveStatus}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
         commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
       />
-      <CourseStepNav current="tests" onNavigate={handleStepNavigate} />
+      {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
+      {/* <CourseStepNav current="tests" onNavigate={handleStepNavigate} /> */}
+      {previewOpen ? (
+        <StudentPreview
+          course={courseData ?? { title: courseTitle }}
+          modules={previewModules}
+          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      ) : (
+      <>
       <CourseCreationTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'rubric' ? (
@@ -660,29 +810,30 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <>
       {/* Resubmit banner */}
       {/* {isEdited && hasFeedbacks && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm text-amber-800">
+        <div className="bg-warning/10 border-b border-warning/30 px-6 py-2.5 flex items-center justify-between shrink-0">
+          <p className="text-sm text-warning">
             Kurz byl zamítnut — vyřešte komentáře a odešlete znovu ke kontrole.
           </p>
           {canResubmit && (
-            <button
+            <Button
+              variant="brand-solid"
               onClick={handleResubmit}
               disabled={resubmitLoading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
             >
               <ArrowUpCircle size={14} />
               {resubmitLoading ? 'Odesílání...' : 'Odeslat ke kontrole'}
-            </button>
+            </Button>
           )}
         </div>
       )} */}
 
       {validationErrors.length > 0 && (
-        <div className="mx-4 sm:mx-6 mt-2 bg-red-50 rounded-lg p-2">
-          <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+        <div className="mx-4 sm:mx-6 mt-2 bg-destructive/10 rounded-lg p-2">
+          <div className="flex items-center gap-2 text-destructive font-medium mb-2">
             <span>Opravte následující chyby:</span>
           </div>
-          <ul className="list-disc list-inside text-black text-sm space-y-1">
+          <ul className="list-disc list-inside text-foreground text-sm space-y-1">
             {validationErrors.map((err, idx) => (
               <li key={idx} className="cursor-pointer hover:underline" onClick={() => selectModule(err.moduleIndex)}>
                 <span className="font-medium">{err.moduleName}</span>, otázka {err.questionIndex + 1}: {err.message}
@@ -693,7 +844,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       )}
 
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
-        {/* Left Sidebar - Course Outline (desktop) */}
+        {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
+        {!focusMode && (
+          <CourseStepsCard current="tests" onNavigate={handleStepNavigate} hints={stepHints}>
+            <StepModuleList items={stepModuleItems()} />
+          </CourseStepsCard>
+        )}
+
+        {/* Left Sidebar - Course Outline (desktop) — nahrazeno kartou „Tvorba kurzu“
         <CourseOutlineSidebar
           items={outlineItems}
           onToggle={(index) => {
@@ -710,7 +868,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                 {subItems.map((subItem) => (
                   <div
                     key={subItem.id}
-                    className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       scrollToQuestion(index, subItem.questionIndex);
@@ -723,14 +881,22 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             );
           }}
         />
+        */}
 
-        {/* Mobile Outline Drawer */}
-        {mobileOutlineOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOutlineOpen(false)} />
-            <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-              <CourseOutlineSidebar
-                className="flex w-full flex-1 flex-col bg-white overflow-hidden"
+        {/* Mobile Outline Drawer — kitový Drawer řeší overlay i stacking */}
+        <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="tests"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileOutlineOpen(false)}
+            >
+              <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />
+            </CourseStepsCard>
+            {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
+            <CourseOutlineSidebar
+                className="flex w-full flex-1 flex-col bg-card overflow-hidden"
                 items={outlineItems}
                 onClose={() => setMobileOutlineOpen(false)}
                 onToggle={(index) => {
@@ -750,7 +916,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                       {subItems.map((subItem) => (
                         <div
                           key={subItem.id}
-                          className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                          className="flex items-center gap-1.5 pl-8 pr-4 py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             scrollToQuestion(index, subItem.questionIndex);
@@ -763,43 +929,43 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                     </div>
                   );
                 }}
-              />
-            </div>
-          </div>
-        )}
+            />
+            */}
+          </DrawerContent>
+        </Drawer>
 
         {/* Center Content - Test Editor */}
-        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-black">Úprava testu</h2>
+        <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
+          <div className="p-4 border-b border-border">
+            <h2 className="font-semibold text-foreground">Úprava testu</h2>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
             {questions.map((question, qIndex) => (
-              <div key={question.id} id={`question-${selectedModuleIndex}-${qIndex}`} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+              <div key={question.id} id={`question-${selectedModuleIndex}-${qIndex}`} className="border border-border rounded-lg p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                   <div className="flex-1 min-w-0">
-                    <label className="block text-sm font-semibold text-black mb-2">Otázka {qIndex + 1}</label>
-                    <input
+                    <label className="block text-sm font-semibold text-foreground mb-2">Otázka {qIndex + 1}</label>
+                    <Input
                       type="text"
                       value={question.question}
                       onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm"
+                      className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
                       placeholder="Zadejte otázku..."
                     />
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
-                    <select
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <FilterSelect
                       value={question.type}
-                      onChange={(e) => updateQuestion(question.id, 'type', e.target.value as 'closed' | 'open')}
-                      className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black text-sm bg-white"
-                    >
-                      <option value="closed">Uzavřená</option>
-                      <option value="open">Otevřená</option>
-                    </select>
-                    <button onClick={() => removeQuestion(question.id)} className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0">
+                      onChange={(next) => updateQuestion(question.id, 'type', next as 'closed' | 'open')}
+                      placeholder="Typ otázky"
+                      includeEmpty={false}
+                      options={QUESTION_TYPE_OPTIONS}
+                      className="flex-1 sm:flex-none data-[size=default]:h-auto px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm bg-card"
+                    />
+                    <Button variant="ghost-destructive" onClick={() => removeQuestion(question.id)} className={cn(BTN_KEEP_BOX, "p-2 rounded transition-colors shrink-0")}>
                       <Trash2 size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -807,26 +973,27 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   <div className="space-y-2 ml-4">
                     {question.options.map((option) => (
                       <div key={option.id} className="flex items-center gap-3">
-                        <button
+                        <Button
+                          variant="plain"
                           type="button"
                           role="radio"
                           aria-checked={option.isCorrect}
                           aria-label={option.isCorrect ? 'Správná odpověď' : 'Označit jako správnou odpověď'}
                           title="Označit jako správnou odpověď"
                           onClick={() => setCorrectOption(question.id, option.id)}
-                          className={`w-4 h-4 rounded-full flex-shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-purple-600 border-2 border-purple-600' : 'border-2 border-gray-300 hover:border-purple-400'}`}
+                          className={cn(BTN_KEEP_BOX, `size-4 rounded-full shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-gradient-r border-2 border-gradient-r' : 'border-2 border-border hover:border-gradient-r/30'}`)}
                         />
-                        <input
+                        <Input
                           type="text"
                           value={option.text}
                           onChange={(e) => updateOption(question.id, option.id, e.target.value)}
-                          className="flex-1 px-3 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-black text-sm"
+                          className={cn("h-auto", "flex-1 px-3 py-1.5 border border-border rounded focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm")}
                           placeholder="Možnost odpovědi..."
                         />
                       </div>
                     ))}
                     {question.correctAnswer && (
-                      <p className="mt-3 ml-1 text-xs text-green-600">
+                      <p className="mt-3 ml-1 text-xs text-success">
                         <span className="font-semibold">Správná odpověď:</span> {question.correctAnswer}
                       </p>
                     )}
@@ -835,11 +1002,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
 
                 {question.type === 'open' && (
                   <div className="ml-4">
-                    <label className="block text-xs text-gray-500 mb-1">Příklad odpovědi</label>
-                    <textarea
+                    <label className="block text-xs text-muted-foreground mb-1">Příklad odpovědi</label>
+                    <Textarea
                       value={question.exampleAnswer || ''}
                       onChange={(e) => updateQuestion(question.id, 'exampleAnswer', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 text-black text-sm resize-none"
+                      className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm resize-none")}
                       rows={2}
                       placeholder="Zadejte příklad správné odpovědi..."
                     />
@@ -848,56 +1015,60 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
               </div>
             ))}
 
-            <button
+            <Button
+              variant="dashed"
               onClick={addQuestion}
-              className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors text-gray-600 hover:text-purple-600 w-full justify-center"
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors w-full justify-center")}
             >
               <Plus size={16} />
               <span className="text-sm">Přidat otázku</span>
-            </button>
+            </Button>
           </div>
 
-          <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-white">
-            <button type="button" onClick={handleBack} className="text-gray-600 hover:text-gray-800 transition-colors text-sm font-medium px-2">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-card">
+            <Button variant="plain" type="button" onClick={handleBack} className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground transition-colors text-sm font-medium px-2")}>
               Zpět
-            </button>
+            </Button>
             <div className="flex items-center gap-2 sm:gap-3">
               {!isLastModule && (
-                <button
+                <Button
+                  variant="brand-solid"
                   onClick={handleNextModule}
-                  className="flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm bg-purple-600 text-white hover:bg-purple-700"
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
                 >
                   <span className="hidden sm:inline">Uložit a pokračovat na modul {selectedModuleIndex + 2}</span>
                   <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="default"
                 onClick={handleFinish}
-                className="flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm bg-green-600 text-white hover:bg-green-700"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
               >
                 <span>Dokončit</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && (
-          <div className="hidden lg:flex w-72 flex-shrink-0 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex-col">
+        {showCommentsPanel && !focusMode && (
+          <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
             {commentsPanelInner}
           </div>
         )}
 
         {/* Mobile Comments Drawer */}
-        {showCommentsPanel && mobileCommentsOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileCommentsOpen(false)} />
-            <div className="relative w-80 max-w-[85%] bg-white shadow-xl flex flex-col">
+        {showCommentsPanel && (
+          <Drawer open={mobileCommentsOpen} onOpenChange={setMobileCommentsOpen} swipeDirection="right">
+            <DrawerContent className="lg:hidden" aria-label="Komentáře ke kurzu">
               {commentsPanelInner}
-            </div>
-          </div>
+            </DrawerContent>
+          </Drawer>
         )}
       </div>
+      </>
+      )}
       </>
       )}
     </div>

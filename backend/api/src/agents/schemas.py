@@ -41,6 +41,42 @@ class GenerateEmbeddingsResponse(BaseModel):
     )
 
 
+class GenerateImageResponse(BaseModel):
+    """Response po vygenerování obrázku a jeho uložení do SeaweedFS"""
+
+    image_spec: dict = Field(..., description="Proměnné části obrázku vybrané LLM")
+    image_prompt: str = Field(..., description="Finální prompt poslaný image modelu")
+    model_name: str = Field(
+        ...,
+        description="Image model použitý pro generování (system_setting „image_generator_model“)",
+    )
+    latency_ms: int = Field(..., description="Doba generování obrázku v ms")
+    file_path: str = Field(
+        ...,
+        description="Cesta obrázku v SeaweedFS (např. „course-images/42/cover.png“)",
+    )
+
+
+class ImageGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování obrázku kurzu / modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GenerateImageResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
+class ActiveImageGeneration(BaseModel):
+    """Právě běžící generování obrázku (pro obnovení sledování po refreshi stránky)."""
+
+    kind: str = Field(..., description="course | module")
+    entity_id: int = Field(..., description="course_id, resp. module_id")
+
+
 class GenerateAssessmentRequest(BaseModel):
     """Request pro generování assessment otázky"""
 
@@ -111,6 +147,13 @@ class EvaluatePracticeAnswerResponse(BaseModel):
     )
 
 
+class EvaluateOpenQuestionRequest(BaseModel):
+    """Request pro vyhodnocení odpovědi na otevřenou otázku modulu (nic se neukládá)"""
+
+    question_id: int = Field(..., description="ID otevřené PracticeQuestion")
+    user_input: str = Field(..., min_length=1, description="Odpověď studenta")
+
+
 class PracticeAttempt(BaseModel):
     """Jeden pokus na procvičovací otázku"""
 
@@ -148,7 +191,13 @@ class LearnBlocksChatResponse(BaseModel):
 class WikiChatRequest(BaseModel):
     """Request pro chat nad projektovou wiki"""
 
-    message: str = Field(..., description="Zpráva od uživatele (otázka o projektu)")
+    # Endpoint je veřejný
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Zpráva od uživatele (otázka o projektu)",
+    )
 
 
 class WikiChatResponse(BaseModel):

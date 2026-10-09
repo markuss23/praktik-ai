@@ -3,6 +3,8 @@ name: Check Frontend Audit
 on:
   push:
     branches: [dev]
+  pull_request:
+    branches: [dev, main]
 
 jobs:
     build:
@@ -23,3 +25,16 @@ jobs:
           - name: Audit production dependencies
             working-directory: ./frontend
             run: npm audit --omit=dev --audit-level=high
+
+          # Pozn.: `tsc --noEmit` ani `next build` tu zatím běžet nemůžou.
+          # Klient v `frontend/src/api/` se generuje z běžícího backendu
+          # (`npm run generate:openapi`) a je v .gitignore, takže v CI chybí
+          # a typová kontrola by spadla na `Cannot find module '@/api'`.
+          # Aby šly zapnout, musel by se generovaný klient buď commitovat,
+          # nebo generovat v pipeline proti nastartovanému backendu.
+
+          # Warnings zatím jen reportovat.
+          - name: Lint
+            working-directory: ./frontend
+            run: npx eslint
+            continue-on-error: true

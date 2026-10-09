@@ -1,0 +1,43 @@
+from sqlalchemy.orm import Session
+
+from agents.image_generator.course.load_context import load_course_context_node
+from agents.image_generator.course.prompts import (
+    DEFAULT_PROMPT,
+    SETTING_KEY,
+    render_user_prompt,
+)
+from agents.image_generator.course.state import CourseImageGeneratorState
+from agents.image_generator.graph import create_image_graph
+from agents.image_generator.nodes import make_build_prompt_node
+from agents.image_generator.service import BaseImageGeneratorService
+
+LABEL = "kurzu"
+
+
+def create_graph():
+    """Vytváří graf uzlů pro generování coveru kurzu."""
+    return create_image_graph(
+        state_schema=CourseImageGeneratorState,
+        load_context_node=load_course_context_node,
+        build_prompt_node=make_build_prompt_node(
+            setting_key=SETTING_KEY,
+            default_prompt=DEFAULT_PROMPT,
+            render_user_prompt=render_user_prompt,
+            label=LABEL,
+        ),
+        label=LABEL,
+    )
+
+
+class CourseImageGeneratorService(BaseImageGeneratorService):
+    """Service pro generování coveru kurzu pomocí LangGraph."""
+
+    def __init__(self, db: Session, course_id: int, progress_key: str | None = None):
+        super().__init__(db, progress_key)
+        self.course_id = course_id
+
+    def _create_graph(self):
+        return create_graph()
+
+    def _initial_state(self) -> dict:
+        return {"course_id": self.course_id}

@@ -1,29 +1,67 @@
+from datetime import datetime
+
 from pydantic import Field, model_validator
 
 from api.src.modules.schemas import Module
 from api.src.common.schemas import ORMModel
 from api.enums import Difficulty, Status
-from api.src.catalogs.schemas import CourseBlock, CourseTarget, CourseSubject
+from api.src.catalogs.schemas import (
+    CourseBlock,
+    CourseEqfLevel,
+    CourseLevel,
+    CourseRequirement,
+    CourseTarget,
+    CourseSubject,
+    CourseType,
+    KrauuCompetence,
+    BloomLevel,
+    CrossSubject,
+)
 
 
 class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
-    course_block_id: int
-    course_target_id: int
+    course_block_id: int | None = None
+    course_target_id: int | None = None
     course_subject_id: int | None = None
+    course_requirement_id: int | None = None
+    course_eqf_level_id: int
+    course_level_id: int | None = None
+    course_type_id: int
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
     duration_minutes: int | None = Field(default=None, ge=1)
     # Doporučená obtížnost — default mírně pokročilý.
     difficulty: Difficulty = Field(default=Difficulty.slightly_advanced)
 
 
+BLOOM_IDS_FIELD = Field(
+    min_length=1,
+    description="ID Bloomových úrovní (lze vybrat více, alespoň jedna)",
+)
+
+KRAUU_IDS_FIELD = Field(
+    min_length=1,
+    description="ID KRAUU kompetencí (lze vybrat více, alespoň jedna; oblasti vybírat nelze)",
+)
+
+
+CROSS_SUBJECT_IDS_FIELD = Field(
+    default=[],
+    description="ID průřezových oborů (1–3; povinné pro Bloky A a B, jinak volitelné)",
+)
+
+
 class CourseCreate(CourseBase):
-    pass
+    cross_subject_ids: list[int] = CROSS_SUBJECT_IDS_FIELD
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class CourseUpdate(CourseBase):
-    pass
+    cross_subject_ids: list[int] = CROSS_SUBJECT_IDS_FIELD
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class CourseFile(ORMModel):
@@ -55,9 +93,13 @@ class CourseCreated(ORMModel):
     owner_id: int
     is_published: bool
     status: Status
-    course_block: CourseBlock
-    course_target: CourseTarget
-    course_subject: CourseSubject
+    course_block: CourseBlock | None = None
+    course_target: CourseTarget | None = None
+    course_subject: CourseSubject | None = None
+    course_requirement: CourseRequirement | None = None
+    course_eqf_level: CourseEqfLevel
+    course_level: CourseLevel | None = None
+    course_type: CourseType
 
 
 class Course(CourseBase):
@@ -69,6 +111,9 @@ class Course(CourseBase):
     status: Status
     modules_count: int = 0
     enrollments_count: int = 0
+    # Časové značky pro řazení v administraci („nejnovější", „naposledy upravené").
+    created_at: datetime
+    updated_at: datetime
 
     # modules: list[Module] = []
     files: list[CourseFile] = []
@@ -76,6 +121,19 @@ class Course(CourseBase):
     course_block: CourseBlock | None = None
     course_target: CourseTarget | None = None
     course_subject: CourseSubject | None = None
+    course_requirement: CourseRequirement | None = None
+    course_eqf_level: CourseEqfLevel
+    course_level: CourseLevel | None = None
+    course_type: CourseType
+    krauu_competences: list[KrauuCompetence] = Field(
+        default=[], validation_alias="krauu_competence_list"
+    )
+    bloom_levels: list[BloomLevel] = Field(
+        default=[], validation_alias="bloom_level_list"
+    )
+    cross_subjects: list[CrossSubject] = Field(
+        default=[], validation_alias="cross_subject_list"
+    )
 
     @model_validator(mode="before")
     @classmethod

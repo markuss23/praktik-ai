@@ -3,6 +3,8 @@
 import subprocess
 from pathlib import Path
 
+from api.config import settings
+
 from agents.wiki.agent.state import WikiAgentState
 
 
@@ -54,8 +56,8 @@ def clone_or_pull_wiki_node(state: WikiAgentState) -> WikiAgentState:
 
 if __name__ == "__main__":
     # Ruční test: spusť "python -m agents.wiki.agent.nodes.clone_or_pull_wiki" z backend/ složky.
-    test_repo_url = "https://github.com/markuss23/praktik-ai.wiki.git"
-    test_local_path = "agents/wiki/agent/data/praktik-ai.wiki"
+    test_repo_url = settings.wiki.repo_url
+    test_local_path = settings.wiki.local_path
 
     result_path = clone_or_pull_wiki(test_repo_url, test_local_path)
 

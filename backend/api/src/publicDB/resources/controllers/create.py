@@ -8,6 +8,12 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.authorization import validate_owner_or_superadmin
+from api.src.catalogs.controllers import (
+    sync_bloom_levels,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404
 from api.src.publicDB.resources.schemas import (
     PubResourceCreate,
@@ -65,11 +71,76 @@ def create_resource(
             status_code=409, detail="Materiál s tímto názvem již existuje"
         )
 
-    resource_data = data.model_dump()
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == data.eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="EQF úroveň s tímto ID neexistuje")
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
+    if (
+        data.block_id is not None
+        and db.execute(
+            select(models.CourseBlock).where(
+                models.CourseBlock.block_id == data.block_id,
+                models.CourseBlock.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Tematický blok s tímto ID neexistuje"
+        )
+
+    if (
+        data.level_id is not None
+        and db.execute(
+            select(models.CourseLevel).where(
+                models.CourseLevel.level_id == data.level_id,
+                models.CourseLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
+
+    validate_krauu_competence_ids(db, data.krauu_competence_ids)
+    validate_bloom_level_ids(db, data.bloom_level_ids)
+
+    resource_data = data.model_dump(exclude={"krauu_competence_ids", "bloom_level_ids"})
     resource = models.PubResource(**resource_data, author_id=user.user_id)
     db.add(resource)
     db.flush()
 
+    sync_krauu_competences(
+        db,
+        models.PubResourceKrauuCompetence,
+        "resource_id",
+        resource.resource_id,
+        data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.PubResourceBloomLevel,
+        "resource_id",
+        resource.resource_id,
+        data.bloom_level_ids,
+    )
     db.commit()
     db.refresh(resource)
 
@@ -189,6 +260,10 @@ def create_resource_fork(
     resource_data["target_id"] = original.target_id
     resource_data["education_level"] = original.education_level
     resource_data["difficulty_level"] = original.difficulty_level
+    resource_data["eqf_level_id"] = original.eqf_level_id
+    resource_data["course_type_id"] = original.course_type_id
+    resource_data["block_id"] = original.block_id
+    resource_data["level_id"] = original.level_id
 
     forked = models.PubResource(
         **resource_data,
@@ -198,6 +273,21 @@ def create_resource_fork(
     )
     db.add(forked)
     db.flush()
+
+    sync_krauu_competences(
+        db,
+        models.PubResourceKrauuCompetence,
+        "resource_id",
+        forked.resource_id,
+        [link.krauu_id for link in original.krauu_competences],
+    )
+    sync_bloom_levels(
+        db,
+        models.PubResourceBloomLevel,
+        "resource_id",
+        forked.resource_id,
+        [link.bloom_id for link in original.bloom_levels],
+    )
 
     fork_record = models.PubResourceFork(
         original_id=resource_id,

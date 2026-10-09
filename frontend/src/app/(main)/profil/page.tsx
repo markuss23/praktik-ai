@@ -9,14 +9,15 @@ import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
-import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
+import { ProfileTicketsCard, useSupportChat } from '@/components/tickets';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getMyEnrollments } from '@/lib/api-client';
 import { MyEnrollment } from '@/api';
-import { ProfileSkeleton } from '@/components/ui';
+import { ProfileSkeleton, ProfileStatsSkeleton, ProfileCoursesSkeleton, Button } from '@/components/ui';
 import { motion } from 'motion/react';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 function computeBadges(enrollments: MyEnrollment[]): Badge[] {
   const badges: Badge[] = [];
@@ -74,7 +75,7 @@ export default function ProfilPage() {
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState<string | undefined>(undefined);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [sidebarTicket, setSidebarTicket] = useState<Ticket | null>(null);
+  const { openSupportChat } = useSupportChat();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -188,9 +189,9 @@ export default function ProfilPage() {
       : 0;
 
     return [
-      { label: 'Splněné moduly', percentage: modulePct, color: 'bg-green-500' },
-      { label: 'Odevzdané úkoly', percentage: completionPct, color: 'bg-yellow-400' },
-      { label: 'Kvízové skóre', percentage: avgScore, color: 'bg-orange-400' },
+      { label: 'Splněné moduly', percentage: modulePct, color: 'bg-primary' },
+      { label: 'Odevzdané úkoly', percentage: completionPct, color: 'bg-warning' },
+      { label: 'Kvízové skóre', percentage: avgScore, color: 'bg-brand-accent' },
     ];
   }, [enrollments]);
 
@@ -211,12 +212,12 @@ export default function ProfilPage() {
       style={{ maxWidth: '1440px', width: '100%', margin: '0 auto' }}
     >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-gray-700 transition-colors">
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
+        <Link href="/" className="hover:text-foreground transition-colors">
           Home
         </Link>
-        <span className="text-gray-400">/</span>
-        <span className="text-gray-700 font-medium">Profil</span>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-medium">Profil</span>
       </nav>
 
       {/* Main layout */}
@@ -226,7 +227,7 @@ export default function ProfilPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col gap-5 w-full lg:w-[320px] flex-shrink-0"
+          className="flex flex-col gap-5 w-full lg:w-[320px] shrink-0"
         >
           <ProfileCard
             name={displayName ?? currentUser?.displayName ?? user?.name ?? user?.preferred_username ?? 'Uživatel'}
@@ -236,25 +237,23 @@ export default function ProfilPage() {
             onEditClick={() => setEditModalOpen(true)}
           />
 
-          <button
+          <Button
+            variant="plain"
             onClick={() => setAiModalOpen(true)}
-            className="w-full bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left"
+            className={cn(BTN_KEEP_BOX, "w-full bg-card rounded-xl shadow-sm p-4 flex items-center gap-3 hover:shadow-md transition-shadow text-left")}
           >
             <div>
-              <p className="text-sm font-semibold text-gray-900">AI Nastavení</p>
-              <p className="text-xs text-gray-500">Tón a vyjadřování</p>
+              <p className="text-sm font-semibold text-foreground">AI Nastavení</p>
+              <p className="text-xs text-muted-foreground">Tón a vyjadřování</p>
             </div>
-          </button>
+          </Button>
 
           <ProfileProgressCard items={progressItems} />
 
+          {/* AI chat nad wiki + konverzace vybraného tiketu */}
           <ProfileTicketsCard
-            onTicketDetail={setSidebarTicket}
-            onTicketDeleted={(deleted) =>
-              setSidebarTicket((current) =>
-                current?.ticketId === deleted.ticketId ? null : current,
-              )
-            }
+            onTicketDetail={openSupportChat}
+            onOpenHelp={() => openSupportChat()}
           />
 
           <ProfileBadgesCard badges={badges} />
@@ -262,16 +261,16 @@ export default function ProfilPage() {
 
         {/* Right column */}
         <div className="flex-1 w-full flex flex-col gap-5">
-          {/* Stats grid */}
-          {!enrollmentsLoading && (
+          {/* Stats grid — skeleton drží stejnou výšku, aby sloupec neposkočil */}
+          {enrollmentsLoading ? (
+            <ProfileStatsSkeleton />
+          ) : (
             <ProfileStatsGrid stats={stats.items} />
           )}
 
           {/* Modules sections */}
           {enrollmentsLoading ? (
-            <div className="bg-white rounded-xl shadow-sm p-8 flex items-center justify-center">
-              <p className="text-sm text-gray-500">Načítání kurzů...</p>
-            </div>
+            <ProfileCoursesSkeleton />
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -283,9 +282,6 @@ export default function ProfilPage() {
           )}
         </div>
       </div>
-
-      {/* Chat sidebar s konverzací tiketu */}
-      <TicketsSidebar ticket={sidebarTicket} onClose={() => setSidebarTicket(null)} />
 
       {/* Edit profile modal */}
       {(() => {

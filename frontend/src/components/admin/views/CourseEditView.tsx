@@ -3,13 +3,25 @@
 import { useState, useEffect } from 'react';
 import { Module } from '@/api';
 import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
-import { Course as CourseType } from '@/api';
+import { Course } from '@/api';
+import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
+import {
+  courseCategoryValues, crossSubjectsRule, subjectAllowed, moduleCategoryValues, moduleToUpdate,
+  validateCourseCategories, type CourseCategoryValues,
+} from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
 import { ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { LoadingState, ErrorState, DeleteConfirmModal } from '@/components/admin';
+import {
+  LoadingState, ErrorState, CoursePageHeader, CourseStepsCard, courseStepLabel, moduleCountHint,
+  useCourseStepNavigation, useAdminChrome, type CourseStep,
+} from '@/components/admin';
+import { StudentPreview } from '@/components/admin/StudentPreview';
+import { CatalogSelect, ConfirmModal, Button, Drawer, DrawerContent, Input, Textarea } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRole } from '@/hooks/useRole';
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 
 interface CourseEditViewProps {
   courseId: number;
@@ -18,7 +30,10 @@ interface CourseEditViewProps {
 // Formulář pro editaci kurzu a jeho modulů
 export function CourseEditView({ courseId }: CourseEditViewProps) {
   const { goToCourses, goBack, goToModuleEdit } = useAdminNavigation();
-  const { blocks, targets, subjects, loading: catalogsLoading } = useCatalogData();
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading,
+  } = useCatalogData();
   const { isOwner } = useCurrentUser();
   const { isSuperAdmin } = useRole();
 
@@ -27,18 +42,37 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [courseData, setCourseData] = useState<CourseType | null>(null);
+  const [courseData, setCourseData] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [editingModule, setEditingModule] = useState<number | null>(null);
   const [editModuleData, setEditModuleData] = useState({ title: '' });
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
+  const { focusMode } = useAdminChrome();
+  const goToStep = useCourseStepNavigation(courseId);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    courseBlockId: number;
+    courseTargetId: number;
+    courseSubjectId: number;
+    courseRequirementId: number;
+    courseEqfLevelId: number;
+    courseTypeId: number;
+  } & CourseCategoryValues>({
     title: '',
     description: '',
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
+    krauuCompetenceIds: [],
+    bloomLevelIds: [],
+    crossSubjectIds: [],
   });
 
   useEffect(() => {
@@ -53,6 +87,10 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
           courseBlockId: course.courseBlockId ?? 0,
           courseTargetId: course.courseTargetId ?? 0,
           courseSubjectId: course.courseSubjectId ?? 0,
+          courseRequirementId: course.courseRequirementId ?? 0,
+          courseEqfLevelId: course.courseEqfLevelId ?? 0,
+          courseTypeId: course.courseTypeId ?? 0,
+          ...courseCategoryValues(course),
         });
       } catch (err) {
         console.error('Failed to load course:', err);
@@ -66,6 +104,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   // Ownership guard: only owner or superadmin can edit
   const canEdit = courseData ? (isSuperAdmin || isOwner(courseData.ownerId)) : false;
+
+  const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
   const toggleModule = (moduleId: number) => {
     setExpandedModules(prev => {
@@ -88,19 +128,33 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
   const saveModuleEdit = async (module: Module) => {
     try {
-      await updateModule(module.moduleId, { title: editModuleData.title });
+      await updateModule(
+        module.moduleId,
+        moduleToUpdate(
+          module,
+          moduleCategoryValues(module, courseData, neuroPrinciples),
+          { title: editModuleData.title },
+        ),
+      );
       setModules(prev => prev.map(m =>
         m.moduleId === module.moduleId ? { ...m, title: editModuleData.title } : m
       ));
       setEditingModule(null);
     } catch (err) {
-      setError('Nepodařilo se uložit modul');
+      setError((await readApiErrorDetail(err)) ?? 'Nepodařilo se uložit modul');
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canEdit) return;
+  // Uložení kurzu; true = uloženo. Používá ho formulář i přechod na další
+  // krok v kartě „Tvorba kurzu".
+  const saveCourse = async (): Promise<boolean> => {
+    if (!canEdit) return false;
+
+    const categoryError = validateCourseCategories(formData, crossRule);
+    if (categoryError) {
+      setError(categoryError);
+      return false;
+    }
 
     setLoading(true);
     setError('');
@@ -111,18 +165,36 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         courseUpdate: {
           title: formData.title,
           description: formData.description || undefined,
-          courseBlockId: formData.courseBlockId,
-          courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId,
+          // 0 = „Neurčeno“; null hodnotu na backendu vymaže.
+          courseBlockId: formData.courseBlockId || null,
+          courseTargetId: formData.courseTargetId || null,
+          courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
+          courseRequirementId: formData.courseRequirementId || null,
+          courseEqfLevelId: formData.courseEqfLevelId,
+          courseTypeId: formData.courseTypeId,
+          krauuCompetenceIds: formData.krauuCompetenceIds,
+          bloomLevelIds: formData.bloomLevelIds,
+          crossSubjectIds: formData.crossSubjectIds,
         },
       });
-      goToCourses();
+      return true;
     } catch (err) {
       console.error('Update error:', err);
-      setError(err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz');
+      setError((await readApiErrorDetail(err)) ?? (err instanceof Error ? err.message : 'Nepodařilo se aktualizovat kurz'));
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await saveCourse()) goToCourses();
+  };
+
+  const handleStepNavigate = async (step: CourseStep) => {
+    if (step === 'description') return;
+    if (await saveCourse()) goToStep(step);
   };
 
   const handleDelete = async () => {
@@ -146,47 +218,97 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   if (courseData && !canEdit) {
     return (
       <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
           Nemáte oprávnění editovat tento kurz. Editovat může pouze vlastník kurzu nebo superadmin.
         </div>
-        <button onClick={goBack} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+        <Button variant="plain" onClick={goBack} className={cn(BTN_KEEP_BOX, "mt-4 px-4 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80")}>
           Zpět
-        </button>
+        </Button>
       </div>
     );
   }
 
+  const totalQuestions = modules.reduce((total, m) => total + (m.practiceQuestions?.length ?? 0), 0);
+  const stepHints = {
+    content: moduleCountHint(modules.length),
+    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+  };
+
+  // Náhled pro studenta — stránka kurzu s rozpracovaným názvem, popisem a zařazením
+  const previewCourse = {
+    title: formData.title,
+    description: formData.description,
+    krauuCompetences: krauuCompetences.filter((k) => formData.krauuCompetenceIds.includes(k.krauuId)),
+    bloomLevels: bloomLevels.filter((b) => formData.bloomLevelIds.includes(b.bloomId)),
+    crossSubjects: crossSubjects.filter((c) => formData.crossSubjectIds.includes(c.crossId)),
+  };
+
   return (
-    <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-black">Editovat kurz</h1>
+    <div className="flex-1 flex flex-col h-full bg-muted">
+      <CoursePageHeader
+        breadcrumb={`Kurzy / ${courseData?.title ?? formData.title} / Popis kurzu`}
+        title="Popis kurzu"
+        stepLabel={courseStepLabel('description')}
+        preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
+        showFullscreenToggle
+        showButtons
+        onMenuClick={() => setMobileStepsOpen(true)}
+      />
+
+      {previewOpen ? (
+        <StudentPreview
+          course={previewCourse}
+          modules={modules}
+          start={{ screen: 'course' }}
+          onExit={() => setPreviewOpen(false)}
+        />
+      ) : (
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
+        {!focusMode && (
+          <CourseStepsCard current="description" onNavigate={handleStepNavigate} hints={stepHints} />
+        )}
+
+        <Drawer open={mobileStepsOpen} onOpenChange={setMobileStepsOpen} swipeDirection="left">
+          <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
+            <CourseStepsCard
+              current="description"
+              onNavigate={handleStepNavigate}
+              hints={stepHints}
+              onClose={() => setMobileStepsOpen(false)}
+            />
+          </DrawerContent>
+        </Drawer>
+
+      <div className="flex-1 min-w-0 min-h-0 lg:overflow-y-auto">
+      {/* Nadpis „Editovat kurz“ nahradila hlavička kroku „Popis kurzu“ */}
 
       {error && (
-        <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+        <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-white p-4 sm:p-6 rounded-lg shadow">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 bg-card p-4 sm:p-6 rounded-lg shadow">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">Název kurzu *</label>
-          <input
+          <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">Název kurzu *</label>
+          <Input
             type="text"
             id="title"
             required
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
+            className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
             placeholder="např. Kurz promptování - začátečníci"
           />
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">Popis kurzu</label>
-          <textarea
+          <label htmlFor="description" className="block text-sm font-medium text-foreground mb-2">Popis kurzu</label>
+          <Textarea
             id="description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm sm:text-base"
+            className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm sm:text-base")}
             placeholder="Stručný popis kurzu..."
             rows={4}
           />
@@ -196,101 +318,145 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         {!catalogsLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Blok</label>
-              <select
+              <label className="block text-sm font-medium text-foreground mb-2">Blok</label>
+              <CatalogSelect
                 value={formData.courseBlockId}
-                onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
-              >
-                {blocks.map((b) => (
-                  <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                ))}
-              </select>
+                onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
+                options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                emptyLabel="Neurčeno"
+                aria-label="Blok"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cílová skupina</label>
-              <select
+              <label className="block text-sm font-medium text-foreground mb-2">Cílová skupina</label>
+              <CatalogSelect
                 value={formData.courseTargetId}
-                onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
-              >
-                {targets.map((t) => (
-                  <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                ))}
-              </select>
+                onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
+                options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                emptyLabel="Neurčeno"
+                aria-label="Cílová skupina"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Předmět</label>
-              <select
-                value={formData.courseSubjectId}
-                onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black text-sm bg-white"
-              >
-                {subjects.map((s) => (
-                  <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-foreground mb-2">Předmět</label>
+              <CatalogSelect
+                value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
+                onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                disabled={!subjectAllowed(blocks, formData.courseBlockId)}
+                options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                emptyLabel="Neurčeno"
+                aria-label="Předmět"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">EQF úroveň *</label>
+              <CatalogSelect
+                value={formData.courseEqfLevelId}
+                onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
+                options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                aria-label="EQF úroveň"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Typ kurzu *</label>
+              <CatalogSelect
+                value={formData.courseTypeId}
+                onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
+                options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                aria-label="Typ kurzu"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Povinnost kurzu</label>
+              <CatalogSelect
+                value={formData.courseRequirementId}
+                onValueChange={(next) => setFormData({ ...formData, courseRequirementId: next })}
+                options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                emptyLabel="Neurčeno"
+                aria-label="Povinnost kurzu"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+              />
             </div>
           </div>
+        )}
+
+        {!catalogsLoading && (
+          <CourseCategoryFields
+            values={formData}
+            onChange={(next) => setFormData({ ...formData, ...next })}
+            krauuCompetences={krauuCompetences}
+            bloomLevels={bloomLevels}
+            crossSubjects={crossSubjects}
+            crossRule={crossRule}
+            // Starší kurzy tyto kategorie nemají — rovnou ukážeme, co je třeba doplnit.
+            showErrors
+            labelClassName="block text-sm font-medium text-foreground mb-2"
+            triggerClassName="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-tip/30 text-foreground text-sm bg-card data-[size=default]:h-auto"
+          />
         )}
 
         {/* Modules Section */}
         {modules.length > 0 && (
           <div className="pt-4 border-t">
-            <h2 className="text-lg font-semibold text-black mb-4">Moduly kurzu ({modules.length})</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Moduly kurzu ({modules.length})</h2>
             <div className="space-y-3">
               {modules.map((module, index) => (
-                <div key={module.moduleId} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={module.moduleId} className="border border-border rounded-lg overflow-hidden">
                   <div
-                    className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted"
                     onClick={() => toggleModule(module.moduleId)}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                       {editingModule === module.moduleId ? (
-                        <input
+                        <Input
                           type="text"
                           value={editModuleData.title}
                           onChange={(e) => setEditModuleData({ title: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="px-2 py-1 border border-gray-300 rounded text-black text-sm"
+                          className={cn("h-auto", "px-2 py-1 border border-border rounded text-foreground text-sm")}
                         />
                       ) : (
-                        <span className="font-medium text-black">{module.title}</span>
+                        <span className="font-medium text-foreground">{module.title}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       {editingModule === module.moduleId ? (
                         <>
-                          <button onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                          <Button variant="plain" onClick={(e) => { e.stopPropagation(); saveModuleEdit(module); }} className={cn(BTN_KEEP_BOX, "p-1 text-success hover:bg-success/20 rounded")}>
                             <Save size={16} />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                          </Button>
+                          <Button variant="plain" onClick={(e) => { e.stopPropagation(); cancelEditingModule(); }} className={cn(BTN_KEEP_BOX, "p-1 text-destructive hover:bg-destructive/20 rounded")}>
                             <X size={16} />
-                          </button>
+                          </Button>
                         </>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className="p-1 text-gray-600 hover:bg-gray-200 rounded">
+                        <Button variant="plain" onClick={(e) => { e.stopPropagation(); goToModuleEdit(module.moduleId, courseId); }} className={cn(BTN_KEEP_BOX, "p-1 text-muted-foreground hover:bg-muted rounded")}>
                           <Edit2 size={16} />
-                        </button>
+                        </Button>
                       )}
                       {expandedModules.has(module.moduleId) ? (
-                        <ChevronUp size={20} className="text-gray-500" />
+                        <ChevronUp size={20} className="text-muted-foreground" />
                       ) : (
-                        <ChevronDown size={20} className="text-gray-500" />
+                        <ChevronDown size={20} className="text-muted-foreground" />
                       )}
                     </div>
                   </div>
                   {expandedModules.has(module.moduleId) && (
-                    <div className="p-4 bg-white border-t space-y-4">
+                    <div className="p-4 bg-card border-t space-y-4">
                       {module.learnBlocks && module.learnBlocks.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Učební bloky ({module.learnBlocks.length})</h4>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Učební bloky ({module.learnBlocks.length})</h4>
                           <div className="space-y-2">
                             {module.learnBlocks.map((block, bIndex) => (
-                              <div key={bIndex} className="p-3 bg-blue-50 rounded border border-blue-100">
-                                <div className="text-xs text-blue-600 mb-1">Blok #{bIndex + 1}</div>
-                                <div className="text-sm text-gray-800 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                              <div key={bIndex} className="p-3 bg-tip/10 rounded border border-tip/30">
+                                <div className="text-xs text-tip mb-1">Blok #{bIndex + 1}</div>
+                                <div className="text-sm text-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
                                   {block.content}
                                 </div>
                               </div>
@@ -301,26 +467,26 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
                       {module.practiceQuestions && module.practiceQuestions.length > 0 && (
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Otázky ({module.practiceQuestions.length})</h4>
+                          <h4 className="text-sm font-semibold text-foreground mb-2">Otázky ({module.practiceQuestions.length})</h4>
                           <div className="space-y-2">
                             {module.practiceQuestions.map((q, qIndex) => (
-                              <div key={qIndex} className="p-3 bg-green-50 rounded border border-green-100">
-                                <div className="text-sm text-gray-700">
+                              <div key={qIndex} className="p-3 bg-success/10 rounded border border-success/30">
+                                <div className="text-sm text-foreground">
                                   <div className="font-medium">{qIndex + 1}. {q.question}</div>
-                                  <div className="text-xs text-gray-500 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
                                   </div>
                                   {q.questionType === 'closed' && q.closedOptions && (
-                                    <div className="mt-1 text-xs text-gray-600">
+                                    <div className="mt-1 text-xs text-muted-foreground">
                                       {q.closedOptions.map((opt, oIndex) => (
-                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-green-600 font-medium' : ''}>
+                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-success font-medium' : ''}>
                                           {String.fromCharCode(65 + oIndex)}. {opt.text}
                                         </div>
                                       ))}
                                     </div>
                                   )}
                                   {q.questionType === 'open' && q.exampleAnswer && (
-                                    <div className="mt-1 text-xs text-gray-600">
+                                    <div className="mt-1 text-xs text-muted-foreground">
                                       Příklad odpovědi: {q.exampleAnswer}
                                     </div>
                                   )}
@@ -333,7 +499,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
 
                       {(!module.learnBlocks || module.learnBlocks.length === 0) &&
                        (!module.practiceQuestions || module.practiceQuestions.length === 0) && (
-                        <p className="text-sm text-gray-500 italic">Tento modul nemá žádný obsah.</p>
+                        <p className="text-sm text-muted-foreground italic">Tento modul nemá žádný obsah.</p>
                       )}
                     </div>
                   )}
@@ -344,37 +510,43 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-          <button
+          <Button
+            variant="tip"
             type="submit"
             disabled={loading}
-            className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
+            className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base")}
           >
             {loading ? 'Ukládání...' : 'Uložit změny'}
-          </button>
-          <button type="button" onClick={goBack} className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm sm:text-base">
+          </Button>
+          <Button variant="plain" type="button" onClick={goBack} className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 bg-muted text-foreground rounded-md hover:bg-muted/80 text-sm sm:text-base")}>
             Zpět
-          </button>
+          </Button>
           {isSuperAdmin && (
-            <button
+            <Button
+              variant="plain"
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 sm:ml-auto text-sm sm:text-base"
+              className={cn(BTN_KEEP_BOX, "px-4 sm:px-6 py-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/80 sm:ml-auto text-sm sm:text-base")}
             >
               Smazat kurz
-            </button>
+            </Button>
           )}
         </div>
       </form>
-
-      {showDeleteConfirm && (
-        <DeleteConfirmModal
-          isOpen={showDeleteConfirm}
-          isModule={false}
-          deleting={deleting}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteConfirm(false)}
-        />
+      </div>
+      </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        variant="danger"
+        title="Potvrdit smazání"
+        message="Opravdu chcete smazat tento kurz a všechny jeho moduly? Tato akce je nevratná."
+        confirmLabel="Ano, smazat"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
