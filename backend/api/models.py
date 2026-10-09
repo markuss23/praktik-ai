@@ -189,6 +189,24 @@ class AuditLog(Base):
     diff: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
+class CourseGenerationProgress(Base):
+    """Průběh AI generování kurzu — v DB, aby ho viděly všechny workery gunicornu."""
+
+    __tablename__ = "course_generation_progress"
+
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), primary_key=True
+    )
+    step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 # ---------- Číselníky ----------
 
 

@@ -33,12 +33,11 @@ from api.src.agents.schemas import (
 from api.src.agents.typing_guard import typed_too_fast
 from api.src.agents.progress import (
     get_progress,
-    is_running,
     list_running_course_ids,
     mark_completed,
     mark_failed,
     register_task,
-    set_progress,
+    try_start,
     unregister_task,
 )
 from api.src.agents.image_progress import (
@@ -134,12 +133,11 @@ async def generate_course(
             status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
         )
 
-    # Idempotence: pokud už pro tento kurz běží task, vrať se s prázdným výsledkem
-    # (klient se připojí přes progress endpoint).
-    if is_running(course_id):
+    # Idempotence: pokud už pro tento kurz generování běží (v jakémkoliv workeru),
+    # vrať se s prázdným výsledkem (klient se připojí přes progress endpoint).
+    if not try_start(course_id):
         return GenerateCourseResponse(title=course.title, modules=[])
 
-    set_progress(course_id, step=0, label="Spouštění generování")
     task = asyncio.create_task(_run_course_generation(course_id))
     register_task(course_id, task)
 

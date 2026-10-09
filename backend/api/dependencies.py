@@ -14,6 +14,7 @@ from keycloak import (
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -151,8 +152,6 @@ class Auth:
             ) from e
 
         sub: str = user_info["sub"]
-        email: str = user_info.get("email", "")
-        name: str | None = user_info.get("name")
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
@@ -161,15 +160,7 @@ class Auth:
         if user is None:
             # First request — sync role from Admin API
             resolved_role = _fetch_roles_from_admin_api(sub)
-            user = User(
-                sub=sub,
-                email=email,
-                display_name=name,
-                role=resolved_role,
-                last_synced_at=now,
-            )
-            db.add(user)
-            db.commit()
+            user = _create_user(db, user_info, resolved_role, now)
         else:
             last_synced = user.last_synced_at
             if last_synced is not None and last_synced.tzinfo is None:
@@ -213,14 +204,7 @@ class Auth:
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
         if user is None:
-            user = User(
-                sub=sub,
-                email=email,
-                display_name=name,
-                role=resolved_role,
-                last_synced_at=now,
-            )
-            db.add(user)
+            user = _create_user(db, user_info, resolved_role, now)
         else:
             user.email = email
             if not user.display_name and name:
@@ -230,6 +214,48 @@ class Auth:
         db.commit()
         db.refresh(user)
         return user
+
+
+def _create_user(db: Session, user_info: dict, role: UserRole, now: datetime) -> User:
+    """Založí uživatele z Keycloak userinfo a commitne.
+
+    Když už v DB je řádek se stejným e-mailem (uživatel dostal v Keycloaku
+    nové ``sub`` — reset realmu, smazání a nová registrace), převezme se
+    tento řádek.
+    """
+    sub: str = user_info["sub"]
+    email: str = user_info.get("email", "")
+    user = User(
+        sub=sub,
+        email=email,
+        display_name=user_info.get("name"),
+        role=role,
+        last_synced_at=now,
+    )
+    db.add(user)
+    try:
+        db.commit()
+        return user
+    except IntegrityError:
+        db.rollback()
+
+    # ponytail: převzetí bez kontroly email_verified — při otevřené registraci bez
+    # ověřování e-mailu si kdokoliv přivlastní cizí účet; před produkcí přidat
+    # `and user_info.get("email_verified")` nebo zapnout verifyEmail v realmu.
+    existing = db.scalar(select(User).where(User.email == email)) if email else None
+    if existing is None:
+        log.warning("Nelze založit uživatele sub=%s email=%s: kolize v DB", sub, email)
+        raise HTTPException(
+            status_code=409,
+            detail="Účet s tímto e-mailem už existuje a nelze ho automaticky propojit",
+        )
+
+    log.warning("Přepojuji uživatele %s: sub %s -> %s", email, existing.sub, sub)
+    existing.sub = sub
+    existing.role = role
+    existing.last_synced_at = now
+    db.commit()
+    return existing
 
 
 ROLE_HIERARCHY: dict[str, int] = {
