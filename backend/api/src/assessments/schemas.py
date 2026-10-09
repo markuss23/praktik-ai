@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
@@ -91,3 +92,18 @@ class SessionHistoryItem(BaseModel):
     is_passed: bool | None
     started_at: datetime
     finished_at: datetime | None
+
+
+@dataclass
+class AnswerOutcome:
+    """Výsledek vyhodnocení odpovědi formátem.
+
+    `result` = nový stav běhu do session.result. U `finished` jsou
+    vyplněné `score` (0-100) a `is_passed`.
+    """
+
+    result: dict
+    is_correct: bool
+    finished: bool
+    score: float | None = None
+    is_passed: bool | None = None

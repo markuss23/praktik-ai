@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.authorization import validate_owner_or_superadmin
-from api.enums import AssessmentContext, AssessmentSessionStatus, Status
+from api.enums import AssessmentContext, AssessmentSessionStatus
 from api.src.common.utils import (
     assert_course_open_for_students,
     check_enrollment,
@@ -21,60 +21,19 @@ from api.src.assessments.schemas import (
     SessionHistoryItem,
     SessionStartResponse,
 )
-from api.src.assessments.base import get_format, validate_settings
-from api.src.assessments.utils import find_active_session, find_course_assessment
+from api.src.assessments.utils import (
+    assert_course_editable,
+    assert_prerequisites_passed,
+    current_view,
+    find_active_session,
+    find_course_assessment,
+    get_format,
+    get_editable_course_assessment,
+    parse_settings,
+)
 
-
-def _assert_course_editable(course: models.Course) -> None:
-    if course.status != Status.edited:
-        raise HTTPException(
-            status_code=400,
-            detail="Tuto akci lze provést pouze pokud je kurz ve stavu 'editovaný'.",
-        )
-
-
-def _assert_prerequisites_passed(
-    db: Session,
-    user: models.User,
-    course_id: int,
-    module_id: int | None,
-    prereq_context: AssessmentContext,
-) -> None:
-    """Vyhodí 403 pokud uživatel nemá 'passed' session na všech is_required
-    konfiguracích v `prereq_context` (module_id=None = napříč celým kurzem).
-
-    Gate hierarchie: practice (is_required) -> assessment; assessment (is_required) -> course_final.
-    """
-    stmt = select(models.CourseAssessment).where(
-        models.CourseAssessment.course_id == course_id,
-        models.CourseAssessment.context == prereq_context,
-        models.CourseAssessment.is_required.is_(True),
-        models.CourseAssessment.is_enabled.is_(True),
-        models.CourseAssessment.is_active.is_(True),
-    )
-    if module_id is not None:
-        stmt = stmt.where(models.CourseAssessment.module_id == module_id)
-    required = db.scalars(stmt).all()
-    if not required:
-        return
-
-    passed_ids = set(
-        db.scalars(
-            select(models.AssessmentSession.course_assessment_id).where(
-                models.AssessmentSession.user_id == user.user_id,
-                models.AssessmentSession.course_assessment_id.in_(
-                    [ca.course_assessment_id for ca in required]
-                ),
-                models.AssessmentSession.status == AssessmentSessionStatus.passed,
-                models.AssessmentSession.is_active.is_(True),
-            )
-        ).all()
-    )
-    if any(ca.course_assessment_id not in passed_ids for ca in required):
-        raise HTTPException(
-            status_code=403,
-            detail="Nejdřív musíš splnit všechny povinné testy nižší úrovně.",
-        )
+CA = models.CourseAssessment
+AS = models.AssessmentSession
 
 
 def get_assessment_types(db: Session) -> list[AssessmentTypeResponse]:
@@ -98,17 +57,10 @@ def list_course_assessments(
     validate_owner_or_superadmin(course, user, "kurz")
 
     rows = db.scalars(
-        select(models.CourseAssessment)
-        .where(
-            models.CourseAssessment.course_id == course_id,
-            models.CourseAssessment.is_active.is_(True),
-        )
+        select(CA)
+        .where(CA.course_id == course_id, CA.is_active.is_(True))
         # course_final (module_id NULL) jde v Postgresu u ASC na konec
-        .order_by(
-            models.CourseAssessment.module_id,
-            models.CourseAssessment.context,
-            models.CourseAssessment.assessment_type_code,
-        )
+        .order_by(CA.module_id, CA.context, CA.assessment_type_code)
     ).all()
     return [CourseAssessmentResponse.model_validate(row) for row in rows]
 
@@ -121,7 +73,7 @@ def attach_course_assessment(
 ) -> CourseAssessmentResponse:
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
     validate_owner_or_superadmin(course, user, "kurz")
-    _assert_course_editable(course)
+    assert_course_editable(course)
 
     assessment_type = get_or_404(
         db,
@@ -155,7 +107,7 @@ def attach_course_assessment(
         if module.course_id != course_id:
             raise HTTPException(status_code=400, detail="Modul nepatří do tohoto kurzu")
 
-    course_assessment = models.CourseAssessment(
+    course_assessment = CA(
         course_id=course_id,
         module_id=body.module_id,
         assessment_type_code=body.assessment_type_code,
@@ -175,16 +127,7 @@ def detach_course_assessment(
     user: models.User,
     course_assessment_id: int,
 ) -> None:
-    course_assessment = get_or_404(
-        db,
-        models.CourseAssessment,
-        course_assessment_id,
-        detail="Konfigurace formátu nenalezena",
-    )
-    validate_owner_or_superadmin(course_assessment, user, "formát")
-    _assert_course_editable(course_assessment.course)
-
-    course_assessment.soft_delete()
+    get_editable_course_assessment(db, user, course_assessment_id).soft_delete()
     db.commit()
 
 
@@ -194,23 +137,10 @@ def update_course_assessment(
     course_assessment_id: int,
     body: CourseAssessmentUpdateRequest,
 ) -> CourseAssessmentResponse:
-    course_assessment = get_or_404(
-        db,
-        models.CourseAssessment,
-        course_assessment_id,
-        detail="Konfigurace formátu nenalezena",
-    )
-    validate_owner_or_superadmin(course_assessment, user, "formát")
-    _assert_course_editable(course_assessment.course)
+    course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
+    cfg = parse_settings(course_assessment.assessment_type_code, body.settings)
 
-    try:
-        settings = validate_settings(
-            course_assessment.assessment_type_code, body.settings
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
-
-    course_assessment.settings = settings
+    course_assessment.settings = cfg.model_dump()
     course_assessment.is_enabled = body.is_enabled
     course_assessment.is_required = body.is_required
     db.commit()
@@ -230,17 +160,10 @@ def start_session(
         db, course_id, context, module_id, assessment_type_code
     )
     check_enrollment(db, user, course_assessment.course)
-    fmt = get_format(course_assessment.assessment_type_code)
 
     existing = find_active_session(db, user, course_assessment.course_assessment_id)
     if existing is not None:
-        existing_cfg = fmt["settings_schema"].model_validate(existing.settings_snapshot)
-        current_question = existing_cfg.questions[existing.result["current"]]
-        return SessionStartResponse(
-            session_id=existing.session_id,
-            question=current_question.question,
-            options=current_question.options,
-        )
+        return current_view(existing)
 
     # Až za rozjetou session — nedostupný kurz ani vypnutý formát
     # neblokují dohrání rozjetého testu, jen zakládání nového.
@@ -249,33 +172,32 @@ def start_session(
         raise HTTPException(status_code=403, detail="Tento test je momentálně vypnutý.")
 
     if context == AssessmentContext.assessment:
-        _assert_prerequisites_passed(
+        assert_prerequisites_passed(
             db, user, course_id, module_id, AssessmentContext.practice
         )
     elif context == AssessmentContext.course_final:
-        _assert_prerequisites_passed(
+        assert_prerequisites_passed(
             db, user, course_id, None, AssessmentContext.assessment
         )
 
-    cfg = fmt["settings_schema"].model_validate(course_assessment.settings)
-    first_question = cfg.questions[0]
+    # Validace před insertem — nenastavený formát (prázdné otázky) nesmí
+    # založit session, která by pak blokovala další pokusy.
+    fmt = get_format(course_assessment.assessment_type_code)
+    cfg = parse_settings(
+        course_assessment.assessment_type_code, course_assessment.settings
+    )
 
-    session = models.AssessmentSession(
+    session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,
         assessment_type_code=course_assessment.assessment_type_code,
         settings_snapshot=course_assessment.settings,
-        result={"current": 0},
+        result=fmt.initial_result(cfg),
     )
     db.add(session)
     db.commit()
     db.refresh(session)
-
-    return SessionStartResponse(
-        session_id=session.session_id,
-        question=first_question.question,
-        options=first_question.options,
-    )
+    return current_view(session)
 
 
 def get_current_session(
@@ -293,16 +215,7 @@ def get_current_session(
     session = find_active_session(db, user, course_assessment.course_assessment_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Žádná rozběhnutá session")
-
-    fmt = get_format(session.assessment_type_code)
-    cfg = fmt["settings_schema"].model_validate(session.settings_snapshot)
-    current_question = cfg.questions[session.result["current"]]
-
-    return SessionStartResponse(
-        session_id=session.session_id,
-        question=current_question.question,
-        options=current_question.options,
-    )
+    return current_view(session)
 
 
 def submit_answer(
@@ -312,10 +225,10 @@ def submit_answer(
     answer: str,
 ) -> SessionAnswerResponse:
     session = db.scalar(
-        select(models.AssessmentSession).where(
-            models.AssessmentSession.session_id == session_id,
-            models.AssessmentSession.user_id == user.user_id,
-            models.AssessmentSession.is_active.is_(True),
+        select(AS).where(
+            AS.session_id == session_id,
+            AS.user_id == user.user_id,
+            AS.is_active.is_(True),
         )
     )
     if session is None:
@@ -329,72 +242,34 @@ def submit_answer(
         )
 
     fmt = get_format(session.assessment_type_code)
-    cfg = fmt["settings_schema"].model_validate(session.settings_snapshot)
+    cfg = parse_settings(session.assessment_type_code, session.settings_snapshot)
+    outcome = fmt.evaluate_answer(cfg, session.result, answer)
+    session.result = outcome.result
 
-    result = session.result or {}
-    current = result["current"]
-    attempts_used = result.get("attempts_used", 0)
-    correct_count = result.get("correct_count", 0)
-
-    question = cfg.questions[current]
-    is_correct = answer.strip() == question.options[question.correct_index]
-    attempts_used += 1
-    attempts_exhausted = not is_correct and attempts_used >= cfg.max_attempts
-
-    if not is_correct and not attempts_exhausted:
-        session.result = {**result, "attempts_used": attempts_used}
+    if not outcome.finished:
         db.commit()
         return SessionAnswerResponse(
             session_id=session.session_id,
-            is_correct=False,
+            is_correct=outcome.is_correct,
             finished=False,
-            question=question.question,
-            options=question.options,
+            **fmt.view(cfg, outcome.result),
         )
 
-    correct_count += int(is_correct)
-    current += 1
-    finished = current >= len(cfg.questions)
-
-    if finished:
-        score_ratio = correct_count / len(cfg.questions)
-        session.is_passed = score_ratio >= cfg.pass_threshold
-        session.status = (
-            AssessmentSessionStatus.passed
-            if session.is_passed
-            else AssessmentSessionStatus.failed
-        )
-        session.score = round(score_ratio * 100, 1)
-        session.finished_at = datetime.now(UTC)
-        session.result = {
-            **result,
-            "current": current,
-            "attempts_used": 0,
-            "correct_count": correct_count,
-        }
-        db.commit()
-        return SessionAnswerResponse(
-            session_id=session.session_id,
-            is_correct=is_correct,
-            finished=True,
-            score=session.score,
-            is_passed=session.is_passed,
-        )
-
-    next_question = cfg.questions[current]
-    session.result = {
-        **result,
-        "current": current,
-        "attempts_used": 0,
-        "correct_count": correct_count,
-    }
+    session.score = outcome.score
+    session.is_passed = outcome.is_passed
+    session.status = (
+        AssessmentSessionStatus.passed
+        if outcome.is_passed
+        else AssessmentSessionStatus.failed
+    )
+    session.finished_at = datetime.now(UTC)
     db.commit()
     return SessionAnswerResponse(
         session_id=session.session_id,
-        is_correct=is_correct,
-        finished=False,
-        question=next_question.question,
-        options=next_question.options,
+        is_correct=outcome.is_correct,
+        finished=True,
+        score=outcome.score,
+        is_passed=outcome.is_passed,
     )
 
 
@@ -410,18 +285,14 @@ def get_session_history(
     check_enrollment(db, user, course)
 
     sessions = db.scalars(
-        select(models.AssessmentSession)
-        .join(
-            models.CourseAssessment,
-            models.AssessmentSession.course_assessment_id
-            == models.CourseAssessment.course_assessment_id,
-        )
+        select(AS)
+        .join(AS.course_assessment)
         .where(
-            models.CourseAssessment.course_id == course_id,
-            models.AssessmentSession.user_id == user.user_id,
-            models.AssessmentSession.is_active.is_(True),
+            CA.course_id == course_id,
+            AS.user_id == user.user_id,
+            AS.is_active.is_(True),
         )
-        .order_by(models.AssessmentSession.session_id.desc())
+        .order_by(AS.session_id.desc())
     ).all()
 
     return [
