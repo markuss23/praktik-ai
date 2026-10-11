@@ -75,6 +75,7 @@ def attach_course_assessment(
     validate_owner_or_superadmin(course, user, "kurz")
     assert_course_editable(course)
 
+    # kontrola zda existuje assessment type
     assessment_type = get_or_404(
         db,
         models.AssessmentType,
@@ -82,6 +83,7 @@ def attach_course_assessment(
         detail="Interakční formát nenalezen",
     )
 
+    # kontroluje, zda je to practice / assessment / course_final
     if body.context.value not in assessment_type.allowed_contexts:
         raise HTTPException(
             status_code=400,
@@ -91,6 +93,7 @@ def attach_course_assessment(
             ),
         )
 
+    # Pokud je to course_final, tak nesmí být zadanej modul
     if body.context == AssessmentContext.course_final:
         if body.module_id is not None:
             raise HTTPException(
@@ -138,7 +141,9 @@ def update_course_assessment(
     body: CourseAssessmentUpdateRequest,
 ) -> CourseAssessmentResponse:
     course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
-    cfg = parse_settings(course_assessment.assessment_type_code, body.settings)
+    cfg = parse_settings(
+        course_assessment.assessment_type_code, body.settings.model_dump()
+    )
 
     course_assessment.settings = cfg.model_dump()
     course_assessment.is_enabled = body.is_enabled
@@ -180,8 +185,7 @@ def start_session(
             db, user, course_id, None, AssessmentContext.assessment
         )
 
-    # Validace před insertem — nenastavený formát (prázdné otázky) nesmí
-    # založit session, která by pak blokovala další pokusy.
+    # fmt je z closed_questions __init__ ... v tom jsou vsechny funkce
     fmt = get_format(course_assessment.assessment_type_code)
     cfg = parse_settings(
         course_assessment.assessment_type_code, course_assessment.settings
@@ -190,9 +194,7 @@ def start_session(
     session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,
-        assessment_type_code=course_assessment.assessment_type_code,
-        settings_snapshot=course_assessment.settings,
-        result=fmt.initial_result(cfg),
+        result=fmt.initial_result(cfg).model_dump(),
     )
     db.add(session)
     db.commit()
@@ -241,10 +243,15 @@ def submit_answer(
             detail=f"Session není rozběhnutá (aktuální stav: {session.status.value})",
         )
 
-    fmt = get_format(session.assessment_type_code)
-    cfg = parse_settings(session.assessment_type_code, session.settings_snapshot)
-    outcome = fmt.evaluate_answer(cfg, session.result, answer)
-    session.result = outcome.result
+    fmt = get_format(session.course_assessment.assessment_type_code)
+    cfg = parse_settings(
+        session.course_assessment.assessment_type_code,
+        session.course_assessment.settings,
+    )
+    outcome = fmt.evaluate_answer(
+        cfg, fmt.Result.model_validate(session.result), answer
+    )
+    session.result = outcome.result.model_dump()
 
     if not outcome.finished:
         db.commit()
@@ -252,7 +259,7 @@ def submit_answer(
             session_id=session.session_id,
             is_correct=outcome.is_correct,
             finished=False,
-            **fmt.view(cfg, outcome.result),
+            **fmt.view(cfg, outcome.result).model_dump(),
         )
 
     session.score = outcome.score
@@ -298,7 +305,7 @@ def get_session_history(
     return [
         SessionHistoryItem(
             session_id=session.session_id,
-            assessment_type_code=session.assessment_type_code,
+            assessment_type_code=session.course_assessment.assessment_type_code,
             context=session.course_assessment.context,
             module_id=session.course_assessment.module_id,
             status=session.status,

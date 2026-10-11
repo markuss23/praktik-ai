@@ -1,9 +1,14 @@
-from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
 from api.enums import AssessmentContext, AssessmentSessionStatus
+from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
+
+# Nastavení kteréhokoliv formátu. Nový formát sem přidá svůj typ:
+#   AssessmentSettings = ClosedQuestionsSettings | OpenQuestionsSettings
+# Proti správnému schématu (podle assessment_type_code) se validuje v parse_settings.
+AssessmentSettings = ClosedQuestionsSettings
 
 
 class AssessmentTypeResponse(BaseModel):
@@ -15,7 +20,7 @@ class AssessmentTypeResponse(BaseModel):
     name: str
     description: str | None
     allowed_contexts: list[AssessmentContext]
-    default_settings: dict
+    default_settings: AssessmentSettings
 
 
 class CourseAssessmentAttachRequest(BaseModel):
@@ -41,13 +46,13 @@ class CourseAssessmentResponse(BaseModel):
     context: AssessmentContext
     is_enabled: bool
     is_required: bool
-    settings: dict
+    settings: AssessmentSettings
 
 
 class CourseAssessmentUpdateRequest(BaseModel):
     """Etapa 2 — doladění už připojeného formátu. Posílá se celý objekt."""
 
-    settings: dict
+    settings: AssessmentSettings
     is_enabled: bool
     is_required: bool
 
@@ -92,18 +97,3 @@ class SessionHistoryItem(BaseModel):
     is_passed: bool | None
     started_at: datetime
     finished_at: datetime | None
-
-
-@dataclass
-class AnswerOutcome:
-    """Výsledek vyhodnocení odpovědi formátem.
-
-    `result` = nový stav běhu do session.result. U `finished` jsou
-    vyplněné `score` (0-100) a `is_passed`.
-    """
-
-    result: dict
-    is_correct: bool
-    finished: bool
-    score: float | None = None
-    is_passed: bool | None = None

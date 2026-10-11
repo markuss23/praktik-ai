@@ -624,9 +624,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
-    assessments: Mapped[list[CourseAssessment]] = relationship(
-        back_populates="course"
-    )
+    assessments: Mapped[list[CourseAssessment]] = relationship(back_populates="course")
     krauu_competences: Mapped[list[CourseKrauuCompetence]] = relationship(
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
@@ -1934,8 +1932,7 @@ class AssessmentSession(TimestampMixin, SoftDeleteMixin, Base):
     Běh interakčního formátu jedním studentem. Generická pro všechny formáty —
     typově specifický průběh žije v `assessment_turn` a v JSONB polích.
 
-    `settings_snapshot` je kopie CourseAssessment.settings v okamžiku startu:
-    změna konfigurace lektorem nesmí rozbít rozběhnuté session.
+    Nastavení testu se čte živě z CourseAssessment.settings (bez snapshotu).
     """
 
     __tablename__ = "assessment_session"
@@ -1960,16 +1957,11 @@ class AssessmentSession(TimestampMixin, SoftDeleteMixin, Base):
     course_assessment_id: Mapped[int] = mapped_column(
         ForeignKey("course_assessment.course_assessment_id"), nullable=False
     )
-    # Denormalizovaný diskriminátor — dispatch do registru bez joinu
-    assessment_type_code: Mapped[str] = mapped_column(
-        ForeignKey("assessment_type.code"), nullable=False
-    )
     status: Mapped[AssessmentSessionStatus] = mapped_column(
         Enum(AssessmentSessionStatus, name="assessment_session_status"),
         nullable=False,
         default=AssessmentSessionStatus.in_progress,
     )
-    settings_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
     # Typově specifický pracovní/výsledný stav (vybrané téma, rozpracované sekce...)
     result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Sdílená hodnoticí pole — NULL u formátů bez verdiktu

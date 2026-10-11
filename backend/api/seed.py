@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from api.database import SessionLocal
+from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
 from api.models import (
     AssessmentType,
     CrossSubject,
@@ -527,6 +528,8 @@ COURSE_PLANNER_PROMPT = (
     "\n"
     "STYL VÝKLADU:\n"
     "Základní pojmy jen připomeň jednou větou; těžiště je v principech, důvodech a typických chybách; porovnávej postupy.\n"
+    "Piš explicitně, ne heslovitě: každá věta musí dávat smysl sama o sobě, bez domýšlení vynechaného kontextu. Vždy pojmenuj, kdo jedná nebo o kom je řeč (AI, účastník, autor…); nepiš aforismy ani zkratkovitá hesla. "
+    'Například místo „Souhlasná odpověď vypovídá spíš o vaší otázce než o vašem nápadu. Plynulost není přesnost a sebejistota není důkaz." napiš „Když AI s vaším nápadem souhlasí, vypovídá to spíš o tom, jak jste otázku položili, než o kvalitě nápadu. Plynulá odpověď AI ještě nemusí být přesná a sebejistý tón není důkazem správnosti."\n'
     "\n"
     "DÉLKA VÝKLADU (content = fáze F1, příručka ke čtení, 130 slov za minutu):\n"
     "Délku výkladu modulu urči podle náročnosti tématu uvedené v souhrnu:\n"
@@ -543,7 +546,7 @@ COURSE_PLANNER_PROMPT = (
     "Piš neosobně nebo vykej.]\n\n"
     "content: [\n"
     "    Nový výukový text, ne shrnutí a ne opis. Pořadí:\n"
-    "    1. Proč je téma pro účastníky důležité.\n"
+    "    1. Proč je téma pro účastníky důležité. Nadpis tohoto oddílu nikdy nezní „Proč se tím zabývat\" ani podobně; zvol nebo obměň např. „Výchozí situace\", „Výchozí problém\", „Význam tématu v širších souvislostech\", „Téma v realitě\", „Na úvod několik souvislostí\", „Téma, které se nás týká\", „První nahlédnutí\", „Začněme otázkou\". V každém modulu kurzu použij jiný nadpis.\n"
     "    2. Hlavní myšlenka.\n"
     "    3. Klíčové pojmy s vysvětlením.\n"
     "    4. Vztahy, příčiny a důsledky.\n"
@@ -808,7 +811,7 @@ ASSESSMENT_TYPES: list[dict] = [
             "na konci skóre proti prahu úspěšnosti. Bez LLM."
         ),
         "allowed_contexts": ["practice", "assessment", "course_final"],
-        "default_settings": {"questions": []},
+        "default_settings": ClosedQuestionsSettings().model_dump(),
     },
 ]
 

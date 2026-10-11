@@ -27,8 +27,9 @@ class ClosedQuestionItem(BaseModel):
 class ClosedQuestionsSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # Prázdné smí být (rozpracovaný test) — start session to odmítne
     questions: list[ClosedQuestionItem] = Field(
-        ..., min_length=1, description="Sada otázek vytvořená lektorem"
+        default_factory=list, description="Sada otázek vytvořená lektorem"
     )
 
     max_attempts: int = Field(
@@ -40,3 +41,20 @@ class ClosedQuestionsSettings(BaseModel):
         le=1,
         description="Podíl zvládnutých otázek potřebný k 'passed' (jinak 'failed')",
     )
+
+
+class ClosedQuestionsResult(BaseModel):
+    """Stav běhu uložený v session.result."""
+
+    current: int = Field(default=0, ge=0, description="Index aktuální otázky")
+    attempts_used: int = Field(
+        default=0, ge=0, description="Pokusy spotřebované na aktuální otázku"
+    )
+    correct_count: int = Field(default=0, ge=0, description="Počet zvládnutých otázek")
+
+
+class ClosedQuestionsView(BaseModel):
+    """Co student vidí — aktuální otázka bez správné odpovědi."""
+
+    question: str
+    options: list[str]

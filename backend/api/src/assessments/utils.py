@@ -50,10 +50,10 @@ def parse_settings(type_code: str, settings: dict) -> BaseModel:
 
 
 def assert_course_editable(course: models.Course) -> None:
-    if course.status != Status.edited:
+    if course.status == Status.approved or course.status == Status.archived:
         raise HTTPException(
             status_code=400,
-            detail="Tuto akci lze provést pouze pokud je kurz ve stavu 'editovaný'.",
+            detail="Tuto akci lze provést pouze pokud je kurz ve stavu 'approved' nebo 'archived'.",
         )
 
 
@@ -123,11 +123,12 @@ def find_active_session(
 
 def current_view(session: models.AssessmentSession) -> SessionStartResponse:
     """Aktuální stav rozjeté session tak, jak ho vidí student."""
-    fmt = get_format(session.assessment_type_code)
-    cfg = parse_settings(session.assessment_type_code, session.settings_snapshot)
-    return SessionStartResponse(
-        session_id=session.session_id, **fmt.view(cfg, session.result)
-    )
+    type_code: str = session.course_assessment.assessment_type_code
+    fmt: ModuleType = get_format(type_code)
+    cfg: BaseModel = parse_settings(type_code, session.course_assessment.settings)
+    result: BaseModel = fmt.Result.model_validate(session.result)
+    view: BaseModel = fmt.view(cfg, result)
+    return SessionStartResponse(session_id=session.session_id, **view.model_dump())
 
 
 def assert_prerequisites_passed(
