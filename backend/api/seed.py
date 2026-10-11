@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from api.database import SessionLocal
 from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
@@ -18,6 +18,7 @@ from api.models import (
     NeuroPrinciple,
     SystemSetting,
 )
+from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -546,7 +547,7 @@ COURSE_PLANNER_PROMPT = (
     "Piš neosobně nebo vykej.]\n\n"
     "content: [\n"
     "    Nový výukový text, ne shrnutí a ne opis. Pořadí:\n"
-    "    1. Proč je téma pro účastníky důležité. Nadpis tohoto oddílu nikdy nezní „Proč se tím zabývat\" ani podobně; zvol nebo obměň např. „Výchozí situace\", „Výchozí problém\", „Význam tématu v širších souvislostech\", „Téma v realitě\", „Na úvod několik souvislostí\", „Téma, které se nás týká\", „První nahlédnutí\", „Začněme otázkou\". V každém modulu kurzu použij jiný nadpis.\n"
+    '    1. Proč je téma pro účastníky důležité. Nadpis tohoto oddílu nikdy nezní „Proč se tím zabývat" ani podobně; zvol nebo obměň např. „Výchozí situace", „Výchozí problém", „Význam tématu v širších souvislostech", „Téma v realitě", „Na úvod několik souvislostí", „Téma, které se nás týká", „První nahlédnutí", „Začněme otázkou". V každém modulu kurzu použij jiný nadpis.\n'
     "    2. Hlavní myšlenka.\n"
     "    3. Klíčové pojmy s vysvětlením.\n"
     "    4. Vztahy, příčiny a důsledky.\n"
@@ -813,6 +814,15 @@ ASSESSMENT_TYPES: list[dict] = [
         "allowed_contexts": ["practice", "assessment", "course_final"],
         "default_settings": ClosedQuestionsSettings().model_dump(),
     },
+    {
+        "code": "open_question_ai",
+        "name": "Otevřené otázky generované AI",
+        "description": (
+            "AI vygeneruje na zaklade contextu otázku a tu pak i vyhodnotí"
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": OpenQuestionAISettings().model_dump(),
+    },
 ]
 
 COURSE_SUBJECTS: list[dict[str, str]] = [
@@ -887,8 +897,11 @@ def seed_db() -> None:
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
 
-        if db.query(AssessmentType).count() == 0:
-            db.add_all([AssessmentType(**row) for row in ASSESSMENT_TYPES])
+        # Doplní chybějící formáty podle kódu — nový formát se přidá i do neprázdné tabulky
+        existing_codes = set(db.scalars(select(AssessmentType.code)))
+        db.add_all(
+            [AssessmentType(**row) for row in ASSESSMENT_TYPES if row["code"] not in existing_codes]
+        )
 
         db.commit()
     finally:

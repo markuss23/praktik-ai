@@ -1,14 +1,25 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from api.enums import AssessmentContext, AssessmentSessionStatus
 from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
+from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 
 # Nastavení kteréhokoliv formátu. Nový formát sem přidá svůj typ:
 #   AssessmentSettings = ClosedQuestionsSettings | OpenQuestionsSettings
 # Proti správnému schématu (podle assessment_type_code) se validuje v parse_settings.
-AssessmentSettings = ClosedQuestionsSettings
+#
+# Union se zkouší zleva doprava a vyhraje první, které projde. Pořadí je důležité:
+# OpenQuestionAISettings nemá žádné vlastní pole, takže {max_attempts, pass_threshold}
+# by prošlo i jako Closed (doplnilo by questions=[]). Proto Open první — closed
+# nastavení vždy nese `questions`, které Open odmítne (extra="forbid"), a spadne do Closed.
+AssessmentSettings = Annotated[
+    OpenQuestionAISettings | ClosedQuestionsSettings,
+    Field(union_mode="left_to_right"),
+]
 
 
 class AssessmentTypeResponse(BaseModel):

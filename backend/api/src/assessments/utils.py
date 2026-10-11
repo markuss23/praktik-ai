@@ -10,6 +10,7 @@ from api.authorization import validate_owner_or_superadmin
 from api.enums import AssessmentContext, AssessmentSessionStatus, Status
 from api.src.common.utils import get_or_404
 from api.src.assessments import closed_questions
+from api.src.assessments import open_question_ai
 from api.src.assessments.schemas import SessionStartResponse
 
 CA = models.CourseAssessment
@@ -20,6 +21,7 @@ AS = models.AssessmentSession
 # Nový formát = nová složka se stejným rozhraním (viz closed_questions/__init__.py) + řádek tady.
 FORMATS: dict[str, ModuleType] = {
     "closed_questions": closed_questions,
+    "open_question_ai": open_question_ai,
 }
 
 
@@ -122,12 +124,23 @@ def find_active_session(
 
 
 def current_view(session: models.AssessmentSession) -> SessionStartResponse:
-    """Aktuální stav rozjeté session tak, jak ho vidí student."""
+    """Aktuální stav rozjeté session tak, jak ho vidí student.
+
+    Zadání testu (otázky) je v course_assessment.settings, pozice studenta
+    (`current` = index otázky) v session.state. `view` je spojí a vrátí
+    otázku na té pozici — bez správné odpovědi. Nic neukládá, jen čte.
+    """
+    # Druh testu, např. "closed_questions"
     type_code: str = session.course_assessment.assessment_type_code
+    # Modul formátu (closed_questions/) s funkcemi view, State, Settings...
     fmt: ModuleType = get_format(type_code)
+    # Zadání z DB (dict) -> Settings objekt: cfg.questions, max_attempts, pass_threshold
     cfg: BaseModel = parse_settings(type_code, session.course_assessment.settings)
-    result: BaseModel = fmt.Result.model_validate(session.result)
-    view: BaseModel = fmt.view(cfg, result)
+    # Pozice studenta z DB (dict) -> State objekt: current, attempts_used, correct_count
+    state: BaseModel = fmt.State.model_validate(session.state)
+    # cfg.questions[state.current] -> {question, options}
+    view: BaseModel = fmt.view(cfg, state)
+    # ** rozbalí dict do parametrů: question=..., options=...
     return SessionStartResponse(session_id=session.session_id, **view.model_dump())
 
 

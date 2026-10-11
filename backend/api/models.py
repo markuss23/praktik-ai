@@ -1963,7 +1963,7 @@ class AssessmentSession(TimestampMixin, SoftDeleteMixin, Base):
         default=AssessmentSessionStatus.in_progress,
     )
     # Typově specifický pracovní/výsledný stav (vybrané téma, rozpracované sekce...)
-    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Sdílená hodnoticí pole — NULL u formátů bez verdiktu
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

@@ -43,8 +43,8 @@ class ClosedQuestionsSettings(BaseModel):
     )
 
 
-class ClosedQuestionsResult(BaseModel):
-    """Stav běhu uložený v session.result."""
+class ClosedQuestionsState(BaseModel):
+    """Stav běhu uložený v session.state."""
 
     current: int = Field(default=0, ge=0, description="Index aktuální otázky")
     attempts_used: int = Field(

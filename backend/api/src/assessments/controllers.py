@@ -144,7 +144,6 @@ def update_course_assessment(
     cfg = parse_settings(
         course_assessment.assessment_type_code, body.settings.model_dump()
     )
-
     course_assessment.settings = cfg.model_dump()
     course_assessment.is_enabled = body.is_enabled
     course_assessment.is_required = body.is_required
@@ -187,17 +186,22 @@ def start_session(
 
     # fmt je z closed_questions __init__ ... v tom jsou vsechny funkce
     fmt = get_format(course_assessment.assessment_type_code)
+    # Otázky jsou už načtené v course_assessment.settings (z find_course_assessment),
+    # do DB se znovu ptát netřeba — cfg.questions je má.
     cfg = parse_settings(
         course_assessment.assessment_type_code, course_assessment.settings
     )
 
+    # initial_state otázky nevrací — jen ověří, že nějaké jsou, a založí
+    # počáteční stav běhu {"current": 0, "attempts_used": 0, "correct_count": 0}.
+    # Do session se ukládá jen tento stav, otázky se nekopírují.
     session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,
-        result=fmt.initial_result(cfg).model_dump(),
+        state=fmt.initial_state(cfg).model_dump(),
     )
     db.add(session)
-    db.commit()
+    # db.commit()
     db.refresh(session)
     return current_view(session)
 
@@ -248,10 +252,13 @@ def submit_answer(
         session.course_assessment.assessment_type_code,
         session.course_assessment.settings,
     )
+    # evaluate_answer posune stav: špatně a zbývají pokusy -> stejné `current`,
+    # jen attempts_used + 1; správně nebo došly pokusy -> current + 1.
     outcome = fmt.evaluate_answer(
-        cfg, fmt.Result.model_validate(session.result), answer
+        cfg, fmt.State.model_validate(session.state), answer
     )
-    session.result = outcome.result.model_dump()
+    # Nový stav zpět do DB — příští request si `current` načte odsud
+    session.state = outcome.state.model_dump()
 
     if not outcome.finished:
         db.commit()
@@ -259,7 +266,7 @@ def submit_answer(
             session_id=session.session_id,
             is_correct=outcome.is_correct,
             finished=False,
-            **fmt.view(cfg, outcome.result).model_dump(),
+            **fmt.view(cfg, outcome.state).model_dump(),
         )
 
     session.score = outcome.score
