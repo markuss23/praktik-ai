@@ -1,5 +1,8 @@
-def initial_state(cfg):
-    print(cfg)
+from sqlalchemy.orm import Session
+
+
+def initial_state(db: Session, user, course_assessment, cfg):
+    print(db, user, course_assessment, cfg)
 
 
 def view():

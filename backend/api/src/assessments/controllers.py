@@ -152,7 +152,7 @@ def update_course_assessment(
     return CourseAssessmentResponse.model_validate(course_assessment)
 
 
-def start_session(
+async def start_session(
     db: Session,
     user: models.User,
     course_id: int,
@@ -198,7 +198,7 @@ def start_session(
     session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,
-        state=fmt.initial_state(cfg).model_dump(),
+        state=fmt.initial_state(db, user, course_assessment, cfg).model_dump(),
     )
     db.add(session)
     # db.commit()

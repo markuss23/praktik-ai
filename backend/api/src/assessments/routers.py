@@ -94,7 +94,7 @@ def detach_course_assessment(
     operation_id="start_assessment_session",
     status_code=201,
 )
-def start_session(
+async def start_session(
     course_id: int,
     context: AssessmentContext,
     db: SessionSqlSessionDependency,
@@ -102,7 +102,7 @@ def start_session(
     module_id: int | None = None,
     assessment_type_code: str | None = None,
 ) -> SessionStartResponse:
-    return controllers.start_session(
+    return await controllers.start_session(
         db, user, course_id, context, module_id, assessment_type_code
     )
 
