@@ -73,7 +73,7 @@ class SessionStartResponse(BaseModel):
 
     session_id: int
     question: str
-    options: list[str]
+    options: list[str] | None = None
 
 
 class SessionAnswerResponse(BaseModel):

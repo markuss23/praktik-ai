@@ -201,7 +201,7 @@ async def start_session(
         state=(await fmt.initial_state(db, user, course_assessment, cfg)).model_dump(),
     )
     db.add(session)
-    # db.commit()
+    db.commit()
     db.refresh(session)
     return current_view(session)
 

@@ -1,6 +1,7 @@
 """Průběh testu s uzavřenými otázkami."""
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from api.src.assessments.closed_questions.schemas import (
     ClosedQuestionsState,
@@ -10,7 +11,9 @@ from api.src.assessments.closed_questions.schemas import (
 from api.src.assessments.outcome import AnswerOutcome
 
 
-def initial_state(cfg: ClosedQuestionsSettings) -> ClosedQuestionsState:
+async def initial_state(
+    db: Session, user, course_assessment, cfg: ClosedQuestionsSettings
+) -> ClosedQuestionsState:
     if not cfg.questions:
         raise HTTPException(status_code=422, detail="Test zatím nemá žádné otázky.")
     return ClosedQuestionsState()

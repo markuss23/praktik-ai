@@ -795,6 +795,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
     },
     {
+        "key": "open_question_ai",
+        "name": "Assessment – otevřená otázka (AI)",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/open_question_ai/agents/generator/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování otevřené procvičovací otázky z výukového obsahu.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
