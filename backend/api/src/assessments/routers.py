@@ -130,13 +130,13 @@ def get_current_session(
     "/assessments/sessions/{session_id}/answer",
     operation_id="submit_assessment_answer",
 )
-def submit_answer(
+async def submit_answer(
     session_id: int,
     answer: str,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> SessionAnswerResponse:
-    return controllers.submit_answer(db, user, session_id, answer)
+    return await controllers.submit_answer(db, user, session_id, answer)
 
 
 # Runtime — historie odevzdaných sessions studenta v rámci kurzu

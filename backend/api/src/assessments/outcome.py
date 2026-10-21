@@ -14,3 +14,5 @@ class AnswerOutcome(BaseModel):
     finished: bool
     score: float | None = None
     is_passed: bool | None = None
+    # Slovní zpětná vazba pro studenta (jen formáty s AI evaluátorem)
+    feedback: str | None = None

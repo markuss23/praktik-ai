@@ -224,7 +224,7 @@ def get_current_session(
     return current_view(session)
 
 
-def submit_answer(
+async def submit_answer(
     db: Session,
     user: models.User,
     session_id: int,
@@ -254,8 +254,12 @@ def submit_answer(
     )
     # evaluate_answer posune stav: špatně a zbývají pokusy -> stejné `current`,
     # jen attempts_used + 1; správně nebo došly pokusy -> current + 1.
-    outcome = fmt.evaluate_answer(
-        cfg, fmt.State.model_validate(session.state), answer
+    outcome = await fmt.evaluate_answer(
+        db,
+        session.course_assessment,
+        cfg,
+        fmt.State.model_validate(session.state),
+        answer,
     )
     # Nový stav zpět do DB — příští request si `current` načte odsud
     session.state = outcome.state.model_dump()
@@ -266,6 +270,7 @@ def submit_answer(
             session_id=session.session_id,
             is_correct=outcome.is_correct,
             finished=False,
+            feedback=outcome.feedback,
             **fmt.view(cfg, outcome.state).model_dump(),
         )
 
@@ -284,6 +289,7 @@ def submit_answer(
         finished=True,
         score=outcome.score,
         is_passed=outcome.is_passed,
+        feedback=outcome.feedback,
     )
 
 

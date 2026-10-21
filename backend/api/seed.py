@@ -803,6 +803,13 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro generování otevřené procvičovací otázky z výukového obsahu.",
     },
     {
+        "key": "open_question_ai_evaluator",
+        "name": "Assessment – otevřená otázka (AI) - evaluátor",
+        "model": "claude-opus-5-5",
+        "prompt": "",
+        "description": "LLM pro vyhodnocení otevřených odpovědí studentů na otevřené otázky generované AI.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
@@ -908,7 +915,11 @@ def seed_db() -> None:
         # Doplní chybějící formáty podle kódu — nový formát se přidá i do neprázdné tabulky
         existing_codes = set(db.scalars(select(AssessmentType.code)))
         db.add_all(
-            [AssessmentType(**row) for row in ASSESSMENT_TYPES if row["code"] not in existing_codes]
+            [
+                AssessmentType(**row)
+                for row in ASSESSMENT_TYPES
+                if row["code"] not in existing_codes
+            ]
         )
 
         db.commit()

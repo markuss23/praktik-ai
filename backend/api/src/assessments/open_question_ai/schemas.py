@@ -20,7 +20,6 @@ class OpenQuestionAISettings(BaseModel):
 
 class OpenQuestionAIView(BaseModel):
     question: str = Field(..., min_length=1, max_length=255)
-    attempts_used: int = Field(0, ge=0)
 
 
 class OpenQuestionAIState(BaseModel):

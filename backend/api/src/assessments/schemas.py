@@ -91,6 +91,7 @@ class SessionAnswerResponse(BaseModel):
     options: list[str] | None = None
     score: float | None = None
     is_passed: bool | None = None
+    feedback: str | None = None
 
 
 class SessionHistoryItem(BaseModel):

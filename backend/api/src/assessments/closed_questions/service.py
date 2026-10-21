@@ -26,8 +26,12 @@ def view(
     return ClosedQuestionsView(question=question.question, options=question.options)
 
 
-def evaluate_answer(
-    cfg: ClosedQuestionsSettings, state: ClosedQuestionsState, answer: str
+async def evaluate_answer(
+    db: Session,
+    course_assessment,
+    cfg: ClosedQuestionsSettings,
+    state: ClosedQuestionsState,
+    answer: str,
 ) -> AnswerOutcome:
     question = cfg.questions[state.current]
     is_correct = answer.strip() == question.options[question.correct_index]
