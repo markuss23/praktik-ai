@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, Module, FeedbackItem, Status } from '@/api';
@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { PageSpinner, Button, Tabs, TabsList, TabsTrigger, Textarea, CourseCategories, ModuleCategories } from '@/components/ui';
 import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 // Plný (ne podtržený) aktivní stav — kitový `line` variant kreslí podtržení
 // a průhledné pozadí, obojí přebíjíme stejným modifikátorem.
@@ -149,6 +150,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   const learnBlocks = selectedModule?.learnBlocks ?? [];
   const practiceQuestions = selectedModule?.practiceQuestions ?? [];
   const currentBlock = learnBlocks[currentBlockIndex];
+  const currentBlockHtml = useMemo(() => sanitizeHtml(currentBlock?.content ?? ''), [currentBlock?.content]);
   const totalBlocks = learnBlocks.length;
 
   const handleContinue = () => {
@@ -467,7 +469,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                   <div
                     ref={contentRef}
                     className="module-content prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: currentBlock.content }}
+                    dangerouslySetInnerHTML={{ __html: currentBlockHtml }}
                   />
                 </>
               ) : (

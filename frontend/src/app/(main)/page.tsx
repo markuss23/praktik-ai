@@ -3,7 +3,7 @@ import ChangelogAccordion from "./ChangelogAccordion";
 import CourseSection from "./CourseSection";
 import ProjectAboutSection from "./ProjectAboutSection";
 import { fetchChangelog } from "@/lib/changelog";
-// import ContactSection from "./ContactSection";
+// import ContactSection from "./ContactSection"; — před zapnutím povolit i /api/contact (CONTACT_FORM_ENABLED)
 
 export default async function Home() {
   const changelog = await fetchChangelog();
