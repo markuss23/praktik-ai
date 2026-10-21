@@ -56,7 +56,8 @@ export function Modal({
     >
       <DialogContent
         className={cn(
-          'max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]',
+          // Volaná šířka přepíše kitové `max-w-[calc(100%-2rem)]`, okraj na mobilu proto drží `w-*`.
+          'w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]',
           widthClasses,
           className,
         )}

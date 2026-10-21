@@ -217,7 +217,7 @@ export default function MojeTiketyPage() {
                 value={courseFilter === "" ? null : courseFilter}
                 onValueChange={(value) => setCourseFilter(value == null ? "" : String(value))}
               >
-                <SelectTrigger aria-label="Filtrovat podle kurzu">
+                <SelectTrigger aria-label="Filtrovat podle kurzu" className="max-w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

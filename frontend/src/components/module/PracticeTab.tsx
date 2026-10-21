@@ -694,7 +694,7 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete, p
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ duration: 0.2 }}
-                        className="flex items-center gap-3"
+                        className="flex flex-wrap items-center justify-center gap-3"
                       >
                         <span className="text-sm text-muted-foreground">Typ otázky:</span>
                         <Button

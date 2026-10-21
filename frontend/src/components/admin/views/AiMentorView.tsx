@@ -109,12 +109,12 @@ export function AiMentorView() {
                 variant="plain"
                 type="button"
                 onClick={() => setExpandedCard(isExpanded ? null : setting.settingId)}
-                className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors rounded-xl")}
+                className={cn(BTN_KEEP_BOX, "w-full flex items-center justify-between gap-3 p-6 text-left whitespace-normal hover:bg-muted/50 transition-colors rounded-xl")}
               >
-                <h2 className="text-base font-bold text-foreground">
+                <h2 className="min-w-0 break-words text-base font-bold text-foreground">
                   {setting.name} config
                 </h2>
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3">
                   {dirty && (
                     <span className="text-xs text-gradient-r font-medium">Neuložené změny</span>
                   )}

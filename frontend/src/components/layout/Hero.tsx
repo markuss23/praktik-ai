@@ -3,17 +3,13 @@ export function Hero() {
     <section className="relative overflow-hidden" style={{ backgroundColor: 'var(--muted)', paddingTop: '48px', paddingBottom: '48px' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
         <div 
-          className="relative overflow-hidden"
-          style={{ 
+          className="relative overflow-hidden px-6 py-12 sm:px-[100px] sm:py-16"
+          style={{
             background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.9) 0%, var(--foreground) 100%)',
             width: '100%',
             maxWidth: '1240px',
             height: 'auto',
             minHeight: '423px',
-            paddingTop: '64px',
-            paddingRight: '100px',
-            paddingBottom: '64px',
-            paddingLeft: '100px',
             borderRadius: '24px'
           }}
         >

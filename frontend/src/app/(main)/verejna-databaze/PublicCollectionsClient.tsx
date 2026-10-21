@@ -127,17 +127,17 @@ function CollectionCard({
       variant="plain"
       type="button"
       onClick={onOpen}
-      className={cn(BTN_KEEP_BOX, "group text-left bg-card rounded-lg border border-border hover:shadow-md transition-shadow flex flex-col h-full p-5 gap-3")}
+      className={cn(BTN_KEEP_BOX, "group text-left bg-card rounded-lg border border-border hover:shadow-md transition-shadow flex flex-col h-full p-5 gap-3 whitespace-normal")}
     >
       <div className="flex items-center gap-2 text-gradient-r">
         <Folder size={18} strokeWidth={1.75} />
         <Globe size={13} strokeWidth={1.75} className="text-success" />
       </div>
-      <h3 className="font-semibold text-foreground leading-snug line-clamp-2" title={collection.name}>
+      <h3 className="max-w-full break-words font-semibold text-foreground leading-snug line-clamp-2" title={collection.name}>
         {collection.name}
       </h3>
       {collection.description && (
-        <p className="text-sm text-muted-foreground line-clamp-3">{collection.description}</p>
+        <p className="max-w-full break-words text-sm text-muted-foreground line-clamp-3">{collection.description}</p>
       )}
       <div className="mt-auto pt-2">
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-muted text-foreground">

@@ -1423,14 +1423,14 @@ function CoursePagination({
   }
 
   const btnBase =
-    'min-w-[34px] h-[34px] px-2 flex items-center justify-center rounded-md text-sm font-medium transition-colors';
+    'min-w-8 h-8 sm:min-w-[34px] sm:h-[34px] px-2 flex items-center justify-center rounded-md text-sm font-medium transition-colors';
 
   return (
-    <div data-accordion-keep className="shrink-0 flex items-center justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-card">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
+    <div data-accordion-keep className="shrink-0 flex items-center justify-center sm:justify-between gap-3 px-3 sm:px-6 py-3 border-t bg-card">
+      <span className="hidden sm:inline text-xs text-muted-foreground whitespace-nowrap">
         Stránka {page} z {totalPages}
       </span>
-      <nav className="flex items-center gap-1" aria-label="Stránkování">
+      <nav className="flex flex-wrap items-center justify-center gap-0.5 sm:gap-1" aria-label="Stránkování">
         <Button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}

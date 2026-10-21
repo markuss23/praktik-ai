@@ -312,9 +312,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   return (
     <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
       {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
-        <div>
-          <p className="text-xs text-muted-foreground mb-0.5">
+      <div className="bg-card border-b border-border px-4 sm:px-6 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between shrink-0">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground mb-0.5 break-words">
             <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "hover:text-foreground")}>
               Ke schválení
             </Button>
@@ -323,7 +323,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           </p>
           <h1 className="text-xl font-bold text-foreground">Obsah ke schválení</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Guarantor: approve/reject course (only in_review) */}
           {canApprove && isInReview && (
             <>
@@ -331,7 +331,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 variant="ghost-destructive"
                 onClick={handleRejectCourse}
                 disabled={approvalLoading}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border border-destructive/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
+                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 border border-destructive/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
               >
                 <ThumbsDown size={16} />
                 Zamítnout kurz
@@ -341,7 +341,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 onClick={handleApproveCourse}
                 disabled={approvalLoading || !allModulesApproved}
                 title={!allModulesApproved ? 'Nejprve schvalte všechny moduly' : undefined}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed")}
+                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed")}
               >
                 <ThumbsUp size={16} />
                 Schválit kurz
@@ -359,10 +359,10 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       </div>
 
       {/* Main 3-column layout */}
-      <div className="flex-1 flex overflow-hidden p-4 gap-4">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
 
         {/* Left: Module sidebar */}
-        <div className="w-56 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+        <div className="max-h-64 lg:max-h-none lg:w-56 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
           <div className="p-3 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground">Osnova kurzu</h2>
           </div>
@@ -452,7 +452,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
             </Tabs>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {loadingModule ? (
               <PageSpinner />
             ) : activeTab === 'handbook' ? (
@@ -560,7 +560,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
           </div>
 
           {/* Footer navigation + per-module approval */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 px-4 sm:px-6 py-4 border-t border-border shrink-0">
             <div className="flex items-center gap-2">
               <Button
                 variant="plain"
@@ -572,7 +572,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {/* Per-module approve/reject (guarantors only, in_review only) */}
               {canApprove && isInReview && selectedModule && (
                 <>
@@ -633,7 +633,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
         </div>
 
         {/* Right: Comments panel */}
-        <div className="w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+        <div className="lg:w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
           <div className="p-3 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground">
               Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}

@@ -64,7 +64,7 @@ export function Header() {
           </Link>
 
           {/* Navigation Links */}
-          <ul className="hidden items-center gap-4 whitespace-nowrap md:flex lg:gap-8">
+          <ul className="hidden items-center gap-4 whitespace-nowrap xl:flex lg:gap-8">
             <li>
               <Link href={ROUTES.HOME} data-text="Home" className={navLinkClass(ROUTES.HOME)}>
                 Home
@@ -127,7 +127,7 @@ export function Header() {
               </Button>
             )}
 
-            {/* Admin shortcut on mobile (md:hidden, only for lectors+) */}
+            {/* Admin shortcut on mobile (xl:hidden, only for lectors+) */}
             {isAuthenticated && can('lector') && (
               <Button
                 render={<Link href="/admin" />}
@@ -136,7 +136,7 @@ export function Header() {
                 size="icon"
                 title="Admin dashboard"
                 aria-label="Admin dashboard"
-                className={cn("rounded-full md:hidden", isActive('/admin') && "bg-muted")}
+                className={cn("rounded-full xl:hidden", isActive('/admin') && "bg-muted")}
               >
                 <LayoutDashboard className="size-5" strokeWidth={1.5} />
               </Button>
@@ -155,7 +155,7 @@ export function Header() {
                 >
                   <UserRound className="size-5 sm:size-6" strokeWidth={1.5} />
                   {displayName && (
-                    <span className="hidden max-w-[120px] truncate text-sm font-medium lg:block">
+                    <span className="hidden max-w-[120px] truncate text-sm font-medium lg:block xl:hidden min-[90rem]:block">
                       {displayName}
                     </span>
                   )}
@@ -190,7 +190,7 @@ export function Header() {
               variant="ghost"
               size="icon"
               onClick={() => setMobileMenuOpen(true)}
-              className="shrink-0 md:hidden"
+              className="shrink-0 xl:hidden"
               aria-label="Otevřít menu"
             >
               <Menu className="size-6" strokeWidth={1.5} />
@@ -201,7 +201,7 @@ export function Header() {
 
       {/* Mobile menu — kitový Drawer, overlay i stacking řeší Base UI */}
       <Drawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} swipeDirection="right">
-        <DrawerContent className="md:hidden" aria-label="Menu">
+        <DrawerContent className="xl:hidden" aria-label="Menu">
           <DrawerHeader className="flex-row items-center justify-between border-b pb-4 text-left">
             <DrawerTitle>Menu</DrawerTitle>
             <DrawerClose render={<Button variant="ghost" size="icon-sm" aria-label="Zavřít menu" />}>

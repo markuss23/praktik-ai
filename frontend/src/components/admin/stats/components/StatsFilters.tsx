@@ -98,7 +98,7 @@ export function CourseFilterDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-2 right-0 w-80 max-h-96 bg-card border border-border rounded-xl shadow-lg z-30 flex flex-col overflow-hidden"
+            className="absolute top-full mt-2 left-0 sm:left-auto sm:right-0 w-[min(20rem,calc(100vw-2rem))] max-h-96 bg-card border border-border rounded-xl shadow-lg z-30 flex flex-col overflow-hidden"
           >
             <div className="p-2 border-b border-border">
               <Input
