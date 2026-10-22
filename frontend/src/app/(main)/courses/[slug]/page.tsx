@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
 import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
-import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
+import { BookOpen, Eye, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CourseCategories, ModuleCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
@@ -14,7 +14,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from '@/lib/utils';
 export default function CoursePage() {
   const params = useParams();
-  const router = useRouter();
   const slug = params.slug as string;
   const courseId = Number(slug);
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -92,13 +91,9 @@ export default function CoursePage() {
       getMyEnrollments()
         .then(enrollments => {
           if (cancelled) return;
-          const found = enrollments.find(e => e.courseId === courseId);
-          if (found?.completedAt) {
-            // Course already completed — redirect to homepage
-            router.replace('/');
-            return;
-          }
-          setEnrollment(found ?? null);
+          // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
+          // splněné, takže se otevřou rovnou s odemčenými záložkami.
+          setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
         })
         .catch(() => {
           if (!cancelled) setEnrollment(null);
@@ -111,7 +106,7 @@ export default function CoursePage() {
     });
 
     return () => { cancelled = true; };
-  }, [authLoading, isAuthenticated, courseId, router]);
+  }, [authLoading, isAuthenticated, courseId]);
 
   // Hlavní loading flag — dokud jeden ze zdrojů nebyl vyřešen, UI se nerenderuje.
   // Tím se eliminuje flicker mezi „Zapsat se" stavem a skutečným zápisem.
@@ -207,6 +202,17 @@ export default function CoursePage() {
                     >
                       <CheckCircle className="size-4" />
                       Zapsáno!
+                    </motion.div>
+                  ) : enrollment.completedAt ? (
+                    <motion.div
+                      key="course-completed"
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-success bg-success/10 border border-success/30 whitespace-nowrap"
+                    >
+                      <CheckCircle className="size-4" />
+                      Kurz dokončen
                     </motion.div>
                   ) : null
                 ) : (
@@ -426,7 +432,13 @@ export default function CoursePage() {
                           <span
                             className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-success bg-success/10"
                           >
-                            Opakovat
+                            {/* Dokončený kurz se jen prohlíží (read-only), nic se neopakuje. */}
+                            {enrollment?.completedAt ? (
+                              <>
+                                <Eye className="size-4" />
+                                Zobrazit
+                              </>
+                            ) : 'Opakovat'}
                           </span>
                         )}
                       </div>
