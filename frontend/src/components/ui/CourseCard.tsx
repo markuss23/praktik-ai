@@ -135,11 +135,7 @@ export function CourseCard({
     </Card>
   );
 
-  // Completed courses are not clickable
-  if (isCompleted) {
-    return <div className="block">{cardContent}</div>;
-  }
-
+  // Dokončený kurz je klikací taky — detail kurzu slouží jako zpětný náhled.
   return (
     <Link href={`/courses/${id}`} className="group block">
       {cardContent}
