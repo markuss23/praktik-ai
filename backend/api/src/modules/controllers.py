@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
-from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment
+from api.src.common.utils import get_or_404, assert_course_editable, check_enrollment, course_visible_to
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, ModuleAssessmentQuestion, AssessmentAttemptDetail
 from api import enums, models
 from api.src.catalogs.controllers import (
@@ -61,17 +61,24 @@ def get_modules(
     include_inactive: bool = False,
     text_search: str | None = None,
     course_id: int | None = None,
+    published_only: bool = False,
 ) -> list[Module]:
     """
     Vrátí seznam modulů s volitelnými filtry:
     - include_inactive: zahrnout i neaktivní (jinak jen aktivní)
     - text_search: fulltext přes title
     - course_id: moduly jen pro daný kurz
+    - published_only: jen moduly publikovaných aktivních kurzů (pro studenty)
     """
     stm: Select[tuple[models.Module]] = select(models.Module)
 
     if not include_inactive:
         stm = stm.where(models.Module.is_active.is_(True))
+
+    if published_only:
+        stm = stm.join(models.Course, models.Course.course_id == models.Module.course_id).where(
+            models.Course.is_published.is_(True), models.Course.is_active.is_(True)
+        )
 
     if course_id is not None:
         stm = stm.where(models.Module.course_id == course_id)
@@ -89,10 +96,12 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     """
     Vytvoří modul.
     """
-    course = get_or_404(db, models.Course, data.course_id, detail="Kurz neexistuje.", check_active=False)
+    course = get_or_404(db, models.Course, data.course_id, detail="Kurz neexistuje.")
 
     # Validace vlastnictví kurzu
     validate_owner_or_superadmin(course, user, "modul")
+    # Nový modul je změna obsahu — jen v editovatelném stavu, jinak by obešel schvalování
+    assert_course_editable(course)
 
     _validate_neuro_principle_ids(db, data.neuro_principle_ids)
     validate_krauu_competence_ids(db, data.krauu_competence_ids)
@@ -133,6 +142,9 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
     Vrátí konkrétní modul podle module_id
     """
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen", check_active=False)
+    # Obsah (vč. správných odpovědí) nepublikovaného kurzu jen lektorům+ a zapsaným studentům
+    if not course_visible_to(db, module.course, user):
+        raise HTTPException(status_code=404, detail="Modul nenalezen")
     return Module.model_validate(module)
 
 

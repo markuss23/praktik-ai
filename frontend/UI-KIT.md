@@ -30,8 +30,12 @@ npx shadcn@latest add tooltip     # spadne do src/components/ui-kit/
 ## Co kit obsahuje
 
 `accordion`, `alert`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`, `dropdown-menu`,
-`input`, `label`, `progress`, `select`, `separator`, `skeleton`, `status-select`, `switch`, `table`,
-`tabs`, `textarea`, `toast`, `tooltip`.
+`input`, `label`, `progress`, `select`, `separator`, `skeleton`, `slider`, `status-select`, `switch`,
+`table`, `tabs`, `textarea`, `toast`, `tooltip`.
+
+`Slider` z kitu bere `value` jako pole (`value={[zoom]}`) — s holým číslem vykreslí dva táhla.
+Pozor: shadcn CLI 4.22 generuje `import { cn } from "cn"` a přidá do `package.json` balíček `cn`;
+import přepiš na `@/lib/utils` a `cn` z `package.json` vrať.
 
 Chybí-li něco (popover, radio-group, command, pagination…), přidej to CLI příkazem výše —
 neimplementuj vlastní.

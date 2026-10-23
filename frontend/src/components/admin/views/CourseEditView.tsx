@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Module } from '@/api';
+import { useState, useEffect, useRef } from 'react';
+import { Module, Status } from '@/api';
 import { getCourse, updateModule, deleteCourse, coursesApi } from '@/lib/api-client';
 import { Course } from '@/api';
+import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
+import { isCourseSummaryFeedback } from '@/lib/review-feedback';
 import { CourseCategoryFields } from '@/components/admin/CourseCategoryFields';
 import {
   courseCategoryValues, crossSubjectsRule, subjectAllowed, moduleCategoryValues, moduleToUpdate,
@@ -17,6 +19,7 @@ import {
   useCourseStepNavigation, useAdminChrome, type CourseStep,
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
+import { CourseImageField } from '@/components/admin/CourseImageField';
 import { CatalogSelect, ConfirmModal, Button, Drawer, DrawerContent, Input, Textarea } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -51,6 +54,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
   const { focusMode } = useAdminChrome();
   const goToStep = useCourseStepNavigation(courseId);
+
+  // Komentáře garanta k souhrnu kurzu (popis, zařazení, obrázek) u vráceného kurzu
+  const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Panel komentářů začíná pod hlavičkou stránky
+  const reviewHeaderRef = useRef<HTMLDivElement>(null);
+  const showCommentsPanel = courseData?.status === Status.Edited && feedbacks.length > 0;
+  const summaryFeedbacks = feedbacks.filter(isCourseSummaryFeedback);
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, summaryFeedbacks, setCommentsOpen);
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -253,7 +265,26 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         showFullscreenToggle
         showButtons
         onMenuClick={() => setMobileStepsOpen(true)}
+        onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
+        commentsCount={showCommentsPanel ? summaryFeedbacks.filter((fb) => !fb.isResolved).length : undefined}
+        commentsOpen={commentsOpen}
+        headerRef={reviewHeaderRef}
       />
+
+      {showCommentsPanel && (
+        <AuthorCommentsDrawer
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          anchorRef={reviewHeaderRef}
+          subtitle="Popis kurzu — popis, zařazení, náhledový obrázek"
+          feedbacks={summaryFeedbacks}
+          allFeedbacks={feedbacks}
+          emptyText="K popisu kurzu nejsou žádné komentáře. Komentáře k modulům najdete v krocích Podklady a Testy."
+          contextLabel={() => null}
+          onReply={replyToReviewFeedback}
+          onToggleResolve={toggleReviewFeedback}
+        />
+      )}
 
       {previewOpen ? (
         <StudentPreview
@@ -313,6 +344,15 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
             rows={4}
           />
         </div>
+
+        {/* Ukládá se hned po nahrání / vygenerování, nezávisle na „Uložit změny" */}
+        <CourseImageField
+          courseId={courseId}
+          imageUrl={courseData?.imageUrl}
+          onChange={(imageUrl) => setCourseData((prev) => (prev ? { ...prev, imageUrl } : prev))}
+          // Stejné stavy jako úpravy kurzu na backendu (koncept / vygenerovaný / editovaný)
+          locked={!!courseData && !([Status.Draft, Status.Generated, Status.Edited] as Status[]).includes(courseData.status as Status)}
+        />
 
         {/* Catalog selects */}
         {!catalogsLoading && (

@@ -73,6 +73,7 @@ export function RecommendedCourses() {
               description={c.description ?? ''}
               duration={c.durationMinutes ?? (c.modulesCount ? c.modulesCount * 20 : 60)}
               difficulty={c.difficulty}
+              imageUrl={c.imageUrl}
               completedModules={0}
               totalModules={c.modulesCount ?? 0}
             />

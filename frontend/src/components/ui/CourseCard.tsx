@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, CheckCircle, Clock, FileText } from "lucide-react";
 import { type Difficulty } from "@/api";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
@@ -8,6 +7,7 @@ import { cn, czechPlural } from "@/lib/utils";
 import { Button } from "../ui-kit/button";
 import { Card, CardContent, CardFooter } from "../ui-kit/card";
 import { Progress } from "../ui-kit/progress";
+import { CourseImage } from "./CourseImage";
 
 interface CourseCardProps {
   id: string;
@@ -18,7 +18,8 @@ interface CourseCardProps {
   difficulty?: Difficulty | null;
   completedModules?: number;
   totalModules?: number;
-  imageUrl?: string;
+  /** `imageUrl` z API kurzu; bez něj se ukáže výchozí obrázek. */
+  imageUrl?: string | null;
   isEnrolled?: boolean;
   isCompleted?: boolean;
 }
@@ -31,7 +32,7 @@ export function CourseCard({
   difficulty,
   completedModules = 0,
   totalModules = 0,
-  imageUrl = "/courseai2.png",
+  imageUrl,
   isEnrolled = false,
   isCompleted = false,
 }: CourseCardProps) {
@@ -47,11 +48,10 @@ export function CourseCard({
     >
       {/* Course Image */}
       <div className="relative h-[226px] w-full shrink-0 overflow-hidden">
-        <Image
-          src={imageUrl}
+        <CourseImage
+          imageUrl={imageUrl}
           alt={title}
-          fill
-          className={cn("object-cover transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
+          className={cn("transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
         />
         {isCompleted && (
           <div className="absolute inset-0 flex items-center justify-center bg-success/30">

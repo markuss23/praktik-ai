@@ -279,3 +279,24 @@ def require_role(min_role: str):
 
 auth = Auth()
 CurrentUser = Annotated[User, Depends(auth.get_current_user)]
+
+
+def get_optional_user(
+    token: Annotated[str | None, Depends(oauth2_bearer)],
+    db: Annotated[Session, Depends(get_sql)],
+) -> User | None:
+    """Přihlášený uživatel pro veřejné endpointy; None bez tokenu nebo s neplatným tokenem."""
+    if not token:
+        return None
+    try:
+        return auth.get_current_user(token, db)
+    except HTTPException:
+        return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def is_staff(user: User | None) -> bool:
+    """Lektor a výš (lektor, garant, superadmin)."""
+    return user is not None and ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]

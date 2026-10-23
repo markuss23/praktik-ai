@@ -28,6 +28,7 @@ dependencies = [
     "langchain-community>=0.4.1",
     "apscheduler>=3.11.3",
     "markitdown[docx,pdf,pptx,xls,xlsx]>=0.1.8",
+    "pillow>=12.3.0",
 ]
 
 [tool.ruff]

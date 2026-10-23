@@ -93,6 +93,7 @@ export {
   TableCaption,
 } from "../ui-kit/table";
 export { Separator } from "../ui-kit/separator";
+export { Slider } from "../ui-kit/slider";
 export { Skeleton } from "../ui-kit/skeleton";
 export {
   DropdownMenu,

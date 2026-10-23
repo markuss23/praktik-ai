@@ -1,12 +1,13 @@
 'use client';
 
 import { getCourses, getModules, updateCoursePublished, generateCourseEmbeddings, generateCourseWithAI, updateCourseStatus, createModule, coursesApi as sharedCoursesApi, modulesApi as sharedModulesApi } from "@/lib/api-client";
-import { Course, Difficulty, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
+import { Course, Status, Module, UpdateCourseStatusStatusEnum } from "@/api";
 import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { X, BicepsFlexed, Upload, RotateCcw, RefreshCw, Archive, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { X, BicepsFlexed, Upload, RotateCcw, RefreshCw, Archive, ChevronLeft, ChevronRight, Lock, Eye, EyeOff, Globe, Pencil, Send, Trash2 } from "lucide-react";
 import { ModuleModal, EditActionButton, PublishActionButton, DeleteActionButton, CourseActionButtons, ApproveActionButton, type ModuleFormData } from "@/components/admin";
 import { CourseFilters, DEFAULT_COURSE_FILTERS, type CourseFilterState } from "@/components/admin/CourseFilters";
+import { CourseRowActionsMenu, type CourseRowAction } from "@/components/admin/CourseRowActionsMenu";
 import { compareCourses, DEFAULT_COURSE_SORT, isCourseSortOrder, type CourseSortOrder } from "@/lib/course-sort";
 import { REVIEW_COUNT_EVENT } from "@/components/admin/AdminSidebar";
 import { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "@/components/ui/Badge";
@@ -17,13 +18,9 @@ import { useRole } from "@/hooks/useRole";
 import { useCatalogData } from "@/hooks/useCatalogData";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Button, CatalogSelect, useToast, ConfirmModal, type ConfirmVariant, Input, Skeleton, Tooltip, TooltipTrigger, TooltipContent, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
-import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import { Button, useToast, ConfirmModal, type ConfirmVariant, Skeleton, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui";
 import { BTN_KEEP_BOX, cn, czechPlural } from "@/lib/utils";
-import {
-  courseToUpdate, crossSubjectsRule, subjectAllowed, moduleCategoryValues, moduleToUpdate,
-  validateCourseCategories, validateModuleCategories,
-} from "@/lib/course-categories";
+import { moduleCategoryValues, moduleToUpdate, validateModuleCategories } from "@/lib/course-categories";
 import { readApiErrorDetail } from "@/lib/api-error";
 
 const PAGE_SIZE = 10;
@@ -113,30 +110,6 @@ function readStoredFilters(): CourseFilterState {
 
 type ModalType = 'course-create' | 'course-edit' | 'module-create' | 'module-edit' | null;
 
-// Rychlé úpravy v řádku kurzu: vedle názvu a zařazení i vstupy, které čte AI
-// generátor (popis, délka) a obtížnost. Stejné limity jako ve formuláři AI
-// tvorby (CourseAICreateView), ať se kurz chová všude stejně.
-const QUICK_EDIT_INPUT_CLASS =
-  'px-2 py-1.5 border border-gradient-r/30 rounded-md text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-gradient-r/30';
-const QUICK_EDIT_SELECT_CLASS = `${QUICK_EDIT_INPUT_CLASS} data-[size=default]:h-auto`;
-const QUICK_EDIT_DIFFICULTY_ITEMS = DIFFICULTY_ORDER.map((d) => ({ value: d, label: DIFFICULTY_LABELS[d] }));
-
-interface QuickEditData {
-  title: string;
-  description: string;
-  courseBlockId: number;
-  courseTargetId: number;
-  courseSubjectId: number;
-  /** Číslo drží jako text, aby šlo pole vymazat a přepsat bez skoku na 0 */
-  durationMinutes: string;
-  difficulty: Difficulty;
-}
-
-const EMPTY_QUICK_EDIT: QuickEditData = {
-  title: '', description: '', courseBlockId: 0, courseTargetId: 0, courseSubjectId: 0,
-  durationMinutes: '', difficulty: Difficulty.SlightlyAdvanced,
-};
-
 /** editaci jen ve stavech koncept/vygenerovaný/editovaný */
 function getCourseEditLockReason(course: Course): string | null {
   const status = course.status as string;
@@ -150,7 +123,7 @@ function getCourseEditLockReason(course: Course): string | null {
 
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
-  const { goToCourseContent, goToCourseUpload, goToAICreate } = useAdminNavigation();
+  const { goToCourseContent, goToCourseUpload, goToAICreate, goToCoursePreview } = useAdminNavigation();
   const { isSuperAdmin } = useRole();
   const { blocks, targets, subjects, neuroPrinciples, krauuCompetences, bloomLevels } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
@@ -217,11 +190,10 @@ export function CoursesListView() {
     if (urlPage === null && page > 1) router.replace(pageHref(page), { scroll: false });
   }, [urlPage, page, pageHref, router]);
 
-  // Zavře rozbalené moduly i rychlé úpravy
+  // Zavře rozbalené moduly
   const closeAllExpanded = useCallback(() => {
     setExpandedCourse(null);
     writeStorage('session', SESSION_EXPANDED_KEY, null);
-    setQuickEditCourseId(null);
   }, []);
 
   // Embedding generation state
@@ -251,11 +223,6 @@ export function CoursesListView() {
       setConfirmConfig(null);
     }
   };
-
-  // Quick edit state (inline accordion)
-  const [quickEditCourseId, setQuickEditCourseId] = useState<number | null>(null);
-  const [quickEditData, setQuickEditData] = useState<QuickEditData>(EMPTY_QUICK_EDIT);
-  const [quickEditLoading, setQuickEditLoading] = useState(false);
 
   // Stavy modálních oken
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -435,7 +402,7 @@ export function CoursesListView() {
 
   // Zavři rozbalené sekce při kliknutí mimo ně nebo klávesou Escape
   useEffect(() => {
-    if (expandedCourse === null && quickEditCourseId === null) return;
+    if (expandedCourse === null) return;
 
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -453,7 +420,7 @@ export function CoursesListView() {
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [expandedCourse, quickEditCourseId, closeAllExpanded]);
+  }, [expandedCourse, closeAllExpanded]);
 
   // Přechod na jinou stránku přes paginaci: nejdřív přejdi, pak na pozadí zavři sekce.
   // (Voláno z klik handleru, ne z efektu na `page`, aby obnova stránky sekce nezavírala.)
@@ -503,7 +470,6 @@ export function CoursesListView() {
 
   // Moduly rozbaleného kurzu stahuje efekt výše — tady se jen přepíná stav
   const toggleCourseExpand = (courseId: number) => {
-    setQuickEditCourseId(null);
     if (expandedCourse === courseId) {
       setExpandedCourse(null);
       writeStorage('session', SESSION_EXPANDED_KEY, null);
@@ -818,91 +784,61 @@ export function CoursesListView() {
     }
   };
 
-  // Quick edit
-
-  const openQuickEdit = (course: Course) => {
-    if (quickEditCourseId === course.courseId) {
-      setQuickEditCourseId(null);
-      return;
-    }
-    setExpandedCourse(null);
-    writeStorage('session', SESSION_EXPANDED_KEY, null);
-    setQuickEditCourseId(course.courseId);
-    setQuickEditData({
-      title: course.title,
-      description: course.description ?? '',
-      courseBlockId: course.courseBlockId ?? 0,
-      courseTargetId: course.courseTargetId ?? 0,
-      courseSubjectId: course.courseSubjectId ?? 0,
-      durationMinutes: course.durationMinutes != null ? String(course.durationMinutes) : '',
-      difficulty: course.difficulty ?? Difficulty.SlightlyAdvanced,
-    });
-  };
-
-  const closeQuickEdit = () => { setQuickEditCourseId(null); };
-
-  const saveQuickEdit = async () => {
-    if (!quickEditCourseId) return;
-    const existingCourse = courses.find(c => c.courseId === quickEditCourseId);
-    if (!existingCourse) return;
-    // Stejná pravidla jako ve formuláři AI tvorby
-    const title = quickEditData.title.trim();
-    if (title.length < 3 || title.length > 120) {
-      toast.error('Název kurzu musí mít 3 až 120 znaků.');
-      return;
-    }
-    const description = quickEditData.description.trim();
-    if (description.length > 500) {
-      toast.error('Popis kurzu může mít nejvýše 500 znaků.');
-      return;
-    }
-    const durationRaw = quickEditData.durationMinutes.trim();
-    const durationMinutes = durationRaw ? Number(durationRaw) : null;
-    if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 15 || durationMinutes > 300)) {
-      toast.error('Délka kurzu musí být mezi 15 a 300 minutami.');
-      return;
-    }
-
-    // Změna bloku mění pravidlo pro průřezové obory (A/B povinné, jinak volitelné).
-    const rule = crossSubjectsRule(blocks, quickEditData.courseBlockId || null);
-    const update = courseToUpdate(existingCourse, {
-      title,
-      description: description || null,
-      // 0 = „Neurčeno" — blok i obor jsou volitelné.
-      courseBlockId: quickEditData.courseBlockId || null,
-      courseTargetId: quickEditData.courseTargetId || null,
-      courseSubjectId: subjectAllowed(blocks, quickEditData.courseBlockId) ? quickEditData.courseSubjectId || null : null,
-      durationMinutes,
-      difficulty: quickEditData.difficulty,
-    });
-    update.crossSubjectIds = update.crossSubjectIds ?? [];
-    const categoryError = validateCourseCategories(
-      { krauuCompetenceIds: update.krauuCompetenceIds, bloomLevelIds: update.bloomLevelIds, crossSubjectIds: update.crossSubjectIds },
-      rule,
-    );
-    if (categoryError) {
-      toast.error(`${categoryError} Doplňte je v souhrnu kurzu.`);
-      return;
-    }
-    setQuickEditLoading(true);
-    try {
-      await sharedCoursesApi.updateCourse({
-        courseId: quickEditCourseId,
-        courseUpdate: update,
-      });
-      await loadCoursesList();
-      toast.success('Rychlé úpravy uloženy.');
-    } catch (error) {
-      console.error('Failed to quick save course:', error);
-      toast.error((await readApiErrorDetail(error)) ?? error, 'Nepodařilo se uložit rychlé úpravy.');
-    } finally {
-      setQuickEditLoading(false);
-    }
-  };
-
   const canSubmitForReview = (course: Course) => {
     const editableStatuses: string[] = [Status.Draft, Status.Generated, Status.Edited];
     return canEditCourse(course) && editableStatuses.includes(course.status as string);
+  };
+
+  // Akce do menu „⋯" v řádku tabulky — stejné podmínky, jaké měla dřív tlačítka.
+  const getRowActions = (course: Course): CourseRowAction[] => {
+    const statusStr = course.status as string;
+    const busy = statusLoading === course.courseId;
+    // Náhled jen pro čtení jde u každého kurzu, i cizího
+    const actions: CourseRowAction[] = [
+      { key: 'preview', label: 'Náhled', icon: Eye, onSelect: () => goToCoursePreview(course.courseId) },
+    ];
+
+    if (statusStr === Status.Archived) {
+      // Archived: only publish/unpublish toggle (+ delete for superadmin)
+      if (canPublishCourse(course)) {
+        actions.push({
+          key: 'publish',
+          label: course.isPublished ? 'Zrušit publikování' : 'Publikovat',
+          icon: course.isPublished ? EyeOff : Globe,
+          onSelect: () => requestTogglePublish(course),
+        });
+      }
+    } else if (course.isPublished) {
+      // Published (non-archived): archive (+ delete for superadmin)
+      actions.push({ key: 'archive', label: 'Archivovat', icon: Archive, onSelect: () => requestArchive(course), disabled: busy });
+    } else {
+      // Edit actions - only in editable statuses (draft/generated/edited)
+      if (canEditCourse(course) && statusStr !== Status.InReview && statusStr !== Status.Approved && statusStr !== Status.Failed) {
+        actions.push({ key: 'edit', label: 'Úpravy', icon: Pencil, onSelect: () => toggleCourseExpand(course.courseId) });
+      }
+      // Restart generování - selhaný kurz nebo koncept bez modulů
+      if (canRetryGeneration(course)) {
+        actions.push({ key: 'retry', label: 'Spustit znovu', icon: RefreshCw, onSelect: () => requestRetryGeneration(course), disabled: busy });
+      }
+      // Submit for review - owner can submit when in editable status
+      if (canSubmitForReview(course)) {
+        actions.push({ key: 'submit', label: 'Odeslat ke schválení', icon: Send, onSelect: () => requestSubmitForReview(course), disabled: busy });
+      }
+      // Publish - only when approved and not yet published
+      if (canPublishCourse(course) && course.status === Status.Approved) {
+        actions.push({ key: 'publish', label: 'Publikovat', icon: Globe, onSelect: () => requestTogglePublish(course) });
+      }
+      // Revert to editing - superadmin only, when approved
+      if (isSuperAdmin && course.status === Status.Approved) {
+        actions.push({ key: 'revert', label: 'Vrátit do úprav', icon: RotateCcw, onSelect: () => requestRevertToEditing(course), disabled: busy });
+      }
+    }
+
+    // Delete - superadmin always; owner only when draft/generated
+    if (canDeleteCourse(course)) {
+      actions.push({ key: 'delete', label: 'Smazat', icon: Trash2, onSelect: () => handleDeleteClick(course.courseId), destructive: true });
+    }
+    return actions;
   };
 
   //  Render
@@ -950,12 +886,12 @@ export function CoursesListView() {
             <table className="w-full">
               <thead className="sticky top-0 z-10 bg-card">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Název kurzu</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Vlastník</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Počet modulů</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Publikováno</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Akce</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Název kurzu</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Vlastník</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Počet modulů</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Status</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Publikováno</th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-sm font-medium text-foreground bg-muted/50 shadow-[inset_0_-1px_0_0_var(--border)]">Akce</th>
                 </tr>
               </thead>
               {/* Klíč = stránka + řazení: po přepnutí se řádky znovu postupně objeví */}
@@ -964,7 +900,7 @@ export function CoursesListView() {
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
                       {Array.from({ length: 6 }).map((_, j) => (
-                        <td key={j} className="px-6 py-4">
+                        <td key={j} className="px-3 lg:px-6 py-4">
                           <div className="h-4 bg-muted rounded w-3/4" />
                         </td>
                       ))}
@@ -972,26 +908,26 @@ export function CoursesListView() {
                   ))
                 ) : !coursesLoading && courses.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                    <td colSpan={6} className="px-3 lg:px-6 py-12 text-center text-sm text-muted-foreground">
                       {coursesError ?? 'Zatím nejsou žádné kurzy. Vytvořte první přes „Přidat kurz".'}
                     </td>
                   </tr>
                 ) : filteredCourses.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                    <td colSpan={6} className="px-3 lg:px-6 py-12 text-center text-sm text-muted-foreground">
                       Žádné kurzy neodpovídají zvoleným filtrům.
                     </td>
                   </tr>
                 ) : pagedCourses.map((course, pageIndex) => {
                   const editable = canEditCourse(course);
-                  const statusStr = course.status as string;
                   const generating = generation.getProgress(course.courseId);
                   const handleRowClick = () => {
                     if (generating) return; // během generování nemá rozbalení co ukázat
                     if (editable) {
                       toggleCourseExpand(course.courseId);
                     } else {
-                      goToCourseContent(course.courseId);
+                      // Cizí kurz — upravovat ho nejde, otevře se read-only náhled
+                      goToCoursePreview(course.courseId);
                     }
                   };
                   return (
@@ -1010,240 +946,29 @@ export function CoursesListView() {
                           }
                         }}
                       >
-                        <td className="px-6 py-4 text-sm text-foreground">{course.title}</td>
-                        <td className="px-6 py-4 text-sm text-foreground">{course.ownerDisplayName ?? '—'}</td>
-                        <td className="px-6 py-4 text-sm text-foreground">{getModuleCount(course)} {czechPlural(getModuleCount(course), 'modul', 'moduly', 'modulů')}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 lg:px-6 py-4 text-sm text-foreground [overflow-wrap:anywhere]">{course.title}</td>
+                        <td className="px-3 lg:px-6 py-4 text-sm text-foreground">{course.ownerDisplayName ?? '—'}</td>
+                        <td className="px-3 lg:px-6 py-4 text-sm text-foreground">{getModuleCount(course)} {czechPlural(getModuleCount(course), 'modul', 'moduly', 'modulů')}</td>
+                        <td className="px-3 lg:px-6 py-4">
                           {generating ? <GeneratingBadge progress={generating} /> : <StatusBadge status={course.status} />}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 lg:px-6 py-4">
                           <PublishBadge status={course.status} isPublished={course.isPublished} />
                         </td>
-                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                            {generating ? (
-                              <span className="text-muted-foreground" title={generating.label}>Probíhá generování…</span>
-                            ) : statusStr === Status.Archived ? (
-                              <>
-                                {/* Archived: only publish/unpublish toggle (+ delete for superadmin) */}
-                                {canPublishCourse(course) && (
-                                  <Button
-                                    onClick={() => requestTogglePublish(course)}
-                                    size="pill" variant="soft-accent"
-                                  >
-                                    {course.isPublished ? 'Zrušit publikování' : 'Publikovat'}
-                                  </Button>
-                                )}
-                                {canDeleteCourse(course) && (
-                                  <Button
-                                    onClick={() => handleDeleteClick(course.courseId)}
-                                    size="pill" variant="destructive"
-                                  >
-                                    Smazat
-                                  </Button>
-                                )}
-                              </>
-                            ) : course.isPublished ? (
-                              <>
-                                {/* Published (non-archived): archive (+ delete for superadmin) */}
-                                <Button
-                                  onClick={() => requestArchive(course)}
-                                  disabled={statusLoading === course.courseId}
-                                  size="pill" variant="soft-accent"
-                                >
-                                  {statusLoading === course.courseId ? 'Archivování...' : 'Archivovat'}
-                                </Button>
-                                {canDeleteCourse(course) && (
-                                  <Button
-                                    onClick={() => handleDeleteClick(course.courseId)}
-                                    size="pill" variant="destructive"
-                                  >
-                                    Smazat
-                                  </Button>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                {/* Edit actions - only in editable statuses (draft/generated/edited) */}
-                                {editable && statusStr !== Status.InReview && statusStr !== Status.Approved && statusStr !== Status.Failed && (
-                                  <>
-                                    <Button
-                                      onClick={() => toggleCourseExpand(course.courseId)}
-                                      size="pill" variant="soft-tip"
-                                    >
-                                      Úpravy
-                                    </Button>
-                                    <Button
-                                      onClick={() => openQuickEdit(course)}
-                                      size="pill" variant="soft-success"
-                                    >
-                                      Rychlé úpravy
-                                    </Button>
-                                  </>
-                                )}
-
-                                {/* Restart generování - selhaný kurz nebo koncept bez modulů */}
-                                {canRetryGeneration(course) && (
-                                  <Button
-                                    onClick={() => requestRetryGeneration(course)}
-                                    disabled={statusLoading === course.courseId}
-                                    size="pill" variant="soft-tip"
-                                  >
-                                    <RefreshCw className="size-3" />
-                                    {statusLoading === course.courseId ? 'Spouštím...' : 'Spustit znovu'}
-                                  </Button>
-                                )}
-
-                                {/* Submit for review - owner can submit when in editable status */}
-                                {canSubmitForReview(course) && (
-                                  <Button
-                                    onClick={() => requestSubmitForReview(course)}
-                                    disabled={statusLoading === course.courseId}
-                                    size="pill" variant="soft-tip"
-                                  >
-                                    {statusLoading === course.courseId ? 'Odesílání...' : 'Odeslat ke schválení'}
-                                  </Button>
-                                )}
-
-                                {/* Publish - only when approved and not yet published */}
-                                {canPublishCourse(course) && course.status === Status.Approved && (
-                                  <Button
-                                    onClick={() => requestTogglePublish(course)}
-                                    size="pill" variant="soft-accent"
-                                  >
-                                    Publikovat
-                                  </Button>
-                                )}
-
-                                {/* Revert to editing - superadmin only, when approved */}
-                                {isSuperAdmin && course.status === Status.Approved && (
-                                  <Button
-                                    onClick={() => requestRevertToEditing(course)}
-                                    disabled={statusLoading === course.courseId}
-                                    size="pill" variant="soft-warning"
-                                  >
-                                    {statusLoading === course.courseId ? 'Zpracovávám...' : 'Vrátit do úprav'}
-                                  </Button>
-                                )}
-
-                                {/* Delete - superadmin always; owner only when draft/generated */}
-                                {canDeleteCourse(course) && (
-                                  <Button
-                                    onClick={() => handleDeleteClick(course.courseId)}
-                                    size="pill" variant="destructive"
-                                  >
-                                    Smazat
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                        {/* Klik ani klávesy z menu (i z jeho portálu) nesmí probublat do řádku,
+                            jinak by Enter na položce zároveň rozbalil kurz */}
+                        <td className="px-3 lg:px-6 py-4" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          {generating ? (
+                            <span className="text-xs text-muted-foreground" title={generating.label}>Probíhá generování…</span>
+                          ) : (
+                            <CourseRowActionsMenu
+                              courseTitle={course.title}
+                              actions={getRowActions(course)}
+                              busy={statusLoading === course.courseId}
+                            />
+                          )}
                         </td>
                       </tr>
-
-                      {/* Quick Edit Accordion */}
-                      {quickEditCourseId === course.courseId && (
-                        <tr data-accordion-panel>
-                          <td colSpan={6} className="bg-gradient-r/10 p-0 border-b border-gradient-r/30">
-                            <div className="px-4 py-3">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-semibold text-gradient-r whitespace-nowrap">Rychlé úpravy:</span>
-                                <Input
-                                  type="text"
-                                  value={quickEditData.title}
-                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, title: e.target.value }))}
-                                  placeholder="Název kurzu"
-                                  maxLength={120}
-                                  aria-label="Název kurzu"
-                                  className={cn("h-auto", "w-44", QUICK_EDIT_INPUT_CLASS)}
-                                />
-                                <Input
-                                  type="text"
-                                  value={quickEditData.description}
-                                  onChange={(e) => setQuickEditData(prev => ({ ...prev, description: e.target.value }))}
-                                  placeholder="Popis kurzu (vstup pro AI)"
-                                  maxLength={500}
-                                  aria-label="Popis kurzu"
-                                  title={quickEditData.description}
-                                  className={cn("h-auto", "w-56", QUICK_EDIT_INPUT_CLASS)}
-                                />
-                                <CatalogSelect
-                                  value={quickEditData.courseBlockId}
-                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseBlockId: next }))}
-                                  options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
-                                  emptyLabel="Bez bloku"
-                                  aria-label="Tematický blok"
-                                  className={QUICK_EDIT_SELECT_CLASS}
-                                />
-                                <CatalogSelect
-                                  value={quickEditData.courseTargetId}
-                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseTargetId: next }))}
-                                  options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
-                                  emptyLabel="Bez skupiny"
-                                  aria-label="Cílová skupina"
-                                  className={QUICK_EDIT_SELECT_CLASS}
-                                />
-                                <CatalogSelect
-                                  value={subjectAllowed(blocks, quickEditData.courseBlockId) ? quickEditData.courseSubjectId : 0}
-                                  onValueChange={(next) => setQuickEditData(prev => ({ ...prev, courseSubjectId: next }))}
-                                  disabled={!subjectAllowed(blocks, quickEditData.courseBlockId)}
-                                  options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
-                                  emptyLabel="Bez oboru"
-                                  aria-label="Předmět"
-                                  className={QUICK_EDIT_SELECT_CLASS}
-                                />
-                                {/* Délka kurzu je vstup generátoru; popisek je součástí labelu, ať je číslo srozumitelné */}
-                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
-                                  Minut
-                                  <Input
-                                    type="number"
-                                    inputMode="numeric"
-                                    min={15}
-                                    max={300}
-                                    step={5}
-                                    value={quickEditData.durationMinutes}
-                                    onChange={(e) => setQuickEditData(prev => ({ ...prev, durationMinutes: e.target.value }))}
-                                    placeholder="—"
-                                    aria-label="Délka kurzu v minutách"
-                                    className={cn("h-auto", "w-20", QUICK_EDIT_INPUT_CLASS)}
-                                  />
-                                </label>
-                                <Select
-                                  items={QUICK_EDIT_DIFFICULTY_ITEMS}
-                                  value={quickEditData.difficulty}
-                                  onValueChange={(v) => setQuickEditData(prev => ({ ...prev, difficulty: v as Difficulty }))}
-                                >
-                                  <SelectTrigger className={QUICK_EDIT_SELECT_CLASS} aria-label="Obtížnost">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {QUICK_EDIT_DIFFICULTY_ITEMS.map((o) => (
-                                      <SelectItem key={o.value} value={o.value}>
-                                        {o.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    onClick={saveQuickEdit}
-                                    disabled={quickEditLoading}
-                                    variant="plain" className="px-3 bg-gradient-r text-primary-foreground rounded-md hover:bg-gradient-r/80"
-                                  >
-                                    {quickEditLoading ? 'Ukládání...' : 'Uložit'}
-                                  </Button>
-                                  <Button
-                                    onClick={closeQuickEdit}
-                                    variant="plain" className="px-3 bg-muted text-foreground rounded-md hover:bg-muted/80"
-                                  >
-                                    Zrušit
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
 
                       {/* Expanded Module List */}
                       {expandedCourse === course.courseId && (
@@ -1299,6 +1024,7 @@ export function CoursesListView() {
                 onTogglePublish={() => requestTogglePublish(course)}
                 onDelete={() => handleDeleteClick(course.courseId)}
                 onEditCourse={() => goToCourseContent(course.courseId)}
+                onPreview={() => goToCoursePreview(course.courseId)}
                 onCloseExpand={closeCourseExpand}
                 onEditModule={openEditModuleModal}
                 onToggleModuleActive={toggleModuleActive}
@@ -1664,6 +1390,8 @@ function ExpandedModuleList({
 interface MobileCourseCardProps {
   course: Course;
   isExpanded: boolean;
+  /** Read-only náhled kurzu (jde i u cizího kurzu) */
+  onPreview: () => void;
   /** Průběh běžícího AI generování; null = negeneruje se */
   generating: { step: number; total: number; label: string } | null;
   canRetryGeneration: boolean;
@@ -1697,6 +1425,7 @@ interface MobileCourseCardProps {
 function MobileCourseCard({
   course,
   isExpanded,
+  onPreview,
   generating,
   canRetryGeneration,
   onRetryGeneration,
@@ -1746,6 +1475,11 @@ function MobileCourseCard({
       </div>
 
       <div data-accordion-keep className="mt-3 flex flex-wrap items-center gap-1.5">
+        {!generating && (
+          <Button onClick={onPreview} variant="outline" size="icon" aria-label="Náhled kurzu" title="Náhled">
+            <Eye />
+          </Button>
+        )}
         {generating ? (
           <span className="text-xs text-muted-foreground" title={generating.label}>Probíhá generování…</span>
         ) : statusStr === Status.Archived ? (

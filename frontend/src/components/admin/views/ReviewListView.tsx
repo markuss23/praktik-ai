@@ -274,8 +274,9 @@ export function ReviewListView() {
     router.push(`/admin/review/${courseId}`);
   };
 
+  // Schválený kurz se už neupravuje — garant si ho projde v read-only náhledu
   const handleOpenApproved = (courseId: number) => {
-    router.push(`/admin?view=course-content&courseId=${courseId}`);
+    router.push(`/admin?view=course-preview&courseId=${courseId}`);
   };
 
   // A user cannot review courses they own. in_review courses are hidden

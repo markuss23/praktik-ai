@@ -6,10 +6,10 @@ from fastapi.responses import Response
 from langgraph.graph.state import CompiledStateGraph
 
 from api.storage import seaweedfs
-from api.src.common.utils import attachment_response, get_or_404
+from api.src.common.utils import attachment_response, ensure_course_visible, get_or_404
 from api import models
 
-from api.dependencies import CurrentUser, require_role
+from api.dependencies import CurrentUser, OptionalUser, is_staff, require_role
 from api.src.common.annotations import (
     COURSE_BLOCK_ID_ANNOTATION,
     COURSE_EQF_LEVEL_ID_ANNOTATION,
@@ -30,6 +30,7 @@ from api.src.courses.schemas import (
     CourseDetail,
     CourseUpdate,
     CourseFile,
+    CourseImage,
     CourseLink,
 )
 from api.src.courses.controllers import (
@@ -47,6 +48,9 @@ from api.src.courses.controllers import (
     delete_course_link,
     update_course_status,
     update_course_published,
+    upload_course_image,
+    delete_course_image,
+    get_course_image,
 )
 from api.database import SessionLocal, SessionSqlSessionDependency
 from agents.embedding_generator import create_graph as create_embedding_graph
@@ -81,6 +85,7 @@ async def endp_list_recommended_courses(
 @public_router.get("", operation_id="list_courses")
 async def list_courses(
     db: SessionSqlSessionDependency,
+    user: OptionalUser,
     include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
     is_published: IS_PUBLISHED_ANNOTATION = False,
     text_search: TEXT_SEARCH_ANNOTATION = None,
@@ -93,6 +98,11 @@ async def list_courses(
     course_type_id: COURSE_TYPE_ID_ANNOTATION = None,
     status: COURSE_STATUS_ANNOTATION = None,
 ) -> list[Course]:
+    # Nepřihlášení a studenti vidí jen publikované aktivní kurzy (koncepty ani
+    # kurzy ve schvalování jim katalog nevrátí, ať pošlou jakékoli parametry).
+    if not is_staff(user):
+        is_published = True
+        include_inactive = False
     return get_courses(
         db,
         include_inactive=include_inactive,
@@ -110,8 +120,29 @@ async def list_courses(
 
 
 @public_router.get("/{course_id}", operation_id="get_course_public")
-async def endp_get_course_public(course_id: int, db: SessionSqlSessionDependency) -> CourseDetail:
+async def endp_get_course_public(
+    course_id: int, db: SessionSqlSessionDependency, user: OptionalUser
+) -> CourseDetail:
+    """Detail kurzu včetně obsahu modulů. Nepublikovaný kurz jen pro lektory+
+    a zapsané studenty, ostatním 404 (viz `course_visible_to`)."""
+    ensure_course_visible(db, course_id, user)
     return get_course(db, course_id)
+
+
+@public_router.get(
+    "/{course_id}/image/{filename}",
+    operation_id="get_course_image",
+    response_class=Response,
+    responses={200: {"content": {"image/webp": {}}}},
+)
+async def endp_get_course_image(
+    course_id: int, filename: str, db: SessionSqlSessionDependency
+) -> Response:
+    """Veřejný endpoint — náhled kurzu se zobrazuje jako <img src=...> bez auth hlaviček.
+
+    Název souboru v URL je verze obrázku (viz `course_image_url`).
+    """
+    return get_course_image(db, course_id, filename)
 
 
 @router.post("", operation_id="create_course", dependencies=[require_role("lector")])
@@ -122,7 +153,8 @@ async def endp_create_course(
 
 
 @router.get("/{course_id}", operation_id="get_course")
-async def endp_get_course(course_id: int, db: SessionSqlSessionDependency) -> CourseDetail:
+async def endp_get_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> CourseDetail:
+    ensure_course_visible(db, course_id, user)
     return get_course(db, course_id)
 
 
@@ -240,6 +272,31 @@ async def endp_delete_course_file(
 ) -> None:
     """Smaže soubor kurzu"""
     delete_course_file(db, course_id, file_id, user)
+
+
+# ---------- Image endpoints ----------
+
+
+@router.put("/{course_id}/image", operation_id="upload_course_image", dependencies=[require_role("lector")])
+async def endp_upload_course_image(
+    course_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+    file: UploadFile = File(...),  # noqa: B008
+) -> CourseImage:
+    """Nahraje náhledový obrázek kurzu; uloží se jako 1280×720 WebP (ořez na střed do 16:9)."""
+    return await upload_course_image(db, course_id, file, user)
+
+
+@router.delete(
+    "/{course_id}/image", operation_id="delete_course_image", status_code=204,
+    dependencies=[require_role("lector")],
+)
+async def endp_delete_course_image(
+    course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> None:
+    """Odebere náhledový obrázek, kurz se vrátí k výchozímu."""
+    delete_course_image(db, course_id, user)
 
 
 # ---------- Link endpoints ----------

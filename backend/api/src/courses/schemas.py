@@ -19,6 +19,18 @@ from api.src.catalogs.schemas import (
 )
 
 
+def course_image_url(course_id: int, image_path: str | None) -> str | None:
+    """Veřejná URL náhledového obrázku kurzu, None = kurz používá výchozí obrázek.
+
+    Každá verze obrázku má v SeaweedFS vlastní název souboru a ten je součástí URL,
+    takže se URL při změně obrázku změní a cache nevrátí starou verzi.
+    """
+    if not image_path:
+        return None
+    filename = image_path.rsplit("/", 1)[-1]
+    return f"/api/v1/courses/{course_id}/image/{filename}"
+
+
 class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
@@ -90,6 +102,12 @@ class CourseLink(ORMModel):
     url: str
 
 
+class CourseImage(ORMModel):
+    """Response po nahrání náhledového obrázku kurzu"""
+
+    image_url: str | None = None
+
+
 class CourseCreated(ORMModel):
     """Zkrácená response po vytvoření kurzu"""
 
@@ -121,6 +139,8 @@ class Course(CourseBase):
     status: Status
     modules_count: int = 0
     enrollments_count: int = 0
+    # Náhledový obrázek (1280×720); None = frontend ukáže výchozí obrázek.
+    image_url: str | None = None
     # Časové značky pro řazení v administraci („nejnovější", „naposledy upravené").
     created_at: datetime
     updated_at: datetime
@@ -162,6 +182,10 @@ class Course(CourseBase):
                     obj.__dict__["owner_display_name"] = owner.display_name
                 except Exception:
                     pass
+            if hasattr(obj, "image_path"):
+                obj.__dict__["image_url"] = course_image_url(
+                    obj.course_id, obj.image_path
+                )
         return obj
 
 

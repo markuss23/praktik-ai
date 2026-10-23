@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Module, Course } from '@/api';
+import { useState, useEffect, useRef } from 'react';
+import { Module, Course, Status } from '@/api';
+import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
+import { reviewFeedbackLabel } from '@/lib/review-feedback';
 import { getCourse, updateCourse, updateModule, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseCategoryFields, ModuleModal,
@@ -66,6 +68,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [courseFiles, setCourseFiles] = useState<CourseFileItem[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
+
+  // Komentáře garanta u vráceného kurzu — v souhrnu všechny najednou, s názvem modulu
+  const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Panel komentářů začíná pod hlavičkou stránky
+  const reviewHeaderRef = useRef<HTMLDivElement>(null);
+  const showCommentsPanel = course?.status === Status.Edited && feedbacks.length > 0;
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, feedbacks, setCommentsOpen);
 
   useEffect(() => {
     async function loadCourse() {
@@ -359,7 +369,26 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         saved={savedFeedback}
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
+        onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
+        commentsCount={showCommentsPanel ? feedbacks.filter((fb) => !fb.isResolved).length : undefined}
+        commentsOpen={commentsOpen}
+        headerRef={reviewHeaderRef}
       />
+
+      {showCommentsPanel && (
+        <AuthorCommentsDrawer
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          anchorRef={reviewHeaderRef}
+          subtitle="Všechny komentáře kurzu"
+          feedbacks={feedbacks}
+          allFeedbacks={feedbacks}
+          emptyText="Kurz nemá žádné komentáře."
+          contextLabel={(fb) => reviewFeedbackLabel(fb, { withModule: true })}
+          onReply={replyToReviewFeedback}
+          onToggleResolve={toggleReviewFeedback}
+        />
+      )}
       {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
       {/* <CourseStepNav current="summary" onNavigate={handleStepNavigate} /> */}
       {previewOpen ? (

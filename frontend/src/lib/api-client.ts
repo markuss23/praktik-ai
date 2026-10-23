@@ -249,6 +249,25 @@ export async function deleteCourse(courseId: number) {
   return coursesApi.deleteCourse({ courseId });
 }
 
+// Náhledový obrázek kurzu — backend ho vždy uloží jako 1280×720 WebP.
+export async function uploadCourseImage(courseId: number, image: Blob) {
+  const file = image instanceof File ? image : new File([image], 'cover.jpg', { type: image.type || 'image/jpeg' });
+  return coursesApi.uploadCourseImage({ courseId, file });
+}
+
+export async function deleteCourseImage(courseId: number) {
+  return coursesApi.deleteCourseImage({ courseId });
+}
+
+/** Spustí AI generování coveru na pozadí; hotový obrázek backend rovnou nastaví kurzu. */
+export async function generateCourseImage(courseId: number) {
+  return agentsApi.generateCourseImages({ courseId });
+}
+
+export async function getCourseImageGenerationProgress(courseId: number) {
+  return agentsApi.getCourseImageGenerationProgress({ courseId });
+}
+
 // AI Agent API functions
 export async function generateCourseWithAI(courseId: number) {
   return agentsApi.generateCourse({ courseId });
@@ -472,6 +491,8 @@ export interface MyEnrollmentExtended {
     title: string;
     description?: string | null;
     modulesCount?: number;
+    /** Náhledový obrázek z API; null = výchozí obrázek. */
+    imageUrl?: string | null;
   };
   completedModules?: number;
   totalModules?: number;
@@ -498,6 +519,7 @@ function parseMyEnrollment(raw: Record<string, unknown>): MyEnrollmentExtended {
       title: course['title'] as string,
       description: (course['description'] as string | null | undefined) ?? null,
       modulesCount: (course['modules_count'] as number | undefined) ?? 0,
+      imageUrl: (course['image_url'] as string | null | undefined) ?? null,
     },
     completedModules: (raw['completed_modules'] as number | undefined) ?? 0,
     totalModules: (raw['total_modules'] as number | undefined) ?? 0,

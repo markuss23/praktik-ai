@@ -15,7 +15,7 @@ interface UseCurrentUserResult {
 }
 
 export function useCurrentUser(): UseCurrentUserResult {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,12 +29,17 @@ export function useCurrentUser(): UseCurrentUserResult {
   }, []);
 
   useEffect(() => {
+    // Auth se ještě inicializuje (token z úložiště / refresh) — dřív by se tu
+    // `loading` nastavilo na false bez uživatele a volající by to vzali jako
+    // „nepřihlášen / nevlastník".
+    if (authLoading) return;
     if (!isAuthenticated) {
       setLoading(false);
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
     async function load() {
       try {
         const me = await getMe();
@@ -47,7 +52,7 @@ export function useCurrentUser(): UseCurrentUserResult {
     }
     load();
     return () => { cancelled = true; };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   const isOwner = (ownerId: number) => {
     return currentUser?.userId === ownerId;

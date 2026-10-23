@@ -20,7 +20,8 @@ from api.src.common.annotations import (
 
 from api.database import SessionSqlSessionDependency
 
-from api.dependencies import CurrentUser, require_role
+from api.dependencies import CurrentUser, is_staff, require_role
+from api.src.common.utils import ensure_course_visible
 
 router = APIRouter(prefix="/modules", tags=["Modules"])
 
@@ -28,15 +29,26 @@ router = APIRouter(prefix="/modules", tags=["Modules"])
 @router.get("", operation_id="list_modules")
 async def list_modules(
     db: SessionSqlSessionDependency,
+    user: CurrentUser,
     include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
     text_search: TEXT_SEARCH_ANNOTATION = None,
     course_id: int | None = None,
 ) -> list[Module]:
+    # Student smí jen moduly kurzu, který vidí (publikovaný nebo kam je zapsaný);
+    # bez course_id dostane jen moduly publikovaných kurzů.
+    published_only = False
+    if not is_staff(user):
+        include_inactive = False
+        if course_id is not None:
+            ensure_course_visible(db, course_id, user)
+        else:
+            published_only = True
     return get_modules(
         db,
         include_inactive=include_inactive,
         text_search=text_search,
         course_id=course_id,
+        published_only=published_only,
     )
 
 

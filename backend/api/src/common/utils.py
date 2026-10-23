@@ -69,6 +69,36 @@ def get_or_404[T](
     return result
 
 
+def course_visible_to(db: Session, course: models.Course, user: models.User | None) -> bool:
+    """Publikovaný kurz vidí každý. Nepublikovaný (koncept, ve schvalování,
+    archivovaný…) jen lektoři a výš — tvorba, schvalování, read-only náhled —
+    a studenti, kteří jsou do kurzu zapsaní (zpětný náhled dokončeného kurzu)."""
+    from api.dependencies import ROLE_HIERARCHY  # lokálně kvůli cyklickému importu
+
+    if course.is_active and course.is_published:
+        return True
+    if user is None:
+        return False
+    if ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]:
+        return True
+    enrolled = db.scalars(
+        select(models.Enrollment.enrollment_id)
+        .where(
+            models.Enrollment.course_id == course.course_id,
+            models.Enrollment.user_id == user.user_id,
+        )
+        .limit(1)
+    ).first()
+    return course.is_active and enrolled is not None
+
+
+def ensure_course_visible(db: Session, course_id: int, user: models.User | None) -> None:
+    """404 pro kurz, který uživatel nesmí vidět (stejná hláška jako neexistující kurz)."""
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen", check_active=False)
+    if not course_visible_to(db, course, user):
+        raise HTTPException(status_code=404, detail="Kurz nenalezen")
+
+
 def assert_course_editable(course: models.Course) -> None:
     """Vyhodí 400 pokud kurz není v editovatelném stavu (draft/generated/edited)."""
     from api.enums import Status

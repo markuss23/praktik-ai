@@ -61,12 +61,15 @@ interface StudentPreviewProps {
   modules: PreviewModule[];
   start: PreviewStart;
   onExit: () => void;
+  /** Text lišty nad náhledem — výchozí je náhled z editoru vlastního kurzu. */
+  notice?: React.ReactNode;
+  exitLabel?: string;
 }
 
 /**
  * Náhled pro studenta
  */
-export function StudentPreview({ course, modules, start, onExit }: StudentPreviewProps) {
+export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám' }: StudentPreviewProps) {
   const startIndex = start.screen === 'module' ? Math.min(start.moduleIndex, Math.max(0, modules.length - 1)) : 0;
   const startsInModule = start.screen === 'module' && modules.length > 0;
 
@@ -107,11 +110,15 @@ export function StudentPreview({ course, modules, start, onExit }: StudentPrevie
       <div className="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gradient-r/20 bg-gradient-r/10 px-4 sm:px-6 py-2">
         <Eye className="size-4 shrink-0 text-gradient-r" />
         <p className="min-w-0 flex-1 text-xs sm:text-sm text-muted-foreground">
-          <span className="font-semibold text-gradient-r">Náhled pro studenta.</span>{' '}
-          Takto kurz uvidí student — proklikejte si ho. Úpravy nejsou v náhledu možné a nic se neukládá.
+          {notice ?? (
+            <>
+              <span className="font-semibold text-gradient-r">Náhled pro studenta.</span>{' '}
+              Takto kurz uvidí student — proklikejte si ho. Úpravy nejsou v náhledu možné a nic se neukládá.
+            </>
+          )}
         </p>
         <Button variant="brand-solid" size="sm" onClick={onExit}>
-          Zpět k úpravám
+          {exitLabel}
         </Button>
       </div>
 

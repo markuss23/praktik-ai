@@ -3,11 +3,12 @@ import base64
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session
 
 from agents.sql_agent.service import SQLAgentResult, SQLAgentService
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
-from api.src.common.utils import get_or_404, check_enrollment
+from api.src.common.utils import assert_course_editable, get_or_404, check_enrollment
 from api.src.agents.schemas import (
     ActiveImageGeneration,
     CourseGenerationProgressResponse,
@@ -53,6 +54,7 @@ from api.src.agents.image_progress import (
     unregister_image_task,
 )
 from api.database import SessionLocal
+from api.src.courses.controllers.image import normalize_course_image, store_course_image
 from api.storage import seaweedfs
 from api.src.agents.practice_controllers import (
     generate_practice_question,
@@ -265,6 +267,33 @@ def _upload_image_to_seaweedfs(
     )
 
 
+async def _save_generated_course_image(
+    db: Session, course_id: int, result: ImageGenerationResult
+) -> GenerateImageResponse:
+    """Uloží vygenerovaný cover a rovnou ho nastaví kurzu jako náhledový obrázek.
+
+    Projde stejnou normalizací jako nahraný obrázek (1280×720 WebP), takže
+    v kartách sedí rozměry bez ohledu na to, co image model vrátil.
+    """
+    image = result.result
+    _, b64_data = image.image_url.split(",", 1)
+    normalized = await asyncio.to_thread(
+        normalize_course_image, base64.b64decode(b64_data)
+    )
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    # Kurz mohl být během generování odeslán ke schválení — pak obrázek nepřepisovat
+    assert_course_editable(course)
+    file_path = store_course_image(db, course, normalized)
+
+    return GenerateImageResponse(
+        image_spec=result.image_spec.model_dump(),
+        image_prompt=result.image_prompt,
+        model_name=image.model_name,
+        latency_ms=image.latency_ms,
+        file_path=file_path,
+    )
+
+
 async def _run_image_generation(key: str, kind: str, entity_id: int) -> None:
     """Background task: vygeneruje obrázek kurzu / modulu s vlastní DB session.
 
@@ -283,19 +312,20 @@ async def _run_image_generation(key: str, kind: str, entity_id: int) -> None:
             service = CourseImageGeneratorService(
                 db=db, course_id=entity_id, progress_key=key
             )
-            remote_dir = f"course-images/{entity_id}"
         else:
             service = ModuleImageGeneratorService(
                 db=db, module_id=entity_id, progress_key=key
             )
-            remote_dir = f"module-images/{entity_id}"
 
         result = await service.generate()
 
         set_image_progress(key, step=4, label="Ukládání obrázku do SeaweedFS")
-        response = _upload_image_to_seaweedfs(
-            result, remote_dir=remote_dir, basename="image"
-        )
+        if kind == "course":
+            response = await _save_generated_course_image(db, entity_id, result)
+        else:
+            response = _upload_image_to_seaweedfs(
+                result, remote_dir=f"module-images/{entity_id}", basename="image"
+            )
         mark_image_completed(key, response.model_dump())
     except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
         mark_image_failed(key, str(e))
@@ -362,12 +392,15 @@ async def generate_course_images(
 ) -> ImageGenerationProgressResponse:
     """Spustí generování coveru kurzu jako background task a vrátí se ihned.
 
-    Obrázek generuje model z system_setting a ukládá se do SeaweedFS. Klient
+    Obrázek generuje model z system_setting, ukládá se do SeaweedFS jako 1280×720
+    WebP a po dokončení se rovnou nastaví jako náhledový obrázek kurzu. Klient
     si průběh a výsledek sleduje pollingem ``/agents/course-image-progress/{course_id}``.
     """
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
     validate_owner_or_superadmin(course, user, "kurz")
+    # Vygenerovaný cover se rovnou nastaví kurzu — jen v editovatelném stavu
+    assert_course_editable(course)
 
     return _start_image_generation("course", course_id)
 

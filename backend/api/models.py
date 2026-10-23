@@ -565,6 +565,8 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         Integer, nullable=False, default=1
     )
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Náhledový obrázek kurzu v SeaweedFS (vždy 1280×720 WebP); None = výchozí obrázek.
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     status: Mapped[Status] = mapped_column(
         Enum(Status, name="course_status"), nullable=False, default=Status.draft

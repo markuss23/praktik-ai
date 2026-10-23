@@ -57,7 +57,8 @@ tak, aby odpovídaly aktuálnímu vzhledu UI pro tvorbu kurzu pomocí AI.
    `07-tvorba-testu.png`.
 10. Dokonči test (tlačítko „Dokončit") a na stránce „Souhrn" ulož screenshot jako
     `08-souhrn-kurzu.png`.
-11. Klikni na „Dokončit". V přehledu kurzů najdi nově vytvořený kurz, klikni na
+11. Klikni na „Dokončit". V přehledu kurzů najdi nově vytvořený kurz, ve sloupci
+    „Akce" otevři menu „⋯" (tlačítko „Akce kurzu …"), klikni na
     „Odeslat ke schválení" a potvrď dialog. Ulož výsledný stav (badge „Ke schválení")
     jako `09-ke-schvaleni.png`.
 12. Smaž nebo archivuj takto vytvořený testovací kurz, pokud to UI umožňuje, aby se

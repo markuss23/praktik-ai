@@ -27,6 +27,11 @@ from api.src.courses.controllers.delete import (
 from api.src.courses.controllers.recommended import (
     get_recommended_courses,
 )
+from api.src.courses.controllers.image import (
+    upload_course_image,
+    delete_course_image,
+    get_course_image,
+)
 
 __all__ = [
     # Create operations
@@ -47,4 +52,8 @@ __all__ = [
     "delete_course",
     "delete_course_file",
     "delete_course_link",
+    # Náhledový obrázek
+    "upload_course_image",
+    "delete_course_image",
+    "get_course_image",
 ]

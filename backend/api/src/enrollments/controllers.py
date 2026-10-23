@@ -6,7 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from api import models
+from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import get_or_404
+from api.src.courses.schemas import course_image_url
 from api.enums import Status, UserRole, ModuleTaskSessionStatus
 from api.src.enrollments.schemas import (
     ActivityDay,
@@ -103,6 +105,10 @@ def delete_enrollment(
     Endpoint je zamčený přes require_role("lector").
     """
     enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
+
+    # Vyřadit studenta smí jen vlastník kurzu nebo superadmin, ne libovolný lektor
+    course = get_or_404(db, models.Course, enrollment.course_id, detail="Kurz nenalezen", check_active=False)
+    validate_owner_or_superadmin(course, actor, "kurz")
 
     if enrollment.left_at is not None:
         raise HTTPException(
@@ -240,6 +246,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
                 title=course.title,
                 description=course.description,
                 modules_count=total_modules,
+                image_url=course_image_url(course.course_id, course.image_path),
             ),
             completed_modules=passed_count,
             total_modules=total_modules,

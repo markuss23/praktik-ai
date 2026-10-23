@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LearnBlock, FeedbackItem, Status } from '@/api';
+import { LearnBlock, Status } from '@/api';
 import {
-  updateModule, createModule, createLearnBlock, updateLearnBlock,
-  getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
+  updateModule, createModule, createLearnBlock, updateLearnBlock, updateCourseStatus,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
@@ -14,7 +13,9 @@ import {
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
 import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
-import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
+import { isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
+import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
@@ -31,8 +32,6 @@ import {
   ChevronDown,
   ChevronUp,
   Send,
-  CheckCircle,
-  CornerDownRight,
   ArrowUpCircle,
   X,
 } from 'lucide-react';
@@ -255,7 +254,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<number>>(new Set([0]));
   const [moduleContents, setModuleContents] = useState<{[key: number]: ModuleContent}>({});
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
-  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Panel komentářů začíná pod hlavičkou stránky
+  const reviewHeaderRef = useRef<HTMLDivElement>(null);
   const [moduleMetaOpen, setModuleMetaOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const { focusMode } = useAdminChrome();
@@ -287,12 +288,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     },
   });
 
-  // Feedback state
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [replyTexts, setReplyTexts] = useState<Record<number, string>>({});
-  const [showReplyFor, setShowReplyFor] = useState<number | null>(null);
-  const [submittingReply, setSubmittingReply] = useState<number | null>(null);
-  const [resolvingFeedback, setResolvingFeedback] = useState<number | null>(null);
+  // Komentáře garanta u vráceného kurzu (vysouvací panel)
+  const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
   const [resubmitLoading, setResubmitLoading] = useState(false);
 
   const courseStatus = courseData?.status as string | undefined;
@@ -302,54 +299,18 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  // Load feedbacks
-  useEffect(() => {
-    if (!courseId) return;
-    getFeedbackSection(courseId)
-      .then(section => setFeedbacks(section.feedbacks))
-      .catch(() => {}); // feedback may not exist
-  }, [courseId]);
+  // Komentáře k souhrnu kurzu patří do kroku „Popis kurzu", ne k modulu
+  const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
+  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isCourseSummaryFeedback(fb) && !fb.isResolved).length;
 
   const currentModuleFeedbacks = modules[selectedModuleIndex]
-    ? feedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
+    ? moduleFeedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
     : [];
 
   const feedbackCountByModule = (moduleId: number) =>
-    feedbacks.filter(fb => fb.moduleId === moduleId).length;
+    moduleFeedbacks.filter(fb => fb.moduleId === moduleId && !fb.isResolved).length;
 
-  const feedbackContextLabel = (fb: FeedbackItem) => {
-    if (fb.contentType === 'learn_block' && fb.contentRef) return `Příručka – str. ${fb.contentRef}`;
-    if (fb.contentType === 'practice' && fb.contentRef) return `Procvičování – ot. ${fb.contentRef}`;
-    return null;
-  };
-
-  const handleReply = async (feedbackId: number) => {
-    const text = replyTexts[feedbackId]?.trim();
-    if (!text) return;
-    setSubmittingReply(feedbackId);
-    try {
-      const updated = await replyToFeedback(feedbackId, text);
-      setFeedbacks(prev => prev.map(fb => fb.feedbackId === feedbackId ? updated : fb));
-      setShowReplyFor(null);
-      setReplyTexts(prev => ({ ...prev, [feedbackId]: '' }));
-    } catch (err) {
-      console.error('Failed to reply:', err);
-    } finally {
-      setSubmittingReply(null);
-    }
-  };
-
-  const handleToggleResolve = async (fb: FeedbackItem) => {
-    setResolvingFeedback(fb.feedbackId);
-    try {
-      const updated = await resolveFeedback(fb.feedbackId, !fb.isResolved);
-      setFeedbacks(prev => prev.map(f => f.feedbackId === fb.feedbackId ? updated : f));
-    } catch (err) {
-      console.error('Failed to resolve:', err);
-    } finally {
-      setResolvingFeedback(null);
-    }
-  };
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, currentModuleFeedbacks, setCommentsOpen);
 
   const handleResubmit = async () => {
     setResubmitLoading(true);
@@ -638,6 +599,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
 
   const stepHints = {
+    // Komentáře k popisu kurzu žijí v kroku 1 — upozornit, ať je autor nepřehlédne
+    ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
+      description: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
+    }),
     content: moduleCountHint(modules.length),
     tests: questionCountHint(
       courseData?.modules?.find((m) => m.moduleId === selectedModule?.moduleId)?.practiceQuestions?.length ?? 0,
@@ -659,129 +624,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       onDelete: module.isTemporary ? () => handleDeleteModule(index) : undefined,
     }));
 
-  const commentsPanelInner = (
-    <>
-      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
-        <h2 className="text-sm font-semibold text-foreground">
-          Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
-        </h2>
-        <Button
-          variant="plain"
-          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
-          onClick={() => setMobileCommentsOpen(false)}
-          aria-label="Zavřít komentáře"
-        >
-          <X size={16} className="text-muted-foreground" />
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {currentModuleFeedbacks.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
-        ) : (
-          currentModuleFeedbacks.map(fb => (
-            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-success/30 bg-success/10/50' : 'border-border'}`}>
-              <div className="px-3.5 py-2.5">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-semibold text-foreground text-xs">
-                    {fb.author.displayName ?? 'Uživatel'}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      variant="plain"
-                      onClick={() => handleToggleResolve(fb)}
-                      disabled={resolvingFeedback === fb.feedbackId}
-                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
-                        fb.isResolved
-                          ? 'text-success hover:text-success'
-                          : 'text-muted-foreground hover:text-success'
-                      }`)}
-                      title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
-                    >
-                      <CheckCircle size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                {feedbackContextLabel(fb) && (
-                  <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
-                )}
-
-                <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
-              </div>
-
-              {fb.reply && (
-                <div className="px-3.5 pb-2.5">
-                  <div className="ml-3 bg-gradient-r/10 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <CornerDownRight size={10} className="text-gradient-r" />
-                      <span className="text-[10px] text-gradient-r font-medium">Vaše odpověď</span>
-                    </div>
-                    <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
-                  </div>
-                </div>
-              )}
-
-              {!fb.reply && (
-                <div className="px-3.5 pb-2.5">
-                  {showReplyFor === fb.feedbackId ? (
-                    <div>
-                      <Textarea
-                        value={replyTexts[fb.feedbackId] ?? ''}
-                        onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
-                        rows={2}
-                        placeholder="Napište odpověď..."
-                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <Button
-                          variant="brand-solid"
-                          onClick={() => handleReply(fb.feedbackId)}
-                          disabled={submittingReply === fb.feedbackId}
-                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
-                        >
-                          Odeslat
-                        </Button>
-                        <Button
-                          variant="plain"
-                          onClick={() => setShowReplyFor(null)}
-                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
-                        >
-                          Zrušit
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="plain"
-                      onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
-                    >
-                      <CornerDownRight size={11} /> Odpovědět
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="p-3 border-t border-border shrink-0">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
-          </span>
-          {allResolved && (
-            <span className="text-success font-medium flex items-center gap-1">
-              <CheckCircle size={12} /> Vše vyřešeno
-            </span>
-          )}
-        </div>
-      </div>
-    </>
-  );
-
   return (
     <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
@@ -793,8 +635,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
-        onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
-        commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
+        onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
+        commentsCount={showCommentsPanel ? currentModuleFeedbacks.filter(fb => !fb.isResolved).length : undefined}
+        commentsOpen={commentsOpen}
+        headerRef={reviewHeaderRef}
       />
       {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
       {/* <CourseStepNav current="content" onNavigate={handleStepNavigate} /> */}
@@ -972,22 +816,21 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
           <PageFooterActions onBack={handleBack} onContinue={handleContinue} continueLabel="Uložit a pokračovat" />
         </div>
 
-        {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && !focusMode && (
-          <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
-            {commentsPanelInner}
-          </div>
-        )}
-
-        {/* Mobile Comments Drawer */}
+        {/* Komentáře garanta — panel vyjíždí zprava přes obsah (všechny šířky) */}
         {showCommentsPanel && (
-          <Drawer open={mobileCommentsOpen} onOpenChange={setMobileCommentsOpen} swipeDirection="right">
-            <DrawerContent className="lg:hidden" aria-label="Komentáře ke kurzu">
-              {commentsPanelInner}
-            </DrawerContent>
-          </Drawer>
+          <AuthorCommentsDrawer
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            anchorRef={reviewHeaderRef}
+            subtitle={selectedModule ? `Modul: ${selectedModule.title}` : undefined}
+            feedbacks={currentModuleFeedbacks}
+            allFeedbacks={feedbacks}
+            emptyText="K tomuto modulu nejsou žádné komentáře."
+            contextLabel={(fb) => reviewFeedbackLabel(fb)}
+            onReply={replyToReviewFeedback}
+            onToggleResolve={toggleReviewFeedback}
+          />
         )}
-
         {/* Add Module Modal */}
         <Modal
           isOpen={showAddModuleModal}

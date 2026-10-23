@@ -89,7 +89,7 @@ Tady je poslední příležitost vše zkontrolovat před dokončením. Klikněte
 
 ## Krok 8 — Odešlete kurz ke schválení
 
-Nový kurz se v přehledu objeví se stavem **Rozpracováno**. U něj najdete akce **Úpravy**, **Rychlé úpravy**, **Odeslat ke schválení** a **Smazat**. Až je kurz hotový, klikněte na **Odeslat ke schválení** a potvrďte dialog.
+Nový kurz se v přehledu objeví se stavem **Rozpracováno**. Jeho akce jsou ve sloupci **Akce** pod tlačítkem **⋯**: **Úpravy**, **Odeslat ke schválení** a **Smazat**. Až je kurz hotový, otevřete **⋯**, klikněte na **Odeslat ke schválení** a potvrďte dialog.
 
 > Po odeslání již kurz nelze upravovat, dokud ho garant nezkontroluje.
 
@@ -108,6 +108,6 @@ Kurz přejde do stavu **Ke schválení** a čeká na posouzení garantem.
 - [ ] Fáze **Podklady** – zkontrolovat/upravit obsah každého modulu
 - [ ] Fáze **Testy** – zkontrolovat/upravit otázky ke každému modulu
 - [ ] Fáze **Souhrn** – zkontrolovat celý kurz a kliknout na **Dokončit**
-- [ ] V přehledu kurzů kliknout na **Odeslat ke schválení**
+- [ ] V přehledu kurzů otevřít **⋯** a kliknout na **Odeslat ke schválení**
 
 Kurz je tím připraven k posouzení garantem, který ho může schválit a publikovat pro studenty.

@@ -14,12 +14,12 @@ from api.src.editor_images.schemas import EditorImageUploaded
 
 _REMOTE_PREFIX = "editor-images"
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+# SVG záměrně ne — může obsahovat skript a soubory se servírují veřejně (stored XSS).
 _ALLOWED_CONTENT_TYPES = {
     "image/jpeg",
     "image/png",
     "image/webp",
     "image/gif",
-    "image/svg+xml",
 }
 
 
@@ -54,4 +54,13 @@ def get_editor_image(filename: str) -> Response:
         raise HTTPException(status_code=404, detail="Obrázek nenalezen") from e
 
     media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    return Response(content=content, media_type=media_type)
+    # Pojistka i pro dřív nahraná SVG: při přímém otevření se nespustí skript
+    # (sandbox) a prohlížeč nebude hádat jiný typ obsahu (nosniff).
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        },
+    )

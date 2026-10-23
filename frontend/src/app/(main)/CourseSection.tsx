@@ -310,6 +310,7 @@ export default function CourseSection() {
                         description={course.description || ''}
                         duration={course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60)}
                         difficulty={course.difficulty}
+                        imageUrl={course.imageUrl}
                         completedModules={enrollment?.completedModules ?? 0}
                         totalModules={course.modulesCount || 0}
                         isEnrolled={!!enrollment}
