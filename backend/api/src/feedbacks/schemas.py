@@ -20,7 +20,6 @@ class FeedbackCourse(ORMModel):
     title: str
     status: Status
     modules_count_ai_generated: int
-    min_modules_to_open_final_exam: int
     course_block: CourseBlock | None = None
     course_target: CourseTarget | None = None
     course_subject: CourseSubject | None = None

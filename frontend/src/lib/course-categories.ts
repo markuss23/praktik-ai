@@ -101,7 +101,6 @@ export function courseToUpdate(course: Course, overrides: Partial<CourseUpdate> 
     courseEqfLevelId: course.courseEqfLevelId,
     courseTypeId: course.courseTypeId,
     modulesCountAiGenerated: course.modulesCountAiGenerated,
-    minModulesToOpenFinalExam: course.minModulesToOpenFinalExam,
     durationMinutes: course.durationMinutes,
     difficulty: course.difficulty,
     ...courseCategoryValues(course),

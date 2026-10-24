@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from api.database import SessionLocal
+from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
 from api.models import (
+    AssessmentType,
     CrossSubject,
     BloomLevel,
     CourseBlock,
@@ -16,6 +18,7 @@ from api.models import (
     NeuroPrinciple,
     SystemSetting,
 )
+from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -526,6 +529,8 @@ COURSE_PLANNER_PROMPT = (
     "\n"
     "STYL VÝKLADU:\n"
     "Základní pojmy jen připomeň jednou větou; těžiště je v principech, důvodech a typických chybách; porovnávej postupy.\n"
+    "Piš explicitně, ne heslovitě: každá věta musí dávat smysl sama o sobě, bez domýšlení vynechaného kontextu. Vždy pojmenuj, kdo jedná nebo o kom je řeč (AI, účastník, autor…); nepiš aforismy ani zkratkovitá hesla. "
+    'Například místo „Souhlasná odpověď vypovídá spíš o vaší otázce než o vašem nápadu. Plynulost není přesnost a sebejistota není důkaz." napiš „Když AI s vaším nápadem souhlasí, vypovídá to spíš o tom, jak jste otázku položili, než o kvalitě nápadu. Plynulá odpověď AI ještě nemusí být přesná a sebejistý tón není důkazem správnosti."\n'
     "\n"
     "DÉLKA VÝKLADU (content = fáze F1, příručka ke čtení, 130 slov za minutu):\n"
     "Délku výkladu modulu urči podle náročnosti tématu uvedené v souhrnu:\n"
@@ -542,7 +547,7 @@ COURSE_PLANNER_PROMPT = (
     "Piš neosobně nebo vykej.]\n\n"
     "content: [\n"
     "    Nový výukový text, ne shrnutí a ne opis. Pořadí:\n"
-    "    1. Proč je téma pro účastníky důležité.\n"
+    '    1. Proč je téma pro účastníky důležité. Nadpis tohoto oddílu nikdy nezní „Proč se tím zabývat" ani podobně; zvol nebo obměň např. „Výchozí situace", „Výchozí problém", „Význam tématu v širších souvislostech", „Téma v realitě", „Na úvod několik souvislostí", „Téma, které se nás týká", „První nahlédnutí", „Začněme otázkou". V každém modulu kurzu použij jiný nadpis.\n'
     "    2. Hlavní myšlenka.\n"
     "    3. Klíčové pojmy s vysvětlením.\n"
     "    4. Vztahy, příčiny a důsledky.\n"
@@ -790,11 +795,48 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
     },
     {
+        "key": "open_question_ai",
+        "name": "Assessment – otevřená otázka (AI)",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/open_question_ai/agents/generator/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování otevřené procvičovací otázky z výukového obsahu.",
+    },
+    {
+        "key": "open_question_ai_evaluator",
+        "name": "Assessment – otevřená otázka (AI) - evaluátor",
+        "model": "claude-opus-5-5",
+        "prompt": "",
+        "description": "LLM pro vyhodnocení otevřených odpovědí studentů na otevřené otázky generované AI.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
         "prompt": "",
         "description": "LLM pro generování obrázků z textového popisu.",
+    },
+]
+
+ASSESSMENT_TYPES: list[dict] = [
+    {
+        "code": "closed_questions",
+        "name": "Uzavřené otázky",
+        "description": (
+            "Lektor autoruje otázky s možnostmi; student je prochází po jedné, "
+            "na konci skóre proti prahu úspěšnosti. Bez LLM."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": ClosedQuestionsSettings().model_dump(),
+    },
+    {
+        "code": "open_question_ai",
+        "name": "Otevřené otázky generované AI",
+        "description": (
+            "AI vygeneruje na zaklade contextu otázku a tu pak i vyhodnotí"
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": OpenQuestionAISettings().model_dump(),
     },
 ]
 
@@ -869,6 +911,16 @@ def seed_db() -> None:
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
+
+        # Doplní chybějící formáty podle kódu — nový formát se přidá i do neprázdné tabulky
+        existing_codes = set(db.scalars(select(AssessmentType.code)))
+        db.add_all(
+            [
+                AssessmentType(**row)
+                for row in ASSESSMENT_TYPES
+                if row["code"] not in existing_codes
+            ]
+        )
 
         db.commit()
     finally:

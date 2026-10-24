@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Identity,
     Index,
@@ -34,6 +35,9 @@ from api.enums import (
     ModuleTaskSessionStatus,
     AttemptStatus,
     TicketStatus,
+    AssessmentContext,
+    AssessmentSessionStatus,
+    AssessmentTurnRole,
 )
 
 
@@ -561,9 +565,6 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     modules_count_ai_generated: Mapped[int] = mapped_column(
         Integer, nullable=False, default=3
     )
-    min_modules_to_open_final_exam: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
-    )
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Náhledový obrázek kurzu v SeaweedFS (vždy 1280×720 WebP); None = výchozí obrázek.
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -625,6 +626,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
+    assessments: Mapped[list[CourseAssessment]] = relationship(back_populates="course")
     krauu_competences: Mapped[list[CourseKrauuCompetence]] = relationship(
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
@@ -1819,3 +1821,187 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 
     def get_owner_id(self) -> int:
         return self.collection.user_id
+
+
+# ---------- Interakční formáty (assessments) ----------
+#
+# Rozšiřitelný systém typů testování/procvičování v kurzech. Chování formátu
+# (uzavřené otázky, do budoucna otevřené otázky, AI procvičování...) definuje
+# registr v api/src/assessments/base.py — tyto tabulky jsou jen generický
+# nosič dat, o typech samy o sobě nic nevědí.
+#
+# Tři vrstvy dat, každá se mění jinou rychlostí:
+#   assessment_type     — co systém umí (katalog, seed.py)
+#   course_assessment   — co si lektor zapnul a nastavil na kurzu/modulu
+#   assessment_session  — běh studenta, assessment_turn — tah po tahu
+
+
+class AssessmentType(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Katalog interakčních formátů. Nový formát = nový řádek v katalogu
+    (seed.py) + implementace v api/src/assessments.
+    """
+
+    __tablename__ = "assessment_type"
+
+    code: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    # Ve kterých kontextech lze formát nasadit: ["practice", "assessment", "course_final"]
+    allowed_contexts: Mapped[list] = mapped_column(JSONB, nullable=False)
+    # Výchozí nastavení — předvyplní se lektorovi ve formuláři
+    default_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Konfigurace interakčního formátu na kurzu — lektor si formát zapne
+    pro daný kontext (practice/assessment na modulu, course_final na kurzu)
+    a nastaví ho přes typově specifický JSONB `settings`.
+
+    `settings` validuje aplikace Pydantic schématem z registru
+    (api/src/assessments/base.py) před každým zápisem.
+    """
+
+    __tablename__ = "course_assessment"
+    __table_args__ = (
+        # Unikátnost konfigurace: modulové kontexty vs. course_final zvlášť,
+        # protože NULL v module_id by v jednom indexu unikátnost nevynutil.
+        Index(
+            "uq_course_assessment_module_active",
+            "course_id",
+            "module_id",
+            "context",
+            "assessment_type_code",
+            unique=True,
+            postgresql_where=text("is_active AND module_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_course_assessment_final_active",
+            "course_id",
+            "context",
+            "assessment_type_code",
+            unique=True,
+            postgresql_where=text("is_active AND module_id IS NULL"),
+        ),
+        Index("ix_course_assessment_course_id", "course_id"),
+        Index("ix_course_assessment_module_id", "module_id"),
+        CheckConstraint(
+            """
+            (context = 'course_final' AND module_id IS NULL)
+            OR
+            (context IN ('practice', 'assessment') AND module_id IS NOT NULL)
+            """,
+            name="ck_course_assessment_context_module",
+        ),
+    )
+
+    course_assessment_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    # NULL = platí pro celý kurz (context = course_final)
+    module_id: Mapped[int | None] = mapped_column(
+        ForeignKey("module.module_id"), nullable=True
+    )
+    assessment_type_code: Mapped[str] = mapped_column(
+        ForeignKey("assessment_type.code"), nullable=False
+    )
+    context: Mapped[AssessmentContext] = mapped_column(
+        Enum(AssessmentContext, name="assessment_context"), nullable=False
+    )
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Počítá se splnění do dokončení kurzu?
+    is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Typově specifické nastavení (validované Pydantic schématem z registru)
+    settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    course: Mapped[Course] = relationship(back_populates="assessments")
+    module: Mapped[Module | None] = relationship()
+    assessment_type: Mapped[AssessmentType] = relationship()
+    sessions: Mapped[list[AssessmentSession]] = relationship(
+        back_populates="course_assessment"
+    )
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class AssessmentSession(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Běh interakčního formátu jedním studentem. Generická pro všechny formáty —
+    typově specifický průběh žije v `assessment_turn` a v JSONB polích.
+
+    Nastavení testu se čte živě z CourseAssessment.settings (bez snapshotu).
+    """
+
+    __tablename__ = "assessment_session"
+    __table_args__ = (
+        Index(
+            "uq_assessment_session_user_in_progress",
+            "user_id",
+            "course_assessment_id",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('in_progress', 'awaiting_review') AND is_active"
+            ),
+        ),
+        Index("ix_assessment_session_user_id", "user_id"),
+        Index("ix_assessment_session_course_assessment_id", "course_assessment_id"),
+    )
+
+    session_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    course_assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("course_assessment.course_assessment_id"), nullable=False
+    )
+    status: Mapped[AssessmentSessionStatus] = mapped_column(
+        Enum(AssessmentSessionStatus, name="assessment_session_status"),
+        nullable=False,
+        default=AssessmentSessionStatus.in_progress,
+    )
+    # Typově specifický pracovní/výsledný stav (vybrané téma, rozpracované sekce...)
+    state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Sdílená hodnoticí pole — NULL u formátů bez verdiktu
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped[User] = relationship()
+    course_assessment: Mapped[CourseAssessment] = relationship(
+        back_populates="sessions"
+    )
+    turns: Mapped[list[AssessmentTurn]] = relationship(
+        back_populates="session",
+        order_by="AssessmentTurn.turn_id",
+    )
+
+
+class AssessmentTurn(TimestampMixin, Base):
+    """
+    Jeden tah v assessment session — zpráva dialogu, odeslané otázky,
+    AI feedback... Typově specifická data v `payload`.
+    """
+
+    __tablename__ = "assessment_turn"
+    __table_args__ = (Index("ix_assessment_turn_session_id", "session_id"),)
+
+    turn_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_session.session_id"), nullable=False
+    )
+    role: Mapped[AssessmentTurnRole] = mapped_column(
+        Enum(AssessmentTurnRole, name="assessment_turn_role"), nullable=False
+    )
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    session: Mapped[AssessmentSession] = relationship(back_populates="turns")
