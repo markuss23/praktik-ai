@@ -22,6 +22,8 @@ interface CourseCardProps {
   imageUrl?: string | null;
   isEnrolled?: boolean;
   isCompleted?: boolean;
+  /** Místo odkazu na detail kurzu zavolá handler (náhled pro studenta v adminu). */
+  onSelect?: () => void;
 }
 
 export function CourseCard({
@@ -35,6 +37,7 @@ export function CourseCard({
   imageUrl,
   isEnrolled = false,
   isCompleted = false,
+  onSelect,
 }: CourseCardProps) {
   const hasProgress = totalModules > 0;
   const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
@@ -134,6 +137,15 @@ export function CourseCard({
       </CardFooter>
     </Card>
   );
+
+  // Klávesnicí se karta ovládá přes tlačítko v patičce, klik z něj probublá.
+  if (onSelect) {
+    return (
+      <div onClick={onSelect} className="group block cursor-pointer">
+        {cardContent}
+      </div>
+    );
+  }
 
   // Dokončený kurz je klikací taky — detail kurzu slouží jako zpětný náhled.
   return (

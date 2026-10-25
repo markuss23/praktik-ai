@@ -48,7 +48,7 @@ export function CoursePreviewView({ courseId }: CoursePreviewViewProps) {
       <StudentPreview
         course={course}
         modules={course.modules ?? []}
-        start={{ screen: 'course' }}
+        start={{ screen: 'catalog' }}
         onExit={goToCourses}
         exitLabel="Zpět na přehled kurzů"
         notice={

@@ -253,6 +253,9 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     krauuCompetences: krauuCompetences.filter((k) => formData.krauuCompetenceIds.includes(k.krauuId)),
     bloomLevels: bloomLevels.filter((b) => formData.bloomLevelIds.includes(b.bloomId)),
     crossSubjects: crossSubjects.filter((c) => formData.crossSubjectIds.includes(c.crossId)),
+    imageUrl: courseData?.imageUrl,
+    difficulty: courseData?.difficulty,
+    durationMinutes: courseData?.durationMinutes,
   };
 
   return (
@@ -290,7 +293,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
         <StudentPreview
           course={previewCourse}
           modules={modules}
-          start={{ screen: 'course' }}
+          start={{ screen: 'catalog' }}
           onExit={() => setPreviewOpen(false)}
         />
       ) : (

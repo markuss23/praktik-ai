@@ -17,14 +17,17 @@ import {
   Search,
 } from 'lucide-react';
 import type { Course, Module } from '@/api';
-import { Button, CourseCategories, Input, ModuleCategories } from '@/components/ui';
+import { Button, CourseCard, CourseCategories, Input, ModuleCategories } from '@/components/ui';
 import PaperSheets from '@/components/module/PaperSheets';
 import PracticeTab from '@/components/module/PracticeTab';
 import { ModuleCompletedCard } from '@/components/module/ModuleCompletedCard';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 // Co náhled z kurzu a modulů potřebuje 
-export type PreviewCourse = Pick<Course, 'title' | 'description' | 'krauuCompetences' | 'bloomLevels' | 'crossSubjects'>;
+export type PreviewCourse = Pick<
+  Course,
+  'title' | 'description' | 'krauuCompetences' | 'bloomLevels' | 'crossSubjects' | 'imageUrl' | 'difficulty' | 'durationMinutes'
+>;
 export type PreviewModule = Pick<
   Module,
   'moduleId' | 'title' | 'perex' | 'maxTaskAttempts' | 'learnBlocks' | 'practiceQuestions' | 'neuroPrinciples' | 'krauuCompetences' | 'bloomLevels'
@@ -34,6 +37,7 @@ type ModuleTab = 'prirucka' | 'procvicovani' | 'test';
 
 /** Kde náhled začne */
 export type PreviewStart =
+  | { screen: 'catalog' }
   | { screen: 'course' }
   | { screen: 'module'; moduleIndex: number; tab: 'prirucka' | 'procvicovani' };
 
@@ -73,7 +77,9 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
   const startIndex = start.screen === 'module' ? Math.min(start.moduleIndex, Math.max(0, modules.length - 1)) : 0;
   const startsInModule = start.screen === 'module' && modules.length > 0;
 
-  const [screen, setScreen] = useState<'course' | 'module'>(startsInModule ? 'module' : 'course');
+  const [screen, setScreen] = useState<'catalog' | 'course' | 'module'>(
+    startsInModule ? 'module' : start.screen === 'catalog' ? 'catalog' : 'course',
+  );
   const [moduleIndex, setModuleIndex] = useState(startIndex);
   const [session, setSession] = useState<ModuleSession>(() =>
     freshSession(start.screen === 'module' ? start.tab : 'prirucka'),
@@ -100,6 +106,11 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
 
   const openCourse = () => {
     setScreen('course');
+    scrollToTop('auto');
+  };
+
+  const openCatalog = () => {
+    setScreen('catalog');
     scrollToTop('auto');
   };
 
@@ -132,6 +143,7 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
             moduleCount={modules.length}
             session={session}
             onSessionChange={setSession}
+            onOpenCatalog={openCatalog}
             onOpenCourse={openCourse}
             onScrollTop={scrollToTop}
             onModulePassed={() => {
@@ -140,6 +152,14 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
             }}
             onContinue={() => (moduleIndex < modules.length - 1 ? openModule(moduleIndex + 1) : openCourse())}
           />
+        ) : screen === 'catalog' ? (
+          <CatalogScreen
+            course={course}
+            modules={modules}
+            enrolled={enrolled}
+            passed={passed}
+            onOpenCourse={openCourse}
+          />
         ) : (
           <CourseScreen
             course={course}
@@ -147,9 +167,61 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
             enrolled={enrolled}
             passed={passed}
             onEnroll={() => setEnrolled(true)}
+            onOpenCatalog={openCatalog}
             onOpenModule={openModule}
           />
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Klikací článek drobečkové navigace — v náhledu přepíná obrazovky místo odkazu. */
+function CrumbButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      variant="plain"
+      type="button"
+      onClick={onClick}
+      className={cn(BTN_KEEP_BOX, 'inline p-0 align-baseline text-sm font-normal text-muted-foreground hover:text-foreground hover:underline')}
+    >
+      {children}
+    </Button>
+  );
+}
+
+// ── Nabídka kurzů (jako katalog na homepage) ─────────────────────────────────
+
+interface CatalogScreenProps {
+  course: PreviewCourse;
+  modules: PreviewModule[];
+  enrolled: boolean;
+  passed: Set<number>;
+  onOpenCourse: () => void;
+}
+
+function CatalogScreen({ course, modules, enrolled, passed, onOpenCourse }: CatalogScreenProps) {
+  const completedModules = modules.filter((m) => passed.has(m.moduleId)).length;
+
+  return (
+    <div className="py-8 sm:py-12 lg:py-16">
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-[100px]">
+        <p className="mb-6 sm:mb-8 text-sm text-muted-foreground">Home</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <CourseCard
+            id="nahled"
+            title={course.title || 'Bez názvu'}
+            description={course.description || ''}
+            duration={course.durationMinutes ?? (modules.length ? modules.length * 20 : 60)}
+            difficulty={course.difficulty}
+            imageUrl={course.imageUrl}
+            completedModules={completedModules}
+            totalModules={modules.length}
+            isEnrolled={enrolled}
+            isCompleted={enrolled && modules.length > 0 && completedModules === modules.length}
+            onSelect={onOpenCourse}
+          />
+        </div>
       </div>
     </div>
   );
@@ -163,10 +235,11 @@ interface CourseScreenProps {
   enrolled: boolean;
   passed: Set<number>;
   onEnroll: () => void;
+  onOpenCatalog: () => void;
   onOpenModule: (index: number) => void;
 }
 
-function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenModule }: CourseScreenProps) {
+function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenCatalog, onOpenModule }: CourseScreenProps) {
   const [justEnrolled, setJustEnrolled] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
 
@@ -185,7 +258,8 @@ function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenModul
     <div className="pb-16">
       <div className={cn(PAGE_CLASS, 'py-4')}>
         <p className="text-sm text-muted-foreground">
-          Home / kurzy / <span className="text-foreground">{course.title || 'Bez názvu'}</span>
+          <CrumbButton onClick={onOpenCatalog}>Home</CrumbButton> / kurzy /{' '}
+          <span className="text-foreground">{course.title || 'Bez názvu'}</span>
         </p>
       </div>
 
@@ -374,6 +448,7 @@ interface ModuleScreenProps {
   moduleCount: number;
   session: ModuleSession;
   onSessionChange: React.Dispatch<React.SetStateAction<ModuleSession>>;
+  onOpenCatalog: () => void;
   onOpenCourse: () => void;
   onScrollTop: () => void;
   onModulePassed: () => void;
@@ -387,6 +462,7 @@ function ModuleScreen({
   moduleCount,
   session,
   onSessionChange,
+  onOpenCatalog,
   onOpenCourse,
   onScrollTop,
   onModulePassed,
@@ -442,15 +518,8 @@ function ModuleScreen({
     <div className="pb-6">
       <div className={cn(PAGE_CLASS, 'py-4')}>
         <p className="text-sm text-muted-foreground truncate">
-          Home /{' '}
-          <Button
-            variant="plain"
-            type="button"
-            onClick={onOpenCourse}
-            className={cn(BTN_KEEP_BOX, 'inline p-0 align-baseline text-sm font-normal text-muted-foreground hover:text-foreground hover:underline')}
-          >
-            {courseTitle || 'Kurz'}
-          </Button>{' '}
+          <CrumbButton onClick={onOpenCatalog}>Home</CrumbButton> /{' '}
+          <CrumbButton onClick={onOpenCourse}>{courseTitle || 'Kurz'}</CrumbButton>{' '}
           / <span className="text-foreground">{module.title || 'Bez názvu'}</span>
         </p>
       </div>

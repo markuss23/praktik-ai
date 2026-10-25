@@ -35,3 +35,6 @@ compose.prod.yml
 .github/workflows/deploy.yml
 .github/workflows/deploy-test.yml
 Caddyfile
+
+*.mcp
+*playwright.mcp*

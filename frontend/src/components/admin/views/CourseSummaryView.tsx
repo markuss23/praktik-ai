@@ -307,6 +307,9 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     krauuCompetences: krauuCompetences.filter((k) => editedCategories.krauuCompetenceIds.includes(k.krauuId)),
     bloomLevels: bloomLevels.filter((b) => editedCategories.bloomLevelIds.includes(b.bloomId)),
     crossSubjects: crossSubjects.filter((c) => editedCategories.crossSubjectIds.includes(c.crossId)),
+    imageUrl: course?.imageUrl,
+    difficulty: course?.difficulty,
+    durationMinutes: course?.durationMinutes,
   };
 
   // Osnova kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentované použití v JSX).
@@ -395,7 +398,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         <StudentPreview
           course={previewCourse}
           modules={modules}
-          start={{ screen: 'course' }}
+          start={{ screen: 'catalog' }}
           onExit={() => setPreviewOpen(false)}
         />
       ) : (
