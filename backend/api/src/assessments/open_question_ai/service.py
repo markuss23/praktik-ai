@@ -41,9 +41,11 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
 
     attempts_used = state.attempts_used + 1
     new_state = state.model_copy(update={"attempts_used": attempts_used})
+    # Správnost se odvozuje ze skóre, aby se nerozcházela s is_passed
+    is_correct = result.score / 100 >= cfg.pass_threshold
 
     # Špatně a ještě zbývají pokusy — stejná otázka znovu
-    if not result.is_correct and attempts_used < cfg.max_attempts:
+    if not is_correct and attempts_used < cfg.max_attempts:
         return AnswerOutcome(
             state=new_state,
             is_correct=False,
@@ -53,9 +55,9 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
 
     return AnswerOutcome(
         state=new_state,
-        is_correct=result.is_correct,
+        is_correct=is_correct,
         finished=True,
         score=result.score,
-        is_passed=result.score / 100 >= cfg.pass_threshold,
+        is_passed=is_correct,
         feedback=result.ai_response,
     )

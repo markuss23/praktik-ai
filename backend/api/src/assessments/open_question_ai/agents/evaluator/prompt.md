@@ -25,8 +25,7 @@ K dispozici máš:
 
 ## Výstup
 
-Odpověz PŘESNĚ v tomto formátu (3 řádky, nic jiného):
+Odpověz PŘESNĚ v tomto formátu (2 řádky, nic jiného):
 
 SCORE: <číslo 0-100>
-CORRECT: <true nebo false>
 FEEDBACK: <zpětná vazba v 1-3 větách, v češtině>

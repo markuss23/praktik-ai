@@ -11,7 +11,6 @@ class EvaluatorState(TypedDict):
     # Načteno z DB
     learn_content: NotRequired[str]
     # Výstup LLM
-    is_correct: NotRequired[bool]
     ai_response: NotRequired[str]
     score: NotRequired[float]
     # Výsledek

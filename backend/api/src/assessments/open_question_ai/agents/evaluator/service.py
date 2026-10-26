@@ -7,7 +7,6 @@ from api.src.assessments.open_question_ai.agents.evaluator.graph import create_g
 
 @dataclass
 class EvaluationResult:
-    is_correct: bool
     ai_response: str
     score: float
 
@@ -38,7 +37,6 @@ class OpenQuestionAIEvaluator:
             raise ValueError(error)
 
         return EvaluationResult(
-            is_correct=result["is_correct"],
             ai_response=result["ai_response"],
             score=result["score"],
         )

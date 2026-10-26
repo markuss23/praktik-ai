@@ -39,16 +39,15 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     response = llm.invoke(messages)
     raw = response.text.strip()
 
-    score, is_correct, ai_response = _parse_evaluation(raw)
-    print(f"Vyhodnocení: score={score}, correct={is_correct}")
+    score, ai_response = _parse_evaluation(raw)
+    print(f"Vyhodnocení: score={score}")
 
-    return {"score": score, "is_correct": is_correct, "ai_response": ai_response}
+    return {"score": score, "ai_response": ai_response}
 
 
-def _parse_evaluation(raw: str) -> tuple[float, bool, str]:
-    """Parsuje odpověď LLM ve formátu SCORE/CORRECT/FEEDBACK."""
+def _parse_evaluation(raw: str) -> tuple[float, str]:
+    """Parsuje odpověď LLM ve formátu SCORE/FEEDBACK."""
     score = 0.0
-    is_correct = False
     feedback = raw  # fallback
 
     for line in raw.splitlines():
@@ -58,24 +57,13 @@ def _parse_evaluation(raw: str) -> tuple[float, bool, str]:
                 score = float(line.split(":", 1)[1].strip())
             except ValueError:
                 pass
-        elif line.upper().startswith("CORRECT:"):
-            val = line.split(":", 1)[1].strip().lower()
-            is_correct = val == "true"
         elif line.upper().startswith("FEEDBACK:"):
             feedback = line.split(":", 1)[1].strip()
 
-    return score, is_correct, feedback
+    return score, feedback
 
 
 if __name__ == "__main__":
-    assert _parse_evaluation("SCORE: 80\nCORRECT: true\nFEEDBACK: Dobře.") == (
-        80.0,
-        True,
-        "Dobře.",
-    )
-    assert _parse_evaluation("SCORE: ?\nCORRECT: false") == (
-        0.0,
-        False,
-        "SCORE: ?\nCORRECT: false",
-    )
+    assert _parse_evaluation("SCORE: 80\nFEEDBACK: Dobře.") == (80.0, "Dobře.")
+    assert _parse_evaluation("SCORE: ?") == (0.0, "SCORE: ?")
     print("ok")
