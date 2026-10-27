@@ -1,28 +1,44 @@
 'use client';
 
 import { useState } from "react";
-import { X } from "lucide-react";
 import type { CourseBlock } from "@/api";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  Label,
+  Modal,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from "@/components/ui";
 
-interface CourseModalProps {
+interface CourseFormData {
+  courseId: number | null;
+  title: string;
+  description: string;
+  courseBlockId?: number;
+}
+
+interface CourseModalProps<T extends CourseFormData> {
   isOpen: boolean;
   mode: 'create' | 'edit';
-  formData: {
-    courseId: number | null;
-    title: string;
-    description: string;
-    courseBlockId?: number;
-  };
+  formData: T;
   blocks?: CourseBlock[];
   loading: boolean;
   error: string;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onChange: (data: any) => void;
+  onChange: (data: T) => void;
 }
 
-export function CourseModal({
+const FORM_ID = "course-modal-form";
+
+export function CourseModal<T extends CourseFormData>({
   isOpen,
   mode,
   formData,
@@ -32,11 +48,8 @@ export function CourseModal({
   onClose,
   onSubmit,
   onChange,
-}: CourseModalProps) {
+}: CourseModalProps<T>) {
   const [validationError, setValidationError] = useState('');
-
-  useModalDismiss(isOpen, onClose);
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,102 +74,96 @@ export function CourseModal({
   };
 
   const displayError = validationError || error;
+  const blockItems = [
+    { label: 'Vyberte blok…', value: null },
+    ...blocks.map((b) => ({ label: b.name, value: b.blockId })),
+  ];
 
   return (
-    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-black">
-            {mode === 'create' ? 'Vytvořit nový kurz' : 'Editovat kurz'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={mode === 'create' ? 'Vytvořit nový kurz' : 'Editovat kurz'}
+      maxWidth="max-w-2xl"
+      footer={
+        <>
+          <Button type="button" variant="outline" size="lg" disabled={loading} onClick={onClose}>
+            Zrušit
+          </Button>
+          <Button
+            type="submit"
+            form={FORM_ID}
+            size="lg"
+            disabled={
+              loading || formData.title.trim().length < 3 || formData.description.trim().length < 3
+            }
+          >
+            {loading ? 'Ukládání…' : mode === 'create' ? 'Vytvořit kurz' : 'Uložit změny'}
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-5">
         {displayError && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-            {displayError}
-          </div>
+          <Alert variant="error">
+            <AlertDescription>{displayError}</AlertDescription>
+          </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="course-title" className="block text-sm font-medium text-gray-700 mb-2">
-              Název kurzu *
-            </label>
-            <input
-              type="text"
-              id="course-title"
-              required
-              minLength={3}
-              maxLength={120}
-              value={formData.title}
-              onChange={(e) => onChange({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              placeholder="např. Jak komunikovat s AI?"
-            />
-            <span className="text-xs text-gray-400 mt-1">{formData.title.length}/120</span>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="course-title">Název kurzu *</Label>
+          <Input
+            type="text"
+            id="course-title"
+            required
+            minLength={3}
+            maxLength={120}
+            value={formData.title}
+            onChange={(e) => onChange({ ...formData, title: e.target.value })}
+            placeholder="např. Jak komunikovat s AI?"
+          />
+          <span className="text-xs text-muted-foreground">{formData.title.length}/120</span>
+        </div>
 
-          <div>
-            <label htmlFor="course-description" className="block text-sm font-medium text-gray-700 mb-2">
-              Popis kurzu *
-            </label>
-            <textarea
-              id="course-description"
-              required
-              rows={4}
-              minLength={3}
-              maxLength={500}
-              value={formData.description}
-              onChange={(e) => onChange({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              placeholder="Stručný popis kurzu..."
-            />
-            <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="course-description">Popis kurzu *</Label>
+          <Textarea
+            id="course-description"
+            required
+            rows={4}
+            minLength={3}
+            maxLength={500}
+            value={formData.description}
+            onChange={(e) => onChange({ ...formData, description: e.target.value })}
+            placeholder="Stručný popis kurzu…"
+          />
+          <span className="text-xs text-muted-foreground">{formData.description.length}/500</span>
+        </div>
 
-          {/* Block selection */}
-          {blocks.length > 0 && (
-            <div>
-              <label htmlFor="course-block" className="block text-sm font-medium text-gray-700 mb-2">
-                Tematický blok *
-              </label>
-              <select
-                id="course-block"
-                required
-                value={formData.courseBlockId ?? 0}
-                onChange={(e) => onChange({ ...formData, courseBlockId: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black bg-white"
-              >
-                <option value={0} disabled>Vyberte blok...</option>
+        {blocks.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="course-block">Tematický blok *</Label>
+            <Select
+              items={blockItems}
+              value={formData.courseBlockId ?? null}
+              onValueChange={(value) =>
+                onChange({ ...formData, courseBlockId: value == null ? undefined : Number(value) })
+              }
+            >
+              <SelectTrigger id="course-block" size="default" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
                 {blocks.map((b) => (
-                  <option key={b.blockId} value={b.blockId}>{b.name}</option>
+                  <SelectItem key={b.blockId} value={b.blockId}>
+                    {b.name}
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
-          )}
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="submit"
-              disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Ukládání...' : (mode === 'create' ? 'Vytvořit kurz' : 'Uložit změny')}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-            >
-              Zrušit
-            </button>
+              </SelectContent>
+            </Select>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </Modal>
   );
 }

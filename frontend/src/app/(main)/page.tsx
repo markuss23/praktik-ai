@@ -10,7 +10,7 @@ export default async function Home() {
   const changelog = await fetchChangelog();
 
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       <Hero />
       <ChangelogAccordion markdown={changelog} />
       <CourseSection />

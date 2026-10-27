@@ -11,6 +11,7 @@ from api.src.agents.schemas import (
     CourseGenerationProgressResponse,
     EvaluateAssessmentRequest,
     EvaluateAssessmentResponse,
+    EvaluateOpenQuestionRequest,
     EvaluatePracticeAnswerRequest,
     EvaluatePracticeAnswerResponse,
     GenerateAssessmentRequest,
@@ -21,6 +22,9 @@ from api.src.agents.schemas import (
     GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
+    WikiChatRequest,
+    WikiChatResponse,
+    WikiSyncResponse,
 )
 from api.src.agents.progress import (
     get_progress,
@@ -36,10 +40,14 @@ from api.database import SessionLocal
 from api.src.agents.practice_controllers import (
     generate_practice_question,
     evaluate_practice_answer,
+    evaluate_open_question_answer,
 )
+from agents.open_question_evaluator import OpenQuestionEvaluation
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.mentor.service import MentorService
+from agents.wiki.mentor.service import WikiChatService
+from agents.wiki.agent.service import sync_wiki
 from agents.assessment_generator.service import AssessmentService
 from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
@@ -144,31 +152,32 @@ async def get_course_generation_progress(
 
 
 @router.get(
-    "/active-course-generation",
-    operation_id="get_active_course_generation",
+    "/active-course-generations",
+    operation_id="list_active_course_generations",
     dependencies=[require_role("lector")],
 )
-async def get_active_course_generation(
+async def list_active_course_generations(
     db: SessionSqlSessionDependency, user: CurrentUser
-) -> int | None:
-    """Vrátí course_id právě běžící generace pro přihlášeného uživatele,
-    nebo ``null`` pokud žádná neběží.
+) -> list[int]:
+    """Vrátí course_id všech právě běžících generací, které přihlášený
+    uživatel smí vidět (prázdný seznam, pokud žádná neběží).
 
-    Slouží frontendu k obnovení UI po refreshi stránky uprostřed generování.
+    Slouží frontendu k obnovení sledování průběhu po refreshi stránky.
     Superadmin vidí i cizí běžící generace, ostatní jen svoje vlastní.
     """
     candidates = list_running_course_ids()
     if not candidates:
-        return None
+        return []
 
     is_super = user.role == "superadmin"
+    visible: list[int] = []
     for course_id in candidates:
         course = db.get(models.Course, course_id)
         if course is None:
             continue
         if is_super or course.owner_id == user.user_id:
-            return course_id
-    return None
+            visible.append(course_id)
+    return visible
 
 
 @router.post(
@@ -248,6 +257,31 @@ async def learn_blocks_chat(
     db.commit()
 
     return LearnBlocksChatResponse(answer=result.answer)
+
+
+@router.post("/wiki-chat", operation_id="wiki_chat")
+async def wiki_chat(
+    user_input: WikiChatRequest, db: SessionSqlSessionDependency
+) -> WikiChatResponse:
+    """Endpoint pro chat nad projektovou wiki."""
+
+    service = WikiChatService(db=db, message=user_input.message)
+    result = await service.chat()
+
+    return WikiChatResponse(answer=result.answer)
+
+
+@router.post(
+    "/wiki-sync",
+    operation_id="wiki_sync",
+    dependencies=[require_role("superadmin")],
+)
+async def wiki_sync() -> WikiSyncResponse:
+    """Endpoint pro ruční synchronizaci a re-indexaci GitHub wiki."""
+
+    result = await sync_wiki()
+
+    return WikiSyncResponse(pages_processed=result.pages_processed)
 
 
 @router.post(
@@ -414,6 +448,24 @@ async def endp_evaluate_practice_answer(
     return await evaluate_practice_answer(
         db=db,
         user_question_id=body.user_question_id,
+        user_input=body.user_input,
+        user=user,
+    )
+
+
+@router.post(
+    "/evaluate-open-question",
+    operation_id="evaluate_open_question",
+)
+async def endp_evaluate_open_question(
+    body: EvaluateOpenQuestionRequest,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> OpenQuestionEvaluation:
+    """Vyhodnotí odpověď na otevřenou otázku modulu. Nic neukládá."""
+    return await evaluate_open_question_answer(
+        db=db,
+        question_id=body.question_id,
         user_input=body.user_input,
         user=user,
     )

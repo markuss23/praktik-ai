@@ -88,8 +88,13 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
     allowForks: resource.allowForks ?? false,
     isFork: resource.isFork,
     ownerId: String(resource.authorId),
+    authorName: resource.authorDisplayName ?? undefined,
     targetAudience: resource.target?.name,
     educationLevel: EDU_LEVEL_LABELS[resource.educationLevel] ?? resource.educationLevel,
+    educationLevelValue: resource.educationLevel,
+    fileTypes: [
+      ...new Set((resource.files ?? []).map((f) => String(f.fileType ?? "other"))),
+    ],
     difficulty: resource.difficultyLevel,
     targets: [
       ...(resource.target ? [{ label: "Cílová skupina", value: resource.target.name }] : []),
@@ -104,12 +109,15 @@ export function mapPubResourceToMaterial(resource: PubResource): Material {
         ? [{ label: "Autor", value: resource.authorDisplayName }]
         : []),
     ],
+    // `filePath` je interní klíč v SeaweedFS, ne odkaz ke stažení — přílohy se
+    // stahují přes backend podle resourceId/fileId.
     attachments: (resource.files ?? []).map((f) => ({
       id: String(f.fileId),
       name: attachmentNameFromPath(f.filename, `Soubor ${f.fileId}`),
       format: (f.fileType ?? "file").toString().toUpperCase(),
       sizeLabel: "",
-      url: f.filePath,
+      resourceId: resource.resourceId,
+      fileId: f.fileId,
     })),
   };
 }

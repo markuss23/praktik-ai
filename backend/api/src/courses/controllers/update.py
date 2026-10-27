@@ -7,6 +7,15 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api import models
+from api.src.catalogs.controllers import (
+    resolve_cross_subject_ids,
+    validate_subject_for_block,
+    sync_bloom_levels,
+    sync_cross_subjects,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
@@ -17,7 +26,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     """Aktualizuje existující kurz (v draft nebo generated stavu)"""
     from sqlalchemy import select
 
-    if db.execute(
+    if course_data.course_block_id is not None and db.execute(
         select(models.CourseBlock).where(
             models.CourseBlock.block_id == course_data.course_block_id,
             models.CourseBlock.is_active.is_(True),
@@ -25,7 +34,7 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Tematický blok s tímto ID neexistuje")
 
-    if db.execute(
+    if course_data.course_target_id is not None and db.execute(
         select(models.CourseTarget).where(
             models.CourseTarget.target_id == course_data.course_target_id,
             models.CourseTarget.is_active.is_(True),
@@ -41,6 +50,50 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     ).first() is None:
         raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
 
+    if course_data.course_requirement_id is not None and db.execute(
+        select(models.CourseRequirement).where(
+            models.CourseRequirement.requirement_id
+            == course_data.course_requirement_id,
+            models.CourseRequirement.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(
+            status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
+        )
+
+    if db.execute(
+        select(models.CourseEqfLevel).where(
+            models.CourseEqfLevel.eqf_level_id == course_data.course_eqf_level_id,
+            models.CourseEqfLevel.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="EQF úroveň s tímto ID neexistuje")
+
+    if course_data.course_level_id is not None and db.execute(
+        select(models.CourseLevel).where(
+            models.CourseLevel.level_id == course_data.course_level_id,
+            models.CourseLevel.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
+
+    if db.execute(
+        select(models.CourseType).where(
+            models.CourseType.type_id == course_data.course_type_id,
+            models.CourseType.is_active.is_(True),
+        )
+    ).first() is None:
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
+    validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, course_data.bloom_level_ids)
+    validate_subject_for_block(
+        db, course_data.course_block_id, course_data.course_subject_id
+    )
+    cross_subject_ids = resolve_cross_subject_ids(
+        db, course_data.course_block_id, course_data.cross_subject_ids
+    )
+
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
     # Only owner or superadmin can edit (guarantor cannot edit others' courses)
@@ -48,7 +101,9 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
 
     assert_course_editable(course)
 
-    update_data = course_data.model_dump(exclude_unset=True)
+    update_data = course_data.model_dump(
+        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"}
+    )
 
     # Auto-transition to "edited" when saving changes
     if course.status in (Status.draft, Status.generated):
@@ -58,6 +113,23 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
         update(models.Course)
         .where(models.Course.course_id == course_id)
         .values(**update_data)
+    )
+    sync_krauu_competences(
+        db,
+        models.CourseKrauuCompetence,
+        "course_id",
+        course_id,
+        course_data.krauu_competence_ids,
+    )
+    sync_bloom_levels(
+        db,
+        models.CourseBloomLevel,
+        "course_id",
+        course_id,
+        course_data.bloom_level_ids,
+    )
+    sync_cross_subjects(
+        db, models.CourseCrossSubject, "course_id", course_id, cross_subject_ids
     )
     db.commit()
     db.refresh(course)

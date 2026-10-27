@@ -8,6 +8,8 @@ import {
 } from '@tiptap/react';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { AlignLeft, AlignCenter, AlignRight, Trash2, WrapText } from 'lucide-react';
+import { Button } from '../../ui-kit/button';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type Align = 'none' | 'left' | 'center' | 'right';
 
@@ -205,7 +207,7 @@ function AlignButton({
   const color = danger ? 'rgb(220 38 38)' : active ? 'rgb(126 34 206)' : 'rgb(55 65 81)';
   const bg = active ? 'rgb(243 232 255)' : 'transparent';
   return (
-    <button
+    <Button variant="plain" className={BTN_KEEP_BOX}
       type="button"
       title={title}
       onClick={onClick}
@@ -220,7 +222,7 @@ function AlignButton({
       }}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 

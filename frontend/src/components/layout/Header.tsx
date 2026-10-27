@@ -90,7 +90,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-[1000] bg-[#0D2F31] text-white shadow-[0_10px_30px_rgba(13,47,49,0.18)]">
+    <header className="sticky top-0 z-[var(--z-header)] bg-[#0D2F31] text-white shadow-[0_10px_30px_rgba(13,47,49,0.18)]">
       {/* Dekorace z hero karty — jen pozadí, ořízne je pás. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block">
         <div className="blob-float-slow absolute -top-[150px] -left-[90px] size-[300px] rounded-[62%_38%_43%_57%/51%_47%_53%_49%] bg-[#5AAC78]/15" />
@@ -217,7 +217,7 @@ export function Header() {
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
-          className="fixed inset-0 z-[2000] flex flex-col overflow-hidden bg-[#0D2F31] text-white lg:hidden"
+          className="fixed inset-0 z-[var(--z-modal)] flex flex-col overflow-hidden bg-[#0D2F31] text-white lg:hidden"
         >
           <div aria-hidden className="pointer-events-none absolute -right-[120px] -bottom-[120px] size-[340px] rounded-[58%_42%_47%_53%/43%_55%_45%_57%] bg-[#5AAC78]/15" />
           <div aria-hidden className="pointer-events-none absolute top-[38%] -left-[70px] size-[180px] rounded-full border-[1.5px] border-[#D1E7D9]/20" />

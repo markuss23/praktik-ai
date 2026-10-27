@@ -4,21 +4,6 @@ from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState
 from agents.mentor.state import ChunkData
 
-DEFAULT_MODEL = "gpt-5-mini"
-
-DEFAULT_PROMPT = (
-    "Jsi AI asistent pro výuku - mentor studenta.\n"
-    "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
-    "PRAVIDLA:\n"
-    "- Odpověz výhradně na základě poskytnutého kontextu\n"
-    "- Pokud kontext neobsahuje odpověď, řekni to otevřeně\n"
-    "- Buď přátelský, trpělivý a pedagogický\n"
-    "- Používej příklady z kontextu pro lepší pochopení\n"
-    "- Pokud student nerozumí, zkus vysvětlit jinak\n"
-    "- Odpovídej vždy v češtině\n"
-    "- odpověd maximálně 500 znaků"
-)
-
 
 def generate_answer(state: AgentState) -> AgentState:
     """Uzlu pro generování odpovědi."""
@@ -47,12 +32,7 @@ def generate_answer(state: AgentState) -> AgentState:
         ]
     )
 
-    cfg = get_llm_config(
-        db,
-        "mentor_answer",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
+    cfg = get_llm_config(db, "mentor_answer")
     llm = create_chat_llm(cfg.model, temperature=0.7)
 
     system_prompt = f"""{cfg.prompt}

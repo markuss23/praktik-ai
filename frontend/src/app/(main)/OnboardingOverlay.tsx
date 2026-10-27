@@ -49,7 +49,7 @@ const STOPS = [
  *
  * Zobrazí se jen při první návštěvě (příznak v localStorage); `?onboarding`
  * v URL ho vynutí znovu — pro náhled a testování. Skládá se z primitiv
- * ui-kit dialogu, aby šel nad sticky Header (z-1000): backdrop na
+ * ui-kit dialogu, aby šel nad sticky Header (`--z-header`): backdrop na
  * `--z-overlay`, okno na `--z-modal`.
  */
 export function OnboardingOverlay() {

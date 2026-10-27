@@ -1,16 +1,24 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, Check } from 'lucide-react';
+import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, getCourseBlocks, getCourseTargets, getCourseSubjects, getCourseGenerationProgress, getActiveCourseGeneration, type CourseGenerationProgress } from '@/lib/api-client';
-import { CoursePageHeader } from '@/components/admin';
-import { CourseBlock, CourseTarget, CourseSubject, Difficulty } from '@/api';
+import { createCourse, uploadCourseFile, generateCourseWithAI, type CourseGenerationProgress } from '@/lib/api-client';
+import { CoursePageHeader, CourseCategoryFields } from '@/components/admin';
+import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
+import { BackgroundGenerationsBanner, GenerationProgressCard } from '@/components/admin/GenerationProgress';
+import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
+import { Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-
-// Klíč v localStorage, kterým si pamatujeme rozpracovanou AI generaci.
-const ACTIVE_GENERATION_KEY = 'praktik-ai:active-course-generation';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import { crossSubjectsRule, subjectAllowed, validateCourseCategories, type CourseCategoryValues } from '@/lib/course-categories';
+import { readApiErrorDetail } from '@/lib/api-error';
+// Průběh zobrazený hned po spuštění, než backend vrátí první stav.
+const INITIAL_PROGRESS: CourseGenerationProgress = {
+  step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null,
+};
 
 // Tvorba kurzu pomocí AI generování
 export function CourseAICreateView() {
@@ -20,16 +28,21 @@ export function CourseAICreateView() {
   const [step, setStep] = useState<'form' | 'uploading' | 'generating'>('form');
   const [error, setError] = useState('');
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<CourseGenerationProgress | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const activeCourseIdRef = useRef<number | null>(null);
-  const didResumeRef = useRef(false);
+  // Kurz založený v tomto formuláři. Jeho generování sleduje CourseGenerationProvider
+  // (polling přežije odchod ze stránky) — tady se jen čte průběh a reaguje na dokončení.
+  const [activeCourseId, setActiveCourseId] = useState<number | null>(null);
+  const generation = useCourseGeneration();
+  const progress = activeCourseId !== null ? generation.getProgress(activeCourseId) : null;
+  // Generace jiných kurzů běžící na pozadí (po refreshi nebo spuštěné z přehledu)
+  const backgroundGenerations = Array.from(generation.generations.values())
+    .filter((g) => g.courseId !== activeCourseId);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [blocks, setBlocks] = useState<CourseBlock[]>([]);
-  const [targets, setTargets] = useState<CourseTarget[]>([]);
-  const [subjects, setSubjects] = useState<CourseSubject[]>([]);
-  const [catalogsLoading, setCatalogsLoading] = useState(true);
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading, error: catalogsError,
+  } = useCatalogData();
+  const [showCategoryErrors, setShowCategoryErrors] = useState(false);
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -39,8 +52,11 @@ export function CourseAICreateView() {
     courseBlockId: number;
     courseTargetId: number;
     courseSubjectId: number;
+    courseRequirementId: number;
+    courseEqfLevelId: number;
+    courseTypeId: number;
     difficulty: Difficulty;
-  }>({
+  } & CourseCategoryValues>({
     title: '',
     description: '',
     moduleCount: 3,
@@ -48,165 +64,77 @@ export function CourseAICreateView() {
     courseBlockId: 0,
     courseTargetId: 0,
     courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
     // Default obtížnosti dle požadavku — mírně pokročilý.
     difficulty: Difficulty.SlightlyAdvanced,
+    krauuCompetenceIds: [],
+    bloomLevelIds: [],
+    crossSubjectIds: [],
   });
 
-  // Zastavení polling timeru při unmountu
+  // Dokončení generování kurzu z tohoto formuláře (událost vysílá provider):
+  // hotový kurz rovnou otevřeme v editoru, selhání ukážeme v modalu s „Zkusit znovu".
   useEffect(() => {
-    return () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
+    if (activeCourseId === null) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<CourseGenerationFinishedDetail>).detail;
+      if (detail.courseId !== activeCourseId) return;
+      if (detail.status === 'completed') {
+        goToCourseContent(activeCourseId);
+        return;
       }
+      setGenerationError(
+        detail.status === 'failed'
+          ? (detail.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.')
+          : 'Server o běžícím generování neví, nejspíš byl mezitím restartován. Spusťte generování znovu.',
+      );
+      setStep('form');
+      setLoading(false);
     };
-  }, []);
+    window.addEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+    return () => window.removeEventListener(COURSE_GENERATION_FINISHED_EVENT, handler);
+  }, [activeCourseId, goToCourseContent]);
 
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  }, []);
-
-  const clearActiveGeneration = useCallback(() => {
-    activeCourseIdRef.current = null;
+  // Spuštění generování už založeného kurzu (první pokus i „Zkusit znovu").
+  // Backend task spustí na pozadí a hned se vrátí; průběh přebírá provider.
+  const startGeneration = async (courseId: number, title: string) => {
+    setGenerationError(null);
+    setStep('generating');
+    setLoading(true);
     try {
-      localStorage.removeItem(ACTIVE_GENERATION_KEY);
-    } catch {
-      // localStorage může být nedostupný (private mode) — ignorujeme
+      await generateCourseWithAI(courseId);
+    } catch (genErr: unknown) {
+      setGenerationError(
+        (await readApiErrorDetail(genErr))
+          ?? (genErr instanceof Error && genErr.message ? genErr.message : 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.'),
+      );
+      setStep('form');
+      setLoading(false);
+      return;
     }
-  }, []);
+    generation.track(courseId, title);
+  };
 
-  const rememberActiveGeneration = useCallback((courseId: number) => {
-    activeCourseIdRef.current = courseId;
-    try {
-      localStorage.setItem(ACTIVE_GENERATION_KEY, String(courseId));
-    } catch {
-      // localStorage může být nedostupný — bez persistencí jen ztratíme možnost resume po refreshi, ale generace na backendu beží dál
-    }
-  }, []);
-
-  const startProgressPolling = useCallback((courseId: number, initialProgress?: CourseGenerationProgress) => {
-    stopPolling();
-    rememberActiveGeneration(courseId);
-    setProgress(initialProgress ?? { step: 0, total: 5, label: 'Spouštění generování', status: 'running', error: null });
-    pollTimerRef.current = setInterval(async () => {
-      try {
-        const p = await getCourseGenerationProgress(courseId);
-        setProgress(prev => {
-          if (!prev) return p;
-          if (prev.status === 'running' && p.status === 'running' && p.step < prev.step) {
-            return prev;
-          }
-          return p;
-        });
-        if (p.status === 'completed') {
-          stopPolling();
-          clearActiveGeneration();
-          goToCourseContent(courseId);
-        } else if (p.status === 'failed') {
-          stopPolling();
-          clearActiveGeneration();
-          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
-          setProgress(null);
-          setStep('form');
-          setLoading(false);
-        }
-      } catch {
-        // Ignoruj jednotlivé chyby pollingu zkusí znovu příští tick
-      }
-    }, 1500);
-  }, [stopPolling, rememberActiveGeneration, clearActiveGeneration, goToCourseContent]);
-
-  // Resume po refreshi
+  // Po načtení katalogů předvyplníme povinné selecty první položkou (blok a obor
+  // jsou volitelné, zůstávají „Neurčeno“).
+  const catalogDefaultsRef = useRef(false);
   useEffect(() => {
-    if (didResumeRef.current) return;
-    didResumeRef.current = true;
-    let cancelled = false;
-    async function resume() {
-      let savedId: number | null = null;
-      try {
-        const raw = localStorage.getItem(ACTIVE_GENERATION_KEY);
-        if (raw) {
-          const parsed = Number(raw);
-          if (Number.isFinite(parsed) && parsed > 0) savedId = parsed;
-        }
-      } catch {
-        // ignore
-      }
+    if (catalogsLoading || catalogDefaultsRef.current) return;
+    catalogDefaultsRef.current = true;
+    setFormData(prev => ({
+      ...prev,
+      courseEqfLevelId: prev.courseEqfLevelId || (eqfLevels[0]?.eqfLevelId ?? 0),
+      courseTypeId: prev.courseTypeId || (types[0]?.typeId ?? 0),
+    }));
+  }, [catalogsLoading, eqfLevels, types]);
 
-      // Backend lookup je primárním zdrojem pravdy o tom, co aktuálně běží.
-      // localStorage používáme jen jako fallback (offline backend) a k zachycení
-      // situace, kdy generace stihla doběhnout dříve, než se uživatel vrátil.
-      let backendActive: number | null = null;
-      let backendOk = true;
-      try {
-        backendActive = await getActiveCourseGeneration();
-      } catch {
-        backendOk = false;
-      }
-
-      const activeId = backendActive ?? (backendOk ? savedId : savedId);
-      if (cancelled || activeId === null) return;
-
-      try {
-        const p = await getCourseGenerationProgress(activeId);
-        if (cancelled) return;
-        if (p.status === 'completed') {
-          clearActiveGeneration();
-          goToCourseContent(activeId);
-          return;
-        }
-        if (p.status === 'failed') {
-          clearActiveGeneration();
-          setGenerationError(p.error || 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.');
-          return;
-        }
-        if (backendActive === null && backendOk && p.status === 'pending') {
-          // Backend potvrdil, že nic neběží, a o uloženém kurzu nic neví 
-          clearActiveGeneration();
-          return;
-        }
-        setStep('generating');
-        setLoading(true);
-        startProgressPolling(activeId, p);
-      } catch {
-        // Pokud kurz neexistuje nebo na něj nemáme práva
-        clearActiveGeneration();
-      }
-    }
-    resume();
-    return () => { cancelled = true; };
-  }, [startProgressPolling, clearActiveGeneration, goToCourseContent]);
-
-  // Načtení katalogů při mountu
   useEffect(() => {
-    async function loadCatalogs() {
-      try {
-        const [b, t, s] = await Promise.all([
-          getCourseBlocks(),
-          getCourseTargets(),
-          getCourseSubjects(),
-        ]);
-        setBlocks(b);
-        setTargets(t);
-        setSubjects(s);
-        setFormData(prev => ({
-          ...prev,
-          courseBlockId: b.length > 0 ? b[0].blockId : 0,
-          courseTargetId: t.length > 0 ? t[0].targetId : 0,
-          courseSubjectId: s.length > 0 ? s[0].subjectId : 0,
-        }));
-      } catch (err) {
-        console.error('Failed to load catalogs:', err);
-        setError('Nepodařilo se načíst katalogy');
-      } finally {
-        setCatalogsLoading(false);
-      }
-    }
-    loadCatalogs();
-  }, []);
+    if (catalogsError) setError('Nepodařilo se načíst katalogy');
+  }, [catalogsError]);
+
+  const crossRule = crossSubjectsRule(blocks, formData.courseBlockId);
 
   const ACCEPTED_TYPES = '.md,.docx';
   const ACCEPTED_EXTENSIONS = ['md', 'docx'];
@@ -277,6 +205,13 @@ export function CourseAICreateView() {
       return;
     }
 
+    const categoryError = validateCourseCategories(formData, crossRule);
+    if (categoryError) {
+      setShowCategoryErrors(true);
+      setError(categoryError);
+      return;
+    }
+
     if (files.length === 0) {
       setError('Prosím nahrajte alespoň jeden soubor s podklady');
       return;
@@ -288,7 +223,7 @@ export function CourseAICreateView() {
     try {
       setStep('uploading');
       
-      if (formData.courseBlockId === 0 || formData.courseTargetId === 0 || formData.courseSubjectId === 0) {
+      if (formData.courseEqfLevelId === 0 || formData.courseTypeId === 0) {
         throw new Error('Prosím vyplňte všechny katalogové údaje');
       }
 
@@ -299,19 +234,21 @@ export function CourseAICreateView() {
           description: formData.description || undefined,
           modulesCountAiGenerated: formData.moduleCount,
           durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes) : formData.moduleCount * 20,
-          courseBlockId: formData.courseBlockId,
-          courseTargetId: formData.courseTargetId,
-          courseSubjectId: formData.courseSubjectId,
+          // 0 = „Neurčeno“ — blok, obor a povinnost jsou na backendu volitelné.
+          courseBlockId: formData.courseBlockId || null,
+          courseTargetId: formData.courseTargetId || null,
+          courseSubjectId: subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId || null : null,
+          courseRequirementId: formData.courseRequirementId || undefined,
+          courseEqfLevelId: formData.courseEqfLevelId,
+          courseTypeId: formData.courseTypeId,
           difficulty: formData.difficulty,
+          krauuCompetenceIds: formData.krauuCompetenceIds,
+          bloomLevelIds: formData.bloomLevelIds,
+          crossSubjectIds: formData.crossSubjectIds,
         });
       } catch (createErr: unknown) {
-        if (createErr && typeof createErr === 'object' && 'response' in createErr) {
-          const response = (createErr as { response: Response }).response;
-          if (response.status === 400) {
-            const data = await response.json();
-            throw new Error(data.detail || 'Kurz s tímto názvem již existuje');
-          }
-        }
+        const detail = await readApiErrorDetail(createErr);
+        if (detail) throw new Error(detail);
         throw createErr;
       }
 
@@ -320,36 +257,11 @@ export function CourseAICreateView() {
         await uploadCourseFile(course.courseId, file);
       }
 
-      // Generování kurzu pomocí AI — backend ho spustí na pozadí a vrátí se ihned;
-      // polling progresu se postará o navigaci po dokončení i o chybové stavy.
-      setStep('generating');
-      startProgressPolling(course.courseId);
-      try {
-        await generateCourseWithAI(course.courseId);
-      } catch (genErr: unknown) {
-        stopPolling();
-        clearActiveGeneration();
-        let message = 'Generování kurzu se nezdařilo. Zkuste to prosím znovu.';
-        if (genErr && typeof genErr === 'object' && 'response' in genErr) {
-          const response = (genErr as { response: Response }).response;
-          try {
-            const data = await response.json();
-            message = data.detail || `Chyba serveru: ${response.status}`;
-          } catch {
-            message = `Chyba serveru: ${response.status}`;
-          }
-        } else if (genErr instanceof Error && genErr.message) {
-          message = genErr.message;
-        }
-        setGenerationError(message);
-        setProgress(null);
-        setStep('form');
-        setLoading(false);
-      }
+      // Generování kurzu pomocí AI — kurz i podklady už jsou uložené, takže
+      // případné selhání jde zopakovat bez nového vyplňování formuláře.
+      setActiveCourseId(course.courseId);
+      await startGeneration(course.courseId, formData.title.trim());
     } catch (err: unknown) {
-      stopPolling();
-      clearActiveGeneration();
-      setProgress(null);
       if (err instanceof Error) {
         setError(err.message);
       } else if (err && typeof err === 'object' && 'response' in err) {
@@ -386,7 +298,7 @@ export function CourseAICreateView() {
 
   return (
     <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <CoursePageHeader
           breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
           title="Popis kurzu"
@@ -395,127 +307,185 @@ export function CourseAICreateView() {
         />
       </div>
 
-      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8">
+      {/* Sloupcový flex, aby se karta průběhu mohla roztáhnout (flex-1) na zbytek
+          výšky a vycentrovat — procentuální min-h by přes několik flex vrstev
+          nemusela mít z čeho počítat */}
+      <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col">
         {error && (
-          <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
+          <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
             {error}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
+        {step !== 'generating' && (
+          <BackgroundGenerationsBanner generations={backgroundGenerations} onGoToCourses={goToCourses} />
+        )}
+
+        {step === 'generating' ? (
+          // Karta uprostřed obsahové plochy: vodorovně vždy, svisle od lg
+          // (na mobilu u horního okraje, ať není pod ohybem).
+          <div className="flex-1 flex items-start lg:items-center justify-center">
+            <GenerationProgressCard progress={progress ?? INITIAL_PROGRESS} onGoToCourses={goToCourses} />
+          </div>
+        ) : (
+        <div className="bg-card rounded-lg shadow-sm p-4 sm:p-6 lg:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Název kurzu */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Název kurzu
               </label>
-              <input
+              <Input
                 type="text"
                 required
                 minLength={3}
                 maxLength={120}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                className={cn("h-auto md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                 placeholder="Výběr zrn kávy"
               />
-              <span className="text-xs text-gray-400 mt-1">{formData.title.length}/120</span>
+              <span className="text-xs text-muted-foreground mt-1">{formData.title.length}/120</span>
             </div>
 
             {/* Katalogové údaje */}
             {catalogsLoading ? (
-              <div className="flex items-center gap-2 text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
                 <span>Načítám katalogy...</span>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Tematický blok
                   </label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseBlockId}
-                    onChange={(e) => setFormData({ ...formData, courseBlockId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
-                  >
-                    <option value={0} disabled>Vyberte blok...</option>
-                    {blocks.map((b) => (
-                      <option key={b.blockId} value={b.blockId}>{b.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseBlockId: next })}
+                    options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Tematický blok"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Cílová skupina
                   </label>
-                  <select
-                    required
+                  <CatalogSelect
                     value={formData.courseTargetId}
-                    onChange={(e) => setFormData({ ...formData, courseTargetId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
-                  >
-                    <option value={0} disabled>Vyberte skupinu...</option>
-                    {targets.map((t) => (
-                      <option key={t.targetId} value={t.targetId}>{t.name}</option>
-                    ))}
-                  </select>
+                    onValueChange={(next) => setFormData({ ...formData, courseTargetId: next })}
+                    options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Cílová skupina"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="block text-sm font-semibold text-foreground mb-2">
                     Obor
                   </label>
-                  <select
-                    required
-                    value={formData.courseSubjectId}
-                    onChange={(e) => setFormData({ ...formData, courseSubjectId: Number(e.target.value) })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
-                  >
-                    <option value={0} disabled>Vyberte obor...</option>
-                    {subjects.map((s) => (
-                      <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-                    ))}
-                  </select>
+                  <CatalogSelect
+                    value={subjectAllowed(blocks, formData.courseBlockId) ? formData.courseSubjectId : 0}
+                    onValueChange={(next) => setFormData({ ...formData, courseSubjectId: next })}
+                    disabled={!subjectAllowed(blocks, formData.courseBlockId)}
+                    options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Obor"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    EQF úroveň *
+                  </label>
+                  <CatalogSelect
+                    value={formData.courseEqfLevelId}
+                    onValueChange={(next) => setFormData({ ...formData, courseEqfLevelId: next })}
+                    options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                    aria-label="EQF úroveň"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Typ kurzu *
+                  </label>
+                  <CatalogSelect
+                    value={formData.courseTypeId}
+                    onValueChange={(next) => setFormData({ ...formData, courseTypeId: next })}
+                    options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                    aria-label="Typ kurzu"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Povinnost kurzu
+                  </label>
+                  <CatalogSelect
+                    value={formData.courseRequirementId}
+                    onValueChange={(next) => setFormData({ ...formData, courseRequirementId: next })}
+                    options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                    emptyLabel="Neurčeno"
+                    aria-label="Povinnost kurzu"
+                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+                  />
                 </div>
               </div>
             )}
 
+            {/* Pedagogické zařazení — KRAUU, Bloom, průřezové obory */}
+            {!catalogsLoading && (
+              <CourseCategoryFields
+                values={formData}
+                onChange={(next) => setFormData({ ...formData, ...next })}
+                krauuCompetences={krauuCompetences}
+                bloomLevels={bloomLevels}
+                crossSubjects={crossSubjects}
+                crossRule={crossRule}
+                showErrors={showCategoryErrors}
+                triggerClassName="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card data-[size=default]:h-auto"
+              />
+            )}
+
             {/* Popis kurzu */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Popis kurzu
               </label>
-              <textarea
+              <Textarea
                 required
                 rows={6}
                 minLength={3}
                 maxLength={500}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black resize-none"
+                className={cn("field-sizing-fixed min-h-0 md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground resize-none")}
                 placeholder="V této kapitole se studenti seznámí s hlavními typy kávových zrn..."
               />
-              <span className="text-xs text-gray-400 mt-1">{formData.description.length}/500</span>
+              <span className="text-xs text-muted-foreground mt-1">{formData.description.length}/500</span>
             </div>
 
             {/* Počet modulů + Doporučená obtížnost + Délka kurzu */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Počet modulů
                 </label>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="plain"
                     type="button"
                     aria-label="Snížit počet modulů"
                     disabled={formData.moduleCount <= 1}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.max(1, formData.moduleCount - 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className={cn(BTN_KEEP_BOX, "size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent")}
                   >
                     -
-                  </button>
-                  <input
+                  </Button>
+                  <Input
                     type="number"
                     min="1"
                     max="12"
@@ -524,53 +494,52 @@ export function CourseAICreateView() {
                       const val = parseInt(e.target.value) || 1;
                       setFormData({ ...formData, moduleCount: Math.min(12, Math.max(1, val)) });
                     }}
-                    className="w-16 px-2 py-2 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                    className={cn("h-auto md:text-base", "w-16 px-2 py-2 border border-border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                   />
-                  <button
+                  <Button
+                    variant="plain"
                     type="button"
                     aria-label="Zvýšit počet modulů"
                     disabled={formData.moduleCount >= 12}
                     onClick={() => setFormData({ ...formData, moduleCount: Math.min(12, formData.moduleCount + 1) })}
-                    className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xl text-black disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className={cn(BTN_KEEP_BOX, "size-10 flex items-center justify-center border border-border rounded-md hover:bg-muted/50 transition-colors text-xl text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent")}
                   >
                     +
-                  </button>
-                  <span className="text-xs text-gray-500 ml-1">
+                  </Button>
+                  <span className="text-xs text-muted-foreground ml-1">
                     max 12
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Doporučená obtížnost
                 </label>
-                <select
+                <FilterSelect
                   value={formData.difficulty}
-                  onChange={(e) =>
-                    setFormData({ ...formData, difficulty: e.target.value as Difficulty })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black bg-white"
-                >
-                  {DIFFICULTY_ORDER.map((d: Difficulty) => (
-                    <option key={d} value={d}>
-                      {DIFFICULTY_LABELS[d]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setFormData({ ...formData, difficulty: next as Difficulty })}
+                  placeholder="Doporučená obtížnost"
+                  includeEmpty={false}
+                  options={DIFFICULTY_ORDER.map((d: Difficulty) => ({
+                    value: d,
+                    label: DIFFICULTY_LABELS[d],
+                  }))}
+                  className="w-full data-[size=default]:h-auto px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground bg-card"
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Délka kurzu (minuty)
                 </label>
-                <input
+                <Input
                   type="number"
                   min="15"
                   max="300"
                   value={formData.durationMinutes}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
+                  className={cn("h-auto md:text-base", "w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground")}
                   placeholder={String(formData.moduleCount * 20)}
                 />
               </div>
@@ -579,7 +548,7 @@ export function CourseAICreateView() {
 
             {/* Nahrát podklady */}
             <div>
-              <label className="block text-sm font-semibold text-black mb-2">
+              <label className="block text-sm font-semibold text-foreground mb-2">
                 Nahrát podklady
               </label>
 
@@ -589,21 +558,22 @@ export function CourseAICreateView() {
                   {files.map((f) => (
                     <div
                       key={f.name}
-                      className="inline-flex items-center gap-2 max-w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm"
+                      className="inline-flex items-center gap-2 max-w-full px-3 py-1.5 bg-muted/50 border border-border rounded-md text-sm"
                     >
-                      <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-gray-700 truncate max-w-[180px]" title={f.name}>{f.name}</span>
-                      <span className="text-gray-400 flex-shrink-0 text-xs">
+                      <FileText className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-foreground truncate max-w-[180px]" title={f.name}>{f.name}</span>
+                      <span className="text-muted-foreground shrink-0 text-xs">
                         {(f.size / 1024).toFixed(0)} KB
                       </span>
-                      <button
+                      <Button
+                        variant="plain"
                         type="button"
                         onClick={() => removeFile(f.name)}
-                        className="p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors flex-shrink-0"
+                        className={cn(BTN_KEEP_BOX, "p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0")}
                         title="Odebrat soubor"
                       >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                        <X className="size-3.5" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -617,15 +587,15 @@ export function CourseAICreateView() {
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors ${
                   dragActive
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    ? 'border-gradient-r/30 bg-gradient-r/10'
+                    : 'border-border hover:border-border hover:bg-muted/50'
                 }`}
               >
-                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-purple-500' : 'text-gray-400'}`} size={32} />
-                <p className="text-sm font-medium text-gray-700 mb-1">
+                <Upload className={`mx-auto mb-3 ${dragActive ? 'text-gradient-r' : 'text-muted-foreground'}`} size={32} />
+                <p className="text-sm font-medium text-foreground mb-1">
                   Přetáhněte soubory sem nebo klikněte pro výběr
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Markdown (.md) a Word (.docx) — lze vybrat více souborů najednou
                 </p>
                 <input
@@ -641,26 +611,29 @@ export function CourseAICreateView() {
 
             {/* Tlačítka */}
             <div className="flex justify-between items-center pt-4">
-              <button
+              <Button
+                variant="plain"
                 type="button"
                 onClick={goToCourses}
                 disabled={loading}
-                className="text-gray-600 hover:text-gray-800 transition-colors text-sm disabled:opacity-50"
+                className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground transition-colors text-sm disabled:opacity-50")}
               >
                 Zpět
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="plain"
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || formData.title.trim().length < 3 || formData.description.trim().length < 3}
-                className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors")}
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 <span>{loading ? getStepMessage() : 'Pokračovat'}</span>
-              </button>
+              </Button>
             </div>
           </form>
         </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -670,7 +643,7 @@ export function CourseAICreateView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center"
           >
             <div className="absolute inset-0 bg-black/40" />
             <motion.div
@@ -678,144 +651,63 @@ export function CourseAICreateView() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+              className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
             >
               <div className="flex items-center gap-3">
-                <Loader2 size={20} className="text-purple-600 animate-spin" />
-                <h3 className="text-lg font-bold text-gray-900">Nahrávání podkladů</h3>
+                <Loader2 size={20} className="text-gradient-r animate-spin" />
+                <h3 className="text-lg font-bold text-foreground">Nahrávání podkladů</h3>
               </div>
-              <p className="text-sm text-gray-600 mt-2">Soubory se nahrávají na server...</p>
+              <p className="text-sm text-muted-foreground mt-2">Soubory se nahrávají na server...</p>
             </motion.div>
           </motion.div>
         )}
 
-        {step === 'generating' && progress && progress.status !== 'failed' && (
-          <motion.div
-            key="progress-generate"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
-          >
-            <div className="absolute inset-0 bg-black/40" />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Průběh generování kurzu"
-            >
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-900">AI generuje váš kurz</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Toto může trvat několik minut. Prosím neopouštějte stránku.
-                </p>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-xs text-gray-600 mb-1.5">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Loader2 size={12} className="animate-spin text-purple-600" />
-                    {progress.label}
-                  </span>
-                  <span className="tabular-nums">
-                    {Math.min(progress.step, progress.total)} / {progress.total}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-purple-500 to-green-500 rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${Math.round((Math.min(progress.step, progress.total) / progress.total) * 100)}%`,
-                    }}
-                    transition={{ duration: 0.4, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-
-              {/* Steps list */}
-              <ul className="space-y-2 text-sm">
-                {[
-                  { n: 1, label: 'Načítání kurzu z databáze' },
-                  { n: 2, label: 'Načítání podkladů' },
-                  { n: 3, label: 'Zpracování podkladů (AI)' },
-                  { n: 4, label: 'Plánování modulů (AI)' },
-                  { n: 5, label: 'Ukládání kurzu' },
-                ].map(({ n, label }) => {
-                  const done = progress.step > n || progress.status === 'completed';
-                  const active = progress.step === n && progress.status === 'running';
-                  return (
-                    <li
-                      key={n}
-                      className={`flex items-center gap-2 ${
-                        done ? 'text-gray-500' : active ? 'text-gray-900 font-medium' : 'text-gray-400'
-                      }`}
-                    >
-                      <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-                        {done ? (
-                          <Check size={14} className="text-green-600" />
-                        ) : active ? (
-                          <Loader2 size={14} className="animate-spin text-purple-600" />
-                        ) : (
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
-                        )}
-                      </span>
-                      <span>{label}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {generationError && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-black/40"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
-              role="alertdialog"
-              aria-modal="true"
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                  <AlertTriangle size={20} className="text-red-500" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-gray-900">Generování kurzu selhalo</h3>
-                  <p className="text-sm text-gray-600 mt-1 break-words">{generationError}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end">
-                <button
-                  onClick={() => {
-                    setGenerationError(null);
-                    goToCourses();
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors"
-                >
-                  Přejít na kurzy
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
       </AnimatePresence>
+
+      {/* Chyba generování — kitový Modal */}
+      <Modal
+        isOpen={generationError !== null}
+        onClose={() => {
+          setGenerationError(null);
+          goToCourses();
+        }}
+        title="Generování kurzu selhalo"
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setGenerationError(null);
+                goToCourses();
+              }}
+            >
+              Přejít na kurzy
+            </Button>
+            {activeCourseId !== null && (
+              <Button size="lg" onClick={() => void startGeneration(activeCourseId, formData.title.trim())}>
+                <RefreshCw data-icon="inline-start" />
+                Zkusit znovu
+              </Button>
+            )}
+          </div>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 rounded-lg bg-destructive/20 p-2">
+            <AlertTriangle className="size-5 text-destructive" />
+          </div>
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm break-words text-muted-foreground">{generationError}</p>
+            {activeCourseId !== null && (
+              <p className="text-sm text-muted-foreground">
+                Kurz s nahranými podklady zůstal uložený, generování můžete spustit znovu i později z přehledu kurzů.
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

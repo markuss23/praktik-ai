@@ -14,6 +14,12 @@ from api.src.publicDB.resources.schemas import (
     PubResourceUpdate,
 )
 from api.authorization import validate_owner_or_superadmin
+from api.src.catalogs.controllers import (
+    sync_bloom_levels,
+    sync_krauu_competences,
+    validate_bloom_level_ids,
+    validate_krauu_competence_ids,
+)
 
 
 def update_resource(
@@ -21,7 +27,7 @@ def update_resource(
 ) -> PubResource:
     """Aktualizuje existující veřejný materiál (v draft stavu)"""
 
-    # Kontrola existence pro obor a cílovou skupinu
+    # Kontrola existence
     if (
         db.execute(
             select(models.CourseSubject).where(
@@ -45,6 +51,54 @@ def update_resource(
         raise HTTPException(
             status_code=400, detail="Cílová skupina s tímto ID neexistuje"
         )
+
+    if (
+        db.execute(
+            select(models.CourseEqfLevel).where(
+                models.CourseEqfLevel.eqf_level_id == resource_data.eqf_level_id,
+                models.CourseEqfLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="EQF level s tímto ID neexistuje")
+
+    if (
+        db.execute(
+            select(models.CourseType).where(
+                models.CourseType.type_id == resource_data.course_type_id,
+                models.CourseType.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+
+    if (
+        resource_data.block_id is not None
+        and db.execute(
+            select(models.CourseBlock).where(
+                models.CourseBlock.block_id == resource_data.block_id,
+                models.CourseBlock.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(
+            status_code=400, detail="Tematický blok s tímto ID neexistuje"
+        )
+
+    if (
+        resource_data.level_id is not None
+        and db.execute(
+            select(models.CourseLevel).where(
+                models.CourseLevel.level_id == resource_data.level_id,
+                models.CourseLevel.is_active.is_(True),
+            )
+        ).first()
+        is None
+    ):
+        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
 
     resource = get_or_404(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
@@ -95,13 +149,36 @@ def update_resource(
             detail="Lze upravit pouze materiály ve stavu draft nebo rejected s verdiktem needs_revision",
         )
 
-    update_data = resource_data.model_dump(exclude_unset=True)
+    validate_krauu_competence_ids(db, resource_data.krauu_competence_ids)
+    validate_bloom_level_ids(db, resource_data.bloom_level_ids)
+
+    update_data = resource_data.model_dump(
+        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids"}
+    )
 
     db.execute(
         update(models.PubResource)
         .where(models.PubResource.resource_id == resource_id)
         .values(**update_data)
     )
+    # vazby se synchronizují pouze pokud jsou v zadané znovu od uživatele
+
+    if "krauu_competence_ids" in resource_data.model_fields_set:
+        sync_krauu_competences(
+            db,
+            models.PubResourceKrauuCompetence,
+            "resource_id",
+            resource_id,
+            resource_data.krauu_competence_ids,
+        )
+    if "bloom_level_ids" in resource_data.model_fields_set:
+        sync_bloom_levels(
+            db,
+            models.PubResourceBloomLevel,
+            "resource_id",
+            resource_id,
+            resource_data.bloom_level_ids,
+        )
     db.commit()
     db.refresh(resource)
 

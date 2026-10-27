@@ -31,7 +31,7 @@ export function truncate(str: string, length: number): string {
 /**
  * Debounce function execution
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -73,3 +73,34 @@ export function slugify(text: string): string {
     .replace(/^-+/, '')          // Trim - from start of text
     .replace(/-+$/, '');         // Trim - from end of text
 }
+
+/**
+ * Relativní čas v češtině („Právě teď", „Před 5m", „Před 2 dny").
+ * Sdíleno mezi review pohledy — dřív existovaly dvě totožné lokální kopie.
+ */
+export function timeAgo(date: Date): string {
+  const now = new Date();
+  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMin < 1) return 'Právě teď';
+  if (diffMin < 60) return `Před ${diffMin}m`;
+  if (diffHours < 24) return `Před ${diffHours}h`;
+  if (diffDays === 1) return 'Před 1 dnem';
+  return `Před ${diffDays} dny`;
+}
+
+/**
+ * Reset geometrie kitového `Button`u na chování původního `<button>`.
+ *
+ * Kit má pevné `size-*`/`h-*` a vynucuje 16px ikony. Tam, kde si komponenta
+ * drží vlastní rozměry (padding + `size={n}` na ikoně), to přepíšeme, aby
+ * migrace na kit nezměnila rozměr:
+ *   `<Button size="icon" className={cn(BTN_KEEP_BOX, "p-2")}>`
+ *
+ * 1px průhledný border kitu schválně necháváme — je neviditelný a nese
+ * `focus-visible:border-ring`.
+ */
+export const BTN_KEEP_BOX =
+  "size-auto [&_svg:not([class*='size-'])]:size-auto";

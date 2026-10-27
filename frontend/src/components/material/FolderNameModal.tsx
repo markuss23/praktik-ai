@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+
+import { Button, Input, Modal } from "@/components/ui";
 
 interface FolderNameModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface FolderNameModalProps {
   title?: string;
   submitLabel?: string;
 }
+
+const FORM_ID = "folder-name-form";
 
 export function FolderNameModal({
   isOpen,
@@ -24,10 +27,6 @@ export function FolderNameModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useModalDismiss(isOpen, () => {
-    if (!submitting) onClose();
-  });
-
   useEffect(() => {
     if (isOpen) {
       setName(initialName);
@@ -35,8 +34,6 @@ export function FolderNameModal({
       setSubmitting(false);
     }
   }, [isOpen, initialName]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,43 +59,41 @@ export function FolderNameModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-lg p-6 w-full max-w-sm mx-4 shadow-xl border border-gray-200"
-      >
-        <h3 className="text-lg font-semibold text-black mb-4">{title}</h3>
-
-        <input
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
+      title={title}
+      maxWidth="max-w-sm"
+      footer={
+        <>
+          <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={onClose}>
+            Zrušit akci
+          </Button>
+          <Button
+            type="submit"
+            form={FORM_ID}
+            size="lg"
+            disabled={submitting || name.trim().length < 1}
+          >
+            {submitting ? "Ukládání…" : submitLabel}
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <Input
           type="text"
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nová složka"
           maxLength={60}
-          className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+          aria-invalid={error ? true : undefined}
         />
-
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-
-        <div className="flex justify-between items-center gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60"
-          >
-            Zrušit akci
-          </button>
-          <button
-            type="submit"
-            disabled={submitting || name.trim().length < 1}
-            className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {submitting ? "Ukládání…" : submitLabel}
-          </button>
-        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </form>
-    </div>
+    </Modal>
   );
 }

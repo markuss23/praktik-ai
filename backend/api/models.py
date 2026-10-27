@@ -194,10 +194,10 @@ class AuditLog(Base):
 
 class CourseBlock(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Tématické bloky pro kurzy:
-    A - Kontext a Transformace (AI principy, redesign výuky)
-    B - Aplikace
-    C - Oborové kurzy
+    Číselník — Blok (tematické bloky kurzů):
+    blok.a - Kontext (porozumění principům AI)
+    blok.b - Transformace (redesign výuky a hodnocení)
+    blok.c - Aplikace (oborové kurzy)
     """
 
     __tablename__ = "course_block"
@@ -223,10 +223,10 @@ class CourseBlock(TimestampMixin, SoftDeleteMixin, Base):
 class CourseTarget(TimestampMixin, SoftDeleteMixin, Base):
     """
     Cílové skupiny kurzů:
-    akademik - Vysokoškolský pedagog
-    student - Student učitelství / teacher trainee
-    mentor - Fakultní učitel / mentor praxe
-    host - Externí účastník
+    target.a - Akademik (Vysokoškolský)
+    target.s - Student (Student učitelství)
+    target.m - Mentor (Fakultní učitel)
+    target.host - Host (Externí účastník)
     """
 
     __tablename__ = "course_target"
@@ -249,39 +249,97 @@ class CourseTarget(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_target")
 
 
-# class CourseLevel(TimestampMixin, SoftDeleteMixin, Base):
-#     """
-#     Úrovně kurzů (Cxx číslování):
-#     C01 - Základní seznámení s AI pro začátečníky
-#     C02 - Praktické využití AI pro pokročilé
-#     """
+class CourseEqfLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — EQF úroveň (Evropský rámec kvalifikací):
+    6 - Bakalářský stupeň (Bc.)
+    7 - Magisterský / navazující stupeň (Mgr., Ing.)
+    8 - Doktorský stupeň (Ph.D.)
+    """
 
-#     __tablename__ = "course_level"
-#     __table_args__ = (
-#         Index(
-#             "uq_course_level_code_active",
-#             "code",
-#             unique=True,
-#             postgresql_where=text("is_active"),
-#         ),
-#     )
+    __tablename__ = "course_eqf_level"
+    __table_args__ = (
+        Index(
+            "uq_course_eqf_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
 
-#     level_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     code: Mapped[str] = mapped_column(String(10), nullable=False)
-#     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    eqf_level_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-#     courses: Mapped[list[Course]] = relationship(back_populates="course_level")
+    courses: Mapped[list[Course]] = relationship(back_populates="course_eqf_level")
 
-#     _soft_delete_cascade: list[str] = ["courses"]
+
+class CourseRequirement(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Povinnost kurzu (závaznost absolvování v rámci kurikula):
+    req.p - Povinný (nutný pro pokračování v kurikulu)
+    req.d - Doporučený (doporučená sekvence)
+    req.v - Volitelný (doplňkový kurz)
+    """
+
+    __tablename__ = "course_requirement"
+    __table_args__ = (
+        Index(
+            "uq_course_requirement_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    requirement_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    courses: Mapped[list[Course]] = relationship(back_populates="course_requirement")
+
+
+class CourseLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Level (úroveň pokročilosti v práci s AI):
+    level.1 - Vstupní (bez předchozí zkušenosti s AI)
+    level.2 - Středně pokročilý (základní orientace s AI)
+    level.3 - Pokročilý (aktivní práce s AI ve výuce)
+    """
+
+    __tablename__ = "course_level"
+    __table_args__ = (
+        Index(
+            "uq_course_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    level_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    courses: Mapped[list[Course]] = relationship(back_populates="course_level")
 
 
 class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Číselník oborů/aprobací:
-    01 - Český jazyk a literatura
-    02 - Cizí jazyky - obecné
+    Číselník oborů/aprobací (školní předmět, volí se pouze u bloku C):
+    obor.01 - Český jazyk a literatura
+    obor.02 - Cizí jazyky – obecné
+    ...
+    obor.17 - Ostatní
     """
 
     __tablename__ = "course_subject"
@@ -303,36 +361,150 @@ class CourseSubject(TimestampMixin, SoftDeleteMixin, Base):
     courses: Mapped[list[Course]] = relationship(back_populates="course_subject")
 
 
-# class CourseType(TimestampMixin, SoftDeleteMixin, Base):
-#     """
-#     Číselník typů kurzů:
-#     type.base  - Základní gramotnost
-#     type.met   - Metodický
-#     type.obor  - Oborový
-#     type.all   - Průřezový
-#     type.spec  - Specializovaný
-#     """
+class NeuroPrinciple(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Neurovědní principy (NP-01 až NP-20):
+    20 neurovědních principů učení, dávají vědeckou oporu pedagogickému
+    designu modulu. Na modul lze navázat více principů najednou (M2M).
+    """
 
-#     __tablename__ = "course_type"
-#     __table_args__ = (
-#         Index(
-#             "uq_course_type_code_active",
-#             "code",
-#             unique=True,
-#             postgresql_where=text("is_active"),
-#         ),
-#     )
+    __tablename__ = "neuro_principle"
+    __table_args__ = (
+        Index(
+            "uq_neuro_principle_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
 
-#     type_id: Mapped[int] = mapped_column(
-#         BigInteger, Identity(start=1), primary_key=True
-#     )
-#     code: Mapped[str] = mapped_column(String(10), nullable=False)
-#     name: Mapped[str] = mapped_column(String(200), nullable=False)
-#     description: Mapped[str] = mapped_column(String(255), nullable=False)
+    principle_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
 
-#     courses: Mapped[list[Course]] = relationship(back_populates="course_type")
+    modules: Mapped[list[ModuleNeuroPrinciple]] = relationship(
+        back_populates="principle"
+    )
 
-#     _soft_delete_cascade: list[str] = ["courses"]
+
+class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — KRAUU kompetence (MŠMT 2023):
+    Kompetenční rámec absolventa učitelství, 18 kompetencí v 6 oblastech.
+    Oblast (kód x.0) je řádek bez rodiče, kompetence (x.y) odkazují na oblast
+    přes parent_id. Vybírají se pouze kompetence, ne oblasti (M2M na Course
+    i Module). Interní mapování — studentovi se nezobrazuje.
+    """
+
+    __tablename__ = "krauu_competence"
+    __table_args__ = (
+        Index(
+            "uq_krauu_competence_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    krauu_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="", server_default=""
+    )
+
+    parent: Mapped[KrauuCompetence | None] = relationship(
+        remote_side=[krauu_id], back_populates="children"
+    )
+    children: Mapped[list[KrauuCompetence]] = relationship(back_populates="parent")
+
+
+class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Bloomova taxonomie kognitivních cílů (6 úrovní):
+    1 Zapamatovat, 2 Porozumět, 3 Aplikovat, 4 Analyzovat, 5 Hodnotit, 6 Tvořit.
+    Používá se pro formulaci GOALS a OBJECTIVES; M2M na Course i Module.
+    """
+
+    __tablename__ = "bloom_level"
+    __table_args__ = (
+        Index(
+            "uq_bloom_level_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    bloom_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Průřezové obory pro Bloky A a B (O01–O20):
+    třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
+    M2M na Course.
+    """
+
+    __tablename__ = "cross_subject"
+    __table_args__ = (
+        Index(
+            "uq_cross_subject_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    cross_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class CourseType(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — Typ kurzu (kategorizace podle pedagogického zaměření):
+    type.obecny    - Obecný (platí pro všechny obory)
+    type.obor      - Oborový (specifický pro jeden obor)
+    type.prurezovy - Průřezový (přesahuje skupiny C)
+    type.vstupni   - Vstupní kurz skupiny (vstupní kurz pro skupinu C bloků)
+    type.spec      - Specializovaný (pro konkrétní roli)
+    """
+
+    __tablename__ = "course_type"
+    __table_args__ = (
+        Index(
+            "uq_course_type_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    type_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    courses: Mapped[list[Course]] = relationship(back_populates="course_type")
 
 
 # ---------- Course / Module ----------
@@ -390,21 +562,27 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         server_default=Difficulty.slightly_advanced.value,
     )
 
-    course_block_id: Mapped[int] = mapped_column(
-        ForeignKey("course_block.block_id"), nullable=False
+    course_block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_block.block_id"), nullable=True
     )
-    course_target_id: Mapped[int] = mapped_column(
-        ForeignKey("course_target.target_id"), nullable=False
+    course_target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_target.target_id"), nullable=True
     )
     course_subject_id: Mapped[int | None] = mapped_column(
         ForeignKey("course_subject.subject_id"), nullable=True
     )
-    # course_level_id: Mapped[int] = mapped_column(
-    #     ForeignKey("course_level.level_id"), nullable=False
-    # )
-    # course_type_id: Mapped[int] = mapped_column(
-    #     ForeignKey("course_type.type_id"), nullable=False
-    # )
+    course_requirement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_requirement.requirement_id"), nullable=True
+    )
+    course_eqf_level_id: Mapped[int] = mapped_column(
+        ForeignKey("course_eqf_level.eqf_level_id"), nullable=False
+    )
+    course_type_id: Mapped[int] = mapped_column(
+        ForeignKey("course_type.type_id"), nullable=False
+    )
+    course_level_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_level.level_id"), nullable=True
+    )
 
     owner: Mapped[User] = relationship(
         back_populates="courses",
@@ -427,17 +605,136 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
+    krauu_competences: Mapped[list[CourseKrauuCompetence]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
+    )
+    bloom_levels: Mapped[list[CourseBloomLevel]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseBloomLevel.course_id, CourseBloomLevel.is_active==True)",
+    )
+    cross_subjects: Mapped[list[CourseCrossSubject]] = relationship(
+        back_populates="course",
+        primaryjoin="and_(Course.course_id==CourseCrossSubject.course_id, CourseCrossSubject.is_active==True)",
+    )
 
-    course_block: Mapped[CourseBlock] = relationship(back_populates="courses")
-    course_target: Mapped[CourseTarget] = relationship(back_populates="courses")
+    course_block: Mapped[CourseBlock | None] = relationship(back_populates="courses")
+    course_target: Mapped[CourseTarget | None] = relationship(back_populates="courses")
     course_subject: Mapped[CourseSubject] = relationship(back_populates="courses")
-    # course_level: Mapped[CourseLevel] = relationship(back_populates="courses")
-    # course_type: Mapped[CourseType] = relationship(back_populates="courses")
+    course_requirement: Mapped[CourseRequirement | None] = relationship(
+        back_populates="courses"
+    )
+    course_eqf_level: Mapped[CourseEqfLevel] = relationship(back_populates="courses")
+    course_type: Mapped[CourseType] = relationship(back_populates="courses")
+    course_level: Mapped[CourseLevel | None] = relationship(back_populates="courses")
 
-    _soft_delete_cascade: list[str] = ["modules", "files", "links"]
+    _soft_delete_cascade: list[str] = [
+        "modules",
+        "files",
+        "links",
+        "krauu_competences",
+        "bloom_levels",
+        "cross_subjects",
+    ]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
+
+    @property
+    def cross_subject_list(self) -> list[CrossSubject]:
+        return [link.cross_subject for link in self.cross_subjects]
 
     def get_owner_id(self) -> int:
         return self.owner_id
+
+
+class CourseKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "course_krauu_competence"
+    __table_args__ = (
+        Index("uq_course_krauu_competence", "course_id", "krauu_id", unique=True),
+        Index("ix_course_krauu_competence_course_id", "course_id"),
+        Index("ix_course_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class CourseBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "course_bloom_level"
+    __table_args__ = (
+        Index("uq_course_bloom_level", "course_id", "bloom_id", unique=True),
+        Index("ix_course_bloom_level_course_id", "course_id"),
+        Index("ix_course_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class CourseCrossSubject(SoftDeleteMixin, Base):
+    """Vazební tabulka kurz ↔ průřezový obor (M2M)."""
+
+    __tablename__ = "course_cross_subject"
+    __table_args__ = (
+        Index("uq_course_cross_subject", "course_id", "cross_id", unique=True),
+        Index("ix_course_cross_subject_course_id", "course_id"),
+        Index("ix_course_cross_subject_cross_id", "cross_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    cross_id: Mapped[int] = mapped_column(
+        ForeignKey("cross_subject.cross_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course] = relationship(back_populates="cross_subjects")
+    cross_subject: Mapped[CrossSubject] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
 
 
 class CourseFeedback(TimestampMixin, SoftDeleteMixin, Base):
@@ -495,6 +792,9 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         ForeignKey("course.course_id"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
+    perex: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="", server_default=""
+    )
     max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
 
@@ -514,11 +814,134 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     user_practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
         back_populates="module",
     )
+    neuro_principles: Mapped[list[ModuleNeuroPrinciple]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleNeuroPrinciple.module_id, ModuleNeuroPrinciple.is_active==True)",
+    )
+    krauu_competences: Mapped[list[ModuleKrauuCompetence]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleKrauuCompetence.module_id, ModuleKrauuCompetence.is_active==True)",
+    )
+    bloom_levels: Mapped[list[ModuleBloomLevel]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==ModuleBloomLevel.module_id, ModuleBloomLevel.is_active==True)",
+    )
 
-    _soft_delete_cascade = ["learn_blocks", "practice_questions"]
+    _soft_delete_cascade = [
+        "learn_blocks",
+        "practice_questions",
+        "neuro_principles",
+        "krauu_competences",
+        "bloom_levels",
+    ]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
+
+    @property
+    def neuro_principle_list(self) -> list[NeuroPrinciple]:
+        return [link.principle for link in self.neuro_principles]
+
+    @property
+    def neuro_principle_id_list(self) -> list[int]:
+        return [link.principle_id for link in self.neuro_principles]
 
     def get_owner_id(self) -> int:
         return self.course.owner_id
+
+
+class ModuleNeuroPrinciple(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ neurovědní princip (M2M, více principů na modul)."""
+
+    __tablename__ = "module_neuro_principle"
+    __table_args__ = (
+        Index(
+            "uq_module_neuro_principle",
+            "module_id",
+            "principle_id",
+            unique=True,
+        ),
+        Index("ix_module_neuro_principle_module_id", "module_id"),
+        Index("ix_module_neuro_principle_principle_id", "principle_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    principle_id: Mapped[int] = mapped_column(
+        ForeignKey("neuro_principle.principle_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="neuro_principles")
+    principle: Mapped[NeuroPrinciple] = relationship(back_populates="modules")
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
+
+
+class ModuleKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "module_krauu_competence"
+    __table_args__ = (
+        Index("uq_module_krauu_competence", "module_id", "krauu_id", unique=True),
+        Index("ix_module_krauu_competence_module_id", "module_id"),
+        Index("ix_module_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
+
+
+class ModuleBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka modul ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "module_bloom_level"
+    __table_args__ = (
+        Index("uq_module_bloom_level", "module_id", "bloom_id", unique=True),
+        Index("ix_module_bloom_level_module_id", "module_id"),
+        Index("ix_module_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    module_id: Mapped[int] = mapped_column(
+        ForeignKey("module.module_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    module: Mapped[Module] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.module.course.owner_id
 
 
 class CourseFile(TimestampMixin, SoftDeleteMixin, Base):
@@ -1037,6 +1460,18 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
         default=Difficulty.slightly_advanced,
         server_default=Difficulty.slightly_advanced.value,
     )
+    eqf_level_id: Mapped[int] = mapped_column(
+        ForeignKey("course_eqf_level.eqf_level_id"), nullable=False
+    )
+    course_type_id: Mapped[int] = mapped_column(
+        ForeignKey("course_type.type_id"), nullable=False
+    )
+    block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_block.block_id"), nullable=True
+    )
+    level_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course_level.level_id"), nullable=True
+    )
     status: Mapped[PubResourceStatus] = mapped_column(
         Enum(PubResourceStatus, name="pub_resource_status"),
         nullable=False,
@@ -1047,8 +1482,12 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
     is_fork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     author: Mapped[User] = relationship(foreign_keys=[author_id])
-    subject: Mapped[CourseSubject | None] = relationship(foreign_keys=[subject_id])
-    target: Mapped[CourseTarget | None] = relationship(foreign_keys=[target_id])
+    subject: Mapped[CourseSubject] = relationship(foreign_keys=[subject_id])
+    target: Mapped[CourseTarget] = relationship(foreign_keys=[target_id])
+    eqf_level: Mapped[CourseEqfLevel] = relationship(foreign_keys=[eqf_level_id])
+    course_type: Mapped[CourseType] = relationship(foreign_keys=[course_type_id])
+    block: Mapped[CourseBlock | None] = relationship(foreign_keys=[block_id])
+    level: Mapped[CourseLevel | None] = relationship(foreign_keys=[level_id])
     files: Mapped[list[PubResourceFile]] = relationship(
         back_populates="resource",
         primaryjoin="and_(PubResource.resource_id==PubResourceFile.resource_id, PubResourceFile.is_active==True)",
@@ -1065,11 +1504,92 @@ class PubResource(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="resource",
         primaryjoin="and_(PubResource.resource_id==PubResourceComment.resource_id, PubResourceComment.is_active==True)",
     )
+    krauu_competences: Mapped[list[PubResourceKrauuCompetence]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceKrauuCompetence.resource_id, PubResourceKrauuCompetence.is_active==True)",
+    )
+    bloom_levels: Mapped[list[PubResourceBloomLevel]] = relationship(
+        back_populates="resource",
+        primaryjoin="and_(PubResource.resource_id==PubResourceBloomLevel.resource_id, PubResourceBloomLevel.is_active==True)",
+    )
 
-    _soft_delete_cascade: list[str] = ["files", "ratings", "reviews", "comments"]
+    _soft_delete_cascade: list[str] = [
+        "files",
+        "ratings",
+        "reviews",
+        "comments",
+        "krauu_competences",
+        "bloom_levels",
+    ]
+
+    @property
+    def krauu_competence_list(self) -> list[KrauuCompetence]:
+        return [link.competence for link in self.krauu_competences]
+
+    @property
+    def bloom_level_list(self) -> list[BloomLevel]:
+        return [link.bloom_level for link in self.bloom_levels]
 
     def get_owner_id(self) -> int:
         return self.author_id
+
+
+class PubResourceKrauuCompetence(SoftDeleteMixin, Base):
+    """Vazební tabulka veřejný materiál ↔ KRAUU kompetence (M2M)."""
+
+    __tablename__ = "pub_resource_krauu_competence"
+    __table_args__ = (
+        Index(
+            "uq_pub_resource_krauu_competence", "resource_id", "krauu_id", unique=True
+        ),
+        Index("ix_pub_resource_krauu_competence_resource_id", "resource_id"),
+        Index("ix_pub_resource_krauu_competence_krauu_id", "krauu_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    krauu_id: Mapped[int] = mapped_column(
+        ForeignKey("krauu_competence.krauu_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="krauu_competences")
+    competence: Mapped[KrauuCompetence] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
+
+
+class PubResourceBloomLevel(SoftDeleteMixin, Base):
+    """Vazební tabulka veřejný materiál ↔ Bloomova úroveň (M2M)."""
+
+    __tablename__ = "pub_resource_bloom_level"
+    __table_args__ = (
+        Index("uq_pub_resource_bloom_level", "resource_id", "bloom_id", unique=True),
+        Index("ix_pub_resource_bloom_level_resource_id", "resource_id"),
+        Index("ix_pub_resource_bloom_level_bloom_id", "bloom_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("pub_resource.resource_id"), nullable=False
+    )
+    bloom_id: Mapped[int] = mapped_column(
+        ForeignKey("bloom_level.bloom_id"), nullable=False
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    resource: Mapped[PubResource] = relationship(back_populates="bloom_levels")
+    bloom_level: Mapped[BloomLevel] = relationship()
+
+    def get_owner_id(self) -> int:
+        return self.resource.author_id
 
 
 class PubResourceFork(SoftDeleteMixin, Base):

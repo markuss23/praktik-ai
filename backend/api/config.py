@@ -25,10 +25,17 @@ class SeaweedFSSettings(BaseModel):
     filer_url: str = "http://seaweedfs-filer:8888"
 
 
+class WikiSettings(BaseModel):
+    sync_interval_hours: float = 12
+    repo_url: str = "https://github.com/markuss23/praktik-ai.wiki.git"
+    local_path: str = "../wiki_data"
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
+    wiki: WikiSettings = WikiSettings()
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

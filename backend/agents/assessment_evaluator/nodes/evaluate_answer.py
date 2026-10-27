@@ -3,32 +3,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.assessment_evaluator.state import EvaluationState
 
-DEFAULT_MODEL = "gpt-5.2"
-
-DEFAULT_PROMPT = (
-    "Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.\n\n"
-    "K dispozici máš:\n"
-    "1. Výukový text (zdroj správných informací)\n"
-    "2. Kontrolní otázku\n"
-    "3. Odpověď studenta\n\n"
-    "Pravidla hodnocení:\n"
-    "- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu\n"
-    "- Ověřuj věcnou správnost, ne stylistiku\n"
-    "- Částečně správná odpověď získá částečné body\n"
-    "- Zcela špatná nebo prázdná odpověď = 0 bodů\n"
-    "- Za úspěšné splnění považuj skóre odpovídající minimálnímu požadavku modulu\n\n"
-    "Pravidla pro zpětnou vazbu:\n"
-    "- NIKDY neprozrazuj správnou odpověď ani její části\n"
-    "- Pouze naznač, ve které oblasti má student mezery "
-    "(např. \u201eChybí vám pochopení vztahu mezi X a Y\u201c)\\n"
-    "- Při neúspěchu motivuj studenta k dalšímu studiu, ale NEŘÍKEJ mu, co měl napsat\n"
-    "- Cílem je, aby se student vrátil k výukovému materiálu a odpověď našel sám\n\n"
-    "Odpověz PŘESNĚ v tomto formátu (3 řádky, nic jiného):\n"
-    "SCORE: <číslo 0-100>\n"
-    "PASSED: <true nebo false>\n"
-    "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"
-)
-
 DEFAULT_PASSING_SCORE = 75
 
 
@@ -44,12 +18,7 @@ def evaluate_answer(state: EvaluationState) -> dict:
     user_response: str = state["user_response"]
     db = state["db"]
 
-    cfg = get_llm_config(
-        db,
-        "assessment_evaluator",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
+    cfg = get_llm_config(db, "assessment_evaluator")
     llm = create_chat_llm(cfg.model, temperature=0.3)
 
     messages = [
@@ -64,7 +33,7 @@ def evaluate_answer(state: EvaluationState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    raw = response.content.strip()
+    raw = response.text.strip()
 
     # Parsování strukturované odpovědi
     score, _, feedback = _parse_evaluation(raw)

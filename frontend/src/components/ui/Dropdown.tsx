@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
+import { Button } from '../ui-kit/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui-kit/dropdown-menu';
 
 interface DropdownItem {
   label: string;
   onClick: () => void;
   icon?: React.ReactNode;
+  /** Zvýrazněná položka ve značkovém gradientu. */
   gradient?: boolean;
 }
 
@@ -15,71 +24,42 @@ interface DropdownProps {
   items: DropdownItem[];
 }
 
+/**
+ * Akční dropdown nad kitovým `DropdownMenu` — pozicování, klik mimo, klávesnice
+ * i stacking řeší Base UI menu.
+ */
 export function Dropdown({ trigger, items }: DropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-      >
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button size="lg" />}>
         {trigger}
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+        <ChevronDown
+          data-icon="inline-end"
+          className="transition-transform group-aria-expanded/button:rotate-180"
+        />
+      </DropdownMenuTrigger>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
-          {/* ZMĚNA ZDE: Odstraněna třída "py-1", aby tlačítka vyplnila celou plochu */}
-          <div className="flex flex-col">
-            {items.map((item, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  item.onClick();
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition-all
-                  ${
-                    item.gradient
-                      /* STYLE 1: The Gradient Button */
-                      ? 'bg-gradient-to-r from-[#8A38F5] to-[#B1475C] text-white hover:opacity-90'
-                      /* STYLE 2: Standard Gray Button */
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }
-                `}
-              >
-                {item.icon && (
-                  <span className={`flex items-center justify-center ${item.gradient ? 'text-white' : 'text-gray-600'}`}>
-                    {item.icon}
-                  </span>
-                )}
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+      <DropdownMenuContent align="end" className="w-48">
+        {items.map((item, index) => (
+          <DropdownMenuItem
+            key={index}
+            onClick={item.onClick}
+            className={cn(
+              'gap-3 px-3 py-2.5 font-medium',
+              item.gradient &&
+                'bg-gradient-to-r from-gradient-r to-gradient-l text-primary-foreground focus:from-gradient-r/90 focus:to-gradient-l/90 focus:text-primary-foreground',
+            )}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-// ... SimpleBotIcon zůstává stejný ...
 export function SimpleBotIcon({ size = 18 }: { size?: number }) {
-  // ... (váš původní kód ikony)
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -87,7 +67,7 @@ export function SimpleBotIcon({ size = 18 }: { size?: number }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor" 
+      stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

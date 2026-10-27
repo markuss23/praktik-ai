@@ -6,10 +6,9 @@ import {
   buildLogoutUrl,
   clearTokens,
   getStoredTokens,
+  getValidAccessToken,
   isTokenExpiring,
   parseJwt,
-  refreshTokens,
-  storeTokens,
   type UserInfo,
 } from "@/lib/keycloak";
 
@@ -43,26 +42,34 @@ export function useAuth() {
   const accessTokenRef = useRef<string | null>(null);
   accessTokenRef.current = state.accessToken;
 
-  // Shared refresh logic — updates state when new tokens arrive
+  // Shared refresh logic — updates state when new tokens arrive.
+  //
+  // Goes through getValidAccessToken() rather than refreshTokens() directly:
+  // that helper holds a module-level singleton promise, so the refresh timers
+  // of all mounted instances collapsing into the same tick produce exactly one
+  // POST /token instead of one per instance. Without it a single failed
+  // refresh out of N calls the non-silent clearTokens(), which broadcasts
+  // "kc:logout" and wipes the tokens the other N-1 just refreshed.
   const applyRefresh = useCallback(async (): Promise<boolean> => {
     const tokens = getStoredTokens();
     if (!tokens) return false;
-    try {
-      const fresh = await refreshTokens(tokens.refreshToken);
-      storeTokens(fresh);
-      const freshUser = parseJwt(fresh.access_token);
-      setState({
-        isAuthenticated: true,
-        user: freshUser,
-        accessToken: fresh.access_token,
-        loading: false,
-      });
-      return true;
-    } catch {
-      clearTokens(); // also dispatches "kc:logout"
+
+    const token = await getValidAccessToken();
+    if (!token) {
+      // getValidAccessToken already cleared the tokens (and dispatched
+      // "kc:logout") on a failed refresh, but it also returns null on paths
+      // that emit no event — so set the state explicitly.
       setState(LOGGED_OUT);
       return false;
     }
+
+    setState({
+      isAuthenticated: true,
+      user: parseJwt(token),
+      accessToken: token,
+      loading: false,
+    });
+    return true;
   }, []);
 
   // 1. Initialise from localStorage synchronously before paint to avoid

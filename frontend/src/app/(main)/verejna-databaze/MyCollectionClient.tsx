@@ -1,16 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Folder, FolderPlus, Globe, EyeOff, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Folder, FolderInput, FolderPlus, Globe, EyeOff, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
 import { MaterialCard } from "@/components/material/MaterialCard";
-import { FilterSelect, type FilterOption } from "@/components/material/FilterSelect";
+import { FilterMultiSelect, FilterSelect, type FilterOption } from "@/components/ui";
 import { FolderNameModal } from "@/components/material/FolderNameModal";
+import { FolderAddMaterialModal } from "@/components/material/FolderAddMaterialModal";
 import { MaterialCreateModal } from "@/components/material/MaterialCreateModal";
 import { MaterialEditModal } from "@/components/material/MaterialEditModal";
-import { ConfirmModal, useToast } from "@/components/ui";
+import { ConfirmModal, useToast, Button, Input } from "@/components/ui";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
+  addMaterialToFolder,
   createFolder,
   renameFolder,
   deleteFolder,
@@ -25,6 +28,7 @@ import {
 } from "@/components/material/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 import { EDU_LEVEL_LABELS, EDU_LEVEL_ORDER } from "@/lib/edu-level";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface MyCollectionClientProps {
   materials: Material[];
@@ -40,17 +44,20 @@ const DIFFICULTY_FILTER_OPTIONS: FilterOption[] = DIFFICULTY_ORDER.map((d) => ({
   value: DIFFICULTY_LABELS[d],
   label: DIFFICULTY_LABELS[d],
 }));
+// Úroveň vzdělání je výjimka — je to multivýběr, a ten porovnáváme proti
+// `educationLevelValue` (hodnota z backendu), aby výběr nezávisel na popisku.
 const EDU_LEVEL_FILTER_OPTIONS: FilterOption[] = EDU_LEVEL_ORDER.map((lvl) => ({
-  value: EDU_LEVEL_LABELS[lvl],
+  value: lvl,
   label: EDU_LEVEL_LABELS[lvl],
 }));
 
 export function MyCollectionClient({ materials, folders, onMaterialCreated, onMaterialUpdated }: MyCollectionClientProps) {
   const toast = useToast();
+  const { currentUser } = useCurrentUser();
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [educationLevel, setEducationLevel] = useState("");
+  const [educationLevels, setEducationLevels] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState("");
   const [targets, setTargets] = useState<ResourceTargetOption[]>([]);
   const [localFolders, setLocalFolders] = useState<MaterialFolder[]>(folders);
@@ -66,6 +73,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
   const [deleting, setDeleting] = useState(false);
   const [togglingPublic, setTogglingPublic] = useState(false);
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [addToFolderOpen, setAddToFolderOpen] = useState(false);
   const [editResourceId, setEditResourceId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -89,6 +97,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
   // Načtení obsahu aktivní složky
   useEffect(() => {
+    setAddToFolderOpen(false);
     if (!activeFolderId) {
       setFolderMaterials([]);
       return;
@@ -137,7 +146,13 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
       if (targetAudience && material.targetAudience && material.targetAudience !== targetAudience) {
         return false;
       }
-      if (educationLevel && material.educationLevel && material.educationLevel !== educationLevel) {
+      // Obsah složky se načítá odlehčeně (bez úrovně vzdělání), proto materiál
+      // bez této informace filtrem projde — jinak by složka vypadala prázdná.
+      if (
+        educationLevels.length > 0 &&
+        material.educationLevelValue &&
+        !educationLevels.includes(material.educationLevelValue)
+      ) {
         return false;
       }
       if (!needle) return true;
@@ -146,12 +161,18 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         material.description.toLowerCase().includes(needle)
       );
     });
-  }, [baseMaterials, search, targetAudience, educationLevel, difficulty]);
+  }, [baseMaterials, search, targetAudience, educationLevels, difficulty]);
+
+  // Do složky backend pustí jen schválený materiál; ty už zařazené nenabízíme.
+  const addableMaterials = useMemo(() => {
+    const inFolder = new Set(folderMaterials.map((m) => m.id));
+    return materials.filter((m) => m.status === "approved" && !inFolder.has(m.id));
+  }, [materials, folderMaterials]);
 
   const resetFilters = () => {
     setSearch("");
     setTargetAudience("");
-    setEducationLevel("");
+    setEducationLevels([]);
     setDifficulty("");
   };
 
@@ -237,6 +258,23 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
   const handleMaterialCreated = (resource: PubResource) => {
     onMaterialCreated?.(resource);
+    // Nový materiál vzniká jako koncept a do sbírky smí až po schválení, takže
+    // by se v otevřené složce vůbec neobjevil — přepneme na „Vše" a řekneme proč.
+    if (activeFolderId) {
+      setActiveFolderId(null);
+      toast.info(
+        "Materiál byl vytvořen jako koncept. Do složky ho zařadíš, až projde schválením.",
+      );
+    }
+  };
+
+  const handleAddExistingToFolder = async (materialId: string) => {
+    if (!activeFolderId) return;
+    await addMaterialToFolder(materialId, activeFolderId);
+    const added = materials.find((m) => m.id === materialId);
+    if (added) setFolderMaterials((prev) => [added, ...prev]);
+    void refreshFolders();
+    toast.success("Materiál byl vložen do složky.");
   };
 
   const handleSubmitForReview = async (materialId: string) => {
@@ -259,12 +297,19 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
     void refreshFolders();
   };
 
+  // Ve složce můžou ležet i cizí veřejné materiály — u nich backend úpravu,
+  // odeslání ke schválení ani změnu viditelnosti nepovolí. Mimo složku je
+  // seznam z definice vlastní, takže tam kontrolu nepotřebujeme.
+  const myUserId = currentUser ? String(currentUser.userId) : null;
+  const ownsMaterial = (material: Material) =>
+    !activeFolderId || (myUserId !== null && material.ownerId === myUserId);
+
   return (
     <div className="space-y-6">
       <section>
         <div className="mb-2">
-          <h2 className="text-xl font-bold text-black">Moje sbírka materiálů</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-xl font-bold text-foreground">Moje sbírka materiálů</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Tvé uložené a vytvořené materiály. Hotové materiály můžeš odeslat ke schválení
             a sdílet je s ostatními. Pomocí složek si materiály roztřídíš.
           </p>
@@ -272,79 +317,92 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
       </section>
 
       <section className="flex flex-wrap items-center gap-2">
-        <button
+        <Button
+          variant="plain"
           type="button"
           onClick={() => setFolderModalOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-purple-300 text-purple-700 bg-white text-sm font-medium hover:bg-purple-50 transition-colors"
+          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-gradient-r/30 text-gradient-r bg-card text-sm font-medium hover:bg-gradient-r/10 transition-colors")}
         >
           <FolderPlus size={16} strokeWidth={1.75} />
           Nová složka
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="plain"
           type="button"
           onClick={() => setActiveFolderId(null)}
           aria-pressed={activeFolderId === null}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+          className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
             activeFolderId === null
-              ? "bg-gray-100 border-gray-300 text-gray-900"
-              : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-          }`}
+              ? "bg-muted border-border text-foreground"
+              : "bg-card border-border text-foreground hover:bg-muted/50"
+          }`)}
         >
           Vše
-        </button>
+        </Button>
         {localFolders.map((folder) => {
           const isActive = folder.id === activeFolderId;
           return (
-            <button
+            <Button
+              variant="plain"
               key={folder.id}
               type="button"
               onClick={() =>
                 setActiveFolderId((prev) => (prev === folder.id ? null : folder.id))
               }
               aria-pressed={isActive}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+              className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-purple-50 border-purple-200 text-purple-700"
-                  : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
-              }`}
+                  ? "bg-gradient-r/10 border-gradient-r/30 text-gradient-r"
+                  : "bg-card border-border text-foreground hover:bg-muted/50"
+              }`)}
             >
               <Folder size={16} strokeWidth={1.75} />
               {folder.name}
-              {folder.isPublic && <Globe size={13} strokeWidth={1.75} className="text-emerald-600" />}
+              {folder.isPublic && <Globe size={13} strokeWidth={1.75} className="text-success" />}
               {typeof folder.itemCount === "number" && (
-                <span className="text-xs text-gray-400">({folder.itemCount})</span>
+                <span className="text-xs text-muted-foreground">({folder.itemCount})</span>
               )}
-            </button>
+            </Button>
           );
         })}
       </section>
 
       {/* Lišta akcí pro aktivní složku */}
       {activeFolder && (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-4 py-3">
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 truncate">{activeFolder.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground truncate">{activeFolder.name}</h3>
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                   activeFolder.isPublic
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-gray-100 text-gray-600"
+                    ? "bg-success/10 text-success"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {activeFolder.isPublic ? "Veřejná" : "Soukromá"}
               </span>
             </div>
             {activeFolder.description && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{activeFolder.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{activeFolder.description}</p>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="plain"
+              type="button"
+              onClick={() => setAddToFolderOpen(true)}
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50")}
+            >
+              <FolderInput size={14} strokeWidth={1.75} />
+              Vložit materiál
+            </Button>
+            <Button
+              variant="plain"
               type="button"
               onClick={handleTogglePublicFolder}
               disabled={togglingPublic}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-60")}
             >
               {activeFolder.isPublic ? (
                 <EyeOff size={14} strokeWidth={1.75} />
@@ -352,23 +410,25 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
                 <Globe size={14} strokeWidth={1.75} />
               )}
               {activeFolder.isPublic ? "Skrýt" : "Zveřejnit"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="plain"
               type="button"
               onClick={() => setRenameTarget(activeFolder)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50")}
             >
               <Pencil size={14} strokeWidth={1.75} />
               Přejmenovat
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost-destructive"
               type="button"
               onClick={() => setDeleteTarget(activeFolder)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-red-200 bg-white text-sm font-medium text-red-600 hover:bg-red-50"
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-destructive/30 bg-card text-sm font-medium")}
             >
               <Trash2 size={14} strokeWidth={1.75} />
               Smazat
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -377,15 +437,15 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         <div className="relative w-full sm:w-64">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             strokeWidth={1.75}
           />
-          <input
+          <Input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Hledat"
-            className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
+            className={cn("h-auto", "w-full pl-9 pr-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30")}
           />
         </div>
 
@@ -395,9 +455,9 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           placeholder="Cílová skupina"
           options={targetOptions}
         />
-        <FilterSelect
-          value={educationLevel}
-          onChange={setEducationLevel}
+        <FilterMultiSelect
+          values={educationLevels}
+          onChange={setEducationLevels}
           placeholder="Úroveň vzdělání"
           options={EDU_LEVEL_FILTER_OPTIONS}
         />
@@ -408,18 +468,19 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
           options={DIFFICULTY_FILTER_OPTIONS}
         />
 
-        <button
+        <Button
+          variant="plain"
           type="button"
           onClick={resetFilters}
-          className="px-3 py-2 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          className={cn(BTN_KEEP_BOX, "px-3 py-2 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
         >
           Resetovat
-        </button>
+        </Button>
       </section>
 
       <section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {!activeFolderId && <CreateMaterialCard onClick={() => setMaterialModalOpen(true)} />}
+          <CreateMaterialCard onClick={() => setMaterialModalOpen(true)} />
           {filtered.map((material) => (
             <MaterialCard
               key={material.id}
@@ -429,6 +490,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               showBookmarkAction={false}
               variant="compact"
               folders={localFolders}
+              isOwner={ownsMaterial(material)}
               onCreateFolder={handleCreateFolderFromPicker}
               onMoved={handleMovedToFolder}
               onRemoveFromFolder={activeFolderId ? handleRemoveFromFolder : undefined}
@@ -440,13 +502,13 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         </div>
 
         {folderLoading && (
-          <p className="mt-4 text-sm text-gray-500 bg-white border border-gray-200 rounded-md p-6 text-center">
+          <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             Načítám obsah složky…
           </p>
         )}
 
         {!folderLoading && filtered.length === 0 && (
-          <p className="mt-4 text-sm text-gray-500 bg-white border border-gray-200 rounded-md p-6 text-center">
+          <p className="mt-4 text-sm text-muted-foreground bg-card border border-border rounded-md p-6 text-center">
             {activeFolderId
               ? "Tato složka je prázdná nebo neodpovídá zvolenému filtru."
               : "Pro zvolený filtr nebyly nalezeny žádné materiály."}
@@ -480,6 +542,14 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         onCancel={() => setDeleteTarget(null)}
       />
 
+      <FolderAddMaterialModal
+        isOpen={addToFolderOpen && activeFolder !== null}
+        onClose={() => setAddToFolderOpen(false)}
+        folderName={activeFolder?.name ?? ""}
+        materials={addableMaterials}
+        onConfirm={handleAddExistingToFolder}
+      />
+
       <MaterialCreateModal
         isOpen={materialModalOpen}
         onClose={() => setMaterialModalOpen(false)}
@@ -498,15 +568,16 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
 
 function CreateMaterialCard({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button
+      variant="plain"
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center min-h-[260px] bg-purple-50/40 border-2 border-dashed border-purple-200 rounded-lg text-purple-700 hover:bg-purple-50 transition-colors w-full"
+      className={cn(BTN_KEEP_BOX, "flex items-center justify-center min-h-[260px] bg-gradient-r/10/40 border-2 border-dashed border-gradient-r/30 rounded-lg text-gradient-r hover:bg-gradient-r/10 transition-colors w-full")}
     >
       <div className="flex flex-col items-center gap-2">
         <Plus size={28} strokeWidth={1.5} />
         <span className="text-sm font-medium">Vytvořit nový materiál</span>
       </div>
-    </button>
+    </Button>
   );
 }

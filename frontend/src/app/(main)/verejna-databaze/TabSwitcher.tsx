@@ -9,10 +9,18 @@ const TAB_DEFINITIONS: { id: DatabaseTab; label: string; href: string }[] = [
   { id: "mine", label: "Moje sbírka", href: `${ROUTES.PUBLIC_DATABASE}?tab=mine` },
 ];
 
-export function TabSwitcher({ active }: { active: DatabaseTab }) {
+export function TabSwitcher({
+  active,
+  isAuthenticated,
+}: {
+  active: DatabaseTab;
+  isAuthenticated: boolean;
+}) {
+  const tabs = TAB_DEFINITIONS.filter((tab) => tab.id !== "mine" || isAuthenticated);
+
   return (
-    <div className="inline-flex items-center rounded-md border border-gray-200 bg-white p-1 shadow-sm">
-      {TAB_DEFINITIONS.map((tab) => {
+    <div className="inline-flex items-center rounded-md border border-border bg-card p-1 shadow-sm">
+      {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
           <Link
@@ -22,8 +30,8 @@ export function TabSwitcher({ active }: { active: DatabaseTab }) {
             aria-current={isActive ? "page" : undefined}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
               isActive
-                ? "bg-purple-100 text-purple-700"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-gradient-r/20 text-gradient-r"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {tab.label}

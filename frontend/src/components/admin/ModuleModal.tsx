@@ -1,114 +1,132 @@
 'use client';
 
-import { X } from "lucide-react";
-import { Course } from "@/api";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+import type { BloomLevel, Course, KrauuCompetence, NeuroPrinciple } from "@/api";
+import { Alert, AlertDescription, Button, Input, Label, Modal, Textarea } from "@/components/ui";
+import { ModuleCategoryFields } from "./ModuleCategoryFields";
+import type { ModuleCategoryValues } from "@/lib/course-categories";
 
-interface ModuleModalProps {
+/** Stejný limit jako backend (`Module.perex`: String(255)). */
+export const MODULE_PEREX_MAX_LENGTH = 255;
+
+export interface ModuleFormData {
+  moduleId: number | null;
+  title: string;
+  perex: string;
+  courseId: number;
+  /** Neurovědní principy, KRAUU kompetence a Bloomova taxonomie modulu. */
+  categories: ModuleCategoryValues;
+}
+
+interface ModuleModalProps<T extends ModuleFormData> {
   isOpen: boolean;
   mode: 'create' | 'edit';
-  formData: {
-    moduleId: number | null;
-    title: string;
-    courseId: number;
-  };
+  formData: T;
   courses: Course[];
+  neuroPrinciples: NeuroPrinciple[];
+  krauuCompetences: KrauuCompetence[];
+  bloomLevels: BloomLevel[];
+  /** Zvýraznit prázdné povinné číselníky (po neúspěšném odeslání). */
+  showCategoryErrors?: boolean;
   loading: boolean;
   error: string;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  onChange: (data: any) => void;
+  onChange: (data: T) => void;
 }
 
-export function ModuleModal({
+const FORM_ID = "module-modal-form";
+
+/**
+ * Formulář modulu: název, perex a pedagogické zařazení. AI generátor tato pole
+ * naplní sám, autor je ale musí mít možnost upravit i mimo editor obsahu.
+ */
+export function ModuleModal<T extends ModuleFormData>({
   isOpen,
   mode,
   formData,
   courses,
+  neuroPrinciples,
+  krauuCompetences,
+  bloomLevels,
+  showCategoryErrors = false,
   loading,
   error,
   onClose,
   onSubmit,
   onChange,
-}: ModuleModalProps) {
-  useModalDismiss(isOpen, onClose);
-  if (!isOpen) return null;
+}: ModuleModalProps<T>) {
+  const parentCourse = courses.find((course) => course.courseId === formData.courseId);
 
   return (
-    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-black">
-            {mode === 'create' ? 'Vytvořit nový modul' : 'Editovat modul'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
-        </div>
-        
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={mode === 'create' ? 'Vytvořit nový modul' : 'Editovat modul'}
+      maxWidth="max-w-2xl"
+      footer={
+        <>
+          <Button type="button" variant="outline" size="lg" disabled={loading} onClick={onClose}>
+            Zrušit
+          </Button>
+          <Button type="submit" form={FORM_ID} size="lg" disabled={loading || formData.courseId === 0}>
+            {loading ? 'Ukládání…' : mode === 'create' ? 'Vytvořit modul' : 'Uložit změny'}
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={onSubmit} className="flex flex-col gap-5">
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-            {error}
+          <Alert variant="error">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {mode === 'create' && (
+          <div className="flex flex-col gap-1.5">
+            {/* Kurz je daný kontextem, ze kterého se modal otevírá — jen se zobrazuje. */}
+            <Label htmlFor="module-course">Kurz</Label>
+            <Input id="module-course" value={parentCourse?.title ?? ''} disabled readOnly />
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
-          {mode === 'create' && (
-            <div>
-              <label htmlFor="module-course" className="block text-sm font-medium text-gray-700 mb-2">
-                Kurz
-              </label>
-              <select
-                id="module-course"
-                value={formData.courseId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-black bg-gray-50 cursor-not-allowed"
-                disabled
-              >
-                {courses
-                  .filter((course) => course.courseId === formData.courseId)
-                  .map((course) => (
-                    <option key={course.courseId} value={course.courseId}>
-                      {course.title}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="module-title">Název modulu *</Label>
+          <Input
+            type="text"
+            id="module-title"
+            required
+            value={formData.title}
+            onChange={(e) => onChange({ ...formData, title: e.target.value })}
+            placeholder="např. Co je prompt a jak funguje AI"
+          />
+        </div>
 
-          <div>
-            <label htmlFor="module-title" className="block text-sm font-medium text-gray-700 mb-2">
-              Název modulu *
-            </label>
-            <input
-              type="text"
-              id="module-title"
-              required
-              value={formData.title}
-              onChange={(e) => onChange({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              placeholder="např. Co je prompt a jak funguje AI"
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="module-perex">Perex</Label>
+          <Textarea
+            id="module-perex"
+            rows={3}
+            maxLength={MODULE_PEREX_MAX_LENGTH}
+            value={formData.perex}
+            onChange={(e) => onChange({ ...formData, perex: e.target.value })}
+            placeholder="Krátké shrnutí, o čem modul je…"
+            className="field-sizing-fixed min-h-0 resize-none"
+          />
+          <span className="text-xs text-muted-foreground">{formData.perex.length}/{MODULE_PEREX_MAX_LENGTH}</span>
+        </div>
 
-          <div className="flex gap-4 pt-4">
-            <button
-              type="submit"
-              disabled={loading || formData.courseId === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Ukládání...' : (mode === 'create' ? 'Vytvořit modul' : 'Uložit změny')}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-            >
-              Zrušit
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <ModuleCategoryFields
+          values={formData.categories}
+          onChange={(categories) => onChange({ ...formData, categories })}
+          neuroPrinciples={neuroPrinciples}
+          krauuCompetences={krauuCompetences}
+          bloomLevels={bloomLevels}
+          showErrors={showCategoryErrors}
+          columns={1}
+          labelClassName="flex items-center text-sm leading-none font-medium mb-1.5"
+          triggerClassName="w-full"
+        />
+      </form>
+    </Modal>
   );
 }

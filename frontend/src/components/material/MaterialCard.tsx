@@ -1,7 +1,11 @@
+"use client";
+
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Send, Pencil, Globe, EyeOff, FolderMinus } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
+import { Button, Card, CardContent, CardFooter } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import type { Material, MaterialFolder } from "./types";
 import { StarRating } from "./StarRating";
 import { MaterialStatusBadge } from "./MaterialStatusBadge";
@@ -31,6 +35,12 @@ interface MaterialCardProps {
   onEdit?: (materialId: string) => void;
   /** Callback pro publikaci/skrytí schváleného materiálu (zobrazí se jen u schválených). */
   onTogglePublic?: (materialId: string, nextIsPublic: boolean) => Promise<void> | void;
+  /**
+   * Zda materiál patří přihlášenému uživateli. Backend pustí úpravu, odeslání
+   * ke schválení i změnu viditelnosti jen vlastníkovi (nebo superadminovi), takže
+   * u cizích materiálů tyto akce nezobrazujeme — jinak by končily chybou 403.
+   */
+  isOwner?: boolean;
   /** Přepíše cíl tlačítka šipky (např. odkaz na review detail místo veřejného detailu). */
   detailHref?: string;
 }
@@ -48,6 +58,7 @@ export function MaterialCard({
   onSubmitForReview,
   onEdit,
   onTogglePublic,
+  isOwner = true,
   detailHref,
 }: MaterialCardProps) {
   const resolvedDetailHref = detailHref ?? `${ROUTES.PUBLIC_DATABASE}/${material.id}`;
@@ -70,10 +81,12 @@ export function MaterialCard({
 
   // Upravit i odeslat ke schválení lze u konceptu i vráceného (k přepracování) materiálu
   const isEditable = material.status === "draft" || material.status === "rejected";
-  const canSubmit = isEditable && !!onSubmitForReview;
-  const canEdit = isEditable && !!onEdit;
-  // Publikovat/skrýt lze jen u schváleného materiálu
-  const canTogglePublic = material.status === "approved" && !!onTogglePublic;
+  const canSubmit = isOwner && isEditable && !!onSubmitForReview;
+  const canEdit = isOwner && isEditable && !!onEdit;
+  // Publikovat/skrýt lze jen u vlastního schváleného materiálu
+  const canTogglePublic = isOwner && material.status === "approved" && !!onTogglePublic;
+  // Do sbírky backend pustí jen schválený materiál (u cizích navíc jen veřejný).
+  const canAddToFolder = material.status === "approved";
 
   const handleSubmit = async () => {
     if (submitting || !onSubmitForReview) return;
@@ -106,8 +119,8 @@ export function MaterialCard({
   };
 
   return (
-    <div className="group bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow flex flex-col h-full">
-      <div className={`flex flex-col ${isCompact ? "p-4 gap-3" : "p-5 gap-3"} flex-1`}>
+    <Card size={isCompact ? "sm" : "default"} className="group h-full gap-0 py-0 transition-shadow hover:shadow-md">
+      <CardContent className={cn("flex flex-1 flex-col gap-3", isCompact ? "p-4" : "p-5")}>
         {showStatus && (
           <div>
             <MaterialStatusBadge status={material.status} />
@@ -115,75 +128,75 @@ export function MaterialCard({
         )}
 
         <h3
-          className={`font-semibold text-gray-900 leading-snug line-clamp-2 ${
-            isCompact ? "text-base" : "text-lg"
-          }`}
+          className={cn(
+            "line-clamp-2 leading-snug font-semibold text-foreground",
+            isCompact ? "text-base" : "text-lg",
+          )}
           title={material.title}
         >
           {material.title}
         </h3>
 
-        <p className={`text-gray-600 line-clamp-3 ${isCompact ? "text-xs" : "text-sm"}`}>
+        <p className={cn("line-clamp-3 text-muted-foreground", isCompact ? "text-xs" : "text-sm")}>
           {material.description}
         </p>
 
-        <div className="flex items-center gap-2 mt-1">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+        <div className="mt-1 flex items-center gap-2">
+          <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
             {material.difficultyLabel}
           </span>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+          <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
             {material.fileLabel}
           </span>
         </div>
 
         {(canEdit || canSubmit) && (
-          <div className="mt-1 space-y-1">
+          <div className="mt-1 flex flex-col gap-1">
             <div className="flex gap-2">
               {canEdit && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={() => onEdit?.(material.id)}
                   disabled={submitting}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-white text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 flex-1"
+                  className="flex-1"
                 >
-                  <Pencil size={14} strokeWidth={1.75} />
+                  <Pencil data-icon="inline-start" strokeWidth={1.75} />
                   Upravit
-                </button>
+                </Button>
               )}
               {canSubmit && (
-                <button
+                <Button
                   type="button"
+                  size="lg"
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 flex-1"
+                  className="flex-1"
                 >
-                  <Send size={14} strokeWidth={1.75} />
+                  <Send data-icon="inline-start" strokeWidth={1.75} />
                   {submitting ? "Odesílám…" : "Odeslat ke schválení"}
-                </button>
+                </Button>
               )}
             </div>
-            {submitError && (
-              <p className="text-xs text-red-600">{submitError}</p>
-            )}
+            {submitError && <p className="text-xs text-destructive">{submitError}</p>}
           </div>
         )}
 
         {canTogglePublic && (
-          <div className="mt-1 space-y-1">
-            <button
+          <div className="mt-1 flex flex-col gap-1">
+            <Button
               type="button"
+              variant={material.isPublic ? "outline" : "default"}
+              size="lg"
               onClick={handleTogglePublic}
               disabled={toggling}
-              className={`inline-flex w-full items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium disabled:opacity-60 ${
-                material.isPublic
-                  ? "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              }`}
+              className="w-full"
             >
               {material.isPublic ? (
-                <EyeOff size={14} strokeWidth={1.75} />
+                <EyeOff data-icon="inline-start" strokeWidth={1.75} />
               ) : (
-                <Globe size={14} strokeWidth={1.75} />
+                <Globe data-icon="inline-start" strokeWidth={1.75} />
               )}
               {toggling
                 ? material.isPublic
@@ -192,29 +205,31 @@ export function MaterialCard({
                 : material.isPublic
                   ? "Skrýt z databáze"
                   : "Publikovat do databáze"}
-            </button>
-            {toggleError && <p className="text-xs text-red-600">{toggleError}</p>}
+            </Button>
+            {toggleError && <p className="text-xs text-destructive">{toggleError}</p>}
           </div>
         )}
-      </div>
+      </CardContent>
 
-      <div className="border-t border-gray-100" />
-
-      <div className={`flex items-center justify-between ${isCompact ? "px-4 py-3" : "px-5 py-4"}`}>
+      <CardFooter
+        className={cn("justify-between bg-transparent", isCompact ? "px-4 py-3" : "px-5 py-4")}
+      >
         <StarRating rating={material.rating} reviewsCount={material.reviewsCount} />
 
         <div className="flex items-center gap-2">
           {onRemoveFromFolder && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon-lg"
               onClick={handleRemoveFromFolder}
               disabled={removing}
               aria-label="Odebrat ze složky"
               title="Odebrat ze složky"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 bg-gray-50 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-60"
+              className="hover:text-destructive"
             >
-              <FolderMinus size={16} strokeWidth={1.75} />
-            </button>
+              <FolderMinus strokeWidth={1.75} />
+            </Button>
           )}
           <MaterialCardActions
             materialId={material.id}
@@ -223,17 +238,19 @@ export function MaterialCard({
             folders={folders}
             onCreateFolder={onCreateFolder}
             onMoved={(folderId) => onMoved?.(material.id, folderId)}
+            disabled={!canAddToFolder}
+            disabledReason="Do složky lze zařadit až schválený materiál."
           />
-          <Link
-            href={resolvedDetailHref}
+          <Button
+            render={<Link href={resolvedDetailHref} />}
+            nativeButton={false}
+            size="icon-lg"
             aria-label={`Otevřít materiál ${material.title}`}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "#00C896" }}
           >
-            <ArrowRight size={16} strokeWidth={2} />
-          </Link>
+            <ArrowRight strokeWidth={2} />
+          </Button>
         </div>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

@@ -23,7 +23,7 @@ interface ErrorStateProps {
 export function ErrorState({ message }: ErrorStateProps) {
   return (
     <div className="flex-1 p-8">
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
         {message}
       </div>
     </div>

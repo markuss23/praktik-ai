@@ -111,6 +111,13 @@ class EvaluatePracticeAnswerResponse(BaseModel):
     )
 
 
+class EvaluateOpenQuestionRequest(BaseModel):
+    """Request pro vyhodnocení odpovědi na otevřenou otázku modulu (nic se neukládá)"""
+
+    question_id: int = Field(..., description="ID otevřené PracticeQuestion")
+    user_input: str = Field(..., min_length=1, description="Odpověď studenta")
+
+
 class PracticeAttempt(BaseModel):
     """Jeden pokus na procvičovací otázku"""
 
@@ -143,3 +150,25 @@ class LearnBlocksChatResponse(BaseModel):
     """Response s odpovědí na otázku"""
 
     answer: str = Field(..., description="Odpověď vygenerovaná na základě learn blocku")
+
+
+class WikiChatRequest(BaseModel):
+    """Request pro chat nad projektovou wiki"""
+
+    message: str = Field(..., description="Zpráva od uživatele (otázka o projektu)")
+
+
+class WikiChatResponse(BaseModel):
+    """Response s odpovědí na otázku o wiki"""
+
+    answer: str = Field(..., description="Odpověď vygenerovaná na základě wiki obsahu")
+
+
+class WikiSyncResponse(BaseModel):
+    """Response s odpovědí pro synchronizaci wiki repozitáře"""
+
+    pages_processed: int = Field(..., description="Počet zpracovaných wiki stránek")
+    message: str = Field(
+        default="Wiki byla úspěšně synchronizována a re-indexována",
+        description="Stavová zpráva",
+    )

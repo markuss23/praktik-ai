@@ -1,12 +1,13 @@
 'use client';
 
-import { CourseCard } from "@/components/ui";
+import { CatalogSelect, CourseCard, Button, Input } from "@/components/ui";
 import { getCourses, getMyEnrollments, getCourseBlocks, getCourseSubjects } from "@/lib/api-client";
-import { MyEnrollment, CourseBlock, CourseSubject } from "@/api";
-import { useState, useEffect, useCallback } from "react";
+import { MyEnrollment, CourseBlock, CourseSubject, Course } from "@/api";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 const PAGE_SIZE = 6; // 2 řádky × 3 karty na řádek
 
@@ -24,30 +25,33 @@ function classifyError(err: unknown): ErrorKind {
 function CourseCardSkeleton() {
   return (
     <div
-      className="bg-white overflow-hidden flex flex-col animate-pulse"
-      style={{ width: '100%', maxWidth: '590px', height: '530px', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+      className="bg-card overflow-hidden flex flex-col animate-pulse"
+      style={{ width: '100%', maxWidth: '590px', height: '530px', borderRadius: '8px', border: '1px solid var(--border)' }}
     >
-      <div style={{ width: '100%', height: '226px' }} className="bg-gray-200" />
-      <div className="flex flex-col p-6 flex-grow">
-        <div className="h-6 bg-gray-200 rounded w-3/4 mb-3" />
-        <div className="h-4 bg-gray-200 rounded w-full mb-2" />
-        <div className="h-4 bg-gray-200 rounded w-5/6 mb-2" />
-        <div className="h-4 bg-gray-200 rounded w-2/3 mb-4" />
+      <div style={{ width: '100%', height: '226px' }} className="bg-muted" />
+      <div className="flex flex-col p-6 grow">
+        <div className="h-6 bg-muted rounded w-3/4 mb-3" />
+        <div className="h-4 bg-muted rounded w-full mb-2" />
+        <div className="h-4 bg-muted rounded w-5/6 mb-2" />
+        <div className="h-4 bg-muted rounded w-2/3 mb-4" />
         <div className="flex items-center gap-4 mb-4">
-          <div className="h-4 bg-gray-200 rounded w-24" />
-          <div className="h-6 bg-gray-200 rounded-full w-20" />
+          <div className="h-4 bg-muted rounded w-24" />
+          <div className="h-6 bg-muted rounded-full w-20" />
         </div>
         <div className="mt-auto">
-          <div className="h-12 bg-gray-200 rounded-md w-full" />
+          <div className="h-12 bg-muted rounded-md w-full" />
         </div>
       </div>
     </div>
   );
 }
 
+/** Karta čte i legacy pole `id`/`name`, která generovaný `Course` nemá. */
+type CourseListItem = Course & Partial<{ id: number | string; name: string }>;
+
 export default function CourseSection() {
   const { isAuthenticated } = useAuth();
-  const [courses, setCourses] = useState<any[]>([]);
+  const [courses, setCourses] = useState<CourseListItem[]>([]);
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
@@ -102,8 +106,12 @@ export default function CourseSection() {
       .catch(() => setEnrollments([]));
   }, [isAuthenticated]);
 
-  // Debounced search + filter apply
+  // Debounced search + filter apply. První běh (mount) se nedebouncuje —
+  // jinak by homepage čekala 500 ms, než vůbec odešle první dotaz na kurzy.
+  const firstFilterRun = useRef(true);
   useEffect(() => {
+    const delay = firstFilterRun.current ? 0 : 500;
+    firstFilterRun.current = false;
     const timeout = setTimeout(() => {
       loadCourses({
         textSearch: search || undefined,
@@ -112,7 +120,7 @@ export default function CourseSection() {
       });
       // Po každé změně filtrů se vracíme na první stránku.
       setPageIndex(0);
-    }, 500);
+    }, delay);
     return () => clearTimeout(timeout);
   }, [search, selectedBlockId, selectedSubjectId, loadCourses]);
 
@@ -144,63 +152,58 @@ export default function CourseSection() {
   const canNext = safePageIndex < totalPages - 1;
 
   return (
-    <div className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#F0F0F0' }}>
+    <div className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: 'var(--muted)' }}>
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
         <div className="mb-6 sm:mb-8">
-          <p className="text-sm text-gray-500">Home</p>
+          <p className="text-sm text-muted-foreground">Home</p>
         </div>
 
         {/* Filter Bar */}
         <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search */}
           <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Najdi kurz!"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              style={{ backgroundColor: '#F0F0F0' }}
+              className={cn("h-auto", "w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent")}
+              style={{ backgroundColor: 'var(--muted)' }}
             />
           </div>
 
           {/* Kategorie (Block) */}
-          <select
-            value={selectedBlockId ?? ''}
-            onChange={(e) => setSelectedBlockId(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[160px]"
-            style={{ backgroundColor: '#F0F0F0' }}
-          >
-            <option value="">Kategorie</option>
-            {blocks.map((b) => (
-              <option key={b.blockId} value={b.blockId}>{b.name}</option>
-            ))}
-          </select>
+          <CatalogSelect
+            value={selectedBlockId ?? 0}
+            onValueChange={(next) => setSelectedBlockId(next === 0 ? undefined : next)}
+            options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+            emptyLabel="Kategorie"
+            aria-label="Kategorie"
+            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+          />
 
           {/* Tema (Subject) */}
-          <select
-            value={selectedSubjectId ?? ''}
-            onChange={(e) => setSelectedSubjectId(e.target.value ? Number(e.target.value) : undefined)}
-            className="px-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[160px]"
-            style={{ backgroundColor: '#F0F0F0' }}
-          >
-            <option value="">Téma</option>
-            {subjects.map((s) => (
-              <option key={s.subjectId} value={s.subjectId}>{s.name}</option>
-            ))}
-          </select>
+          <CatalogSelect
+            value={selectedSubjectId ?? 0}
+            onValueChange={(next) => setSelectedSubjectId(next === 0 ? undefined : next)}
+            options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+            emptyLabel="Téma"
+            aria-label="Téma"
+            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+          />
 
           {/* Reset */}
-          <button
+          <Button
+            variant="plain"
             onClick={handleReset}
-            className="px-5 py-2.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors whitespace-nowrap"
-            style={{ backgroundColor: '#F0F0F0' }}
+            className={cn(BTN_KEEP_BOX, "px-5 py-2.5 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap")}
+            style={{ backgroundColor: 'var(--muted)' }}
           >
             Resetovat
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6">
@@ -227,46 +230,47 @@ export default function CourseSection() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                  <svg className="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+                  <svg className="mx-auto size-12 text-destructive mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   {errorKind === 'backend-down' && (
                     <>
-                      <h3 className="text-lg font-semibold text-red-800 mb-2">Backend není dostupný</h3>
-                      <p className="text-red-600 mb-4">
+                      <h3 className="text-lg font-semibold text-destructive mb-2">Backend není dostupný</h3>
+                      <p className="text-destructive mb-4">
                         Nepodařilo se připojit k API serveru. Ujistěte se, že backend běží a je dostupný.
                       </p>
                     </>
                   )}
                   {errorKind === 'unauthorized' && (
                     <>
-                      <h3 className="text-lg font-semibold text-red-800 mb-2">Přístup odepřen</h3>
-                      <p className="text-red-600 mb-4">
+                      <h3 className="text-lg font-semibold text-destructive mb-2">Přístup odepřen</h3>
+                      <p className="text-destructive mb-4">
                         Tento obsah není veřejně dostupný. Pro zobrazení kurzů se prosím přihlaste.
                       </p>
                     </>
                   )}
                   {errorKind === 'server-error' && (
                     <>
-                      <h3 className="text-lg font-semibold text-red-800 mb-2">Chyba serveru</h3>
-                      <p className="text-red-600 mb-4">
+                      <h3 className="text-lg font-semibold text-destructive mb-2">Chyba serveru</h3>
+                      <p className="text-destructive mb-4">
                         Server vrátil neočekávanou chybu. Zkuste to prosím znovu.
                       </p>
                     </>
                   )}
-                  <button
+                  <Button
+                    variant="plain"
                     onClick={() => loadCourses()}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className={cn(BTN_KEEP_BOX, "bg-destructive hover:bg-destructive/80 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors")}
                   >
                     Zkusit Znovu
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             ) : courses.length === 0 ? (
               <motion.div
                 key="empty"
-                className="col-span-full text-center text-gray-500 py-8"
+                className="col-span-full text-center text-muted-foreground py-8"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -289,7 +293,7 @@ export default function CourseSection() {
                   },
                 }}
               >
-                {visibleCourses.map((course: any) => {
+                {visibleCourses.map((course) => {
                   const enrollment = enrollments.find(e => e.courseId === (course.courseId || course.id));
                   return (
                     <motion.div
@@ -302,7 +306,7 @@ export default function CourseSection() {
                     >
                       <CourseCard
                         id={String(course.courseId || course.id)}
-                        title={course.title || course.name}
+                        title={course.title || course.name || ''}
                         description={course.description || ''}
                         duration={course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60)}
                         difficulty={course.difficulty}
@@ -339,17 +343,17 @@ export default function CourseSection() {
                 whileHover={canPrev && !paging ? { scale: 1.05 } : undefined}
                 whileTap={canPrev && !paging ? { scale: 0.95 } : undefined}
                 aria-label="Předchozí stránka kurzů"
-                className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-gray-700 hover:shadow-md hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
+                className="inline-flex items-center justify-center size-10 rounded-full bg-card border border-border shadow-sm text-foreground hover:shadow-md hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
               >
                 <ChevronLeft size={18} />
               </motion.button>
 
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-gray-800 min-w-[120px] justify-center">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shadow-sm text-sm font-semibold text-foreground min-w-[120px] justify-center">
                 {paging ? (
-                  <Loader2 size={14} className="animate-spin text-purple-600" />
+                  <Loader2 size={14} className="animate-spin text-gradient-r" />
                 ) : null}
                 <span>
-                  Strana <span className="text-purple-600">{safePageIndex + 1}</span> / {totalPages}
+                  Strana <span className="text-gradient-r">{safePageIndex + 1}</span> / {totalPages}
                 </span>
               </span>
 
@@ -360,7 +364,7 @@ export default function CourseSection() {
                 whileHover={canNext && !paging ? { scale: 1.05 } : undefined}
                 whileTap={canNext && !paging ? { scale: 0.95 } : undefined}
                 aria-label="Další stránka kurzů"
-                className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200 shadow-sm text-gray-700 hover:shadow-md hover:text-gray-900 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
+                className="inline-flex items-center justify-center size-10 rounded-full bg-card border border-border shadow-sm text-foreground hover:shadow-md hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-shadow"
               >
                 <ChevronRight size={18} />
               </motion.button>

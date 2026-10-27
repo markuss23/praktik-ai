@@ -4,33 +4,6 @@ from agents.base.llm import get_llm_config, create_chat_llm
 from agents.practice_question_generator.state import GeneratorState
 from api.enums import QuestionType
 
-DEFAULT_MODEL = "gpt-4o"
-
-DEFAULT_PROMPT_OPEN = (
-    "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
-    "vytvoř jednu otevřenou procvičovací otázku v češtině.\n\n"
-    "Pravidla:\n"
-    "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
-    "- Otázka má prověřit porozumění, nikoli pouhou reprodukci\n"
-    "- Odpověz POUZE samotnou otázkou, bez dalšího textu"
-)
-
-DEFAULT_PROMPT_CLOSED = (
-    "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
-    "vytvoř jednu uzavřenou procvičovací otázku se 4 možnostmi (A–D) v češtině.\n\n"
-    "Pravidla:\n"
-    "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
-    "- Právě jedna možnost musí být správná\n"
-    "- Ostatní tři možnosti musí být věrohodné, ale nesprávné\n\n"
-    "Odpověz PŘESNĚ v tomto formátu (nic jiného):\n"
-    "QUESTION: <otázka>\n"
-    "A: <možnost>\n"
-    "B: <možnost>\n"
-    "C: <možnost>\n"
-    "D: <možnost>\n"
-    "CORRECT: <písmeno A, B, C nebo D>"
-)
-
 
 def generate_question(state: GeneratorState) -> dict:
     """Vygeneruje procvičovací otázku pomocí LLM."""
@@ -45,14 +18,8 @@ def generate_question(state: GeneratorState) -> dict:
 
     is_closed = question_type == QuestionType.closed
     prompt_key = "practice_generator_closed" if is_closed else "practice_generator_open"
-    default_prompt = DEFAULT_PROMPT_CLOSED if is_closed else DEFAULT_PROMPT_OPEN
 
-    cfg = get_llm_config(
-        db,
-        prompt_key,
-        default_model=DEFAULT_MODEL,
-        default_prompt=default_prompt,
-    )
+    cfg = get_llm_config(db, prompt_key)
     llm = create_chat_llm(cfg.model, temperature=0.7)
 
     messages = [
@@ -61,7 +28,7 @@ def generate_question(state: GeneratorState) -> dict:
     ]
 
     response = llm.invoke(messages)
-    raw = response.content.strip()
+    raw = response.text.strip()
 
     if is_closed:
         generated_question, options = _parse_closed(raw)

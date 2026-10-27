@@ -1,39 +1,19 @@
+import { Badge, type BadgeVariant } from "@/components/ui";
 import type { MaterialApprovalStatus } from "./types";
 
-const STATUS_STYLES: Record<MaterialApprovalStatus, { label: string; className: string }> = {
-  draft: {
-    label: "Koncept",
-    className: "bg-gray-100 text-gray-600",
-  },
-  approved: {
-    label: "Schváleno",
-    className: "bg-green-100 text-green-700",
-  },
-  in_review: {
-    label: "Čeká na schválení",
-    className: "bg-orange-100 text-orange-700",
-  },
-  rejected: {
-    label: "Neschváleno",
-    className: "bg-red-100 text-red-700",
-  },
+/** Stav schvalování materiálu → varianta kitového `Badge`. */
+const STATUS_STYLES: Record<MaterialApprovalStatus, { label: string; variant: BadgeVariant }> = {
+  draft: { label: "Koncept", variant: "closed" },
+  approved: { label: "Schváleno", variant: "resolved" },
+  in_review: { label: "Čeká na schválení", variant: "new" },
+  rejected: { label: "Neschváleno", variant: "waiting" },
 };
 
 export function MaterialStatusBadge({ status }: { status: MaterialApprovalStatus }) {
-  const { label, className } = STATUS_STYLES[status];
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${className}`}
-    >
-      {label}
-    </span>
-  );
+  const { label, variant } = STATUS_STYLES[status];
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
 export function MaterialCategoryBadge({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-cyan-100 text-cyan-700">
-      {label}
-    </span>
-  );
+  return <Badge variant="open">{label}</Badge>;
 }
