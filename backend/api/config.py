@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     keycloak: KeycloakSettings
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
     wiki: WikiSettings = WikiSettings()
+    log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

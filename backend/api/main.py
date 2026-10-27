@@ -11,10 +11,16 @@ from agents.wiki.agent.scheduler import (
     start_wiki_sync_scheduler,
     stop_wiki_sync_scheduler,
 )
+from api.config import settings
 from api.database import SessionSqlSessionDependency, init_db
 from api.seed import seed_db
 from api.src.routers import router as api_router
 
+# uvicorn i gunicorn konfigurují jen své loggery; root (= naše logger.info) by jinak padal na WARNING bez formátu
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="%(asctime)s %(levelname)s [%(process)d] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
