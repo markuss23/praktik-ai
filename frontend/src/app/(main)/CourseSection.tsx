@@ -1,17 +1,48 @@
 'use client';
 
-import { CatalogSelect, CourseCard, Button, Input } from "@/components/ui";
+import { CatalogSelect, CourseCard, CourseRow, Button, Input } from "@/components/ui";
+import { SegmentedControl, SegmentedControlItem } from "@/components/ui-kit/segmented-control";
+import { LynxMascotUnplugged } from "@/components/layout/LynxMascotUnplugged";
 import { getCourses, getMyEnrollments, getCourseBlocks, getCourseSubjects } from "@/lib/api-client";
 import { MyEnrollment, CourseBlock, CourseSubject, Course } from "@/api";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Loader2, RotateCw } from "lucide-react";
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
+import { MOCK_PROGRESS, filterMockCourses } from "./courseMocks";
 
-const PAGE_SIZE = 6; // 2 řádky × 3 karty na řádek
+/** Karty: 2 řádky × 3 karty. Řádky jsou nízké, vejde se jich víc. */
+const PAGE_SIZE = { grid: 6, rows: 10 } as const;
+
+type ViewMode = keyof typeof PAGE_SIZE;
+
+/** Volba zobrazení se pamatuje per prohlížeč — jen pohodlí, ne stav. */
+const VIEW_STORAGE_KEY = 'praktikai:courses:view';
 
 type ErrorKind = 'backend-down' | 'unauthorized' | 'server-error';
+
+const ERROR_COPY: Record<ErrorKind, { title: string; text: string }> = {
+  'backend-down': {
+    title: 'Backend není dostupný',
+    text: 'Nepodařilo se připojit k API serveru. Ujistěte se, že backend běží a je dostupný.',
+  },
+  unauthorized: {
+    title: 'Přístup odepřen',
+    text: 'Tento obsah není veřejně dostupný. Pro zobrazení kurzů se prosím přihlaste.',
+  },
+  'server-error': {
+    title: 'Chyba serveru',
+    text: 'Server vrátil neočekávanou chybu. Zkuste to prosím znovu.',
+  },
+};
+
+/** Filtry a přepínač leží na šedé stránce — bílá výplň je od ní odliší. */
+const FIELD = 'bg-card border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30';
+
+const GRID_CLASS = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6';
+/** Řádky leží v jedné bílé ploše, oddělené vlasovou linkou. */
+const ROWS_CLASS = 'divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm';
 
 function classifyError(err: unknown): ErrorKind {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -46,6 +77,19 @@ function CourseCardSkeleton() {
   );
 }
 
+function CourseRowSkeleton() {
+  return (
+    <li className="flex animate-pulse items-center gap-4 px-4 py-4 sm:px-5">
+      <div className="h-14 w-20 shrink-0 rounded-md bg-muted sm:h-16 sm:w-28" />
+      <div className="flex-1 space-y-2">
+        <div className="h-5 w-1/2 rounded bg-muted" />
+        <div className="h-4 w-3/4 rounded bg-muted" />
+      </div>
+      <div className="hidden h-9 w-28 rounded-md bg-muted sm:block" />
+    </li>
+  );
+}
+
 /** Karta čte i legacy pole `id`/`name`, která generovaný `Course` nemá. */
 type CourseListItem = Course & Partial<{ id: number | string; name: string }>;
 
@@ -55,6 +99,8 @@ export default function CourseSection() {
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
+  const [usingMocks, setUsingMocks] = useState(false);
+  const [view, setView] = useState<ViewMode>('grid');
 
   // Filter state
   const [search, setSearch] = useState('');
@@ -84,7 +130,16 @@ export default function CourseSection() {
         courseSubjectId: params?.courseSubjectId,
       });
       setCourses(data);
+      setUsingMocks(false);
     } catch (err) {
+      // Bez backendu se ve vývoji katalog vyplní ukázkami (courseMocks.ts),
+      // aby šlo ladit karty i řádky. V produkci zůstává chybový stav.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Courses API unavailable, showing mock courses:', err);
+        setCourses(filterMockCourses(params?.textSearch));
+        setUsingMocks(true);
+        return;
+      }
       console.error('Failed to fetch courses:', err);
       setErrorKind(classifyError(err));
       setCourses([]);
@@ -92,6 +147,25 @@ export default function CourseSection() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+      if (saved === 'grid' || saved === 'rows') setView(saved);
+    } catch {
+      // Bez localStorage (privátní okno apod.) zůstávají karty.
+    }
+  }, []);
+
+  const changeView = (next: ViewMode) => {
+    setView(next);
+    setPageIndex(0);
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next);
+    } catch {
+      // Volba se jen nezapamatuje.
+    }
+  };
 
   useEffect(() => {
     // Load filter catalogs
@@ -141,21 +215,74 @@ export default function CourseSection() {
     }, 220);
   };
 
-  const totalPages = Math.max(1, Math.ceil(courses.length / PAGE_SIZE));
+  const pageSize = PAGE_SIZE[view];
+  const totalPages = Math.max(1, Math.ceil(courses.length / pageSize));
   // Bezpečný clamp — kdyby se filtrem počet stránek snížil pod aktuální index.
   const safePageIndex = Math.min(pageIndex, totalPages - 1);
   const visibleCourses = courses.slice(
-    safePageIndex * PAGE_SIZE,
-    (safePageIndex + 1) * PAGE_SIZE,
+    safePageIndex * pageSize,
+    (safePageIndex + 1) * pageSize,
   );
+
+  const retry = () =>
+    loadCourses({
+      textSearch: search || undefined,
+      courseBlockId: selectedBlockId,
+      courseSubjectId: selectedSubjectId,
+    });
+
+  /** Společné props pro kartu i řádek — průběh ze zápisů, u ukázek z MOCK_PROGRESS. */
+  const itemProps = (course: CourseListItem) => {
+    const courseId = course.courseId || course.id;
+    const mock = usingMocks ? MOCK_PROGRESS[course.courseId] : undefined;
+    const enrollment = usingMocks ? undefined : enrollments.find(e => e.courseId === courseId);
+    return {
+      id: String(courseId),
+      title: course.title || course.name || '',
+      description: course.description || '',
+      duration: course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60),
+      difficulty: course.difficulty,
+      completedModules: mock?.completedModules ?? enrollment?.completedModules ?? 0,
+      totalModules: course.modulesCount || 0,
+      isEnrolled: !!(mock || enrollment),
+      isCompleted: !!(mock?.completed || enrollment?.completedAt),
+    };
+  };
   const canPrev = safePageIndex > 0;
   const canNext = safePageIndex < totalPages - 1;
 
   return (
-    <div className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: 'var(--muted)' }}>
+    <div className="bg-[#F0F0F0] py-8 sm:py-12 lg:py-16">
       <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: '1440px', width: '100%' }}>
-        <div className="mb-6 sm:mb-8">
-          <p className="text-sm text-muted-foreground">Home</p>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-[#111111] sm:text-3xl">Kurzy</h2>
+            <p className="mt-1 min-h-5 text-sm text-muted-foreground">
+              {!loading && !errorKind && (
+                <>
+                  {courses.length} {czechPlural(courses.length, 'kurz', 'kurzy', 'kurzů')}
+                  {usingMocks && ' · ukázková data, backend neběží'}
+                </>
+              )}
+            </p>
+          </div>
+
+          <SegmentedControl
+            variant="soft"
+            size="lg"
+            value={view}
+            onValueChange={changeView}
+            aria-label="Zobrazení kurzů"
+          >
+            <SegmentedControlItem value="grid">
+              <LayoutGrid data-icon="inline-start" />
+              Karty
+            </SegmentedControlItem>
+            <SegmentedControlItem value="rows">
+              <List data-icon="inline-start" />
+              Řádky
+            </SegmentedControlItem>
+          </SegmentedControl>
         </div>
 
         {/* Filter Bar */}
@@ -170,8 +297,7 @@ export default function CourseSection() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Najdi kurz!"
-              className={cn("h-auto", "w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent")}
-              style={{ backgroundColor: 'var(--muted)' }}
+              className={cn(FIELD, "h-auto w-full pl-10 pr-4 py-2.5 focus:border-transparent")}
             />
           </div>
 
@@ -182,7 +308,7 @@ export default function CourseSection() {
             options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
             emptyLabel="Kategorie"
             aria-label="Kategorie"
-            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+            className={cn(FIELD, "px-4 py-2.5 min-w-[160px] data-[size=default]:h-auto")}
           />
 
           {/* Tema (Subject) */}
@@ -192,136 +318,137 @@ export default function CourseSection() {
             options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
             emptyLabel="Téma"
             aria-label="Téma"
-            className="px-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 min-w-[160px] data-[size=default]:h-auto bg-[var(--muted)]"
+            className={cn(FIELD, "px-4 py-2.5 min-w-[160px] data-[size=default]:h-auto")}
           />
 
           {/* Reset */}
           <Button
             variant="plain"
             onClick={handleReset}
-            className={cn(BTN_KEEP_BOX, "px-5 py-2.5 border border-border rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap")}
-            style={{ backgroundColor: 'var(--muted)' }}
+            className={cn(BTN_KEEP_BOX, FIELD, "px-5 py-2.5 font-medium hover:bg-muted transition-colors whitespace-nowrap")}
           >
             Resetovat
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6">
-          <AnimatePresence mode="wait">
-            {loading ? (
+        <AnimatePresence mode="wait">
+          {loading ? (
+            view === 'grid' ? (
               <motion.div
-                key="skeletons"
-                className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6"
+                key="skeletons-grid"
+                className={GRID_CLASS}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                {Array.from({ length: PAGE_SIZE }, (_, i) => (
+                {Array.from({ length: pageSize }, (_, i) => (
                   <CourseCardSkeleton key={i} />
                 ))}
               </motion.div>
-            ) : errorKind ? (
-              <motion.div
-                key="error"
-                className="col-span-full"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
-                  <svg className="mx-auto size-12 text-destructive mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  {errorKind === 'backend-down' && (
-                    <>
-                      <h3 className="text-lg font-semibold text-destructive mb-2">Backend není dostupný</h3>
-                      <p className="text-destructive mb-4">
-                        Nepodařilo se připojit k API serveru. Ujistěte se, že backend běží a je dostupný.
-                      </p>
-                    </>
-                  )}
-                  {errorKind === 'unauthorized' && (
-                    <>
-                      <h3 className="text-lg font-semibold text-destructive mb-2">Přístup odepřen</h3>
-                      <p className="text-destructive mb-4">
-                        Tento obsah není veřejně dostupný. Pro zobrazení kurzů se prosím přihlaste.
-                      </p>
-                    </>
-                  )}
-                  {errorKind === 'server-error' && (
-                    <>
-                      <h3 className="text-lg font-semibold text-destructive mb-2">Chyba serveru</h3>
-                      <p className="text-destructive mb-4">
-                        Server vrátil neočekávanou chybu. Zkuste to prosím znovu.
-                      </p>
-                    </>
-                  )}
-                  <Button
-                    variant="plain"
-                    onClick={() => loadCourses()}
-                    className={cn(BTN_KEEP_BOX, "bg-destructive hover:bg-destructive/80 text-primary-foreground font-medium py-2 px-4 rounded-lg transition-colors")}
-                  >
-                    Zkusit Znovu
-                  </Button>
-                </div>
-              </motion.div>
-            ) : courses.length === 0 ? (
-              <motion.div
-                key="empty"
-                className="col-span-full text-center text-muted-foreground py-8"
+            ) : (
+              <motion.ul
+                key="skeletons-rows"
+                className={ROWS_CLASS}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
               >
-                Žádné kurzy neodpovídají vašemu hledání.
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`courses-page-${safePageIndex}-${courses.length}`}
-                className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-6"
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                variants={{
-                  hidden: { opacity: 0 },
-                  visible: {
-                    opacity: 1,
-                    transition: { staggerChildren: 0.08 },
-                  },
-                }}
-              >
-                {visibleCourses.map((course) => {
-                  const enrollment = enrollments.find(e => e.courseId === (course.courseId || course.id));
-                  return (
-                    <motion.div
-                      key={course.courseId || course.id}
-                      variants={{
-                        hidden: { opacity: 0, y: 20, scale: 0.97 },
-                        visible: { opacity: 1, y: 0, scale: 1 },
-                      }}
-                      transition={{ duration: 0.35, ease: 'easeOut' }}
-                    >
-                      <CourseCard
-                        id={String(course.courseId || course.id)}
-                        title={course.title || course.name || ''}
-                        description={course.description || ''}
-                        duration={course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60)}
-                        difficulty={course.difficulty}
-                        completedModules={enrollment?.completedModules ?? 0}
-                        totalModules={course.modulesCount || 0}
-                        isEnrolled={!!enrollment}
-                        isCompleted={!!enrollment?.completedAt}
-                      />
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                {Array.from({ length: 5 }, (_, i) => (
+                  <CourseRowSkeleton key={i} />
+                ))}
+              </motion.ul>
+            )
+          ) : errorKind ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center gap-6 rounded-2xl border border-border bg-card px-6 py-10 text-center shadow-sm sm:flex-row sm:gap-10 sm:px-12 sm:text-left"
+            >
+              <LynxMascotUnplugged className="h-auto w-24 shrink-0 sm:w-28" />
+              <div>
+                <p className="text-sm font-semibold text-destructive">Kurzy se nepodařilo načíst</p>
+                <h3 className="mt-1 text-xl font-bold text-foreground sm:text-2xl">{ERROR_COPY[errorKind].title}</h3>
+                <p className="mt-2 max-w-[52ch] text-muted-foreground">{ERROR_COPY[errorKind].text}</p>
+                <Button size="lg" onClick={retry} className="mt-5 px-4 font-semibold">
+                  <RotateCw data-icon="inline-start" />
+                  Zkusit znovu
+                </Button>
+              </div>
+            </motion.div>
+          ) : courses.length === 0 ? (
+            <motion.div
+              key="empty"
+              className="text-center text-muted-foreground py-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              Žádné kurzy neodpovídají vašemu hledání.
+            </motion.div>
+          ) : view === 'grid' ? (
+            <motion.div
+              key={`grid-page-${safePageIndex}-${courses.length}`}
+              className={GRID_CLASS}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.08 },
+                },
+              }}
+            >
+              {visibleCourses.map((course) => (
+                <motion.div
+                  key={course.courseId || course.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 20, scale: 0.97 },
+                    visible: { opacity: 1, y: 0, scale: 1 },
+                  }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                >
+                  <CourseCard {...itemProps(course)} />
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.ul
+              key={`rows-page-${safePageIndex}-${courses.length}`}
+              className={ROWS_CLASS}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.04 },
+                },
+              }}
+            >
+              {visibleCourses.map((course) => (
+                <motion.li
+                  key={course.courseId || course.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <CourseRow {...itemProps(course)} />
+                </motion.li>
+              ))}
+            </motion.ul>
+          )}
+        </AnimatePresence>
 
         {/* Stránkovací ovládání — nahrazuje předchozí karty novými, takže
             na obrazovce zůstává vždy max PAGE_SIZE karet. Šipky se schovají,

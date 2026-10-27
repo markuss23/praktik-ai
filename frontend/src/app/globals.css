@@ -327,20 +327,6 @@ hr.page-break::after {
   color: #9333ea;
 }
 
-/* ── Changelog accordion */
-.changelog-glow {
-  position: relative;
-  border-radius: 0.85rem;
-  border: 1px solid #e5e7eb;
-}
-.changelog-glow > * {
-  border-radius: 0.7rem;
-}
-
-.changelog-title {
-  color: #111827;
-}
-
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / starší Edge */

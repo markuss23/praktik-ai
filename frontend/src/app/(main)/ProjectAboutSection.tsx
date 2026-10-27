@@ -93,7 +93,9 @@ function HighlightValue({ value, delay }: { value: string; delay: number }) {
   const hasTarget = Number.isFinite(target);
 
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
+  // Jen svisle — s `-80px` na všech stranách se čísla u levé hrany (mobil)
+  // do zúženého výřezu nikdy nedostala a zůstala na nule.
+  const inView = useInView(ref, { once: true, margin: '-80px 0px' });
   const reduceMotion = useReducedMotion();
 
   const count = useMotionValue(0);
@@ -159,25 +161,39 @@ const container = 'mx-auto w-[min(1240px,94vw)]';
  *  navazovat na zbytek stránky, zatímco pozadí a obrázek jdou na doraz. */
 const containerGutterLeft = 'pl-[calc((100vw_-_min(1240px,94vw))_/_2)]';
 
-export function ProjectAboutSection() {
-  // <main> v layoutu drží obsah na 1440px. Sekce je ale full-bleed, proto se
-  // zápornými okraji vylomí zpět na plnou šířku viewportu. Na užších
-  // obrazovkách (< 1440px) vyjde calc na ~0 a nic se nemění.
+/**
+ * <main> v layoutu drží obsah na 1440px. Sekce jsou ale full-bleed, proto se
+ * zápornými okraji vylomí zpět na plnou šířku viewportu. Na užších
+ * obrazovkách (< 1440px) vyjde calc na ~0 a nic se nemění.
+ */
+const bleed = 'relative mx-[calc(50%-50vw)] overflow-x-clip bg-[#f0f0f0] text-[#111111]';
+
+/**
+ * O projektu — „Vzdělávání, které se učí společně s vámi". Na úvodní
+ * stránce stojí hned pod hero, před kurzy; zbytek „O projektu" (Cíle,
+ * Výstup, Přínos) jde až za kurzy jako `ProjectAboutSection`.
+ *
+ * Zrcadlově k hero: od lg je text vpravo a zarovnaný doprava, organické
+ * tvary vlevo. Na mobilu zarovnání vlevo jako všude jinde.
+ */
+export function ProjectIntroSection() {
   return (
-    <div className="relative mx-[calc(50%-50vw)] overflow-x-clip bg-[#f0f0f0] text-[#111111]">
-      {/* O projektu */}
+    <div className={bleed}>
       <section className="relative overflow-hidden py-20 lg:pt-[130px] lg:pb-[60px]">
         {/* Dekorace: organické tvary, čistě pozadí. */}
         <div
           aria-hidden
-          className="blob-float pointer-events-none absolute top-10 -right-[180px] hidden size-[560px] rounded-[58%_42%_47%_53%/43%_55%_45%_57%] bg-[#D1E7D9] lg:block"
+          className="blob-float pointer-events-none absolute top-10 -left-[180px] hidden size-[560px] rounded-[42%_58%_53%_47%/43%_55%_45%_57%] bg-[#D1E7D9] lg:block"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-[380px] -right-[70px] hidden size-[190px] rounded-full border-[1.5px] border-[#298E86] opacity-[0.32] lg:block"
+          className="pointer-events-none absolute top-[380px] -left-[70px] hidden size-[190px] rounded-full border-[1.5px] border-[#298E86] opacity-[0.32] lg:block"
         />
 
-        <motion.div {...fadeUp} className={`relative ${container}`}>
+        <motion.div
+          {...fadeUp}
+          className={`relative lg:flex lg:flex-col lg:items-end lg:text-right ${container}`}
+        >
           <h2 className={`max-w-[15ch] text-pretty ${heroTitle}`}>
             Vzdělávání, které se učí společně s vámi
           </h2>
@@ -187,7 +203,7 @@ export function ProjectAboutSection() {
             studentovi. Žádné šablony — jen výuka, která dává smysl.
           </p>
 
-          <dl className="mt-14 flex flex-wrap items-end gap-x-16 gap-y-10 lg:mt-[92px]">
+          <dl className="mt-14 flex flex-wrap items-end gap-x-16 gap-y-10 lg:mt-[92px] lg:justify-end">
             {HIGHLIGHTS.map((h, i) => (
               <div key={h.label} className={h.offset}>
                 <dt
@@ -203,7 +219,14 @@ export function ProjectAboutSection() {
           </dl>
         </motion.div>
       </section>
+    </div>
+  );
+}
 
+/** Cíle, Výstup a Přínos projektu — na úvodní stránce za kurzy. */
+export function ProjectAboutSection() {
+  return (
+    <div className={bleed}>
       {/* Cíle projektu — tmavý pás se zkosenými hranami */}
       <section className="relative -mt-5 overflow-hidden py-24 text-white lg:pt-[210px] lg:pb-[220px]">
         <div

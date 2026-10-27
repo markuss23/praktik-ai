@@ -3,8 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, LogIn, LogOut, Menu, MessageCircle, UserRound, X } from "lucide-react";
-import { buttonVariants } from "@/components/ui-kit/button";
+import { LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
+import {
+  Navbar,
+  NavbarAction,
+  NavbarActions,
+  NavbarBar,
+  NavbarBrand,
+  NavbarCta,
+  NavbarLink,
+  NavbarMobileLink,
+  NavbarMobileNav,
+  NavbarNav,
+} from "@/components/ui-kit/navbar";
 import { Logo } from "@/components/ui-kit/logo";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -23,40 +34,57 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Admin", lector: true },
 ];
 
-const container = "mx-auto w-[min(1240px,94vw)]";
-
-/** Kruhové ikonové tlačítko na tmavé liště (tutor, profil, odhlášení, menu). */
-const iconButton =
-  "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white";
-
 /**
- * Oranžový „podpis" pod aktivním odkazem — stejný tah jako podtržení
- * „digitální éru" v Hero. U neaktivních odkazů se na hover dokreslí zleva.
+ * Lišta je buď průhledná (úvodní stránka úplně nahoře, nad hero), nebo plná
+ * světlá jako ostatní plovoucí plochy aplikace. Rozostření ani sklo nikde —
+ * jinde v aplikaci nejsou.
  */
-function Swoosh({ active, className }: { active: boolean; className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 300 18"
-      preserveAspectRatio="none"
-      className={cn(
-        "pointer-events-none absolute left-0 h-[7px] w-full origin-left transition-all duration-300",
-        active
-          ? "scale-x-100 opacity-100"
-          : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-60",
-        className,
-      )}
-    >
-      <path d="M3 13 C70 4 170 2 297 9" stroke="#F87B1B" strokeWidth="5" strokeLinecap="round" fill="none" />
-    </svg>
-  );
-}
+const NAV_BASE = cn(
+  "border-b-0 backdrop-blur-none transition-[background-color] duration-300 [--nav-border:rgba(13,47,49,0.08)]",
+  // Spodní hrana: vlasová linka zelená → fialová, do stran mizí.
+  "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent_0%,#5AAC78_30%,#857AD2_70%,transparent_100%)] after:transition-opacity after:duration-300",
+);
+const NAV_TRANSPARENT = "bg-transparent after:opacity-0";
+const NAV_SOLID = "bg-card after:opacity-70";
 
 /**
- * Hlavička webu — tmavý pás přes celou šířku v barvě hero karty (#0D2F31).
- * Obsah sedí na stejné mřížce jako hero (`w-[min(1240px,94vw)]`), aktivní
- * odkaz nese oranžový tah z Hero, spodní hranu tvoří značkový gradient
- * (zrcadlí 12px pruh nad Footerem). Dekorace = blob a kruhový obrys z hero.
+ * Položky bez pilulek: kitovou pilulku (`::before`) skrýváme a místo ní je
+ * pod popiskem značková linka zelená → fialová (`::after`). Na hover se
+ * napůl vykreslí od středu, aktivní položka ji má celou.
+ */
+const NAV_LINK = cn(
+  "px-3.5 py-2 text-[17px] before:hidden",
+  "after:pointer-events-none after:absolute after:inset-x-3.5 after:bottom-0.5 after:h-0.5 after:scale-x-0 after:rounded-full after:bg-[linear-gradient(90deg,#5AAC78,#857AD2)] after:transition-transform after:duration-300",
+  "hover:after:scale-x-100 hover:after:opacity-50",
+);
+/** Aktivní popisek zůstává tmavý (kit ho jinak bělí pro pilulku). */
+const ACTIVE_LINK = "text-[var(--nav-fg)] after:scale-x-100 hover:after:opacity-100";
+/**
+ * Přihlašovací CTA v hluboké petrolejové z hero místo kitového vínovo-
+ * fialového přechodu (`bg-none` ho shodí). Drží kontrast na průhledné liště
+ * nad zelenou plochou i na plné bílé.
+ */
+const LOGIN_CTA =
+  "h-10 bg-none bg-[#0D2F31] px-5 shadow-[0_6px_16px_rgba(13,47,49,0.22)] hover:bg-[#164A46] hover:brightness-100";
+
+/** Mobilní řádek: jen jemný zelený nádech, žádná výrazná výplň. */
+const ACTIVE_ROW = "bg-[#5AAC78]/12 text-[var(--nav-fg)]";
+
+/**
+ * Hlavička webu — lišta z UI kitu (`components/ui-kit/navbar.tsx`), stejná
+ * skladba jako `AppNavbar` na stránce /ui-kit, jen napojená na přihlášení,
+ * role a skutečné routy.
+ *
+ * Položek je víc než v ukázce kitu, takže se desktopová navigace zapíná až
+ * od `lg` (v kitu od `md`) — na tabletu by se do lišty nevešla.
+ *
+ * Oproti kitu je štíhlejší (64 px místo 80/96) a ladí s hero úvodní stránky:
+ * - na úvodní stránce je úplně nahoře průhledná (hero pod ni podjíždí);
+ *   jakmile se začne scrollovat, dostane plné světlé pozadí celá lišta;
+ * - vodorovné logo z kitu (`Logo`) a hned vedle něj navigace — bez pilulek,
+ *   aktivní položka má pod sebou značkovou linku;
+ * - v plném stavu spodní hrana ve značkovém přechodu, do stran mizí;
+ * - přihlašovací CTA je plná petrolejová pilulka z palety hero.
  */
 export function Header() {
   const pathname = usePathname();
@@ -64,6 +92,9 @@ export function Header() {
   const { can } = useRole();
   const { currentUser } = useCurrentUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Úvodní stránka se načítá nahoře, takže výchozí stav = průhledná.
+  const isHome = pathname === ROUTES.HOME;
+  const [atTop, setAtTop] = useState(isHome);
 
   const displayName = currentUser?.displayName ?? user?.preferred_username ?? null;
 
@@ -80,6 +111,22 @@ export function Header() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  // Průhledná jen na úvodní stránce úplně nahoře — po prvním scrollu by pod
+  // průhlednou lištou podjížděl text hero.
+  useEffect(() => {
+    if (!isHome) {
+      setAtTop(false);
+      return;
+    }
+    const update = () => setAtTop(window.scrollY <= 4);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [isHome]);
+
+  // Rozbalené mobilní menu potřebuje pod sebou plnou plochu.
+  const transparent = atTop && !mobileMenuOpen;
+
   // Close mobile menu on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -90,195 +137,80 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-[var(--z-header)] bg-[#0D2F31] text-white shadow-[0_10px_30px_rgba(13,47,49,0.18)]">
-      {/* Dekorace z hero karty — jen pozadí, ořízne je pás. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block">
-        <div className="blob-float-slow absolute -top-[150px] -left-[90px] size-[300px] rounded-[62%_38%_43%_57%/51%_47%_53%_49%] bg-[#5AAC78]/15" />
-        <div className="absolute -top-[40px] right-[8%] size-[150px] rounded-full border-[1.5px] border-[#D1E7D9]/20" />
-      </div>
+    <Navbar className={cn(NAV_BASE, transparent ? NAV_TRANSPARENT : NAV_SOLID)}>
+      <NavbarBar className="h-16 sm:h-16">
+        {/* Logo a navigace vlevo u sebe, akce vpravo. */}
+        <div className="flex min-w-0 items-center gap-6 xl:gap-10">
+          <NavbarBrand render={<Link href={ROUTES.HOME} />} aria-label="PRAKTIK-AI — úvodní stránka">
+            <Logo />
+          </NavbarBrand>
 
-      <div className={cn("relative flex h-[72px] items-center justify-between gap-4", container)}>
-        <Link href={ROUTES.HOME} aria-label="PRAKTIK-AI — úvodní stránka" className="shrink-0">
-          <Logo className="text-white" />
-        </Link>
+          <NavbarNav className="gap-0.5 md:hidden lg:flex">
+            {links.map(({ href, label }) => (
+              <NavbarLink
+                key={href}
+                render={<Link href={href} />}
+                active={isActive(href)}
+                className={cn(NAV_LINK, isActive(href) && ACTIVE_LINK)}
+              >
+                {label}
+              </NavbarLink>
+            ))}
+          </NavbarNav>
+        </div>
 
-        {/* Navigace — aktivní odkaz podtržený oranžovým tahem z Hero */}
-        <nav aria-label="Hlavní navigace" className="hidden lg:block">
-          <ul className="flex items-center gap-7 xl:gap-9">
-            {links.map(({ href, label }) => {
-              const active = isActive(href);
-              return (
-                <li key={href}>
-                  <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "group relative inline-flex py-2 text-[15px] font-semibold whitespace-nowrap transition-colors",
-                      active ? "text-white" : "text-white/65 hover:text-white",
-                    )}
-                  >
-                    {label}
-                    <Swoosh active={active} className="-bottom-0.5" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        {/* Akce uživatele */}
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-          {isAuthenticated && (
-            <Link
-              href="/tutor"
-              aria-label="AI tutor"
-              title="AI tutor"
-              className={cn(iconButton, "hidden sm:inline-flex", isActive("/tutor") && "bg-white/10 text-white")}
-            >
-              <MessageCircle className="size-5" strokeWidth={1.8} />
-            </Link>
-          )}
-
-          {/* Zkratka do adminu na mobilu (jen lektor+) */}
-          {isAuthenticated && can("lector") && (
-            <Link
-              href="/admin"
-              aria-label="Admin dashboard"
-              title="Admin dashboard"
-              className={cn(iconButton, "lg:hidden", isActive("/admin") && "bg-white/10 text-white")}
-            >
-              <LayoutDashboard className="size-5" strokeWidth={1.8} />
-            </Link>
-          )}
-
+        <NavbarActions>
           {loading ? (
-            <div className="size-10 animate-pulse rounded-full bg-white/10" />
+            <div aria-hidden className="size-9 animate-pulse rounded-full bg-[var(--nav-hover)]" />
           ) : isAuthenticated ? (
             <>
-              <Link
-                href={ROUTES.PROFILE}
+              <NavbarAction
+                size="default"
+                render={<Link href={ROUTES.PROFILE} />}
                 title={displayName ?? "Můj profil"}
-                className={cn(
-                  "flex h-10 items-center gap-2 rounded-full pr-1 pl-1 transition-colors hover:bg-white/10 xl:pr-3.5",
-                  isActive(ROUTES.PROFILE) && "bg-white/10",
-                )}
+                aria-label={displayName ? undefined : "Můj profil"}
+                className={cn(isActive(ROUTES.PROFILE) && "bg-[var(--nav-hover)] text-[var(--nav-fg)]")}
               >
-                <span className="flex size-8 items-center justify-center rounded-full bg-[#D1E7D9] text-[#0D2F31] ring-2 ring-[#5AAC78]/60">
-                  <UserRound className="size-[18px]" strokeWidth={1.8} />
-                </span>
+                <UserRound />
                 {displayName && (
-                  <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white xl:block">
-                    {displayName}
-                  </span>
+                  // Až od xl — mezi lg a xl by se s šesti odkazy lišta nevešla.
+                  <span className="hidden max-w-[140px] truncate xl:inline">{displayName}</span>
                 )}
-              </Link>
-              <button
-                type="button"
-                onClick={logout}
-                aria-label="Odhlásit se"
-                title="Odhlásit se"
-                className={cn(iconButton, "hover:bg-red-500/15 hover:text-red-300")}
-              >
-                <LogOut className="size-5" strokeWidth={1.8} />
-              </button>
+              </NavbarAction>
+              <NavbarAction onClick={logout} aria-label="Odhlásit se" title="Odhlásit se">
+                <LogOut />
+              </NavbarAction>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={login}
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "h-10 gap-2 rounded-full px-4 text-sm font-semibold hover:scale-105 active:scale-95 sm:px-5",
-              )}
-            >
-              <LogIn aria-hidden className="size-4" strokeWidth={2} />
-              <span className="hidden sm:inline">Přihlásit se</span>
-              <span className="sm:hidden">Přihlásit</span>
-            </button>
+            <NavbarCta onClick={login} className={LOGIN_CTA}>
+              <LogIn className="text-[#5AAC78]" />
+              Přihlásit se
+            </NavbarCta>
           )}
 
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Otevřít menu"
-            className={cn(iconButton, "lg:hidden")}
+          <NavbarAction
+            className="lg:hidden"
+            aria-label={mobileMenuOpen ? "Zavřít menu" : "Otevřít menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            <Menu className="size-6" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
+            {mobileMenuOpen ? <X /> : <Menu />}
+          </NavbarAction>
+        </NavbarActions>
+      </NavbarBar>
 
-      {/* Značkový gradient jako spodní hrana — zrcadlí pruh nad Footerem. */}
-      <div aria-hidden className="h-1 bg-[linear-gradient(90deg,#B1475C_0%,#857AD2_100%)]" />
-
-      {/* Mobilní menu — celá obrazovka v barvě lišty, velké odkazy s tahem */}
-      {mobileMenuOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Menu"
-          className="fixed inset-0 z-[var(--z-modal)] flex flex-col overflow-hidden bg-[#0D2F31] text-white lg:hidden"
-        >
-          <div aria-hidden className="pointer-events-none absolute -right-[120px] -bottom-[120px] size-[340px] rounded-[58%_42%_47%_53%/43%_55%_45%_57%] bg-[#5AAC78]/15" />
-          <div aria-hidden className="pointer-events-none absolute top-[38%] -left-[70px] size-[180px] rounded-full border-[1.5px] border-[#D1E7D9]/20" />
-
-          <div className={cn("relative flex h-[72px] shrink-0 items-center justify-between", container)}>
-            <Logo className="text-white" />
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-label="Zavřít menu"
-              className={iconButton}
-            >
-              <X className="size-6" strokeWidth={1.8} />
-            </button>
-          </div>
-          <div aria-hidden className="h-1 shrink-0 bg-[linear-gradient(90deg,#B1475C_0%,#857AD2_100%)]" />
-
-          <nav aria-label="Hlavní navigace" className={cn("relative flex-1 overflow-y-auto pt-10 pb-8", container)}>
-            <ul className="space-y-5">
-              {links.map(({ href, label }) => {
-                const active = isActive(href);
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "group relative inline-flex items-center gap-3 pb-1 text-3xl font-bold tracking-[-0.02em] transition-colors",
-                        active ? "text-white" : "text-white/55 hover:text-white",
-                      )}
-                    >
-                      {href === "/admin" && <LayoutDashboard className="size-6" strokeWidth={1.8} />}
-                      {label}
-                      <Swoosh active={active} className="-bottom-1.5 h-[9px]" />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {isAuthenticated && displayName && (
-            <div className={cn("relative shrink-0 border-t border-white/10 py-5 text-sm text-white/60", container)}>
-              Přihlášen/a jako <span className="font-semibold text-white">{displayName}</span>
-            </div>
-          )}
-
-          {!loading && !isAuthenticated && (
-            <div className={cn("relative shrink-0 pb-8", container)}>
-              <button
-                type="button"
-                onClick={login}
-                className={cn(buttonVariants({ size: "xl" }), "h-12 w-full gap-2 rounded-full text-base")}
-              >
-                <LogIn aria-hidden className="size-5" strokeWidth={2} />
-                Přihlásit se
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </header>
+      <NavbarMobileNav open={mobileMenuOpen} className="md:flex lg:hidden">
+        {links.map(({ href, label }) => (
+          <NavbarMobileLink
+            key={href}
+            render={<Link href={href} />}
+            active={isActive(href)}
+            className={cn(isActive(href) && ACTIVE_ROW)}
+          >
+            {label}
+          </NavbarMobileLink>
+        ))}
+      </NavbarMobileNav>
+    </Navbar>
   );
 }

@@ -114,6 +114,7 @@ export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
 export { CategoryGroup, CourseCategories, ModuleCategories } from "./CategoryTags";
 export { CourseCard } from "./CourseCard";
+export { CourseRow } from "./CourseRow";
 export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
