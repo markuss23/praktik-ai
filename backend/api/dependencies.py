@@ -92,8 +92,8 @@ class Auth:
                 realm_name=settings.keycloak.realm_name,
                 client_secret_key=settings.keycloak.client_secret,
             )
-        except Exception as e:
-            print(f"Warning: Failed to initialize Keycloak: {e}")
+        except Exception:
+            log.warning("Nepodařilo se inicializovat Keycloak", exc_info=True)
             self.keycloak_openid = None
 
     def get_token(self, username: str, password: str) -> dict:
@@ -109,7 +109,7 @@ class Auth:
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
         except Exception as e:
-            print(e)
+            log.exception("Chyba při získávání tokenu z Keycloak")
             raise HTTPException(
                 status_code=500,
                 detail="Chyba při získávání tokenu z Keycloak",

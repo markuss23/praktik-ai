@@ -1,12 +1,15 @@
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.practice_answer_evaluator.state import EvaluatorState
 
+logger = logging.getLogger(__name__)
+
 
 def evaluate_answer(state: EvaluatorState) -> dict:
     """Vyhodnotí otevřenou odpověď studenta pomocí LLM."""
-    print("Vyhodnocuji otevřenou procvičovací odpověď...")
+    logger.info("Vyhodnocuji otevřenou procvičovací odpověď...")
 
     if state.get("error"):
         return {}
@@ -34,7 +37,7 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     raw = response.text.strip()
 
     is_correct, ai_response = _parse_evaluation(raw)
-    print(f"Vyhodnocení: correct={is_correct}")
+    logger.info(f"Vyhodnocení: correct={is_correct}")
 
     return {"is_correct": is_correct, "ai_response": ai_response}
 

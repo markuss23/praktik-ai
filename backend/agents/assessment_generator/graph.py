@@ -1,3 +1,4 @@
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.assessment_generator.state import AssessmentState
@@ -6,6 +7,8 @@ from agents.assessment_generator.nodes import (
     generate_question,
     persist_session,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def should_continue(state: AssessmentState) -> str:
@@ -17,7 +20,7 @@ def should_continue(state: AssessmentState) -> str:
 
 def create_graph():
     """Vytváří graf pro generování assessment otázky."""
-    print("Vytvářím assessment generation graf...")
+    logger.info("Vytvářím assessment generation graf...")
     workflow = StateGraph(AssessmentState)
 
     # Nodes

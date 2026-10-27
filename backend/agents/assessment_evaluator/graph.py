@@ -1,3 +1,4 @@
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.assessment_evaluator.state import EvaluationState
@@ -6,6 +7,8 @@ from agents.assessment_evaluator.nodes import (
     evaluate_answer,
     persist_result,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def should_continue(state: EvaluationState) -> str:
@@ -17,7 +20,7 @@ def should_continue(state: EvaluationState) -> str:
 
 def create_graph():
     """Vytváří graf pro vyhodnocení assessment odpovědi."""
-    print("Vytvářím assessment evaluation graf...")
+    logger.info("Vytvářím assessment evaluation graf...")
     workflow = StateGraph(EvaluationState)
 
     # Nodes

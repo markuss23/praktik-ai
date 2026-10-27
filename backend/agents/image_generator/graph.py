@@ -1,9 +1,12 @@
+import logging
 from collections.abc import Callable
 
 from langgraph.graph import END, StateGraph
 
 from agents.image_generator.nodes import generate_image_node
 from agents.image_generator.state import ImageGeneratorState
+
+logger = logging.getLogger(__name__)
 
 
 def create_image_graph(
@@ -25,7 +28,7 @@ def create_image_graph(
         build_prompt_node: Node, který z kontextu sestaví ``image_spec`` a ``image_prompt``.
         label: Krátký popis do logu, např. "kurzu" nebo "modulu".
     """
-    print(f"Vytvářím graf uzlů pro image generator agenta ({label})...")
+    logger.info(f"Vytvářím graf uzlů pro image generator agenta ({label})...")
     workflow = StateGraph(state_schema)
 
     # nodes

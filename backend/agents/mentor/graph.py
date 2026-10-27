@@ -1,5 +1,6 @@
 """LangGraph pro generování embeddingů."""
 
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.mentor.state import AgentState
@@ -10,10 +11,12 @@ from agents.mentor.nodes import (
     generate_answer,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_graph():
     """RAG s rerankingem: Load → Query → Rerank → Generate."""
-    print("Vytvářím RAG mentor graf...")
+    logger.info("Vytvářím RAG mentor graf...")
     workflow = StateGraph(AgentState)
 
     # Nodes

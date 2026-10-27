@@ -1,9 +1,12 @@
+import logging
 from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from api.src.assessments.open_question_ai.agents.evaluator.state import EvaluatorState
+
+logger = logging.getLogger(__name__)
 
 
 PROMPT_KEY = "open_question_ai_evaluator"
@@ -12,7 +15,7 @@ PROMPT = (Path(__file__).parent.parent / "prompt.md").read_text(encoding="utf-8"
 
 def evaluate_answer(state: EvaluatorState) -> dict:
     """Vyhodnotí otevřenou odpověď studenta pomocí LLM."""
-    print("Vyhodnocuji otevřenou procvičovací odpověď...")
+    logger.info("Vyhodnocuji otevřenou procvičovací odpověď...")
 
     if state.get("error"):
         return {}
@@ -40,7 +43,7 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     raw = response.text.strip()
 
     score, ai_response = _parse_evaluation(raw)
-    print(f"Vyhodnocení: score={score}")
+    logger.info(f"Vyhodnocení: score={score}")
 
     return {"score": score, "ai_response": ai_response}
 

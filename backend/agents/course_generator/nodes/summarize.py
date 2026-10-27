@@ -1,3 +1,4 @@
+import logging
 from langchain_core.messages.ai import AIMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
@@ -6,10 +7,12 @@ from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
 from api.src.agents.progress import set_progress
 
+logger = logging.getLogger(__name__)
+
 
 def summarize_content_node(state: AgentState) -> AgentState:
     """Node pro vytvoření sumarizaci kurzu."""
-    print("Generání sumarizace kurzu...")
+    logger.info("Generání sumarizace kurzu...")
 
     course_input: CourseInput | None = state.get("course_input")
     source_content = state.get("source_content", "")
@@ -46,7 +49,7 @@ ZDROJOVÝ OBSAH:
         )
 
     state["summarize_content"] = summary
-    print(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(summary)} znaků)")
-    print(f"   -> Náhled souhrnu: {summary[:200]}...")
+    logger.info(f"   -> Vytvořen souhrn obsahu kurzu (délka {len(summary)} znaků)")
+    logger.debug(f"   -> Náhled souhrnu: {summary[:200]}...")
 
     return state

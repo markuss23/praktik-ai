@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -5,10 +6,12 @@ from api import models
 from api.enums import AttemptStatus, ModuleTaskSessionStatus
 from agents.assessment_evaluator.state import EvaluationState
 
+logger = logging.getLogger(__name__)
+
 
 def persist_result(state: EvaluationState) -> dict:
     """Uloží TaskAttempt a aktualizuje status session."""
-    print("Ukládám výsledek hodnocení...")
+    logger.info("Ukládám výsledek hodnocení...")
 
     if state.get("error"):
         return {}
@@ -55,6 +58,6 @@ def persist_result(state: EvaluationState) -> dict:
     db.commit()
     db.refresh(attempt)
 
-    print(f"TaskAttempt {attempt.attempt_id} uložen (score={ai_score}, passed={is_passed})")
+    logger.info(f"TaskAttempt {attempt.attempt_id} uložen (score={ai_score}, passed={is_passed})")
 
     return {"attempt_id": attempt.attempt_id}

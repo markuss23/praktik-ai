@@ -1,13 +1,16 @@
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.practice_question_generator.state import GeneratorState
 from api.enums import QuestionType
 
+logger = logging.getLogger(__name__)
+
 
 def generate_question(state: GeneratorState) -> dict:
     """Vygeneruje procvičovací otázku pomocí LLM."""
-    print("Generuji procvičovací otázku...")
+    logger.info("Generuji procvičovací otázku...")
 
     if state.get("error"):
         return {}
@@ -34,10 +37,10 @@ def generate_question(state: GeneratorState) -> dict:
         generated_question, options = _parse_closed(raw)
         if options is None:
             return {"error": f"LLM vrátil neočekávaný formát pro closed otázku: {raw[:200]}"}
-        print(f"Closed otázka vygenerována s {len(options)} možnostmi")
+        logger.info(f"Closed otázka vygenerována s {len(options)} možnostmi")
         return {"generated_question": generated_question, "options": options}
     else:
-        print(f"Open otázka vygenerována: {raw[:80]}...")
+        logger.info(f"Open otázka vygenerována: {raw[:80]}...")
         return {"generated_question": raw, "options": None}
 
 

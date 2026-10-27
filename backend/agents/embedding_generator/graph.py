@@ -1,5 +1,6 @@
 """LangGraph pro generování embeddingů."""
 
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.embedding_generator.state import AgentState
@@ -9,10 +10,12 @@ from agents.embedding_generator.nodes import (
     # save_embeddings_node,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_graph():
     """Vytváří graf uzlů pro generování embeddingů."""
-    print("Vytvářím graf uzlů pro embeddingy...")
+    logger.info("Vytvářím graf uzlů pro embeddingy...")
     workflow = StateGraph(AgentState)
 
     # nodes

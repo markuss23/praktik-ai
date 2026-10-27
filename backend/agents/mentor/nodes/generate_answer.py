@@ -1,13 +1,16 @@
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState
 from agents.mentor.state import ChunkData
 
+logger = logging.getLogger(__name__)
+
 
 def generate_answer(state: AgentState) -> AgentState:
     """Uzlu pro generování odpovědi."""
-    print("Generuji odpověď...")
+    logger.info("Generuji odpověď...")
 
     context_chunks: list[ChunkData] = state.get("context_chunks", [])
     user_message: str = state["message"]
@@ -17,8 +20,8 @@ def generate_answer(state: AgentState) -> AgentState:
     )
     db = state["db"]
 
-    print(f"Uživatelská otázka: {user_message}")
-    print(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
+    logger.debug(f"Uživatelská otázka: {user_message}")
+    logger.info(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
     if not context_chunks:
         return {
             "answer": "Omlouvám se, ale nenašel jsem relevantní informace k vaší otázce v tomto učebním bloku.",
@@ -64,14 +67,14 @@ def generate_answer(state: AgentState) -> AgentState:
         response = llm.invoke(messages)
         answer = response.text
 
-        print(f"Odpověď vygenerována ({len(answer)} znaků)")
+        logger.info(f"Odpověď vygenerována ({len(answer)} znaků)")
 
         return {
             "answer": answer,
         }
 
     except Exception as e:
-        print(f"Chyba při generování odpovědi: {e}")
+        logger.exception(f"Chyba při generování odpovědi: {e}")
         return {
             "answer": "Omlouvám se, vyskytla se chyba při generování odpovědi.",
         }

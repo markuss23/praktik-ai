@@ -1,4 +1,5 @@
 # """Node pro generování embeddingů."""
+import logging
 from langchain_core.documents.base import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -6,15 +7,17 @@ from agents.vector_store import get_vector_store
 from agents.embedding_generator.state import AgentState
 from agents.embedding_generator.state import LearnBlockData
 
+logger = logging.getLogger(__name__)
+
 
 def generate_embeddings_node(state: AgentState) -> AgentState:
     learn_blocks: list[LearnBlockData] = state.get("learn_blocks", [])
 
     if not learn_blocks:
-        print("Žádné learn blocky k zpracování")
+        logger.warning("Žádné learn blocky k zpracování")
         return state
 
-    print(f"Generuji embeddingy pro {len(learn_blocks)} learn blocků...")
+    logger.info(f"Generuji embeddingy pro {len(learn_blocks)} learn blocků...")
 
     vector_store = get_vector_store()
 
@@ -25,7 +28,7 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
     )
 
     for learn_block in learn_blocks:
-        print(f"  • Learn block {learn_block.learn_id}: generuji embedding")
+        logger.info(f"  • Learn block {learn_block.learn_id}: generuji embedding")
 
         texts: list[str] = text_splitter.split_text(learn_block.content)
 
@@ -42,7 +45,7 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
             for idx, text in enumerate(texts)
         ]
 
-        print(f"    → {len(documents)} chunků")
+        logger.info(f"    → {len(documents)} chunků")
 
         vector_store.add_documents(
             documents,

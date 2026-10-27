@@ -1,12 +1,15 @@
+import logging
 from sqlalchemy.orm import Session
 
 from api import models
 from agents.practice_answer_evaluator.state import EvaluatorState
 
+logger = logging.getLogger(__name__)
+
 
 def persist_result(state: EvaluatorState) -> dict:
     """Uloží UserPracticeAttempt s výsledkem vyhodnocení."""
-    print("Ukládám výsledek procvičovacího pokusu...")
+    logger.info("Ukládám výsledek procvičovacího pokusu...")
 
     if state.get("error"):
         return {}
@@ -23,5 +26,5 @@ def persist_result(state: EvaluatorState) -> dict:
     db.commit()
     db.refresh(attempt)
 
-    print(f"UserPracticeAttempt {attempt.attempt_id} uložen (correct={state['is_correct']})")
+    logger.info(f"UserPracticeAttempt {attempt.attempt_id} uložen (correct={state['is_correct']})")
     return {"attempt_id": attempt.attempt_id}

@@ -1,9 +1,12 @@
 """Node pro generování odpovědi na základě wiki chunků."""
 
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.wiki.mentor.state import WikiMentorState, ChunkData
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gpt-4o-mini"
 
@@ -23,7 +26,7 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
     Vygeneruje odpověď na otázku uživatele na základě nalezených wiki chunků.
 
     """
-    print("Generuji odpoved z wiki obsahu...")
+    logger.info("Generuji odpoved z wiki obsahu...")
 
     context_chunks: list[ChunkData] = state.get("context_chunks", [])
     user_message: str = state["message"]
@@ -58,10 +61,10 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
     try:
         response = llm.invoke(messages)
         answer = response.text
-        print(f"Odpoved vygenerovana ({len(answer)} znaku)")
+        logger.info(f"Odpoved vygenerovana ({len(answer)} znaku)")
         return {**state, "answer": answer}
     except Exception as e:
-        print(f"Chyba pri generovani odpovedi: {e}")
+        logger.exception(f"Chyba pri generovani odpovedi: {e}")
         return {
             **state,
             "answer": "Omlouvám se, vyskytla se chyba při generování odpovědi.",

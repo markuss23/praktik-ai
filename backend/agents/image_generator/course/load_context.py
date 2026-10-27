@@ -1,8 +1,11 @@
+import logging
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
 from agents.image_generator.course.state import CourseContext, CourseImageGeneratorState
 from api import models
+
+logger = logging.getLogger(__name__)
 
 
 def format_krauu_competences(competences: list[models.KrauuCompetence]) -> list[str]:
@@ -19,7 +22,7 @@ def load_course_context_node(
     state: CourseImageGeneratorState,
 ) -> CourseImageGeneratorState:
     """Node pro načtení kontextu kurzu (title, description, summary, číselníky, KRAUU) z databáze."""
-    print("Načítám kontext kurzu z databáze...")
+    logger.info("Načítám kontext kurzu z databáze...")
 
     db: Session = state["db"]
     course_id: int = state["course_id"]
@@ -49,6 +52,6 @@ def load_course_context_node(
         krauu_competences=format_krauu_competences(course.krauu_competence_list),
     )
 
-    print(f"Načten kurz: {course.title}")
+    logger.info(f"Načten kurz: {course.title}")
 
     return state

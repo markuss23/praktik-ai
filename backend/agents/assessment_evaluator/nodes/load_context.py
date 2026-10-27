@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -5,10 +6,12 @@ from api import models
 from api.enums import ModuleTaskSessionStatus
 from agents.assessment_evaluator.state import EvaluationState
 
+logger = logging.getLogger(__name__)
+
 
 def load_context(state: EvaluationState) -> dict:
     """Načte session, otázku a learn block obsah pro vyhodnocení."""
-    print("Načítám kontext pro vyhodnocení...")
+    logger.info("Načítám kontext pro vyhodnocení...")
 
     db: Session = state["db"]
     session_id: int = state["session_id"]
@@ -51,7 +54,7 @@ def load_context(state: EvaluationState) -> dict:
         return {"error": "Modul nemá žádný learn block"}
 
     learn_content = learn_blocks[0].content
-    print(f"Kontext načten: otázka ({len(session.generated_task)} zn.), obsah ({len(learn_content)} zn.)")
+    logger.info(f"Kontext načten: otázka ({len(session.generated_task)} zn.), obsah ({len(learn_content)} zn.)")
 
     return {
         "learn_content": learn_content,

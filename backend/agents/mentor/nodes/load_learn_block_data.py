@@ -1,11 +1,14 @@
+import logging
 from agents.mentor.state import AgentState, LearnBlockQueryAttr
 
 from api import models
 
+logger = logging.getLogger(__name__)
+
 
 def load_learn_block_data(state: AgentState) -> AgentState:
     """Uzlu pro načítaní dat z LearnBlocku."""
-    print("Načítám data z LearnBlocku...")
+    logger.info("Načítám data z LearnBlocku...")
     db = state["db"]
     learn_block_id = state["learn_block_id"]
 
@@ -19,7 +22,7 @@ def load_learn_block_data(state: AgentState) -> AgentState:
     if learn_block is None:
         return {"message": "Learn block nenalezen"}
 
-    print(f"Načten LearnBlock: {learn_block.learn_id}")
+    logger.info(f"Načten LearnBlock: {learn_block.learn_id}")
 
     user: models.User | None = (
         db.query(models.User)

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from agents.base.loaders.base import file_to_text
@@ -6,10 +7,12 @@ from agents.course_generator.state import CourseInput
 from api.src.agents.progress import set_progress
 from api.storage import seaweedfs
 
+logger = logging.getLogger(__name__)
+
 
 def load_data_node(state: AgentState) -> AgentState:
     """Node pro načtení obsahu souborů ze SeaweedFS."""
-    print("Načítám obsah souborů ze SeaweedFS...")
+    logger.info("Načítám obsah souborů ze SeaweedFS...")
 
     set_progress(state["course_id"], step=2, label="Načítání podkladů")
 
@@ -25,9 +28,9 @@ def load_data_node(state: AgentState) -> AgentState:
             content_bytes = seaweedfs.download_file(remote_path)
             data = file_to_text(content_bytes, filename)
             content_parts.append(f"--- {filename} ---\n{data}")
-            print(f"   -> Načten soubor: {filename}")
+            logger.debug(f"   -> Načten soubor: {filename}")
         except Exception as e:
-            print(f"   -> Chyba při načítání {filename}: {e}")
+            logger.exception(f"   -> Chyba při načítání {filename}: {e}")
 
     if not content_parts:
         raise ValueError(
@@ -36,6 +39,6 @@ def load_data_node(state: AgentState) -> AgentState:
         )
 
     state["source_content"] = "\n\n".join(content_parts)
-    print(f"   -> Celkem načteno {len(content_parts)} souborů")
+    logger.info(f"   -> Celkem načteno {len(content_parts)} souborů")
 
     return state

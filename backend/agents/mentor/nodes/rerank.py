@@ -1,20 +1,23 @@
 # backend/agents/mentor/nodes/rerank_documents.py
+import logging
 from langchain_core.messages.ai import AIMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState, ChunkData
 
+logger = logging.getLogger(__name__)
+
 
 def rerank_documents(state: AgentState) -> dict:
     """LLM reranking dokumentů podle relevance k otázce."""
-    print("Reranking dokumentů pomocí LLM...")
+    logger.info("Reranking dokumentů pomocí LLM...")
 
     context_chunks = state.get("context_chunks", [])
     user_message = state["message"]
     db = state["db"]
 
     if len(context_chunks) <= 3:
-        print("Málo dokumentů, přeskakuji reranking")
+        logger.info("Málo dokumentů, přeskakuji reranking")
         return {}  # Necháme původní pořadí
 
     cfg = get_llm_config(db, "mentor_reranker")
@@ -52,12 +55,12 @@ def rerank_documents(state: AgentState) -> dict:
             if 0 <= idx < len(context_chunks)
         ]
 
-        print(f"Reranking: {[i + 1 for i in ranked_indices[:3]]}")
-        print(f"Vybráno {len(reranked_chunks)} top dokumentů")
+        logger.debug(f"Reranking: {[i + 1 for i in ranked_indices[:3]]}")
+        logger.info(f"Vybráno {len(reranked_chunks)} top dokumentů")
 
         return {"context_chunks": reranked_chunks}
 
     except Exception as e:
-        print(f"Chyba při rerankingu: {e}")
+        logger.exception(f"Chyba při rerankingu: {e}")
         # Fallback: vrať top 3 z původních
         return {"context_chunks": context_chunks[:3]}

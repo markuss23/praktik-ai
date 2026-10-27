@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 
 import httpx
@@ -56,6 +57,7 @@ from api.database import SessionLocal, SessionSqlSessionDependency
 from agents.embedding_generator import create_graph as create_embedding_graph
 from agents.embedding_generator.state import AgentState
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 public_router = APIRouter(prefix="/courses", tags=["Courses"])
@@ -171,8 +173,8 @@ async def _generate_embeddings(course_id: int) -> None:
     try:
         app: CompiledStateGraph[AgentState, None, AgentState, AgentState] = create_embedding_graph()
         await app.ainvoke({"course_id": course_id, "db": db})
-    except Exception as e:
-        print(f"Chyba při generování embeddingů pro kurz {course_id}: {e}")
+    except Exception:
+        logger.exception("Chyba při generování embeddingů pro kurz %s", course_id)
     finally:
         db.close()
 

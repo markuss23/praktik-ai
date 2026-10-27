@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import select
@@ -14,6 +15,8 @@ from agents.course_generator.state import (
 )
 from api import models
 from api.src.agents.progress import set_progress
+
+logger = logging.getLogger(__name__)
 
 
 def build_catalogs(db: Session) -> str:
@@ -99,7 +102,7 @@ def enrich_module(llm, prompt: str, title: str) -> ModuleEnrichment:
     if not errors:
         return enrichment
 
-    print(f"   -> WARN: Modul '{title}' má chyby v otázkách, opakuji: {errors}")
+    logger.warning(f"   -> WARN: Modul '{title}' má chyby v otázkách, opakuji: {errors}")
     error_lines = "\n".join(f"- {e}" for e in errors)
     enrichment = llm.invoke(
         f"{prompt}\n\n"
@@ -115,7 +118,7 @@ def enrich_module(llm, prompt: str, title: str) -> ModuleEnrichment:
 
 def enrich_modules_node(state: AgentState) -> AgentState:
     """Node, který k hotovým modulům určí číselníky (NP, KRAUU, Bloom) a vytvoří otázky."""
-    print("Zařazování modulů do číselníků a tvorba otázek...")
+    logger.info("Zařazování modulů do číselníků a tvorba otázek...")
 
     course_id = state.get("course_id")
     if course_id is not None:
@@ -151,7 +154,7 @@ def enrich_modules_node(state: AgentState) -> AgentState:
         )
 
     for module, e in zip(course.modules, state["enrichments"], strict=True):
-        print(
+        logger.info(
             f"   -> {module.title}: NP {e.neuro_principle_code}, "
             f"KRAUU {e.krauu_competence_codes}, Bloom {e.bloom_level_codes}"
         )

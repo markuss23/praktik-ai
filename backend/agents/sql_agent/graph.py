@@ -1,11 +1,14 @@
 """LangGraph SQL agent."""
 
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from sqlalchemy import text
 
 from agents.base.llm import create_chat_llm, get_llm_config
 from agents.sql_agent.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gpt-5.4"
 
@@ -93,7 +96,7 @@ def run_query(state: AgentState) -> dict:
     """Spustí SQL dotaz a vrátí výsledek jako string."""
     query = state["query"]
     
-    print("Running query:", query)
+    logger.info("Running query: %s", query)
 
     first_token = query.strip().split()[0].lower() if query.strip() else ""
     if first_token in _FORBIDDEN:

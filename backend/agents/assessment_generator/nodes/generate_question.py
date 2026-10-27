@@ -1,12 +1,15 @@
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.assessment_generator.state import AssessmentState
 
+logger = logging.getLogger(__name__)
+
 
 def generate_question(state: AssessmentState) -> dict:
     """Vygeneruje assessment otázku pomocí LLM na základě learn_content."""
-    print("Generuji assessment otázku...")
+    logger.info("Generuji assessment otázku...")
 
     # Pokud předchozí uzel nastavil chybu, přeskočíme
     if state.get("error"):
@@ -28,6 +31,6 @@ def generate_question(state: AssessmentState) -> dict:
     response = llm.invoke(messages)
     generated_question = response.text.strip()
 
-    print(f"Otázka vygenerována: {generated_question[:80]}...")
+    logger.info(f"Otázka vygenerována: {generated_question[:80]}...")
 
     return {"generated_question": generated_question}

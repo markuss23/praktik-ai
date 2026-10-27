@@ -1,10 +1,13 @@
 """Node pro generování embeddingů z wiki stránek."""
 
+import logging
 from langchain_core.documents.base import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from agents.wiki.agent.state import WikiAgentState, WikiPageData
 from agents.wiki.vector_store import get_wiki_vector_store
+
+logger = logging.getLogger(__name__)
 
 
 def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
@@ -15,10 +18,10 @@ def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
     pages: list[WikiPageData] = state.get("pages", [])
 
     if not pages:
-        print("Žádné wiki stránky ke zpracování")
+        logger.warning("Žádné wiki stránky ke zpracování")
         return state
 
-    print(f"Generuji embeddingy pro {len(pages)} wiki stránek...")
+    logger.info(f"Generuji embeddingy pro {len(pages)} wiki stránek...")
 
     vector_store = get_wiki_vector_store()
 

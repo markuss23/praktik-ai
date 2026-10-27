@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -7,10 +8,12 @@ from api import models
 from api.src.agents.progress import set_progress
 from agents.course_generator.state import AgentState, CourseInput
 
+logger = logging.getLogger(__name__)
+
 
 def load_data_from_db_node(state: AgentState) -> AgentState:
     """Node pro načtení dat kurzu z databáze."""
-    print("Načítám data kurzu z databáze...")
+    logger.info("Načítám data kurzu z databáze...")
 
     db: Session = state.get("db")
     course_id: int = state["course_id"]
@@ -49,8 +52,8 @@ def load_data_from_db_node(state: AgentState) -> AgentState:
         files=file_paths,
     )
 
-    print(f"   -> Načten kurz: {course.title}")
-    print(f"   -> Počet modulů: {course.modules_count_ai_generated}")
-    print(f"   -> Počet souborů: {len(file_paths)}")
+    logger.info(f"   -> Načten kurz: {course.title}")
+    logger.info(f"   -> Počet modulů: {course.modules_count_ai_generated}")
+    logger.info(f"   -> Počet souborů: {len(file_paths)}")
 
     return state

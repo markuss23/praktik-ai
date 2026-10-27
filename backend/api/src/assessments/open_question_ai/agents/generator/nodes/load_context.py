@@ -1,13 +1,16 @@
+import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from api.src.assessments.open_question_ai.agents.generator.state import GeneratorState
 from api import models
 
+logger = logging.getLogger(__name__)
+
 
 def load_context(state: GeneratorState) -> dict:
     """Načte modul a obsah LearnBlocku pro generování otázky."""
-    print("Načítám kontext pro generování procvičovací otázky...")
+    logger.info("Načítám kontext pro generování procvičovací otázky...")
 
     db: Session = state["db"]
     module_id: int = state["module_id"]
@@ -34,6 +37,6 @@ def load_context(state: GeneratorState) -> dict:
         return {"error": "Modul nemá žádný aktivní learn block"}
 
     learn_content = learn_blocks[0].content
-    print(f"Kontext načten: obsah ({len(learn_content)} zn.)")
+    logger.info(f"Kontext načten: obsah ({len(learn_content)} zn.)")
 
     return {"learn_content": learn_content}

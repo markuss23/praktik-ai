@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -5,10 +6,12 @@ from api import models
 from api.enums import ModuleTaskSessionStatus
 from agents.assessment_generator.state import AssessmentState
 
+logger = logging.getLogger(__name__)
+
 
 def persist_session(state: AssessmentState) -> dict:
     """Uloží nebo aktualizuje ModuleTaskSession s vygenerovanou otázkou."""
-    print("Ukládám session do DB...")
+    logger.info("Ukládám session do DB...")
 
     # Pokud předchozí uzel nastavil chybu, přeskočíme
     if state.get("error"):
@@ -35,7 +38,7 @@ def persist_session(state: AssessmentState) -> dict:
 
     if existing_session is not None:
         # Aktualizuj generated_task (přegenerování otázky pro nový pokus)
-        print(f"Aktualizuji existující session {existing_session.session_id}")
+        logger.info(f"Aktualizuji existující session {existing_session.session_id}")
         existing_session.generated_task = generated_question
         db.commit()
         db.refresh(existing_session)
@@ -52,5 +55,5 @@ def persist_session(state: AssessmentState) -> dict:
     db.commit()
     db.refresh(new_session)
 
-    print(f"Vytvořena nová session {new_session.session_id}")
+    logger.info(f"Vytvořena nová session {new_session.session_id}")
     return {"session_id": new_session.session_id}

@@ -1,12 +1,15 @@
+import logging
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
 from api.src.agents.progress import set_progress
 
+logger = logging.getLogger(__name__)
+
 
 def plan_content_node(state: AgentState) -> AgentState:
     """Node pro vytvoření modulů kurzu."""
-    print("Generání modulů kurzu...")
+    logger.info("Generání modulů kurzu...")
 
     course_id = state.get("course_id")
     if course_id is not None:
@@ -42,14 +45,14 @@ SOUHRN:
         )
 
     if len(output.modules) != course_input.modules_count_ai_generated:
-        print(
+        logger.warning(
             f"   -> WARN: LLM vrátil {len(output.modules)} modulů, "
             f"požadováno {course_input.modules_count_ai_generated}"
         )
 
     state["course"] = output
 
-    print(f"   -> Vytvořen kurz: {output.title}")
-    print(f"   -> Počet modulů: {len(output.modules)}")
+    logger.info(f"   -> Vytvořen kurz: {output.title}")
+    logger.info(f"   -> Počet modulů: {len(output.modules)}")
 
     return state

@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import Update, select, update
 from sqlalchemy.orm.session import Session
 
@@ -10,10 +11,12 @@ from api import models
 from api.enums import QuestionType
 from api.src.agents.progress import set_progress
 
+logger = logging.getLogger(__name__)
+
 
 def save_to_db_node(state: AgentState) -> AgentState:
     """Node pro uložení vygenerovaného kurzu do databáze."""
-    print("Ukládání kurzu do databáze...")
+    logger.info("Ukládání kurzu do databáze...")
 
     course_id: int = state.get("course_id")
     if course_id is not None:
@@ -63,7 +66,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
             )
         )
         if principle_id is None:
-            print(
+            logger.warning(
                 f"   -> WARN: Neznámý neuro_principle_code '{enrichment.neuro_principle_code}' "
                 f"pro modul '{module.title}', použit fallback NP-01"
             )
@@ -103,7 +106,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     )
                 ).all()
             )
-            print(
+            logger.warning(
                 f"   -> WARN: Modul '{module.title}' nemá platné KRAUU kompetence "
                 f"({enrichment.krauu_competence_codes}), použity kompetence kurzu"
             )
@@ -133,7 +136,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     )
                 ).all()
             )
-            print(
+            logger.warning(
                 f"   -> WARN: Modul '{module.title}' nemá platné Bloomovy úrovně "
                 f"({enrichment.bloom_level_codes}), použity úrovně kurzu"
             )
@@ -182,7 +185,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
 
     db.commit()
 
-    print(f"   -> Kurz uložen do databáze (course_id: {course_id})")
-    print(f"   -> Vytvořeno {len(generated_course.modules)} modulů")
+    logger.info(f"   -> Kurz uložen do databáze (course_id: {course_id})")
+    logger.info(f"   -> Vytvořeno {len(generated_course.modules)} modulů")
 
     return state

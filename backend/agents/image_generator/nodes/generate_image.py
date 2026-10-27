@@ -1,9 +1,12 @@
+import logging
 import time
 
 from agents.base.llm import get_llm_config
 from agents.image_generator.clients import generate_image_openai
 from agents.image_generator.state import GeneratedImageResult, ImageGeneratorState
 from api.src.agents.image_progress import set_image_progress
+
+logger = logging.getLogger(__name__)
 
 # Klíč v system_setting, jehož sloupec model určuje OpenAI image model
 IMAGE_MODEL_SETTING_KEY = "image_generator_model"
@@ -43,13 +46,13 @@ async def generate_image_node(state: ImageGeneratorState) -> ImageGeneratorState
             f"'{IMAGE_MODEL_SETTING_KEY}'"
         )
 
-    print(f"Generuji obrázek modelem {model_name}")
+    logger.info(f"Generuji obrázek modelem {model_name}")
     start = time.perf_counter()
 
     image_url = await generate_image_openai(model_name, image_prompt)
 
     latency_ms = int((time.perf_counter() - start) * 1000)
-    print(f"{model_name} hotovo za {latency_ms} ms")
+    logger.info(f"{model_name} hotovo za {latency_ms} ms")
 
     state["result"] = GeneratedImageResult(
         model_name=model_name, image_url=image_url, latency_ms=latency_ms

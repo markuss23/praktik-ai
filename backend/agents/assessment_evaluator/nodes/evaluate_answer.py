@@ -1,14 +1,17 @@
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.assessment_evaluator.state import EvaluationState
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_PASSING_SCORE = 75
 
 
 def evaluate_answer(state: EvaluationState) -> dict:
     """Vyhodnotí odpověď studenta pomocí LLM."""
-    print("Vyhodnocuji odpověď studenta...")
+    logger.info("Vyhodnocuji odpověď studenta...")
 
     if state.get("error"):
         return {}
@@ -42,7 +45,7 @@ def evaluate_answer(state: EvaluationState) -> dict:
     passing_score = state.get("passing_score", DEFAULT_PASSING_SCORE)
     is_passed = score >= passing_score
 
-    print(
+    logger.info(
         f"Hodnocení: score={score}, passed={is_passed} (passing_score={passing_score})"
     )
 
