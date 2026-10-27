@@ -2,6 +2,7 @@ import { Hero } from "@/components/layout";
 import ChangelogAccordion from "./ChangelogAccordion";
 import CourseSection from "./CourseSection";
 import ProjectAboutSection from "./ProjectAboutSection";
+import OnboardingOverlay from "./OnboardingOverlay";
 import { fetchChangelog } from "@/lib/changelog";
 // import ContactSection from "./ContactSection";
 
@@ -15,6 +16,7 @@ export default async function Home() {
       <CourseSection />
       <ProjectAboutSection />
       {/* <ContactSection /> */}
+      <OnboardingOverlay />
     </div>
   );
 }

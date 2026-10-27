@@ -1,15 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { ROUTES } from "@/lib/constants";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { MessageCircle, UserRound, LogIn, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useRole } from "@/hooks/useRole";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useEffect, useState } from "react";
+import { LayoutDashboard, LogIn, LogOut, Menu, MessageCircle, UserRound, X } from "lucide-react";
+import { buttonVariants } from "@/components/ui-kit/button";
+import { Logo } from "@/components/ui-kit/logo";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useRole } from "@/hooks/useRole";
+import { ROUTES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
+type NavItem = { href: string; label: string; auth?: boolean; lector?: boolean };
+
+const NAV: NavItem[] = [
+  { href: ROUTES.HOME, label: "Home" },
+  { href: "/moje-kurzy", label: "Moje kurzy", auth: true },
+  { href: ROUTES.PUBLIC_DATABASE, label: "Veřejná databáze" },
+  { href: "/odmeny", label: "Odměny" },
+  { href: "/tutor", label: "Tutor" },
+  { href: "/admin", label: "Admin", lector: true },
+];
+
+const container = "mx-auto w-[min(1240px,94vw)]";
+
+/** Kruhové ikonové tlačítko na tmavé liště (tutor, profil, odhlášení, menu). */
+const iconButton =
+  "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white";
+
+/**
+ * Oranžový „podpis" pod aktivním odkazem — stejný tah jako podtržení
+ * „digitální éru" v Hero. U neaktivních odkazů se na hover dokreslí zleva.
+ */
+function Swoosh({ active, className }: { active: boolean; className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 300 18"
+      preserveAspectRatio="none"
+      className={cn(
+        "pointer-events-none absolute left-0 h-[7px] w-full origin-left transition-all duration-300",
+        active
+          ? "scale-x-100 opacity-100"
+          : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-60",
+        className,
+      )}
+    >
+      <path d="M3 13 C70 4 170 2 297 9" stroke="#F87B1B" strokeWidth="5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+/**
+ * Hlavička webu — tmavý pás přes celou šířku v barvě hero karty (#0D2F31).
+ * Obsah sedí na stejné mřížce jako hero (`w-[min(1240px,94vw)]`), aktivní
+ * odkaz nese oranžový tah z Hero, spodní hranu tvoří značkový gradient
+ * (zrcadlí 12px pruh nad Footerem). Dekorace = blob a kruhový obrys z hero.
+ */
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user, loading, login, logout } = useAuth();
@@ -19,7 +67,13 @@ export function Header() {
 
   const displayName = currentUser?.displayName ?? user?.preferred_username ?? null;
 
-  const isActive = (path: string) => pathname === path;
+  // Home jen přesně, ostatní i s podstránkami (detail materiálu apod.).
+  const isActive = (path: string) =>
+    path === ROUTES.HOME ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
+
+  const links = NAV.filter(
+    (item) => (!item.auth || isAuthenticated) && (!item.lector || can("lector")),
+  );
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -29,316 +83,202 @@ export function Header() {
   // Close mobile menu on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
+      if (e.key === "Escape") setMobileMenuOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
   return (
-    <header className="bg-white sticky top-0 z-[1000]" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
-      <div className="mx-auto px-3 sm:px-6 lg:px-6 xl:px-10 py-2 lg:py-[7px]" style={{ maxWidth: '1600px', width: '100%', minHeight: '56px', height: 'auto' }}>
-        <nav className="flex items-center justify-between h-full gap-2">
-          {/* Logo and Brand */}
-          <Link href={ROUTES.HOME} className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
-            <Image
-              src="/logo.svg"
-              alt="PRAKTIK-AI Logo"
-              width={221}
-              height={83}
-              className="w-[64px] h-[24px] sm:w-[180px] sm:h-[68px] lg:w-[221px] lg:h-[83px] flex-shrink-0"
-            />
-            <span className="text-sm sm:text-lg lg:text-xl font-bold text-black whitespace-nowrap">PRAKTIK-AI</span>
-          </Link>
-
-          {/* Navigation Links */}
-          <ul className="hidden md:flex items-center gap-4 lg:gap-8 whitespace-nowrap">
-            <li>
-              <Link
-                href={ROUTES.HOME}
-                data-text="Home"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.HOME)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Home
-                {isActive(ROUTES.HOME) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            {isAuthenticated && (
-              <li>
-                <Link
-                  href="/moje-kurzy"
-                  data-text="Moje kurzy"
-                  className={`nav-link relative pb-1 transition-colors ${
-                    isActive('/moje-kurzy')
-                      ? 'text-black font-bold'
-                      : 'text-gray-700 hover:text-black font-medium'
-                  }`}
-                >
-                  Moje kurzy
-                  {isActive('/moje-kurzy') && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-0.5"
-                      style={{
-                        background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                      }}
-                    />
-                  )}
-                </Link>
-              </li>
-            )}
-            <li>
-              <Link
-                href={ROUTES.PUBLIC_DATABASE}
-                data-text="Veřejná databáze"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.PUBLIC_DATABASE)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Veřejná databáze
-                {isActive(ROUTES.PUBLIC_DATABASE) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/odmeny"
-                data-text="Odměny"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/odmeny')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Odměny
-                {isActive('/odmeny') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/tutor"
-                data-text="Tutor"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/tutor')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Tutor
-                {isActive('/tutor') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            {can('lector') && (
-            <li>
-              <Link
-                href="/admin"
-                data-text="Admin"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/admin')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Admin
-                {isActive('/admin') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            )}
-          </ul>
-
-          {/* User Actions */}
-          <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
-            {isAuthenticated && (
-              <Link
-                href="/tutor"
-                aria-label="AI tutor"
-                title="AI tutor"
-                className={`hidden sm:inline-flex p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/tutor') ? 'bg-gray-100' : ''
-                }`}
-              >
-                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-              </Link>
-            )}
-
-            {/* Admin shortcut on mobile (md:hidden, only for lectors+) */}
-            {isAuthenticated && can('lector') && (
-              <Link
-                href="/admin"
-                title="Admin dashboard"
-                aria-label="Admin dashboard"
-                className={`md:hidden p-1.5 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/admin') ? 'bg-gray-100' : ''
-                }`}
-              >
-                <LayoutDashboard className="w-5 h-5 text-black" strokeWidth={1.5} />
-              </Link>
-            )}
-
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
-            ) : isAuthenticated ? (
-              <div className="flex items-center gap-1 sm:gap-3">
-                <Link
-                  href={ROUTES.PROFILE}
-                  className={`flex items-center gap-1.5 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                    isActive(ROUTES.PROFILE) ? "bg-gray-100" : ""
-                  }`}
-                  title={displayName ?? "Můj profil"}
-                >
-                  <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-                  {displayName && (
-                    <span className="hidden lg:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
-                      {displayName}
-                    </span>
-                  )}
-                </Link>
-                <button
-                  onClick={logout}
-                  title="Odhlásit se"
-                  aria-label="Odhlásit se"
-                  className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full sm:rounded-md transition-colors"
-                >
-                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                  <span className="hidden sm:block">Odhlásit</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={login}
-                title="Přihlásit se"
-                aria-label="Přihlásit se"
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
-                style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
-              >
-                <LogIn className="w-4 h-4" strokeWidth={2} />
-                <span className="hidden sm:inline">Přihlásit se</span>
-                <span className="sm:hidden">Přihlásit</span>
-              </button>
-            )}
-
-            {/* Mobile hamburger toggle */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
-              aria-label="Otevřít menu"
-            >
-              <Menu className="w-6 h-6 text-black" strokeWidth={1.5} />
-            </button>
-          </div>
-        </nav>
+    <header className="sticky top-0 z-[1000] bg-[#0D2F31] text-white shadow-[0_10px_30px_rgba(13,47,49,0.18)]">
+      {/* Dekorace z hero karty — jen pozadí, ořízne je pás. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block">
+        <div className="blob-float-slow absolute -top-[150px] -left-[90px] size-[300px] rounded-[62%_38%_43%_57%/51%_47%_53%_49%] bg-[#5AAC78]/15" />
+        <div className="absolute -top-[40px] right-[8%] size-[150px] rounded-full border-[1.5px] border-[#D1E7D9]/20" />
       </div>
 
-      {/* Mobile menu drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[2000] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <span className="text-base font-bold text-black">Menu</span>
+      <div className={cn("relative flex h-[72px] items-center justify-between gap-4", container)}>
+        <Link href={ROUTES.HOME} aria-label="PRAKTIK-AI — úvodní stránka" className="shrink-0">
+          <Logo className="text-white" />
+        </Link>
+
+        {/* Navigace — aktivní odkaz podtržený oranžovým tahem z Hero */}
+        <nav aria-label="Hlavní navigace" className="hidden lg:block">
+          <ul className="flex items-center gap-7 xl:gap-9">
+            {links.map(({ href, label }) => {
+              const active = isActive(href);
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "group relative inline-flex py-2 text-[15px] font-semibold whitespace-nowrap transition-colors",
+                      active ? "text-white" : "text-white/65 hover:text-white",
+                    )}
+                  >
+                    {label}
+                    <Swoosh active={active} className="-bottom-0.5" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Akce uživatele */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+          {isAuthenticated && (
+            <Link
+              href="/tutor"
+              aria-label="AI tutor"
+              title="AI tutor"
+              className={cn(iconButton, "hidden sm:inline-flex", isActive("/tutor") && "bg-white/10 text-white")}
+            >
+              <MessageCircle className="size-5" strokeWidth={1.8} />
+            </Link>
+          )}
+
+          {/* Zkratka do adminu na mobilu (jen lektor+) */}
+          {isAuthenticated && can("lector") && (
+            <Link
+              href="/admin"
+              aria-label="Admin dashboard"
+              title="Admin dashboard"
+              className={cn(iconButton, "lg:hidden", isActive("/admin") && "bg-white/10 text-white")}
+            >
+              <LayoutDashboard className="size-5" strokeWidth={1.8} />
+            </Link>
+          )}
+
+          {loading ? (
+            <div className="size-10 animate-pulse rounded-full bg-white/10" />
+          ) : isAuthenticated ? (
+            <>
+              <Link
+                href={ROUTES.PROFILE}
+                title={displayName ?? "Můj profil"}
+                className={cn(
+                  "flex h-10 items-center gap-2 rounded-full pr-1 pl-1 transition-colors hover:bg-white/10 xl:pr-3.5",
+                  isActive(ROUTES.PROFILE) && "bg-white/10",
+                )}
+              >
+                <span className="flex size-8 items-center justify-center rounded-full bg-[#D1E7D9] text-[#0D2F31] ring-2 ring-[#5AAC78]/60">
+                  <UserRound className="size-[18px]" strokeWidth={1.8} />
+                </span>
+                {displayName && (
+                  <span className="hidden max-w-[120px] truncate text-sm font-semibold text-white xl:block">
+                    {displayName}
+                  </span>
+                )}
+              </Link>
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
-                aria-label="Zavřít menu"
+                onClick={logout}
+                aria-label="Odhlásit se"
+                title="Odhlásit se"
+                className={cn(iconButton, "hover:bg-red-500/15 hover:text-red-300")}
               >
-                <X className="w-5 h-5 text-black" strokeWidth={1.5} />
+                <LogOut className="size-5" strokeWidth={1.8} />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={login}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "h-10 gap-2 rounded-full px-4 text-sm font-semibold hover:scale-105 active:scale-95 sm:px-5",
+              )}
+            >
+              <LogIn aria-hidden className="size-4" strokeWidth={2} />
+              <span className="hidden sm:inline">Přihlásit se</span>
+              <span className="sm:hidden">Přihlásit</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Otevřít menu"
+            className={cn(iconButton, "lg:hidden")}
+          >
+            <Menu className="size-6" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
+
+      {/* Značkový gradient jako spodní hrana — zrcadlí pruh nad Footerem. */}
+      <div aria-hidden className="h-1 bg-[linear-gradient(90deg,#B1475C_0%,#857AD2_100%)]" />
+
+      {/* Mobilní menu — celá obrazovka v barvě lišty, velké odkazy s tahem */}
+      {mobileMenuOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          className="fixed inset-0 z-[2000] flex flex-col overflow-hidden bg-[#0D2F31] text-white lg:hidden"
+        >
+          <div aria-hidden className="pointer-events-none absolute -right-[120px] -bottom-[120px] size-[340px] rounded-[58%_42%_47%_53%/43%_55%_45%_57%] bg-[#5AAC78]/15" />
+          <div aria-hidden className="pointer-events-none absolute top-[38%] -left-[70px] size-[180px] rounded-full border-[1.5px] border-[#D1E7D9]/20" />
+
+          <div className={cn("relative flex h-[72px] shrink-0 items-center justify-between", container)}>
+            <Logo className="text-white" />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Zavřít menu"
+              className={iconButton}
+            >
+              <X className="size-6" strokeWidth={1.8} />
+            </button>
+          </div>
+          <div aria-hidden className="h-1 shrink-0 bg-[linear-gradient(90deg,#B1475C_0%,#857AD2_100%)]" />
+
+          <nav aria-label="Hlavní navigace" className={cn("relative flex-1 overflow-y-auto pt-10 pb-8", container)}>
+            <ul className="space-y-5">
+              {links.map(({ href, label }) => {
+                const active = isActive(href);
+                return (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "group relative inline-flex items-center gap-3 pb-1 text-3xl font-bold tracking-[-0.02em] transition-colors",
+                        active ? "text-white" : "text-white/55 hover:text-white",
+                      )}
+                    >
+                      {href === "/admin" && <LayoutDashboard className="size-6" strokeWidth={1.8} />}
+                      {label}
+                      <Swoosh active={active} className="-bottom-1.5 h-[9px]" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {isAuthenticated && displayName && (
+            <div className={cn("relative shrink-0 border-t border-white/10 py-5 text-sm text-white/60", container)}>
+              Přihlášen/a jako <span className="font-semibold text-white">{displayName}</span>
+            </div>
+          )}
+
+          {!loading && !isAuthenticated && (
+            <div className={cn("relative shrink-0 pb-8", container)}>
+              <button
+                type="button"
+                onClick={login}
+                className={cn(buttonVariants({ size: "xl" }), "h-12 w-full gap-2 rounded-full text-base")}
+              >
+                <LogIn aria-hidden className="size-5" strokeWidth={2} />
+                Přihlásit se
               </button>
             </div>
-
-            <nav className="flex-1 overflow-y-auto py-2">
-              <MobileNavLink href={ROUTES.HOME} active={isActive(ROUTES.HOME)}>Home</MobileNavLink>
-              {isAuthenticated && (
-                <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
-              )}
-              <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
-              <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
-              <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
-              {can('lector') && (
-                <MobileNavLink href="/admin" active={isActive('/admin')} icon={<LayoutDashboard className="w-4 h-4" strokeWidth={1.5} />}>
-                  Admin
-                </MobileNavLink>
-              )}
-            </nav>
-
-            {isAuthenticated && displayName && (
-              <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500 truncate">
-                {displayName}
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
     </header>
-  );
-}
-
-function MobileNavLink({
-  href,
-  active,
-  icon,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 px-4 py-3 text-sm transition-colors ${
-        active
-          ? 'text-black font-bold bg-gray-50 border-l-4 border-l-purple-600 pl-3'
-          : 'text-gray-700 hover:bg-gray-50 hover:text-black font-medium border-l-4 border-l-transparent pl-3'
-      }`}
-    >
-      {icon}
-      <span>{children}</span>
-    </Link>
   );
 }

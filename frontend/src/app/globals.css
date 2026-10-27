@@ -113,22 +113,6 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Nav link: reserve bold-text width so active ↔ inactive doesn't shift layout */
-.nav-link {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-}
-.nav-link::after {
-  content: attr(data-text);
-  font-weight: 700;
-  height: 0;
-  visibility: hidden;
-  overflow: hidden;
-  pointer-events: none;
-  user-select: none;
-}
-
 /* Module content styles for rendered learn blocks */
 .module-content {
   color: #000000;
@@ -589,6 +573,104 @@ body.module-fullscreen footer {
 @media (prefers-reduced-motion: reduce) {
   .blob-float,
   .blob-float-slow {
+    animation: none;
+  }
+}
+
+/* Nájezd hero hned po načtení. Záměrně CSS, ne motion: hero je nad ohybem
+   a s JS animací by zůstal neviditelný, dokud se stránka nehydratuje. */
+@keyframes heroEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Pop bubliny s překmitem (náhrada springu). Rotaci drží utilita -rotate-3. */
+@keyframes heroPop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-5deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-enter {
+  animation: heroEnter 0.5s ease-out both;
+}
+.hero-pop {
+  animation: heroPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-enter,
+  .hero-pop {
+    animation: none;
+  }
+}
+
+/* Maskot rysa v hero (LynxMascot) — zamává, chvíli stojí, zamává znovu;
+   pomalu švihá ocasem a občas mrkne. Originy jsou v jednotkách viewBoxu
+   SVG (loket mávající paže, kořen ocasu). */
+@keyframes lynxWave {
+  0%,
+  44%,
+  100% {
+    transform: rotate(0deg);
+  }
+  8% {
+    transform: rotate(8deg);
+  }
+  16% {
+    transform: rotate(-2deg);
+  }
+  24% {
+    transform: rotate(8deg);
+  }
+  32% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes lynxTail {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+@keyframes lynxBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+.lynx-wave {
+  transform-origin: 292px 332px;
+  animation: lynxWave 4.5s ease-in-out 1s infinite;
+}
+.lynx-tail {
+  transform-origin: 228px 456px;
+  animation: lynxTail 3.2s ease-in-out infinite;
+}
+.lynx-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lynxBlink 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lynx-wave,
+  .lynx-tail,
+  .lynx-blink {
     animation: none;
   }
 }

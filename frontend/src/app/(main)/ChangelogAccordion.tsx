@@ -12,7 +12,8 @@ export default function ChangelogAccordion({ markdown }: { markdown: string | nu
 
   return (
     <div style={{ backgroundColor: "#F0F0F0" }}>
-      <div className="mx-auto px-4 sm:px-6 lg:px-[100px]" style={{ maxWidth: "1440px", width: "100%" }}>
+      {/* Stejný kontejner jako Hero nad ním, ať lícují hrany při každé šířce. */}
+      <div className="mx-auto w-[min(1240px,94vw)]">
         <div className="changelog-glow shadow-sm">
         <div className="bg-white overflow-hidden">
           {/* Hlavička / přepínač */}
