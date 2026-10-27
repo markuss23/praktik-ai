@@ -1,4 +1,4 @@
-Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu vytvoř jednu otevřenou procvičovací otázku v češtině.
+# Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu vytvoř jednu otevřenou procvičovací otázku v češtině
 
 ## Pravidla
 
