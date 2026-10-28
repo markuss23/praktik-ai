@@ -53,7 +53,8 @@ async def generate_answer(state: AgentState) -> AgentState:
         }
 
     cfg = get_llm_config(db, "mentor_answer")
-    llm = create_chat_llm(cfg.model, temperature=0.7)
+    # Nízká teplota = méně vymýšlení mimo kontext (Claude ji ignoruje, viz create_chat_llm)
+    llm = create_chat_llm(cfg.model, temperature=0.3)
 
     system_prompt = f"""{PROMPT.rstrip()}
 - Odpověď maximálně {max_length} znaků (počítá se text bez HTML tagů)

@@ -88,8 +88,8 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
     vector_store = get_vector_store()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,  # chunk size (characters)
-        chunk_overlap=100,  # chunk overlap (characters)
+        chunk_size=1500,  # ~300–400 tokenů — celý odstavec i s okolím, ne vytržená věta
+        chunk_overlap=200,  # chunk overlap (characters)
         add_start_index=True,  # track index in original document
     )
 
@@ -98,11 +98,14 @@ def generate_embeddings_node(state: AgentState) -> AgentState:
 
         texts: list[str] = text_splitter.split_text(html_to_text(learn_block.content))
 
+        # Chunk vytržený z bloku neví, o čem je — cesta kurz > modul > blok mu dá kontext
+        # pro vyhledávání i pro mentora (může odkázat „viz blok X“)
         documents: list[Document] = [
             Document(
-                page_content=text,
+                page_content=f"{learn_block.breadcrumb}\n{text}",
                 metadata={
                     "learn_block_id": learn_block.learn_id,
+                    "learn_block_title": learn_block.title,
                     "module_id": learn_block.module_id,
                     "course_id": state["course_id"],
                     "chunk_index": idx,

@@ -6,6 +6,8 @@ from agents.mentor.state import LearnBlockQueryAttr
 
 logger = logging.getLogger(__name__)
 
+MAX_DISTANCE = 0.75
+
 
 def query_vector_store(state: AgentState) -> AgentState:
     """Uzlu pro dotazování vektorového úložiště."""
@@ -31,13 +33,17 @@ def query_vector_store(state: AgentState) -> AgentState:
     # Router přepsal navazující dotaz („a proč?“) na samostatnou otázku
     query = state.get("search_query") or state["message"]
 
-    results: list[Document] = vector_store.similarity_search(
+    scored: list[tuple[Document, float]] = vector_store.similarity_search_with_score(
         query=query,
         k=k,  # počet nejbližších výsledků
         filter=search_filter,
     )
 
-    logger.info(f"✓ Nalezeno {len(results)} relevantních chunků")
+    # Kosinová vzdálenost (menší = bližší) — chunky mimo téma pryč, ať mentor raději řekne „nevím“
+    # ponytail: práh odhadnutý pro text-embedding-3-large, doladit podle eval sady
+    results: list[Document] = [doc for doc, distance in scored if distance <= MAX_DISTANCE]
+
+    logger.info(f"✓ Nalezeno {len(results)}/{len(scored)} relevantních chunků")
     for idx, result in enumerate(results, 1):
         logger.debug(f"  {idx}. {result.page_content[:100]}...")
 

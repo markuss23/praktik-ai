@@ -55,6 +55,8 @@ def load_course_data_node(state: AgentState) -> AgentState:
             learn_id=lb.learn_id,
             module_id=lb.module_id,
             course_id=course_id,
+            title=lb.title,
+            breadcrumb=f"{course.title} > {lb.module.title} > {lb.title}",
             content=lb.content,
         )
         for lb in learn_blocks_db

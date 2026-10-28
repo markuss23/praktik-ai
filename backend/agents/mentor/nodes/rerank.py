@@ -10,7 +10,7 @@ from agents.mentor.state import AgentState, ChunkData
 logger = logging.getLogger(__name__)
 
 PROMPT = (Path(__file__).parent.parent / "reranker_prompt.md").read_text(encoding="utf-8")
-TOP_K = 3
+TOP_K = 5
 
 
 async def rerank_documents(state: AgentState) -> dict:
@@ -18,7 +18,8 @@ async def rerank_documents(state: AgentState) -> dict:
     logger.info("Reranking dokumentů pomocí LLM...")
 
     context_chunks = state.get("context_chunks", [])
-    user_message = state["message"]
+    # Přepsaný dotaz z routeru — u navazující otázky („a proč?“) samotná zpráva nedává smysl
+    user_message = state.get("search_query") or state["message"]
     db = state["db"]
 
     if len(context_chunks) <= TOP_K:
@@ -31,7 +32,7 @@ async def rerank_documents(state: AgentState) -> dict:
     # Vytvoř prompt s dokumenty
     docs_text = "\n\n".join(
         [
-            f"[DOC {idx}]\n{chunk.content[:400]}"
+            f"[DOC {idx}]\n{chunk.content[:800]}"
             for idx, chunk in enumerate(context_chunks, 1)
         ]
     )
@@ -71,5 +72,5 @@ async def rerank_documents(state: AgentState) -> dict:
 
     except Exception as e:
         logger.exception(f"Chyba při rerankingu: {e}")
-        # Fallback: vrať top 3 z původních
+        # Fallback: vrať TOP_K z původních
         return {"context_chunks": context_chunks[:TOP_K]}
