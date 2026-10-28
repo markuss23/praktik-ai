@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from langchain_core.documents.base import Document
 from agents.vector_store import get_vector_store
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 MAX_DISTANCE = 0.75
 
 
-def query_vector_store(state: AgentState) -> AgentState:
+async def query_vector_store(state: AgentState) -> AgentState:
     """Uzlu pro dotazování vektorového úložiště."""
     logger.info("Dotazuji vektorové úložiště...")
 
@@ -33,15 +34,19 @@ def query_vector_store(state: AgentState) -> AgentState:
     # Router přepsal navazující dotaz („a proč?“) na samostatnou otázku
     query = state.get("search_query") or state["message"]
 
-    scored: list[tuple[Document, float]] = vector_store.similarity_search_with_score(
+    # Sync PGVector (embedding přes OpenAI + SQL) ve vlákně — jinak blokuje event loop
+    scored: list[tuple[Document, float]] = await asyncio.to_thread(
+        vector_store.similarity_search_with_score,
         query=query,
         k=k,  # počet nejbližších výsledků
         filter=search_filter,
     )
 
     # Kosinová vzdálenost (menší = bližší) — chunky mimo téma pryč, ať mentor raději řekne „nevím“
-    # ponytail: práh odhadnutý pro text-embedding-3-large, doladit podle eval sady
-    results: list[Document] = [doc for doc, distance in scored if distance <= MAX_DISTANCE]
+    # ponytail: práh odhadnutý pro text-embedding-3-large, zvýšit, když mentor často „nic nenajde“
+    results: list[Document] = [
+        doc for doc, distance in scored if distance <= MAX_DISTANCE
+    ]
 
     logger.info(f"✓ Nalezeno {len(results)}/{len(scored)} relevantních chunků")
     for idx, result in enumerate(results, 1):
