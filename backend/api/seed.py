@@ -773,32 +773,17 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "mentor_reranker",
         "name": "Mentor – reranker",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Máš seznam dokumentů a otázku uživatele.\n"
-            "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
-            "Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího "
-            "(např: 3, 7, 1, 5).\n"
-            "Odpověz pouze čísly oddělenými čárkami, nic dalšího."
-        ),
+        "model": "claude-haiku-5-5",
+        # Prompt je v agents/mentor/reranker_prompt.md
+        "prompt": "",
         "description": "LLM pro přeřazení dokumentů podle relevance v RAG mentoru.",
     },
     {
         "key": "mentor_answer",
         "name": "Mentor – odpověď",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi AI asistent pro výuku - mentor studenta.\n"
-            "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
-            "PRAVIDLA:\n"
-            "- Odpověz výhradně na základě poskytnutého kontextu\n"
-            "- Pokud kontext neobsahuje odpověď, řekni to otevřeně\n"
-            "- Buď přátelský, trpělivý a pedagogický\n"
-            "- Používej příklady z kontextu pro lepší pochopení\n"
-            "- Pokud student nerozumí, zkus vysvětlit jinak\n"
-            "- Odpovídej vždy v češtině\n"
-            "- odpověd maximálně 500 znaků"
-        ),
+        "model": "claude-sonnet-5-5",
+        # Prompt je v agents/mentor/prompt.md
+        "prompt": "",
         "description": "LLM pro generování odpovědí AI mentora na otázky studentů.",
     },
     {

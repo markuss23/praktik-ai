@@ -1,5 +1,7 @@
 # backend/agents/mentor/nodes/rerank_documents.py
 import logging
+from pathlib import Path
+
 from langchain_core.messages.ai import AIMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
@@ -7,8 +9,11 @@ from agents.mentor.state import AgentState, ChunkData
 
 logger = logging.getLogger(__name__)
 
+PROMPT = (Path(__file__).parent.parent / "reranker_prompt.md").read_text(encoding="utf-8")
+TOP_K = 3
 
-def rerank_documents(state: AgentState) -> dict:
+
+async def rerank_documents(state: AgentState) -> dict:
     """LLM reranking dokumentů podle relevance k otázce."""
     logger.info("Reranking dokumentů pomocí LLM...")
 
@@ -16,7 +21,7 @@ def rerank_documents(state: AgentState) -> dict:
     user_message = state["message"]
     db = state["db"]
 
-    if len(context_chunks) <= 3:
+    if len(context_chunks) <= TOP_K:
         logger.info("Málo dokumentů, přeskakuji reranking")
         return {}  # Necháme původní pořadí
 
@@ -31,7 +36,7 @@ def rerank_documents(state: AgentState) -> dict:
         ]
     )
 
-    rerank_prompt = f"""{cfg.prompt}
+    rerank_prompt = f"""{PROMPT}
 
             OTÁZKA: {user_message}
 
@@ -39,23 +44,27 @@ def rerank_documents(state: AgentState) -> dict:
             {docs_text}"""
 
     try:
-        response: AIMessage = llm.invoke(rerank_prompt)
+        response: AIMessage = await llm.ainvoke(rerank_prompt)
 
-        # Parse odpovědi
-        ranked_indices: list[int] = [
-            int(x.strip()) - 1  # Convert to 0-based
-            for x in response.text.strip().split(",")
-            if x.strip().isdigit()
-        ]
+        # Parse odpovědi — bez duplicit a čísel mimo rozsah
+        ranked_indices: list[int] = []
+        for x in response.text.split(","):
+            idx = int(x) - 1 if x.strip().isdigit() else -1
+            if 0 <= idx < len(context_chunks) and idx not in ranked_indices:
+                ranked_indices.append(idx)
 
-        # Vyber top 3
+        # Doplní z původního pořadí, když LLM vrátí méně než TOP_K
+        for idx in range(len(context_chunks)):
+            if len(ranked_indices) >= TOP_K:
+                break
+            if idx not in ranked_indices:
+                ranked_indices.append(idx)
+
         reranked_chunks: list[ChunkData] = [
-            context_chunks[idx]
-            for idx in ranked_indices[:3]
-            if 0 <= idx < len(context_chunks)
+            context_chunks[idx] for idx in ranked_indices[:TOP_K]
         ]
 
-        logger.debug(f"Reranking: {[i + 1 for i in ranked_indices[:3]]}")
+        logger.debug(f"Reranking: {[i + 1 for i in ranked_indices[:TOP_K]]}")
         logger.info(f"Vybráno {len(reranked_chunks)} top dokumentů")
 
         return {"context_chunks": reranked_chunks}
@@ -63,4 +72,4 @@ def rerank_documents(state: AgentState) -> dict:
     except Exception as e:
         logger.exception(f"Chyba při rerankingu: {e}")
         # Fallback: vrať top 3 z původních
-        return {"context_chunks": context_chunks[:3]}
+        return {"context_chunks": context_chunks[:TOP_K]}

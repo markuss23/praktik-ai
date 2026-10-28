@@ -18,10 +18,16 @@ class AgentState(TypedDict):
     user_id: int
     db: Session
     message: str
+    use_history: bool
 
     learn_block_query_attr: LearnBlockQueryAttr
-    ai_tone: str
-    ai_expression_level: str
+    course_title: str
+    module_title: str
+    learn_block_title: str
+    learn_block_content: str
+    ai_style: str
+    ai_style_codes: list[str]
+    history: list[tuple[str, str]]
 
     context_chunks: list[ChunkData]
 

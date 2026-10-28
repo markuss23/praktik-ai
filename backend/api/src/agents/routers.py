@@ -1,7 +1,7 @@
 import asyncio
 import base64
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
@@ -495,6 +495,7 @@ async def learn_blocks_chat(
     user_input: LearnBlocksChatRequest,
     db: SessionSqlSessionDependency,
     user: CurrentUser,
+    use_history: bool = Query(True, description="Použít předchozí konverzaci"),
 ) -> LearnBlocksChatResponse:
     """Endpoint pro chat s learn blockem."""
 
@@ -519,6 +520,7 @@ async def learn_blocks_chat(
         learn_block_id=user_input.learn_block_id,
         user_id=user.user_id,
         message=user_input.message,
+        use_history=use_history,
     )
 
     result = await service.chat()

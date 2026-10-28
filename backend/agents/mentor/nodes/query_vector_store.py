@@ -21,8 +21,12 @@ def query_vector_store(state: AgentState) -> AgentState:
 
     vector_store = get_vector_store()
 
+    # Navazující dotaz („a proč?“) sám nic nenajde — přidá se předchozí otázka
+    history = state.get("history") or []
+    query = f"{history[-1][0]}\n{state['message']}" if history else state["message"]
+
     results: list[Document] = vector_store.similarity_search(
-        query=state["message"],
+        query=query,
         k=10,  # počet nejbližších výsledků
         filter={
             "course_id": course_id,
