@@ -21,17 +21,20 @@ def query_vector_store(state: AgentState) -> AgentState:
 
     vector_store = get_vector_store()
 
-    # Navazující dotaz („a proč?“) sám nic nenajde — přidá se předchozí otázka
-    history = state.get("history") or []
-    query = f"{history[-1][0]}\n{state['message']}" if history else state["message"]
+    # Celý kurz je větší prostor — víc kandidátů, ať se mezi ně dostane i aktuální modul
+    search_filter: dict = {"course_id": course_id}
+    k = 20
+    if state.get("scope", "module") == "module":
+        search_filter["module_id"] = module_id
+        k = 10
+
+    # Router přepsal navazující dotaz („a proč?“) na samostatnou otázku
+    query = state.get("search_query") or state["message"]
 
     results: list[Document] = vector_store.similarity_search(
         query=query,
-        k=10,  # počet nejbližších výsledků
-        filter={
-            "course_id": course_id,
-            "module_id": module_id,
-        },
+        k=k,  # počet nejbližších výsledků
+        filter=search_filter,
     )
 
     logger.info(f"✓ Nalezeno {len(results)} relevantních chunků")

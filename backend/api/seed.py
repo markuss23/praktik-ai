@@ -779,6 +779,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro přeřazení dokumentů podle relevance v RAG mentoru.",
     },
     {
+        "key": "mentor_router",
+        "name": "Mentor – router",
+        "model": "claude-haiku-5-5",
+        # Prompt je v agents/mentor/router_prompt.md
+        "prompt": "",
+        "description": "LLM, které rozhodne, jestli mentor potřebuje hledat v materiálech, a přepíše navazující otázku na samostatnou.",
+    },
+    {
         "key": "mentor_answer",
         "name": "Mentor – odpověď",
         "model": "claude-sonnet-5-5",

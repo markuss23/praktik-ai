@@ -19,6 +19,7 @@ class AgentState(TypedDict):
     db: Session
     message: str
     use_history: bool
+    scope: str  # "module" | "course"
 
     learn_block_query_attr: LearnBlockQueryAttr
     course_title: str
@@ -28,6 +29,8 @@ class AgentState(TypedDict):
     ai_style: str
     ai_style_codes: list[str]
     history: list[tuple[str, str]]
+    needs_retrieval: bool
+    search_query: str
 
     context_chunks: list[ChunkData]
 

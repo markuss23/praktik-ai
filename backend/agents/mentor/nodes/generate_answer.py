@@ -42,8 +42,11 @@ async def generate_answer(state: AgentState) -> AgentState:
             ]
         )
     elif state.get("learn_block_content"):
-        # Vyhledávání nic nenašlo — kontextem je přímo text učebního bloku
+        # Vyhledávání nic nenašlo nebo ho router přeskočil — kontextem je přímo text učebního bloku
         context_text = state["learn_block_content"][:FALLBACK_CONTENT_LIMIT]
+    elif history and not state.get("needs_retrieval", True):
+        # Router usoudil, že stačí předchozí konverzace
+        context_text = "Nové materiály nejsou potřeba — odpověz z předchozí konverzace."
     else:
         return {
             "answer": "Omlouvám se, ale nenašel jsem relevantní informace k vaší otázce v tomto učebním bloku.",
