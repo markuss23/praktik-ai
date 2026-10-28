@@ -35,7 +35,12 @@ export function ChangelogDialog({
   return (
     <Dialog>
       <DialogTrigger className={cn(buttonVariants({ variant: 'outline', size: 'xl' }), className)}>
-        <Megaphone aria-hidden data-icon="inline-start" strokeWidth={1.8} />
+        <Megaphone
+          aria-hidden
+          data-icon="inline-start"
+          strokeWidth={1.8}
+          className="transition-transform duration-200 group-hover/button:-rotate-12 motion-reduce:transition-none"
+        />
         Novinky
       </DialogTrigger>
 

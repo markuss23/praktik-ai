@@ -37,13 +37,21 @@ const GREEN_SHAPE =
  */
 const BACKDROP = [
   'radial-gradient(ellipse 55% 60% at 64% 38%, rgba(255,251,245,0.95) 0%, rgba(255,251,245,0) 70%)',
-  'radial-gradient(ellipse 50% 55% at 6% 8%, rgba(233,184,96,0.18) 0%, rgba(233,184,96,0) 70%)',
+  // Teplá záře vlevo nahoře — velká, ale doběhne do ~70 % výšky, nad spodní hranu.
+  'radial-gradient(ellipse 80% 90% at 4% 4%, rgba(233,184,96,0.24) 0%, rgba(233,184,96,0) 72%)',
   'radial-gradient(ellipse 40% 45% at 30% 70%, rgba(133,122,210,0.10) 0%, rgba(133,122,210,0) 70%)',
   'linear-gradient(180deg, #E2DED7 0%, #EAE7E2 40%, #F0F0F0 88%)',
 ].join(', ');
 
 /** Zelená s hloubkou: světlejší nahoře vlevo, sytější dole — jako nasvícený povrch. */
 const GREEN_FILL = 'bg-[linear-gradient(160deg,#79C493_0%,#5AAC78_45%,#3F8D5F_100%)]';
+
+/**
+ * Společný hover tlačítek v hero: zvednou se o 2 px a dostanou měkký stín,
+ * při stisku dosednou zpět. S prefers-reduced-motion se nehýbou.
+ */
+const btnLift =
+  'duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_24px_-10px_rgba(13,47,49,0.45)] active:translate-y-0 active:shadow-none motion-reduce:hover:translate-y-0';
 
 /**
  * Hero úvodní stránky.
@@ -179,16 +187,24 @@ export function Hero({ changelog }: { changelog: string | null }) {
               href={ROUTES.COURSES}
               className={cn(
                 buttonVariants({ size: 'xl' }),
-                'h-14 px-7 text-lg hover:scale-105 active:scale-95',
+                'h-14 px-7 text-lg hover:bg-[#4E9E6C]',
+                btnLift,
               )}
             >
               Prozkoumat kurzy
-              <ArrowRight aria-hidden data-icon="inline-end" />
+              <ArrowRight
+                aria-hidden
+                data-icon="inline-end"
+                className="transition-transform duration-200 group-hover/button:translate-x-1 motion-reduce:transition-none"
+              />
             </Link>
 
             {/* Sekundární akce: novinky v modálu (kitové outline tlačítko
                 ve stejné velikosti jako CTA). */}
-            <ChangelogDialog markdown={changelog} className="h-14 px-6 text-lg" />
+            <ChangelogDialog
+              markdown={changelog}
+              className={cn('h-14 px-6 text-lg hover:border-[#0D2F31]/25 hover:bg-background', btnLift)}
+            />
           </div>
 
           {/* Kontakt je funkční obsah (home-design-system.md, kap. 9), nesmí

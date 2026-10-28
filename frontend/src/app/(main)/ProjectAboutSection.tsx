@@ -190,33 +190,39 @@ export function ProjectIntroSection() {
           className="pointer-events-none absolute top-[380px] -left-[70px] hidden size-[190px] rounded-full border-[1.5px] border-[#298E86] opacity-[0.32] lg:block"
         />
 
+        {/* Blob stojí u levé hrany okna (pravý okraj na 380 px), kontejner je
+            ale na střed — na širokých displejích mezi nimi zela díra. Od lg
+            proto kontejner začíná až za blobem a textový blok (max 680 px)
+            se v tom prostoru centruje; text uvnitř zůstává zarovnaný doprava. */}
         <motion.div
           {...fadeUp}
-          className={`relative lg:flex lg:flex-col lg:items-end lg:text-right ${container}`}
+          className={`relative lg:pl-[max(0px,calc(380px_-_(100vw_-_min(1240px,94vw))_/_2))] ${container}`}
         >
-          <h2 className={`max-w-[15ch] text-pretty ${heroTitle}`}>
-            Vzdělávání, které se učí společně s vámi
-          </h2>
-          <p className="mt-8 max-w-[520px] text-[19px] leading-[1.62] text-[#555555] text-pretty">
-            Praktik-AI spojuje pedagogické zkušenosti s generativní umělou
-            inteligencí a vytváří prostředí, které se přizpůsobuje každému
-            studentovi. Žádné šablony — jen výuka, která dává smysl.
-          </p>
-
-          <dl className="mt-14 flex flex-wrap items-end gap-x-16 gap-y-10 lg:mt-[92px] lg:justify-end">
-            {HIGHLIGHTS.map((h, i) => (
-              <div key={h.label} className={h.offset}>
-                <dt
-                  className={`text-[56px] leading-[0.8] font-extrabold tabular-nums tracking-[-0.04em] lg:text-[76px] ${h.color}`}
-                >
-                  <HighlightValue value={h.value} delay={i * 0.12} />
-                </dt>
-                <dd className="mt-3.5 text-xs tracking-[0.14em] text-[#777777] uppercase">
-                  {h.label}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <div className="lg:mx-auto lg:flex lg:max-w-[680px] lg:flex-col lg:items-end lg:text-right">
+            <h2 className={`max-w-[15ch] text-pretty ${heroTitle}`}>
+              Vzdělávání, které se učí společně s vámi
+            </h2>
+            <p className="mt-8 max-w-[520px] text-[19px] leading-[1.62] text-[#555555] text-pretty">
+              Praktik-AI spojuje pedagogické zkušenosti s generativní umělou
+              inteligencí a vytváří prostředí, které se přizpůsobuje každému
+              studentovi. Žádné šablony — jen výuka, která dává smysl.
+            </p>
+  
+            <dl className="mt-14 flex flex-wrap items-end gap-x-16 gap-y-10 lg:mt-[92px] lg:justify-end">
+              {HIGHLIGHTS.map((h, i) => (
+                <div key={h.label} className={h.offset}>
+                  <dt
+                    className={`text-[56px] leading-[0.8] font-extrabold tabular-nums tracking-[-0.04em] lg:text-[76px] ${h.color}`}
+                  >
+                    <HighlightValue value={h.value} delay={i * 0.12} />
+                  </dt>
+                  <dd className="mt-3.5 text-xs tracking-[0.14em] text-[#777777] uppercase">
+                    {h.label}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </motion.div>
       </section>
     </div>

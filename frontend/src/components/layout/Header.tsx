@@ -64,8 +64,11 @@ const ACTIVE_LINK = "text-[var(--nav-fg)] after:scale-x-100 hover:after:opacity-
  * fialového přechodu (`bg-none` ho shodí). Drží kontrast na průhledné liště
  * nad zelenou plochou i na plné bílé.
  */
-const LOGIN_CTA =
-  "h-10 bg-none bg-[#0D2F31] px-5 shadow-[0_6px_16px_rgba(13,47,49,0.22)] hover:bg-[#164A46] hover:brightness-100";
+const LOGIN_CTA = cn(
+  "h-10 bg-none bg-[#0D2F31] px-5 shadow-[0_6px_16px_rgba(13,47,49,0.22)] hover:bg-[#164A46] hover:brightness-100",
+  // Stejný hover jako tlačítka v hero: zvednutí o 2 px a hlubší stín.
+  "transition-[translate,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-8px_rgba(13,47,49,0.5)] active:translate-y-0 motion-reduce:hover:translate-y-0",
+);
 
 /** Mobilní řádek: jen jemný zelený nádech, žádná výrazná výplň. */
 const ACTIVE_ROW = "bg-[#5AAC78]/12 text-[var(--nav-fg)]";
