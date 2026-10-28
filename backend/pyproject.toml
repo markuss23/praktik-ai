@@ -51,3 +51,11 @@ ignore = ["E501", "E712", "E711"]  # zbytecne to rve, co lze upravit formatter u
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
