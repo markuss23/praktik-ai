@@ -1,5 +1,5 @@
 """
-Bezstavové vyhodnocení odpovědi na sdílenou otevřenou PracticeQuestion.
+Bezstavové vyhodnocení odpovědi na otevřenou otázku (vzorová odpověď + klíčové body).
 Nic neukládá — vrací jen výsledek a zpětnou vazbu k zobrazení.
 """
 
@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from agents.base.llm import create_chat_llm, get_llm_config
-from api import models
 
 
 class OpenQuestionEvaluation(BaseModel):
@@ -19,22 +18,27 @@ class OpenQuestionEvaluation(BaseModel):
 
 
 async def evaluate_open_question(
-    db: Session, question: models.PracticeQuestion, user_input: str
+    db: Session,
+    question: str,
+    example_answer: str | None,
+    keywords: list[str],
+    user_input: str,
+    prompt: str | None = None,
 ) -> OpenQuestionEvaluation:
+    """`prompt` přepíše systémový prompt z DB (formát s vlastním .md, např. pretest)."""
     cfg = get_llm_config(db, "open_question_evaluator")
     llm = create_chat_llm(cfg.model).with_structured_output(
         OpenQuestionEvaluation, method="json_schema"
     )
 
-    keywords = ", ".join(k.keyword for k in question.open_keywords) or "-"
     return await llm.ainvoke(
         [
-            SystemMessage(content=cfg.prompt),
+            SystemMessage(content=prompt or cfg.prompt),
             HumanMessage(
                 content=(
-                    f"OTÁZKA:\n{question.question}\n\n"
-                    f"VZOROVÁ ODPOVĚĎ:\n{question.example_answer or '-'}\n\n"
-                    f"KLÍČOVÉ BODY:\n{keywords}\n\n"
+                    f"OTÁZKA:\n{question}\n\n"
+                    f"VZOROVÁ ODPOVĚĎ:\n{example_answer or '-'}\n\n"
+                    f"KLÍČOVÉ BODY:\n{', '.join(keywords) or '-'}\n\n"
                     f"ODPOVĚĎ STUDENTA:\n{user_input}"
                 )
             ),

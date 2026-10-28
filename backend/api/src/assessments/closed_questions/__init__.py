@@ -11,7 +11,8 @@ vše Pydantic:
 Volitelně:
     TYPED_ANSWER      True = odpověď se píše, submit_answer odmítne vložený
                       text (typed_too_fast); předchozí odpověď čte ze
-                      state.last_answer
+                      state.last_answer. Může být i funkce (state) -> bool,
+                      když se píše jen u některých otázek (pretest)
 """
 
 from api.src.assessments.closed_questions.schemas import (

@@ -468,9 +468,8 @@ CROSS_SUBJECTS: list[dict[str, str]] = [
 
 
 COURSE_MODULE_ENRICHER_PROMPT = (
-    "K hotovému modulu vzdělávacího kurzu urči zařazení do číselníků a vytvoř otázky k procvičování. "
+    "K hotovému modulu vzdělávacího kurzu urči zařazení do číselníků. "
     "Dostaneš vstupní blok kurzu, seznamy číselníků a obsah modulu (název, perex, výklad). "
-    "Pole vyplňuj v daném pořadí: nejdřív číselníky, potom otázky.\n"
     "\n"
     "ZAŘAZENÍ DO ČÍSELNÍKŮ (rozhoduj podle výkladu, ne podle názvu; kódy vybírej výhradně ze seznamů):\n"
     "- neuro_principle_code: kód PŘESNĚ JEDNOHO neurovědního principu, který nejlépe odpovídá "
@@ -479,27 +478,6 @@ COURSE_MODULE_ENRICHER_PROMPT = (
     'Uváděj jen kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".\n'
     "- bloom_level_codes: 1–3 úrovně Bloomovy taxonomie, kterým odpovídají výukové cíle modulu "
     '(co účastník po prostudování výkladu umí). Uváděj jen číselné kódy, např. "2", "3".\n'
-    "\n"
-    "OTÁZKY (procvičování; platforma je hodnotí automaticky):\n"
-    "Obecně:\n"
-    "- Všechny otázky ověřují látku z výkladu modulu; každá musí jít zodpovědět jen z výkladu. Na zastavení ani doporučení pro AI asistenta se otázky nevážou.\n"
-    "- bloom_level_codes určují, jakou kognitivní činnost otázky ověřují (např. vysvětlit, použít v situaci, posoudit); nejvyšší zvolenou úroveň ověřuje otevřená otázka.\n"
-    "- Každá ze tří otázek ověřuje něco jiného: closed_question_1 klíčový pojem nebo princip, closed_question_2 jeho použití nebo rozlišení v situaci, open_question porozumění na nejvyšší zvolené úrovni Bloomovy taxonomie.\n"
-    "- Vykej a piš genderově neutrálně: preferuj neosobní vazby a množné číslo. Veškerý text je prostý text.\n"
-    '- Nezjednodušuj nad rámec výkladu: zachovej podmínky, míru nejistoty a mechanismus; kvalifikované tvrzení nepřeváděj na absolutní („omezená" ≠ „malá", „naznačuje" ≠ „prokazuje"). Platí pro otázky, možnosti i vzorové odpovědi.\n'
-    "Uzavřené otázky (closed_question_1, closed_question_2; platforma porovnává odpověď doslova s textem možnosti):\n"
-    "- options: přesně 3 možnosti, které se textově liší, každá nejvýše 250 znaků.\n"
-    '- Právě jedna možnost je správná; ostatní dvě jsou podle výkladu jednoznačně nesprávné, ne jen „méně vhodné".\n'
-    "- correct_answer zkopíruj znak po znaku z textu správné možnosti.\n"
-    "- Distraktory vycházejí z typických omylů nebo mýtů uvedených ve výkladu, mají podobnou délku a stavbu jako správná odpověď; správná odpověď není nejdelší ani nejpodrobnější. Pozici správné odpovědi v otázkách střídej.\n"
-    '- Nepoužívej „všechny uvedené", „žádná z uvedených", dvojí zápor ani absolutní slova („vždy", „nikdy") jako nápovědu.\n'
-    "Otevřená otázka (open_question; hodnotí ji AI jen podle otázky a výukového textu, vzorovou odpověď ani klíčové body nevidí):\n"
-    "- Účastník může napsat nejvýše 500 znaků: úplná odpověď se musí vejít do 2–4 vět. Správnost musí jít posoudit jen z výkladu modulu; nežádej fakta, která ve výkladu nejsou.\n"
-    '- Všechno, co se bude hodnotit, musí být v otázce výslovně: části odpovědi vyjmenuj (nejvýše 3, např. „(1) rozhodněte, (2) zdůvodněte"); požadované pojmy pojmenuj; vlastní zkušenost žádej jen výslovně. Nežádej jména autorů, roky ani přesná čísla.\n'
-    '- Žádné otázky typu ano/ne ani „vyjmenujte".\n'
-    "- Žádej zdůvodněné rozhodnutí v konkrétní situaci z praxe.\n"
-    '- example_answer: 2–4 věty, nejvýše 500 znaků, genderově neutrálně; v první osobě formuluj bez příčestí minulého, pokud to jde („Zadání přeformuluji takto…").\n'
-    "- keywords: přesně 3 klíčové body, které dobrá odpověď obsahuje (myšlenka nebo pojem, každý nejvýše 60 znaků), ne vytržená slova."
 )
 
 
@@ -636,10 +614,10 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     },
     {
         "key": "course_module_enricher",
-        "name": "Číselníky a otázky modulu",
+        "name": "Číselníky modulu",
         "model": "claude-opus-5-5",
         "prompt": COURSE_MODULE_ENRICHER_PROMPT,
-        "description": "LLM pro zařazení hotového modulu do číselníků NP, KRAUU a Bloom a tvorbu otázek k procvičování.",
+        "description": "LLM pro zařazení hotového modulu do číselníků NP, KRAUU a Bloom.",
     },
     {
         "key": "assessment_generator",
@@ -819,6 +797,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro generování sady uzavřených otázek z výukového obsahu modulu/kurzu.",
     },
     {
+        "key": "pretest",
+        "name": "Pretest – otázky modulu",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/pretest/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování lehkého pretestu (2 uzavřené + 1 otevřená otázka) při generování kurzu.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
@@ -856,6 +842,17 @@ ASSESSMENT_TYPES: list[dict] = [
         ),
         "allowed_contexts": ["practice", "assessment", "course_final"],
         "default_settings": ClosedQuestionsAISettings().model_dump(),
+    },
+    {
+        "code": "pretest",
+        "name": "Pretest",
+        "description": (
+            "Pevně daný test modulu z otázek vygenerovaných s kurzem (2 uzavřené + "
+            "1 otevřená); lektor upravuje jen jejich znění. Odemyká practice."
+        ),
+        "allowed_contexts": ["pretest"],
+        # Otázky doplní generátor kurzu, prázdný pretest se spustit nedá
+        "default_settings": {},
     },
 ]
 

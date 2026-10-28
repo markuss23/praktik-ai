@@ -1890,7 +1890,7 @@ class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
             """
             (context = 'course_final' AND module_id IS NULL)
             OR
-            (context IN ('practice', 'assessment') AND module_id IS NOT NULL)
+            (context IN ('pretest', 'practice', 'assessment') AND module_id IS NOT NULL)
             """,
             name="ck_course_assessment_context_module",
         ),

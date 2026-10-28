@@ -14,6 +14,10 @@ from agents.course_generator.state import (
     ModuleGenerated,
 )
 from api import models
+from api.src.assessments.pretest.generator import (
+    create_pretest_llm,
+    generate_pretest,
+)
 from api.src.agents.progress import set_progress
 
 logger = logging.getLogger(__name__)
@@ -53,7 +57,7 @@ def build_catalogs(db: Session) -> str:
 
 
 def build_module_block(module: ModuleGenerated) -> str:
-    """Hotový obsah modulu, ke kterému se určují číselníky a otázky."""
+    """Hotový obsah modulu, ke kterému se určují číselníky a otázky pretestu."""
     return (
         f"NÁZEV: {module.title}\n"
         f"PEREX: {module.perex}\n\n"
@@ -61,63 +65,8 @@ def build_module_block(module: ModuleGenerated) -> str:
     )
 
 
-def validate_enrichment(enrichment: ModuleEnrichment) -> list[str]:
-    """Vrátí chyby otázek, které schéma samo nevynutí.
-
-    Platforma porovnává odpověď s textem možnosti doslova, proto
-    correct_answer lišící se jen bílými znaky rovnou sjednotí s možností.
-    """
-    errors: list[str] = []
-
-    for name in ("closed_question_1", "closed_question_2"):
-        q = getattr(enrichment, name)
-        if len(q.options) != 3:
-            errors.append(f"{name}: má {len(q.options)} možností, musí mít přesně 3")
-        if len({o.strip() for o in q.options}) != len(q.options):
-            errors.append(f"{name}: možnosti se textově opakují")
-        matches = [o for o in q.options if o.strip() == q.correct_answer.strip()]
-        if matches:
-            q.correct_answer = matches[0]
-        else:
-            errors.append(
-                f"{name}: correct_answer „{q.correct_answer}“ není doslova shodný "
-                "s textem žádné z možností"
-            )
-
-    open_q = enrichment.open_question
-    if len(open_q.keywords) != 3:
-        errors.append(
-            f"open_question: má {len(open_q.keywords)} klíčových bodů, musí mít přesně 3"
-        )
-    if not open_q.example_answer.strip():
-        errors.append("open_question: example_answer je prázdný")
-
-    return errors
-
-
-def enrich_module(llm, prompt: str, title: str) -> ModuleEnrichment:
-    """Jedno volání LLM; při chybách otázek jeden opravný pokus s jejich výpisem."""
-    enrichment: ModuleEnrichment = llm.invoke(prompt)
-    errors = validate_enrichment(enrichment)
-    if not errors:
-        return enrichment
-
-    logger.warning(f"   -> WARN: Modul '{title}' má chyby v otázkách, opakuji: {errors}")
-    error_lines = "\n".join(f"- {e}" for e in errors)
-    enrichment = llm.invoke(
-        f"{prompt}\n\n"
-        f"PŘEDCHOZÍ VÝSTUP:\n{enrichment.model_dump_json(indent=2)}\n\n"
-        f"CHYBY V PŘEDCHOZÍM VÝSTUPU:\n{error_lines}\n\n"
-        "Vrať celý výstup znovu a tyto chyby oprav."
-    )
-    errors = validate_enrichment(enrichment)
-    if errors:
-        raise ValueError(f"Modul '{title}' má i po opravě chyby v otázkách: {errors}")
-    return enrichment
-
-
 def enrich_modules_node(state: AgentState) -> AgentState:
-    """Node, který k hotovým modulům určí číselníky (NP, KRAUU, Bloom) a vytvoří otázky."""
+    """Node, který k hotovým modulům určí číselníky (NP, KRAUU, Bloom) a vytvoří pretest."""
     logger.info("Zařazování modulů do číselníků a tvorba otázek...")
 
     course_id = state.get("course_id")
@@ -140,18 +89,22 @@ def enrich_modules_node(state: AgentState) -> AgentState:
         ModuleEnrichment, method="json_schema"
     )
 
+    pretest_llm = create_pretest_llm(db)
+
     shared = f"{cfg.prompt}\n\n{build_input_block(course_input)}\n\n{build_catalogs(db)}"
 
-    # Moduly jsou nezávislé, zpracují se paralelně
+    # Moduly i volání jsou nezávislé, zpracují se paralelně
     with ThreadPoolExecutor() as pool:
-        state["enrichments"] = list(
-            pool.map(
-                lambda m: enrich_module(
-                    llm, f"{shared}\n\nMODUL:\n{build_module_block(m)}", m.title
-                ),
-                course.modules,
-            )
+        enrichments = pool.map(
+            lambda m: llm.invoke(f"{shared}\n\nMODUL:\n{build_module_block(m)}"),
+            course.modules,
         )
+        pretests = pool.map(
+            lambda m: generate_pretest(pretest_llm, build_module_block(m), m.title),
+            course.modules,
+        )
+        state["enrichments"] = list(enrichments)
+        state["pretests"] = list(pretests)
 
     for module, e in zip(course.modules, state["enrichments"], strict=True):
         logger.info(

@@ -12,6 +12,7 @@ from api.src.common.utils import get_or_404
 from api.src.assessments import closed_questions
 from api.src.assessments import closed_questions_ai
 from api.src.assessments import open_question_ai
+from api.src.assessments import pretest
 from api.src.assessments.schemas import SessionStartResponse
 
 CA = models.CourseAssessment
@@ -24,6 +25,7 @@ FORMATS: dict[str, ModuleType] = {
     "closed_questions": closed_questions,
     "closed_questions_ai": closed_questions_ai,
     "open_question_ai": open_question_ai,
+    "pretest": pretest,
 }
 
 
@@ -156,7 +158,8 @@ def assert_prerequisites_passed(
     """Vyhodí 403 pokud uživatel nemá 'passed' session na všech is_required
     konfiguracích v `prereq_context` (module_id=None = napříč celým kurzem).
 
-    Gate hierarchie: practice (is_required) -> assessment; assessment (is_required) -> course_final.
+    Gate hierarchie (viz PREREQUISITES v controllers.py):
+    pretest -> practice -> assessment -> course_final, vždy jen is_required konfigurace.
     """
     stmt = select(CA.course_assessment_id).where(
         CA.course_id == course_id,

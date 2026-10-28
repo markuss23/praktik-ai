@@ -13,6 +13,7 @@ from api.src.common.utils import (
     check_enrollment,
     get_or_404,
 )
+from api.src.assessments.pretest.schemas import PretestSettings
 from api.src.assessments.schemas import (
     AssessmentTypeResponse,
     CourseAssessmentAttachRequest,
@@ -35,6 +36,25 @@ from api.src.assessments.utils import (
 
 CA = models.CourseAssessment
 AS = models.AssessmentSession
+
+# Kontext -> stupně, které musí být splněné (jen is_required konfigurace).
+# Assessment hlídá i pretest, aby se nedal přeskočit modulem bez practice.
+PREREQUISITES: dict[AssessmentContext, list[AssessmentContext]] = {
+    AssessmentContext.practice: [AssessmentContext.pretest],
+    AssessmentContext.assessment: [
+        AssessmentContext.pretest,
+        AssessmentContext.practice,
+    ],
+    AssessmentContext.course_final: [AssessmentContext.assessment],
+}
+
+
+def assert_not_pretest(course_assessment: models.CourseAssessment) -> None:
+    if course_assessment.assessment_type_code == "pretest":
+        raise HTTPException(
+            status_code=400,
+            detail="Pretest je pevně daný, upravit lze jen jeho otázky.",
+        )
 
 
 def get_assessment_types(db: Session) -> list[AssessmentTypeResponse]:
@@ -131,7 +151,9 @@ def detach_course_assessment(
     user: models.User,
     course_assessment_id: int,
 ) -> None:
-    get_editable_course_assessment(db, user, course_assessment_id).soft_delete()
+    course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
+    assert_not_pretest(course_assessment)
+    course_assessment.soft_delete()
     db.commit()
 
 
@@ -142,6 +164,7 @@ def update_course_assessment(
     body: CourseAssessmentUpdateRequest,
 ) -> CourseAssessmentResponse:
     course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
+    assert_not_pretest(course_assessment)
     cfg = parse_settings(
         course_assessment.assessment_type_code, body.settings.model_dump()
     )
@@ -176,14 +199,9 @@ async def start_session(
     if not course_assessment.is_enabled:
         raise HTTPException(status_code=403, detail="Tento test je momentálně vypnutý.")
 
-    if context == AssessmentContext.assessment:
-        assert_prerequisites_passed(
-            db, user, course_id, module_id, AssessmentContext.practice
-        )
-    elif context == AssessmentContext.course_final:
-        assert_prerequisites_passed(
-            db, user, course_id, None, AssessmentContext.assessment
-        )
+    # u course_final je module_id None -> prerekvizity napříč celým kurzem
+    for prereq in PREREQUISITES.get(context, []):
+        assert_prerequisites_passed(db, user, course_id, module_id, prereq)
 
     # fmt je z closed_questions __init__ ... v tom jsou vsechny funkce
     fmt = get_format(course_assessment.assessment_type_code)
@@ -253,7 +271,10 @@ async def submit_answer(
     # Psanou odpověď vzniklou nereálně rychle (vložený text) odmítneme dřív,
     # než se pokus započítá a zavolá se AI. Čas běží od startu session,
     # u dalšího pokusu od toho předchozího (každý mění state -> updated_at).
-    if getattr(fmt, "TYPED_ANSWER", False) and typed_too_fast(
+    typed = getattr(fmt, "TYPED_ANSWER", False)
+    if callable(typed):
+        typed = typed(fmt.State.model_validate(session.state))
+    if typed and typed_too_fast(
         previous=session.state.get("last_answer", ""),
         current=answer,
         since=session.updated_at,
@@ -348,3 +369,36 @@ def get_session_history(
         )
         for session in sessions
     ]
+
+
+# ---------- Obsah pretestu (lektor) ----------
+
+
+def _get_pretest(course_assessment: models.CourseAssessment) -> models.CourseAssessment:
+    if course_assessment.assessment_type_code != "pretest":
+        raise HTTPException(status_code=400, detail="Konfigurace není pretest.")
+    return course_assessment
+
+
+def get_pretest_content(
+    db: Session, user: models.User, course_assessment_id: int
+) -> PretestSettings:
+    course_assessment = get_or_404(
+        db, CA, course_assessment_id, detail="Konfigurace formátu nenalezena"
+    )
+    validate_owner_or_superadmin(course_assessment, user, "formát")
+    _get_pretest(course_assessment)
+    return parse_settings("pretest", course_assessment.settings)
+
+
+def update_pretest_content(
+    db: Session, user: models.User, course_assessment_id: int, body: PretestSettings
+) -> PretestSettings:
+    """Přepíše otázky pretestu. Struktura 2 + 1 je pevná (vynucuje PretestSettings),
+    is_enabled/is_required se tudy změnit nedají."""
+    course_assessment = _get_pretest(
+        get_editable_course_assessment(db, user, course_assessment_id)
+    )
+    course_assessment.settings = body.model_dump()
+    db.commit()
+    return body

@@ -3,6 +3,7 @@ from api.dependencies import CurrentUser, require_role
 from api.enums import AssessmentContext
 from api.src.assessments import controllers
 from api.database import SessionSqlSessionDependency
+from api.src.assessments.pretest.schemas import PretestSettings
 from api.src.assessments.schemas import (
     AssessmentTypeResponse,
     CourseAssessmentAttachRequest,
@@ -86,6 +87,34 @@ def detach_course_assessment(
     user: CurrentUser,
 ) -> None:
     controllers.detach_course_assessment(db, user, course_assessment_id)
+
+
+# Obsah pretestu (course_assessment.settings) — lektor mění jen texty pevné sady 2 + 1
+@router.get(
+    "/assessments/{course_assessment_id}/pretest",
+    operation_id="get_pretest_content",
+    dependencies=[require_role("lector")],
+)
+def get_pretest_content(
+    course_assessment_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> PretestSettings:
+    return controllers.get_pretest_content(db, user, course_assessment_id)
+
+
+@router.put(
+    "/assessments/{course_assessment_id}/pretest",
+    operation_id="update_pretest_content",
+    dependencies=[require_role("lector")],
+)
+def update_pretest_content(
+    course_assessment_id: int,
+    body: PretestSettings,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> PretestSettings:
+    return controllers.update_pretest_content(db, user, course_assessment_id, body)
 
 
 # Runtime — student spustí session, dostane první otázku

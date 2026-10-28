@@ -95,6 +95,7 @@ class ReviewVerdict(enum.StrEnum):
 class AssessmentContext(enum.StrEnum):
     """Kde v kurzu je interakční formát nasazen."""
 
+    pretest = "pretest"
     practice = "practice"
     assessment = "assessment"
     course_final = "course_final"

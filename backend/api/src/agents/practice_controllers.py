@@ -174,7 +174,13 @@ async def evaluate_open_question_answer(
     check_enrollment(db, user, question.module.course, bypass_for_owner=True)
 
     try:
-        return await evaluate_open_question(db, question, user_input)
+        return await evaluate_open_question(
+            db,
+            question=question.question,
+            example_answer=question.example_answer,
+            keywords=[k.keyword for k in question.open_keywords],
+            user_input=user_input,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
