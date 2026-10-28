@@ -19,6 +19,7 @@ from api.models import (
     SystemSetting,
 )
 from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
+from api.src.assessments.closed_questions_ai.schemas import ClosedQuestionsAISettings
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -810,6 +811,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro vyhodnocení otevřených odpovědí studentů na otevřené otázky generované AI.",
     },
     {
+        "key": "closed_questions_ai",
+        "name": "Assessment – uzavřené otázky (AI)",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/closed_questions_ai/agents/generator/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování sady uzavřených otázek z výukového obsahu modulu/kurzu.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
@@ -837,6 +846,16 @@ ASSESSMENT_TYPES: list[dict] = [
         ),
         "allowed_contexts": ["practice", "assessment", "course_final"],
         "default_settings": OpenQuestionAISettings().model_dump(),
+    },
+    {
+        "code": "closed_questions_ai",
+        "name": "Uzavřené otázky generované AI",
+        "description": (
+            "AI vygeneruje z výukového obsahu sadu uzavřených otázek; "
+            "vyhodnocení bez LLM jako u uzavřených otázek."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": ClosedQuestionsAISettings().model_dump(),
     },
 ]
 

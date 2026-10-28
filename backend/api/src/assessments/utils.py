@@ -10,6 +10,7 @@ from api.authorization import validate_owner_or_superadmin
 from api.enums import AssessmentContext, AssessmentSessionStatus, Status
 from api.src.common.utils import get_or_404
 from api.src.assessments import closed_questions
+from api.src.assessments import closed_questions_ai
 from api.src.assessments import open_question_ai
 from api.src.assessments.schemas import SessionStartResponse
 
@@ -21,6 +22,7 @@ AS = models.AssessmentSession
 # Nový formát = nová složka se stejným rozhraním (viz closed_questions/__init__.py) + řádek tady.
 FORMATS: dict[str, ModuleType] = {
     "closed_questions": closed_questions,
+    "closed_questions_ai": closed_questions_ai,
     "open_question_ai": open_question_ai,
 }
 

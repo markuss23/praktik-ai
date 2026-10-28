@@ -326,6 +326,7 @@ def get_session_history(
             is_passed=session.is_passed,
             started_at=session.created_at,
             finished_at=session.finished_at,
+            attempts_used=session.state.get("attempts_used", 0),
         )
         for session in sessions
     ]

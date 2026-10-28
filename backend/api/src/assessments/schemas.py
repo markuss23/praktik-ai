@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from api.enums import AssessmentContext, AssessmentSessionStatus
 from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
+from api.src.assessments.closed_questions_ai.schemas import ClosedQuestionsAISettings
 from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 
 # Nastavení kteréhokoliv formátu. Nový formát sem přidá svůj typ:
@@ -16,8 +17,9 @@ from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 # OpenQuestionAISettings nemá žádné vlastní pole, takže {max_attempts, pass_threshold}
 # by prošlo i jako Closed (doplnilo by questions=[]). Proto Open první — closed
 # nastavení vždy nese `questions`, které Open odmítne (extra="forbid"), a spadne do Closed.
+# ClosedAI mezi nimi: `question_count` Open odmítne, `questions` odmítne ClosedAI.
 AssessmentSettings = Annotated[
-    OpenQuestionAISettings | ClosedQuestionsSettings,
+    OpenQuestionAISettings | ClosedQuestionsAISettings | ClosedQuestionsSettings,
     Field(union_mode="left_to_right"),
 ]
 
@@ -109,3 +111,4 @@ class SessionHistoryItem(BaseModel):
     is_passed: bool | None
     started_at: datetime
     finished_at: datetime | None
+    attempts_used: int
