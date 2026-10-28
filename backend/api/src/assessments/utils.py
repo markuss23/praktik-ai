@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.authorization import validate_owner_or_superadmin
-from api.enums import AssessmentContext, AssessmentSessionStatus, Status
-from api.src.common.utils import get_or_404
+from api.enums import AssessmentContext, AssessmentSessionStatus
+from api.src.common.utils import assert_course_editable, get_or_404
 from api.src.assessments import closed_questions
 from api.src.assessments import closed_questions_ai
 from api.src.assessments import open_question_ai
@@ -53,14 +53,6 @@ def parse_settings(type_code: str, settings: dict) -> BaseModel:
             status_code=422,
             detail=f"Neplatné nastavení formátu '{type_code}': {errors}",
         ) from e
-
-
-def assert_course_editable(course: models.Course) -> None:
-    if course.status == Status.approved or course.status == Status.archived:
-        raise HTTPException(
-            status_code=400,
-            detail="Tuto akci lze provést pouze pokud je kurz ve stavu 'approved' nebo 'archived'.",
-        )
 
 
 def get_editable_course_assessment(
