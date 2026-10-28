@@ -2,9 +2,10 @@ from collections.abc import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from api.models import (
+    AiStyleAxis,
     CrossSubject,
     BloomLevel,
     CourseBlock,
@@ -17,6 +18,16 @@ from api.models import (
     KrauuCompetence,
     NeuroPrinciple,
 )
+
+
+def get_ai_style_axes(db: Session) -> list[AiStyleAxis]:
+    return (
+        db.query(AiStyleAxis)
+        .options(selectinload(AiStyleAxis.options))
+        .filter(AiStyleAxis.is_active.is_(True))
+        .order_by(AiStyleAxis.axis_id)
+        .all()
+    )
 
 
 def get_course_blocks(db: Session) -> list[CourseBlock]:

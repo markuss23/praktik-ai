@@ -134,12 +134,6 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"), nullable=False, default=UserRole.user
     )
-    ai_tone: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="profesionální a neutrální"
-    )
-    ai_expression_level: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="standardní srozumitelný jazyk"
-    )
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -159,6 +153,91 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     )
     mentor_logs: Mapped[list[MentorInteractionLog]] = relationship(
         back_populates="user",
+    )
+
+
+class AiStyleAxis(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — AI Styl komunikace, osy (ton, dens, form, rhet).
+    Uživatel si v profilu na každé ose vybere jedno nastavení pro AI mentora.
+    """
+
+    __tablename__ = "ai_style_axis"
+    __table_args__ = (
+        Index(
+            "uq_ai_style_axis_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    axis_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    options: Mapped[list[AiStyleOption]] = relationship(
+        back_populates="axis",
+        order_by="AiStyleOption.option_id",
+        primaryjoin="and_(AiStyleAxis.axis_id == AiStyleOption.axis_id, AiStyleOption.is_active)",
+    )
+
+
+class AiStyleOption(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — AI Styl komunikace, nastavení na ose (např. ton.neut).
+    description = popis chování agenta (jde do promptu), example = ukázka výstupu.
+    Na každé ose je právě jedno výchozí nastavení (is_default).
+    """
+
+    __tablename__ = "ai_style_option"
+    __table_args__ = (
+        Index(
+            "uq_ai_style_option_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+        Index(
+            "uq_ai_style_option_default",
+            "axis_id",
+            unique=True,
+            postgresql_where=text("is_active AND is_default"),
+        ),
+    )
+
+    option_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    axis_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_axis.axis_id"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    example: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    axis: Mapped[AiStyleAxis] = relationship(back_populates="options")
+
+
+class UserAiStyle(TimestampMixin, Base):
+    """Volba uživatele na ose AI stylu. Chybějící osa = výchozí nastavení."""
+
+    __tablename__ = "user_ai_style"
+    __table_args__ = (
+        Index("uq_user_ai_style_user_axis", "user_id", "axis_id", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    axis_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_axis.axis_id"), nullable=False
+    )
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_option.option_id"), nullable=False
     )
 
 

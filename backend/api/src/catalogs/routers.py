@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from api.database import SessionSqlSessionDependency
 from api.src.catalogs import schemas
 from api.src.catalogs.controllers import (
+    get_ai_style_axes,
     get_cross_subjects,
     get_bloom_levels,
     get_course_blocks,
@@ -72,3 +73,9 @@ async def list_bloom_levels(db: SessionSqlSessionDependency) -> list[schemas.Blo
 @router.get("/cross-subjects", operation_id="list_cross_subjects")
 async def list_cross_subjects(db: SessionSqlSessionDependency) -> list[schemas.CrossSubject]:
     return get_cross_subjects(db)
+
+
+@router.get("/ai-styles", operation_id="list_ai_styles")
+async def list_ai_styles(db: SessionSqlSessionDependency) -> list[schemas.AiStyleAxis]:
+    """Osy AI stylu komunikace s nastaveními, ze kterých uživatel volí v profilu."""
+    return get_ai_style_axes(db)

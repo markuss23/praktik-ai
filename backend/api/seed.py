@@ -4,6 +4,8 @@ from sqlalchemy import select, text
 from api.database import SessionLocal
 from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
 from api.models import (
+    AiStyleAxis,
+    AiStyleOption,
     AssessmentType,
     CrossSubject,
     BloomLevel,
@@ -89,6 +91,110 @@ COURSE_LEVELS: list[dict[str, str]] = [
         "code": "level.3",
         "name": "Pokročilý",
         "description": "Aktivní práce s AI ve výuce",
+    },
+]
+
+# Číselník AI Styl komunikace (list „AI Styl komunikace“ v PRAKTIK-AI_ciselniky.xlsx)
+AI_STYLE_AXES: list[dict] = [
+    {
+        "code": "ton",
+        "name": "Tón",
+        "options": [
+            {
+                "code": "ton.form",
+                "name": "Formální",
+                "description": "Vykání. Bez familiárních obratů, bez humoru, minimum emocí. Profesní odstup, věcné pojmenování. Bez oslovování jménem. Vhodné pro auditní/certifikační kontext.",
+                "example": "Halucinace je jev, při kterém velký jazykový model generuje výstup obsahující nepravdivé nebo nepodložené informace. Příčinou je pravděpodobnostní podstata generování, kdy model volí statisticky pravděpodobná pokračování textu bez ověření faktické správnosti.",
+            },
+            {
+                "code": "ton.neut",
+                "name": "Neutrální",
+                "description": "Vykání. Věcný, vstřícný tón bez familiárnosti. Občasné krátké povzbuzení („to je dobrá otázka\" jen výjimečně). Bez humoru, bez metafor navíc. Default pro většinu uživatelů.",
+                "example": "Halucinace znamená, že model vygeneruje odpověď, která zní věrohodně, ale není pravdivá. Vzniká proto, že model neodhaduje pravdu, ale nejpravděpodobnější pokračování textu podle svého tréninku.",
+                "is_default": True,
+            },
+            {
+                "code": "ton.frnd",
+                "name": "Přátelský",
+                "description": "Vykání s vřelostí. Uznává pokrok uživatele, empatické reakce na nejistotu („to je pochopitelné, že to takhle působí\"). Přípustný lehký humor. Nikdy sarkasmus, nikdy tykání.",
+                "example": "Halucinace zní strašidelně, ale ve skutečnosti jde o docela pochopitelnou věc: model si občas „domýšlí\". Není to zlá vůle — model prostě odhaduje, co by mělo následovat, a někdy trefí vedle.",
+            },
+        ],
+    },
+    {
+        "code": "dens",
+        "name": "Informační hustota",
+        "options": [
+            {
+                "code": "dens.low",
+                "name": "Nízká",
+                "description": "Jedna myšlenka na větu. Termín se představí a krátce vysvětlí, pak se s ním pracuje jako se známým — bez opakovaného rozvádění. Bez řetězených nuancí, bez výjimek. Respekt k uživateli: vysvětlit neznamená podceňovat.",
+                "example": "Halucinace je faktická chyba jazykového modelu. Model vygeneruje odpověď, která zní věrohodně, ale není pravdivá. Vzniká proto, že model odhaduje pravděpodobná slova, ne pravdu. Nejčastěji se projeví u konkrétních čísel, jmen a citací.",
+            },
+            {
+                "code": "dens.med",
+                "name": "Střední",
+                "description": "1–2 tvrzení na větu. Termín se zavede a hned se s ním pracuje dál. Nuance se přidávají, když souvisí s hlavní linií. Bez redundance, ale s kontextem, který dává smysl. Default pro výukový režim.",
+                "example": "Halucinace je faktická chyba modelu prezentovaná s jistotou. Vzniká z podstaty generování — model volí pravděpodobná pokračování, ne ověřená fakta — a projeví se hlavně u konkrétních údajů. Riziko roste u okrajových témat, kde má model málo dat.",
+                "is_default": True,
+            },
+            {
+                "code": "dens.high",
+                "name": "Vysoká",
+                "description": "Řetězená tvrzení, více informace na větu. Termíny bez opakovaného vysvětlování (předpokládá se, že si je uživatel drží z předchozího výkladu). Nuance, hraniční případy a příčinné souvislosti přímo v hlavním toku, ne stranou. Odborné slovo jen tam, kde nese vlastní význam, ne jako ozdoba.",
+                "example": "Halucinace je faktická chyba modelu s vysokou mírou jistoty ve výstupu. Vzniká proto, že generování je pravděpodobnostní bez ověřovacího kroku, a zesiluje se u okrajových témat, delších výstupů a požadavků na konkrétní údaje — čísla, jména, citace jsou nejzranitelnější.",
+            },
+        ],
+    },
+    {
+        "code": "form",
+        "name": "Forma výkladu",
+        "options": [
+            {
+                "code": "form.expo",
+                "name": "Výkladová",
+                "description": "Struktura: definice → vysvětlení → shrnutí. Neutrální expozice, žádné kroky ani příběhy. Vhodné pro pojmové/teoretické části.",
+                "example": "Halucinací se v kontextu jazykových modelů označuje výstup, který obsahuje nepravdivé informace. Podstatou je, že model negeneruje odpověď na základě ověřených faktů, ale na základě statistických vzorců z tréninkových dat. Ve výsledku tedy jde o chybu, která není náhodná, ale systémová.",
+                "is_default": True,
+            },
+            {
+                "code": "form.instr",
+                "name": "Instruktážní",
+                "description": "Struktura: kroky nebo checklist v imperativu. „Udělejte X. Pak Y. Ověřte Z.\" Vhodné pro procesní obsah, návody, práci s nástrojem.",
+                "example": "Chcete-li snížit riziko halucinace, postupujte takto:\n 1. Zadejte modelu kontext (dokument, data) místo obecného dotazu.\n 2. Požádejte model, aby označil, co si není jistý.\n 3. Ověřte konkrétní čísla, jména a citace z nezávislého zdroje.\n 4. U důležitých výstupů použijte druhý průchod („zkontroluj předchozí odpověď na faktické chyby\").",
+            },
+            {
+                "code": "form.narr",
+                "name": "Narativní",
+                "description": "Struktura: krátká situace z praxe / dialog / mini-příběh, který nese poučení. Postava, konflikt, poučení. Vhodné pro měkké kompetence, etiku, komunikaci.",
+                "example": "Petra připravovala podklad pro vedení a nechala si od modelu vygenerovat přehled tří studií. Vše znělo přesvědčivě — autoři, roky, závěry. Když si jednu ze studií chtěla otevřít, zjistila, že neexistuje. Model si ji nevymyslel schválně: prostě doplnil to, co „pasovalo do věty\". Petra od té doby každý odkaz otevírá dřív, než ho pošle dál.",
+            },
+        ],
+    },
+    {
+        "code": "rhet",
+        "name": "Rétorické prostředky",
+        "options": [
+            {
+                "code": "rhet.plain",
+                "name": "Věcné",
+                "description": "Bez metafor, bez ilustračních příkladů navíc. Pojmy se pojmenovávají přímo. Vhodné pro uživatele, které příměry zdržují nebo matou.",
+                "example": "Halucinace znamená, že model vygeneruje faktickou chybu. Chyba pramení z toho, že model volí slova podle pravděpodobnosti, ne podle pravdy.",
+            },
+            {
+                "code": "rhet.ex",
+                "name": "S příklady",
+                "description": "Každý klíčový koncept doplněn 1 konkrétním příkladem z praxe (typicky pracovní situace). Příklad není metafora, je to reálný výskyt jevu.",
+                "example": "Halucinace je faktická chyba modelu prezentovaná s jistotou. Například: požádáte model o tři studie k tématu — vrátí tři plausibilně znějící citace, ale dvě z nich neexistují. Nebo: zeptáte se na paragraf zákona a model uvede číslo, které se sice v zákoně vyskytuje, ale říká něco jiného.",
+                "is_default": True,
+            },
+            {
+                "code": "rhet.meta",
+                "name": "S analogiemi",
+                "description": "Vysvětlení metaforou / přirovnání ke známé věci mimo doménu. Analogie nese hlavní vysvětlovací práci, doplněna krátkou věcnou definicí.",
+                "example": "Představte si spolužáka, který nikdy nepřiznal, že něco neví — vždycky pohotově odpověděl něco, co znělo dobře. Někdy trefil, jindy ne, ale nikdy neváhal. Přesně tak funguje jazykový model, když halucinuje: neumí říct „nevím\", tak doplní to, co statisticky nejspíš přijde na řadu.",
+            },
+        ],
     },
 ]
 
@@ -899,6 +1005,16 @@ def seed_db() -> None:
 
         if db.query(CourseLevel).count() == 0:
             db.add_all([CourseLevel(**row) for row in COURSE_LEVELS])
+
+        if db.query(AiStyleAxis).count() == 0:
+            for row in AI_STYLE_AXES:
+                db.add(
+                    AiStyleAxis(
+                        code=row["code"],
+                        name=row["name"],
+                        options=[AiStyleOption(**o) for o in row["options"]],
+                    )
+                )
 
         if db.query(CourseType).count() == 0:
             db.add_all([CourseType(**row) for row in COURSE_TYPES])

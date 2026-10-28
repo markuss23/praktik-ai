@@ -4,7 +4,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, auth, oauth2_bearer
-from api.src.auth.schemas import ProfileUpdate, ProfileNameUpdate, UserResponse
+from api.src.auth.schemas import ProfileNameUpdate, UserResponse
+from api.src.users.controllers import get_user_ai_style, update_user_ai_style
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -37,18 +38,24 @@ def endp_me(current_user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(current_user)
 
 
-@router.put("/profile")
-def endp_update_profile(
-    data: ProfileUpdate,
+@router.get("/profile/ai-style")
+def endp_get_profile_ai_style(
     current_user: CurrentUser,
     db: SessionSqlSessionDependency,
-) -> UserResponse:
-    """Aktualizuje AI preference profilu přihlášeného uživatele."""
-    current_user.ai_tone = data.ai_tone
-    current_user.ai_expression_level = data.ai_expression_level
-    db.commit()
-    db.refresh(current_user)
-    return UserResponse.model_validate(current_user)
+) -> dict[str, str]:
+    """Vrátí AI styl přihlášeného uživatele jako {kód osy: kód nastavení}."""
+    return {o.axis.code: o.code for o in get_user_ai_style(db, current_user.user_id)}
+
+
+@router.patch("/profile/ai-style")
+def endp_update_profile_ai_style(
+    data: dict[str, str],
+    current_user: CurrentUser,
+    db: SessionSqlSessionDependency,
+) -> dict[str, str]:
+    """Změní AI styl přihlášeného uživatele, např. {"ton": "ton.frnd"}; neuvedené osy zůstanou."""
+    update_user_ai_style(db, current_user.user_id, data)
+    return {o.axis.code: o.code for o in get_user_ai_style(db, current_user.user_id)}
 
 
 @router.put("/profile/name")
