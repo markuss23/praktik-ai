@@ -10,4 +10,7 @@ from api.src.assessments.open_question_ai.service import (
 )
 
 
+# Odpověď student píše — submit_answer kontroluje rychlost psaní
+TYPED_ANSWER = True
+
 __all__ = ["Settings", "State", "evaluate_answer", "initial_state", "view"]

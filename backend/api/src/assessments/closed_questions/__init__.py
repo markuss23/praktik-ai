@@ -7,6 +7,11 @@ vše Pydantic:
     initial_state     počáteční State
     view              co student právě vidí (pole SessionStartResponse)
     evaluate_answer   vyhodnotí odpověď -> AnswerOutcome (assessments/outcome.py)
+
+Volitelně:
+    TYPED_ANSWER      True = odpověď se píše, submit_answer odmítne vložený
+                      text (typed_too_fast); předchozí odpověď čte ze
+                      state.last_answer
 """
 
 from api.src.assessments.closed_questions.schemas import (

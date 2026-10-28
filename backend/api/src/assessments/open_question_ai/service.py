@@ -40,7 +40,9 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
     result = await service.evaluate()
 
     attempts_used = state.attempts_used + 1
-    new_state = state.model_copy(update={"attempts_used": attempts_used})
+    new_state = state.model_copy(
+        update={"attempts_used": attempts_used, "last_answer": answer}
+    )
     # Správnost se odvozuje ze skóre, aby se nerozcházela s is_passed
     is_correct = result.score / 100 >= cfg.pass_threshold
 

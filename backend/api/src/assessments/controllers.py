@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from api import models
 from api.authorization import validate_owner_or_superadmin
 from api.enums import AssessmentContext, AssessmentSessionStatus
+from api.src.agents.typing_guard import typed_too_fast
 from api.src.common.utils import (
     assert_course_open_for_students,
     check_enrollment,
@@ -248,6 +249,23 @@ async def submit_answer(
         )
 
     fmt = get_format(session.course_assessment.assessment_type_code)
+
+    # Psanou odpověď vzniklou nereálně rychle (vložený text) odmítneme dřív,
+    # než se pokus započítá a zavolá se AI. Čas běží od startu session,
+    # u dalšího pokusu od toho předchozího (každý mění state -> updated_at).
+    if getattr(fmt, "TYPED_ANSWER", False) and typed_too_fast(
+        previous=session.state.get("last_answer", ""),
+        current=answer,
+        since=session.updated_at,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Odpověď vznikla rychleji, než je možné ji napsat. V testu je potřeba "
+                "odpověď napsat vlastními slovy — pokus se nezapočítal."
+            ),
+        )
+
     cfg = parse_settings(
         session.course_assessment.assessment_type_code,
         session.course_assessment.settings,

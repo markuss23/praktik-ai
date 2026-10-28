@@ -25,3 +25,5 @@ class OpenQuestionAIView(BaseModel):
 class OpenQuestionAIState(BaseModel):
     question: str = Field(..., min_length=1, max_length=255)
     attempts_used: int = Field(0, ge=0)
+    # Předchozí odpověď — při dalším pokusu ji student jen upravuje (typed_too_fast)
+    last_answer: str = ""

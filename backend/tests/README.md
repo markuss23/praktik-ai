@@ -14,6 +14,7 @@ Rychlé testy nepotřebují databázi, API klíče ani síť. LLM a DB se v nich
 | Soubor | Co testuje |
 |---|---|
 | `test_closed_questions_ai.py` | Formát `closed_questions_ai`: nastavení, start session, vyhodnocení odpovědí, skóre, uložení stavu do DB a zpět |
+| `test_submit_answer_typing.py` | Odmítnutí vložené (nereálně rychle napsané) odpovědi v `submit_answer` u psaných formátů |
 | `test_closed_questions_didactic.py` | Didaktickou kvalitu AI otázek podle pravidel z `prompt.md` (počet, 3–4 možnosti, žádné duplicity, žádné „všechny uvedené“, délka možností…) |
 
 ## Živý test se skutečným LLM
