@@ -55,27 +55,27 @@ async def generate_answer(state: AgentState) -> AgentState:
     system_prompt = f"""{PROMPT.rstrip()}
 - Odpověď maximálně {max_length} znaků (počítá se text bez HTML tagů)
 
-            STUDENT PRÁVĚ STUDUJE:
-            - Kurz: {state.get("course_title", "")}
-            - Modul: {state.get("module_title", "")}
-            - Učební blok: {state.get("learn_block_title", "")}
+STUDENT PRÁVĚ STUDUJE:
+- Kurz: {state.get("course_title", "")}
+- Modul: {state.get("module_title", "")}
+- Učební blok: {state.get("learn_block_title", "")}
 
-            STYL KOMUNIKACE (zvolil si ho student, dodržuj ho přednostně):
+STYL KOMUNIKACE (zvolil si ho student, dodržuj ho přednostně):
 {ai_style}
 """
 
     user_prompt: str = f"""KONTEXT Z UČEBNÍCH MATERIÁLŮ:
-                {context_text}
+{context_text}
 
-                ---
+---
 
-                OTÁZKA STUDENTA:
-                {user_message}
+OTÁZKA STUDENTA:
+{user_message}
 
-            ---
+---
 
-                Odpověz na otázku studenta na základě výše uvedeného kontextu. Buď konkrétní a pedagogický.
-        """
+Odpověz na otázku studenta na základě výše uvedeného kontextu.
+"""
 
     messages: list[SystemMessage | HumanMessage | AIMessage] = [
         SystemMessage(content=system_prompt),
