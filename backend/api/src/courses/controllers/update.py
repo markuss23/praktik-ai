@@ -2,7 +2,7 @@
 Controllery pro editaci zdrojů kurzu.
 """
 
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session
 
@@ -20,10 +20,17 @@ from api.src.catalogs.controllers import (
 from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
-from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin, validate_superadmin
+from api.authorization import (
+    validate_owner_or_superadmin,
+    validate_guarantor_or_superadmin,
+    validate_superadmin,
+)
+from api.notifications.course_status import classify_transition, notify_course_event
 
 
-def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
+def update_course(
+    db: Session, course_id: int, course_data: CourseUpdate, user: models.User
+) -> Course:
     """Aktualizuje existující kurz (v draft nebo generated stavu)"""
     validate_course_catalog_ids(db, course_data)
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
@@ -43,7 +50,8 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     assert_course_editable(course)
 
     update_data = course_data.model_dump(
-        exclude_unset=True, exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"}
+        exclude_unset=True,
+        exclude={"krauu_competence_ids", "bloom_level_ids", "cross_subject_ids"},
     )
 
     # Auto-transition to "edited" when saving changes
@@ -78,9 +86,28 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     return Course.model_validate(course)
 
 
-def update_course_status(db: Session, course_id: int, status: Status, user: models.User) -> Course:
-    """Aktualizuje status kurzu"""
+def update_course_status(
+    db: Session,
+    course_id: int,
+    status: Status,
+    user: models.User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Course:
+    """
+    Aktualizuje status kurzu.
+
+    Args:
+        db: SQLAlchemy session.
+        course_id: ID kurzu.
+        status: Nový status kurzu.
+        user: Přihlášený uživatel, který změnu provádí.
+        background_tasks: Pokud je zadáno, po úspěšném commitu se naplánuje
+            odeslání e-mailové notifikace o změně stavu.
+    """
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    old_status = course.status
+    # Při zrušení schválení se approved_by_id níže nuluje, notifikace (E6) ho ale potřebuje
+    previous_approver_id = course.approved_by_id
 
     valid_transitions = {
         Status.draft: {Status.in_review},
@@ -107,8 +134,13 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
             )
         )
         if not has_module:
-            raise HTTPException(status_code=400, detail="Kurz musí mít aspoň jeden modul")
-    elif course.status == Status.in_review and status in (Status.approved, Status.edited):
+            raise HTTPException(
+                status_code=400, detail="Kurz musí mít aspoň jeden modul"
+            )
+    elif course.status == Status.in_review and status in (
+        Status.approved,
+        Status.edited,
+    ):
         # Approve or reject: only guarantor or superadmin
         validate_guarantor_or_superadmin(course, user, "kurz")
     elif course.status == Status.approved and status == Status.edited:
@@ -121,7 +153,9 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
     values: dict = {"status": status}
     if status == Status.approved:
         if course.owner_id == user.user_id:
-            raise HTTPException(status_code=400, detail="Vlastní kurz si nelze schválit")
+            raise HTTPException(
+                status_code=400, detail="Vlastní kurz si nelze schválit"
+            )
         values["approved_by_id"] = user.user_id
     elif course.status == Status.approved and status == Status.edited:
         # Reverting from approved: unpublish and clear approval
@@ -136,10 +170,18 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
     db.commit()
     db.refresh(course)
 
+    event = classify_transition(old_status, Status(status))
+    if background_tasks is not None and event is not None:
+        background_tasks.add_task(
+            notify_course_event, course_id, event, user.user_id, previous_approver_id
+        )
+
     return Course.model_validate(course)
 
 
-def update_course_published(db: Session, course_id: int, is_published: bool, user: models.User) -> Course:
+def update_course_published(
+    db: Session, course_id: int, is_published: bool, user: models.User
+) -> Course:
     """Aktualizuje publikování kurzu"""
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
@@ -148,12 +190,17 @@ def update_course_published(db: Session, course_id: int, is_published: bool, use
 
     # approved/archived: lze publikovat i odpublikovat
     if course.status not in (Status.approved, Status.archived):
-        raise HTTPException(status_code=400, detail="Publikování lze měnit pouze u kurzu ve stavu 'approved' nebo 'archived'.")
+        raise HTTPException(
+            status_code=400,
+            detail="Publikování lze měnit pouze u kurzu ve stavu 'approved' nebo 'archived'.",
+        )
 
     if is_published == course.is_published:
         raise HTTPException(
             status_code=400,
-            detail="Kurz je již publikován." if is_published else "Kurz již není publikován.",
+            detail="Kurz je již publikován."
+            if is_published
+            else "Kurz již není publikován.",
         )
 
     db.execute(
