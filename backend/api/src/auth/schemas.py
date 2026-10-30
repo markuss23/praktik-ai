@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from api.enums import UserRole
+from api.enums import NotificationEvent, UserRole
 from api.src.common.schemas import ORMModel
 
 
@@ -22,3 +22,22 @@ class ProfileUpdate(BaseModel):
 
 class ProfileNameUpdate(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=255)
+
+
+class NotificationPreferenceItem(BaseModel):
+    """Jedna e-mailová notifikace v nastavení profilu."""
+
+    event_key: NotificationEvent
+    label: str
+    description: str
+    enabled: bool
+    mandatory: bool = Field(description="True = povinná notifikace, nelze ji vypnout")
+
+
+class NotificationPreferenceUpdateItem(BaseModel):
+    event_key: NotificationEvent
+    enabled: bool
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    items: list[NotificationPreferenceUpdateItem]

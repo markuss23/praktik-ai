@@ -2,7 +2,7 @@
 Controllery pro editaci zdrojů kurzu.
 """
 
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from api.src.common.utils import get_or_404, assert_course_editable
 from api.src.courses.schemas import Course, CourseUpdate
 from api.enums import Status
 from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin, validate_superadmin
+from api.notifications.course_status import classify_transition, notify_course_event
 
 
 def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: models.User) -> Course:
@@ -137,9 +138,28 @@ def update_course(db: Session, course_id: int, course_data: CourseUpdate, user: 
     return Course.model_validate(course)
 
 
-def update_course_status(db: Session, course_id: int, status: Status, user: models.User) -> Course:
-    """Aktualizuje status kurzu"""
+def update_course_status(
+    db: Session,
+    course_id: int,
+    status: Status,
+    user: models.User,
+    background_tasks: BackgroundTasks | None = None,
+) -> Course:
+    """
+    Aktualizuje status kurzu.
+
+    Args:
+        db: SQLAlchemy session.
+        course_id: ID kurzu.
+        status: Nový status kurzu.
+        user: Přihlášený uživatel, který změnu provádí.
+        background_tasks: Pokud je zadáno, po úspěšném commitu se naplánuje
+            odeslání e-mailové notifikace o změně stavu.
+    """
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    old_status = course.status
+    # Při zrušení schválení se approved_by_id níže nuluje, notifikace (E6) ho ale potřebuje
+    previous_approver_id = course.approved_by_id
 
     valid_transitions = {
         Status.draft: {Status.in_review},
@@ -184,6 +204,12 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
     )
     db.commit()
     db.refresh(course)
+
+    event = classify_transition(old_status, Status(status))
+    if background_tasks is not None and event is not None:
+        background_tasks.add_task(
+            notify_course_event, course_id, event, user.user_id, previous_approver_id
+        )
 
     return Course.model_validate(course)
 

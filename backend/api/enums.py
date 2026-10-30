@@ -90,3 +90,15 @@ class ReviewVerdict(enum.StrEnum):
     approved = "approved"
     rejected = "rejected"
     needs_revision = "needs_revision"
+
+
+class NotificationEvent(enum.StrEnum):
+    """Klíče e-mailových notifikací u kurzu."""
+
+    course_generated = "course_generated"  
+    course_generation_failed = "course_generation_failed"  
+    course_submitted = "course_submitted"  
+    course_approved = "course_approved"  
+    course_rejected = "course_rejected"  
+    course_approval_revoked = "course_approval_revoked"  
+    course_archived = "course_archived"  

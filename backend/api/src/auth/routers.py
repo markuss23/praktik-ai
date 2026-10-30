@@ -4,7 +4,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, auth, oauth2_bearer
-from api.src.auth.schemas import ProfileUpdate, ProfileNameUpdate, UserResponse
+from api.notifications.preferences import list_preferences, update_preferences
+from api.src.auth.schemas import (
+    NotificationPreferenceItem,
+    NotificationPreferencesUpdate,
+    ProfileNameUpdate,
+    ProfileUpdate,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -62,3 +69,26 @@ def endp_update_profile_name(
     db.commit()
     db.refresh(current_user)
     return UserResponse.model_validate(current_user)
+
+
+@router.get("/profile/notifications")
+def endp_get_notification_preferences(
+    current_user: CurrentUser,
+    db: SessionSqlSessionDependency,
+) -> list[NotificationPreferenceItem]:
+    """Vrátí nastavení e-mailových notifikací přihlášeného uživatele (jen pro jeho roli)."""
+    return [NotificationPreferenceItem(**item) for item in list_preferences(db, current_user)]
+
+
+@router.put("/profile/notifications")
+def endp_update_notification_preferences(
+    data: NotificationPreferencesUpdate,
+    current_user: CurrentUser,
+    db: SessionSqlSessionDependency,
+) -> list[NotificationPreferenceItem]:
+    """
+    Zapne nebo vypne e-mailové notifikace přihlášeného uživatele.
+    Povinné a pro roli nerelevantní notifikace se ignorují.
+    """
+    update_preferences(db, current_user, {item.event_key: item.enabled for item in data.items})
+    return [NotificationPreferenceItem(**item) for item in list_preferences(db, current_user)]

@@ -31,11 +31,23 @@ class WikiSettings(BaseModel):
     local_path: str = "../wiki_data"
 
 
+class SMTPSettings(BaseModel):
+    host: str = "mailpit"
+    port: int = 1025
+    username: str | None = None
+    password: str | None = None
+    use_tls: bool = False
+    sender: str = "noreply@praktik-ai.cz"
+    enabled: bool = True
+    frontend_url: str = "http://localhost:3000"
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
     wiki: WikiSettings = WikiSettings()
+    smtp: SMTPSettings = SMTPSettings()
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

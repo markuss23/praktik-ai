@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select, update
@@ -53,6 +54,8 @@ from api.src.agents.image_progress import (
     unregister_image_task,
 )
 from api.database import SessionLocal
+from api.enums import NotificationEvent
+from api.notifications.course_status import notify_course_event
 from api.storage import seaweedfs
 from api.src.agents.practice_controllers import (
     generate_practice_question,
@@ -73,9 +76,28 @@ from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
 from api import models
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
 public_router = APIRouter(prefix="/agents", tags=["agents"])
+
+
+async def _notify_generation(course_id: int, event: NotificationEvent) -> None:
+    """
+    Pošle e-mail o výsledku AI generování kurzu (E1 úspěch / E2 selhání).
+
+    Odesílání je blokující, proto běží ve vlákně. Případná chyba se jen zaloguje,
+    aby nespadl task generování.
+
+    Args:
+        course_id: ID generovaného kurzu.
+        event: NotificationEvent.course_generated nebo course_generation_failed.
+    """
+    try:
+        await asyncio.to_thread(notify_course_event, course_id, event)
+    except Exception:  # noqa: BLE001
+        logger.exception("Notifikace %s o kurzu %s selhala", event, course_id)
 
 
 async def _run_course_generation(course_id: int) -> None:
@@ -102,8 +124,10 @@ async def _run_course_generation(course_id: int) -> None:
                 db.commit()
             except Exception:  # noqa: BLE001
                 db.rollback()
+            await _notify_generation(course_id, NotificationEvent.course_generation_failed)
             return
         mark_completed(course_id)
+        await _notify_generation(course_id, NotificationEvent.course_generated)
     finally:
         db.close()
         unregister_task(course_id)

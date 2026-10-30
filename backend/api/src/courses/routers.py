@@ -153,7 +153,7 @@ async def endp_update_course_status(
     user: CurrentUser,
     background_tasks: BackgroundTasks,
 ) -> Course:
-    result = update_course_status(db, course_id, status, user)
+    result = update_course_status(db, course_id, status, user, background_tasks)
 
     if status == "approved":
         background_tasks.add_task(_generate_embeddings, course_id)

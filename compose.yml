@@ -41,6 +41,15 @@ services:
       retries: 10
       start_period: 20s
 
+  mailpit:
+    # Testovaci SMTP server: zachyti vsechny odeslane e-maily, UI na http://localhost:8025
+    image: axllent/mailpit:v1.20
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - praktikai
+
   db:
     image: pgvector/pgvector:0.8.1-pg18-trixie
     restart: always

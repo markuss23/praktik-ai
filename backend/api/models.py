@@ -1817,3 +1817,27 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 
     def get_owner_id(self) -> int:
         return self.collection.user_id
+
+
+class NotificationOptOut(TimestampMixin, Base):
+    """
+    Tabulka pro ukládání preferencí emailových notifikací.
+    Existence řádku = notifikace vypnutá 
+    Absence rádku = zapnutá (výchozí stav)
+    """
+
+    __tablename__ = "notification_opt_out"
+    __table_args__ = (
+        Index(
+            "uq_notification_opt_out_user_event", "user_id", "event_key", unique=True
+        ),
+    )
+
+    opt_out_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user.user_id", ondelete="CASCADE"), nullable=False
+    )
+    # identifikátor události, např course_generated, course_submitted
+    event_key: Mapped[str] = mapped_column(String(50), nullable=False)
