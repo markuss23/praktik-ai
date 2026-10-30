@@ -21,6 +21,7 @@ from api.models import (
     SystemSetting,
 )
 from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
+from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISettings
 from api.src.assessments.closed_questions_ai.schemas import ClosedQuestionsAISettings
 
 COURSE_BLOCKS: list[dict[str, str]] = [
@@ -896,6 +897,30 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro generování sady uzavřených otázek z výukového obsahu modulu/kurzu.",
     },
     {
+        "key": "socratic_dialog_ai_topic",
+        "name": "Sokratovský dialog (AI) – téma a první otázka",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/topic/prompt.md
+        "prompt": "",
+        "description": "LLM pro výběr tématu sokratovského dialogu z learn blocků modulu a položení první otázky.",
+    },
+    {
+        "key": "socratic_dialog_ai",
+        "name": "Sokratovský dialog (AI) – tazatel",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/dialog/prompt.md
+        "prompt": "",
+        "description": "LLM, které v sokratovském dialogu ohodnotí odpověď (delta elo) a položí další otázku.",
+    },
+    {
+        "key": "socratic_dialog_ai_summary",
+        "name": "Sokratovský dialog (AI) – shrnutí",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/summary/prompt.md
+        "prompt": "",
+        "description": "LLM pro závěrečné shrnutí průběhu sokratovského dialogu (bez verdiktu).",
+    },
+    {
         "key": "pretest",
         "name": "Pretest – otázky modulu",
         "model": "claude-opus-5-5",
@@ -941,6 +966,16 @@ ASSESSMENT_TYPES: list[dict] = [
         ),
         "allowed_contexts": ["practice", "assessment", "course_final"],
         "default_settings": ClosedQuestionsAISettings().model_dump(),
+    },
+    {
+        "code": "socratic_dialog_ai",
+        "name": "Sokratovský dialog AI",
+        "description": (
+            "AI z výukového obsahu vymyslí téma a vede se studentem rozhovor "
+            "o 2–6 krocích. Jen se ptá, verdikt nevydává; na konci shrne průběh."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": SocraticDialogAISettings().model_dump(),
     },
     {
         "code": "pretest",

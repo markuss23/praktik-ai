@@ -13,6 +13,7 @@ from api.src.assessments import closed_questions
 from api.src.assessments import closed_questions_ai
 from api.src.assessments import open_question_ai
 from api.src.assessments import pretest
+from api.src.assessments import socratic_dialog_ai
 from api.src.assessments.schemas import SessionStartResponse
 
 CA = models.CourseAssessment
@@ -26,6 +27,7 @@ FORMATS: dict[str, ModuleType] = {
     "closed_questions_ai": closed_questions_ai,
     "open_question_ai": open_question_ai,
     "pretest": pretest,
+    "socratic_dialog_ai": socratic_dialog_ai,
 }
 
 

@@ -165,8 +165,11 @@ def update_course_assessment(
 ) -> CourseAssessmentResponse:
     course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
     assert_not_pretest(course_assessment)
+    # exclude_unset: union mohl vybrat cizí formát (např. `{}` -> OpenQuestionAI),
+    # jeho doplněné defaulty by pak správné schéma odmítlo
     cfg = parse_settings(
-        course_assessment.assessment_type_code, body.settings.model_dump()
+        course_assessment.assessment_type_code,
+        body.settings.model_dump(exclude_unset=True),
     )
     course_assessment.settings = cfg.model_dump()
     course_assessment.is_enabled = body.is_enabled

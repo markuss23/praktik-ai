@@ -9,6 +9,7 @@ from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
 from api.src.assessments.closed_questions_ai.schemas import ClosedQuestionsAISettings
 from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 from api.src.assessments.pretest.schemas import PretestSettings
+from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISettings
 
 # Nastavení kteréhokoliv formátu. Nový formát sem přidá svůj typ:
 #   AssessmentSettings = ClosedQuestionsSettings | OpenQuestionsSettings
@@ -21,8 +22,14 @@ from api.src.assessments.pretest.schemas import PretestSettings
 # ClosedAI mezi nimi: `question_count` Open odmítne, `questions` odmítne ClosedAI.
 # Pretest úplně první: jeho settings jsou vždy `{}`, které by jinak prošlo jako Open
 # (samé defaulty). Ostatní formáty ukládají model_dump s defaulty — nikdy prázdné.
+# SocraticDialogAI úplně poslední: má samé defaulty, takže by spolkl i `{}`;
+# jeho pole (min_turns, elo...) ostatní formáty odmítnou (extra="forbid").
 AssessmentSettings = Annotated[
-    PretestSettings | OpenQuestionAISettings | ClosedQuestionsAISettings | ClosedQuestionsSettings,
+    PretestSettings
+    | OpenQuestionAISettings
+    | ClosedQuestionsAISettings
+    | ClosedQuestionsSettings
+    | SocraticDialogAISettings,
     Field(union_mode="left_to_right"),
 ]
 
