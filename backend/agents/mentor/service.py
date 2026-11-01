@@ -16,13 +16,15 @@ class MentorService:
     def __init__(
         self,
         db: Session,
-        learn_block_id: int,
+        course_id: int,
+        learn_block_id: int | None,
         user_id: int,
         message: str,
         use_history: bool = True,
         scope: str = "module",
     ):
         self.db = db
+        self.course_id = course_id
         self.learn_block_id = learn_block_id
         self.user_id = user_id
         self.message = message
@@ -35,6 +37,7 @@ class MentorService:
 
         result = await app.ainvoke(
             {
+                "course_id": self.course_id,
                 "learn_block_id": self.learn_block_id,
                 "user_id": self.user_id,
                 "message": self.message,

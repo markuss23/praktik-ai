@@ -92,6 +92,13 @@ class ReviewVerdict(enum.StrEnum):
     needs_revision = "needs_revision"
 
 
+class MentorScope(enum.StrEnum):
+    """Kde AI mentor hledá podklady a historii konverzace."""
+
+    module = "module"
+    course = "course"
+
+
 class AssessmentContext(enum.StrEnum):
     """Kde v kurzu je interakční formát nasazen."""
 

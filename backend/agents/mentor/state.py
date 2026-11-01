@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 class LearnBlockQueryAttr(BaseModel):
     course_id: int
-    module_id: int
+    module_id: int | None  # None = chat nad kurzem bez learn blocku
 
 
 class ChunkData(BaseModel):
@@ -14,7 +14,8 @@ class ChunkData(BaseModel):
 
 
 class AgentState(TypedDict):
-    learn_block_id: int
+    course_id: int
+    learn_block_id: int | None  # None = scope course bez learn blocku
     user_id: int
     db: Session
     message: str

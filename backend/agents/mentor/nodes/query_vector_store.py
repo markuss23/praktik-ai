@@ -27,7 +27,7 @@ async def query_vector_store(state: AgentState) -> AgentState:
     # Celý kurz je větší prostor — víc kandidátů, ať se mezi ně dostane i aktuální modul
     search_filter: dict = {"course_id": course_id}
     k = 20
-    if state.get("scope", "module") == "module":
+    if state.get("scope", "module") == "module" and module_id is not None:
         search_filter["module_id"] = module_id
         k = 10
 

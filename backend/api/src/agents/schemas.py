@@ -178,7 +178,12 @@ class PracticeQuestionWithAttempts(BaseModel):
 class LearnBlocksChatRequest(BaseModel):
     """Request pro chat s learn blocky"""
 
-    learn_block_id: int = Field(..., description="ID learn blocku")
+    learn_block_id: int | None = Field(
+        None, description="ID learn blocku (povinné pro scope=module)"
+    )
+    course_id: int | None = Field(
+        None, description="ID kurzu — pro scope=course bez learn blocku"
+    )
     message: str = Field(..., description="Zpráva od uživatele (otázka)")
 
 

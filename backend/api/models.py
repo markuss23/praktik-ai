@@ -38,6 +38,7 @@ from api.enums import (
     AssessmentContext,
     AssessmentSessionStatus,
     AssessmentTurnRole,
+    MentorScope,
 )
 
 
@@ -1503,8 +1504,10 @@ class ModuleTicket(TimestampMixin, SoftDeleteMixin, Base):
 
 class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Log konverzace uživatele s AI mentorem v rámci konkrétního LearnBlock.
+    Log konverzace uživatele s AI mentorem.
     Jeden řádek = jedna otázka + odpověď.
+    scope=module: chat v learn blocku, historie podle learn_id.
+    scope=course: chat nad celým kurzem (i bez learn blocku), historie podle course_id.
     """
 
     __tablename__ = "mentor_interaction_log"
@@ -1512,18 +1515,30 @@ class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
         Index("ix_mentor_log_user_id", "user_id"),
         Index("ix_mentor_log_learn_id", "learn_id"),
         Index("ix_mentor_log_user_learn", "user_id", "learn_id"),
+        Index("ix_mentor_log_user_course", "user_id", "course_id"),
+        CheckConstraint(
+            "scope = 'course' OR learn_id IS NOT NULL",
+            name="ck_mentor_log_module_needs_learn",
+        ),
     )
 
     log_id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    learn_id: Mapped[int] = mapped_column(
-        ForeignKey("learn_block.learn_id"), nullable=False
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    learn_id: Mapped[int | None] = mapped_column(ForeignKey("learn_block.learn_id"))
+    scope: Mapped[MentorScope] = mapped_column(
+        Enum(MentorScope, name="mentor_scope"),
+        nullable=False,
+        default=MentorScope.module,
     )
     user_message: Mapped[str] = mapped_column(Text, nullable=False)
     ai_response: Mapped[str] = mapped_column(Text, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="mentor_logs")
-    learn_block: Mapped[LearnBlock] = relationship(back_populates="mentor_logs")
+    course: Mapped[Course] = relationship()
+    learn_block: Mapped[LearnBlock | None] = relationship(back_populates="mentor_logs")
 
 
 # ---------- Veřejná databáze (pub_*) ----------

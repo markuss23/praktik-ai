@@ -1,6 +1,5 @@
 import asyncio
 import base64
-from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select, update
@@ -75,6 +74,7 @@ from agents.assessment_generator.service import AssessmentService
 from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
 from api import models
+from api.enums import MentorScope
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
@@ -497,30 +497,39 @@ async def learn_blocks_chat(
     db: SessionSqlSessionDependency,
     user: CurrentUser,
     use_history: bool = Query(True, description="Použít předchozí konverzaci"),
-    scope: Literal["module", "course"] = Query(
-        "module", description="Kde hledat kontext: jen v modulu bloku, nebo v celém kurzu"
+    scope: MentorScope = Query(  # noqa: B008
+        MentorScope.module,
+        description="Kde hledat podklady a historii: v learn blocku/modulu, nebo v celém kurzu",
     ),
 ) -> LearnBlocksChatResponse:
-    """Endpoint pro chat s learn blockem."""
+    """Chat s AI mentorem. scope=module potřebuje learn_block_id, scope=course stačí course_id."""
 
-    learn_block = get_or_404(
-        db, models.LearnBlock, user_input.learn_block_id, detail="Learn block nenalezen"
-    )
-
-    if not (
-        learn_block.module.course.is_active
-        and learn_block.module.course.status in ("approved", "archived")
-    ):
-        raise HTTPException(
-            status_code=400, detail="Learn block není v aktivním a schváleném kurzu"
+    if user_input.learn_block_id is not None:
+        learn_block = get_or_404(
+            db, models.LearnBlock, user_input.learn_block_id, detail="Learn block nenalezen"
         )
-    course = learn_block.module.course
+        course = learn_block.module.course
+        if user_input.course_id not in (None, course.course_id):
+            raise HTTPException(status_code=400, detail="Learn block nepatří do kurzu")
+    elif scope == MentorScope.course and user_input.course_id is not None:
+        course = get_or_404(db, models.Course, user_input.course_id, detail="Kurz nenalezen")
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Chybí learn_block_id (pro scope=course stačí course_id)",
+        )
+
+    if not (course.is_active and course.status in ("approved", "archived")):
+        raise HTTPException(
+            status_code=400, detail="Chat je jen v aktivním a schváleném kurzu"
+        )
 
     # Owner and superadmin can use the tutor without enrollment
     check_enrollment(db, user, course, bypass_for_owner=True)
 
     service = MentorService(
         db=db,
+        course_id=course.course_id,
         learn_block_id=user_input.learn_block_id,
         user_id=user.user_id,
         message=user_input.message,
@@ -532,7 +541,9 @@ async def learn_blocks_chat(
 
     log = models.MentorInteractionLog(
         user_id=user.user_id,
+        course_id=course.course_id,
         learn_id=user_input.learn_block_id,
+        scope=scope,
         user_message=user_input.message,
         ai_response=result.answer,
     )
