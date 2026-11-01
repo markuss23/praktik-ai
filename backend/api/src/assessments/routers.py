@@ -9,6 +9,7 @@ from api.src.assessments.schemas import (
     CourseAssessmentAttachRequest,
     CourseAssessmentResponse,
     CourseAssessmentUpdateRequest,
+    CourseProgressResponse,
     SessionAnswerResponse,
     SessionHistoryItem,
     SessionStartResponse,
@@ -179,3 +180,16 @@ def get_session_history(
     user: CurrentUser,
 ) -> list[SessionHistoryItem]:
     return controllers.get_session_history(db, user, course_id)
+
+
+# Runtime — hotové moduly a kurz (povinné testy ve stavu passed)
+@router.get(
+    "/courses/{course_id}/assessments/progress",
+    operation_id="get_assessment_course_progress",
+)
+def get_course_progress(
+    course_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> CourseProgressResponse:
+    return controllers.get_course_progress(db, user, course_id)

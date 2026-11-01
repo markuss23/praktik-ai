@@ -122,3 +122,33 @@ class SessionHistoryItem(BaseModel):
     started_at: datetime
     finished_at: datetime | None
     attempts_used: int
+
+
+class AssessmentProgressItem(BaseModel):
+    """Jeden test (konfigurace formátu) a jestli ho student splnil."""
+
+    course_assessment_id: int
+    assessment_type_code: str
+    context: AssessmentContext
+    is_required: bool
+    passed: bool
+    # Kdy ho student splnil poprvé
+    passed_at: datetime | None
+
+
+class ModuleProgressItem(BaseModel):
+    module_id: int
+    # Splněné všechny povinné testy modulu
+    completed: bool
+    # Splnění posledního povinného testu; None = nehotový nebo bez povinných
+    completed_at: datetime | None
+    assessments: list[AssessmentProgressItem]
+
+
+class CourseProgressResponse(BaseModel):
+    """Co má student v kurzu splněné — viz course_completion v utils.py."""
+
+    modules: list[ModuleProgressItem]
+    course_final: list[AssessmentProgressItem]
+    course_completed: bool
+    course_completed_at: datetime | None

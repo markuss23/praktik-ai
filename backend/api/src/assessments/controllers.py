@@ -19,6 +19,7 @@ from api.src.assessments.schemas import (
     CourseAssessmentAttachRequest,
     CourseAssessmentResponse,
     CourseAssessmentUpdateRequest,
+    CourseProgressResponse,
     SessionAnswerResponse,
     SessionHistoryItem,
     SessionStartResponse,
@@ -26,6 +27,7 @@ from api.src.assessments.schemas import (
 from api.src.assessments.utils import (
     assert_course_editable,
     assert_prerequisites_passed,
+    course_completion,
     current_view,
     find_active_session,
     find_course_assessment,
@@ -324,6 +326,8 @@ async def submit_answer(
         else AssessmentSessionStatus.failed
     )
     session.finished_at = datetime.now(UTC)
+    if outcome.is_passed:
+        mark_course_completed(db, user, session.course_assessment.course)
     db.commit()
     return SessionAnswerResponse(
         session_id=session.session_id,
@@ -333,6 +337,30 @@ async def submit_answer(
         is_passed=outcome.is_passed,
         feedback=outcome.feedback,
     )
+
+
+def mark_course_completed(
+    db: Session, user: models.User, course: models.Course
+) -> None:
+    """Splněním posledního povinného testu kurz končí -> enrollment.completed_at.
+
+    Nastaví se jen jednou — pozdější průchody (opakované practice) ho nemění.
+    """
+    enrollment = db.scalar(
+        select(models.Enrollment).where(
+            models.Enrollment.user_id == user.user_id,
+            models.Enrollment.course_id == course.course_id,
+            models.Enrollment.is_active.is_(True),
+            models.Enrollment.left_at.is_(None),
+        )
+    )
+    if enrollment is None or enrollment.completed_at is not None:
+        return
+    # autoflush je vypnutý — bez flush by výpočet právě dokončenou session neviděl
+    db.flush()
+    progress = course_completion(db, user, course)
+    if progress.course_completed:
+        enrollment.completed_at = progress.course_completed_at
 
 
 def get_session_history(
@@ -372,6 +400,14 @@ def get_session_history(
         )
         for session in sessions
     ]
+
+
+def get_course_progress(
+    db: Session, user: models.User, course_id: int
+) -> CourseProgressResponse:
+    course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
+    check_enrollment(db, user, course)
+    return course_completion(db, user, course)
 
 
 # ---------- Obsah pretestu (lektor) ----------

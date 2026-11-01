@@ -1,8 +1,10 @@
+from datetime import datetime
+
 from fastapi import HTTPException
 from types import ModuleType
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api import models
@@ -14,7 +16,12 @@ from api.src.assessments import closed_questions_ai
 from api.src.assessments import open_question_ai
 from api.src.assessments import pretest
 from api.src.assessments import socratic_dialog_ai
-from api.src.assessments.schemas import SessionStartResponse
+from api.src.assessments.schemas import (
+    AssessmentProgressItem,
+    CourseProgressResponse,
+    ModuleProgressItem,
+    SessionStartResponse,
+)
 
 CA = models.CourseAssessment
 AS = models.AssessmentSession
@@ -183,3 +190,95 @@ def assert_prerequisites_passed(
             status_code=403,
             detail="Nejdřív musíš splnit všechny povinné testy nižší úrovně.",
         )
+
+
+def course_completion(
+    db: Session, user: models.User, course: models.Course
+) -> CourseProgressResponse:
+    """Co má student v kurzu splněné, po jednotlivých testech.
+
+    Bere zapnuté aktivní konfigurace kurzu; `passed` = student má na ní
+    session ve stavu passed. Modul je hotový, když má splněné všechny
+    povinné (pretest, povinné practice, assessment) — nepovinné jsou jen
+    pro přehled. Kurz je hotový, když jsou hotové všechny aktivní moduly
+    a povinný course_final, pokud je. Bez povinných konfigurací je hotovo —
+    stejně jako gate v assert_prerequisites_passed.
+    """
+    configs = db.scalars(
+        select(CA).where(
+            CA.course_id == course.course_id,
+            CA.is_enabled.is_(True),
+            CA.is_active.is_(True),
+        )
+    ).all()
+
+    # course_assessment_id -> kdy ho student splnil poprvé
+    passed_at: dict[int, datetime] = dict(
+        db.execute(
+            select(AS.course_assessment_id, func.min(AS.finished_at))
+            .where(
+                AS.user_id == user.user_id,
+                AS.course_assessment_id.in_(
+                    [ca.course_assessment_id for ca in configs]
+                ),
+                AS.status == AssessmentSessionStatus.passed,
+                AS.is_active.is_(True),
+            )
+            .group_by(AS.course_assessment_id)
+        ).all()
+    )
+
+    # module_id -> testy; None = course_final. Řazení podle pořadí stupňů.
+    contexts = list(AssessmentContext)
+    by_module: dict[int | None, list[AssessmentProgressItem]] = {}
+    for ca in sorted(
+        configs, key=lambda ca: (contexts.index(ca.context), ca.assessment_type_code)
+    ):
+        by_module.setdefault(ca.module_id, []).append(
+            AssessmentProgressItem(
+                course_assessment_id=ca.course_assessment_id,
+                assessment_type_code=ca.assessment_type_code,
+                context=ca.context,
+                is_required=ca.is_required,
+                passed=ca.course_assessment_id in passed_at,
+                passed_at=passed_at.get(ca.course_assessment_id),
+            )
+        )
+
+    def completion(
+        items: list[AssessmentProgressItem],
+    ) -> tuple[bool, datetime | None]:
+        """(hotovo, kdy) — kdy = splnění posledního povinného testu."""
+        required = [item for item in items if item.is_required]
+        if not all(item.passed for item in required):
+            return False, None
+        return True, max((item.passed_at for item in required), default=None)
+
+    # course.modules vrací jen aktivní moduly
+    modules = []
+    for m in course.modules:
+        items = by_module.get(m.module_id, [])
+        completed, completed_at = completion(items)
+        modules.append(
+            ModuleProgressItem(
+                module_id=m.module_id,
+                completed=completed,
+                completed_at=completed_at,
+                assessments=items,
+            )
+        )
+
+    course_final = by_module.get(None, [])
+    final_done, final_at = completion(course_final)
+    course_completed = final_done and all(m.completed for m in modules)
+    done_times = [m.completed_at for m in modules] + [final_at]
+    return CourseProgressResponse(
+        modules=modules,
+        course_final=course_final,
+        course_completed=course_completed,
+        course_completed_at=(
+            max((t for t in done_times if t), default=None)
+            if course_completed
+            else None
+        ),
+    )
