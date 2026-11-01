@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from agents.sql_agent.service import SQLAgentResult, SQLAgentService
 from api.dependencies import CurrentUser, require_role
 from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import assert_course_editable, get_or_404, check_enrollment
@@ -785,21 +784,3 @@ async def endp_evaluate_open_question(
         user_input=body.user_input,
         user=user,
     )
-
-
-@router.post(
-    "/sql-agent-chat",
-    operation_id="sql_agent_chat",
-    dependencies=[require_role("superadmin")],
-)
-async def sql_agent_chat(
-    user_input: str, db: SessionSqlSessionDependency, user: CurrentUser
-) -> str:
-    """Endpoint pro chat s SQL agentem."""
-    service = SQLAgentService(
-        db=db,
-        user_input=user_input,
-    )
-
-    result: SQLAgentResult = await service.chat()
-    return result.answer
