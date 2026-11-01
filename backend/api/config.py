@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
     wiki: WikiSettings = WikiSettings()
     log_level: str = "INFO"
+    # Denní limit AI tokenů (input + output) pro roli user; 0 = vypnuto (jen se sbírá)
+    ai_daily_token_limit: int = 0
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

@@ -30,7 +30,7 @@ from api.src.publicDB.collections.routers import router as collections_router
 from api.src.publicDB.collections.routers import (
     public_router as collections_public_router,
 )
-from api.dependencies import auth
+from api.dependencies import ai_budget, auth
 
 router = APIRouter()
 
@@ -44,7 +44,9 @@ router.include_router(agents_public_router)
 router.include_router(courses_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(modules_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(activities_router, dependencies=[Depends(auth.get_current_user)])
-router.include_router(agents_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(
+    agents_router, dependencies=[Depends(auth.get_current_user), Depends(ai_budget)]
+)
 router.include_router(users_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(enrollments_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(feedbacks_router, dependencies=[Depends(auth.get_current_user)])
@@ -53,7 +55,8 @@ router.include_router(
     module_tickets_router, dependencies=[Depends(auth.get_current_user)]
 )
 router.include_router(
-    assessments_router, dependencies=[Depends(auth.get_current_user)]
+    assessments_router,
+    dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],
 )
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]

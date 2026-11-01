@@ -11,6 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from agents.base.usage import UsageCallback
 from api.models import SystemSetting
 
 
@@ -60,7 +61,7 @@ def create_chat_llm(
     max_tokens: int | None = None,
 ) -> BaseChatModel:
     """Vytvoří ChatOpenAI nebo ChatAnthropic podle prefixu názvu modelu."""
-    kwargs: dict = {}
+    kwargs: dict = {"callbacks": [UsageCallback(model)]}
 
     if model.startswith("claude"):
         # Aktuální generace Claude modelů (Opus 5, Sonnet 5, Fable 5/5.1, ...)

@@ -11,15 +11,16 @@ from keycloak import (
     KeycloakOpenID,
     KeycloakOpenIDConnection,
 )
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import settings
 from api.database import get_sql
-from api.models import User
+from agents.base.usage import UsageContext, usage_context
+from api.models import AiUsage, User
 from api.enums import UserRole
 
 log = logging.getLogger(__name__)
@@ -300,3 +301,34 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 def is_staff(user: User | None) -> bool:
     """Lektor a výš (lektor, garant, superadmin)."""
     return user is not None and ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]
+
+
+async def ai_budget(
+    request: Request,
+    user: Annotated[User, Depends(auth.get_current_user)],
+    db: Annotated[Session, Depends(get_sql)],
+) -> None:
+    """Připíše AI tokeny requestu uživateli a hlídá denní limit role user.
+
+    Musí být async: ContextVar nastavený v sync dependency (threadpool)
+    by se do endpointu nepropsal.
+    """
+    usage_context.set(UsageContext(user_id=user.user_id, endpoint=request.url.path))
+
+    limit = settings.ai_daily_token_limit
+    if not limit or user.role != UserRole.user or request.method == "GET":
+        return
+
+    used = db.scalar(
+        select(
+            func.coalesce(func.sum(AiUsage.input_tokens + AiUsage.output_tokens), 0)
+        ).where(
+            AiUsage.user_id == user.user_id,
+            AiUsage.created_at >= datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    if used >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Vyčerpali jste denní limit AI. Zkuste to znovu později.",
+        )

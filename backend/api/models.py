@@ -1541,6 +1541,32 @@ class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
     learn_block: Mapped[LearnBlock | None] = relationship(back_populates="mentor_logs")
 
 
+# ---------- AI Usage ----------
+
+
+class AiUsage(Base):
+    """
+    Spotřeba AI tokenů. Jeden řádek = jedno LLM volání.
+    Plní se v agents.base.usage.UsageCallback. user_id je NULL u volání
+    mimo request uživatele (veřejný wiki chat, scheduler).
+    """
+
+    __tablename__ = "ai_usage"
+    __table_args__ = (Index("ix_ai_usage_user_created", "user_id", "created_at"),)
+
+    usage_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.user_id"))
+    endpoint: Mapped[str | None] = mapped_column(String(255))
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 # ---------- Veřejná databáze (pub_*) ----------
 
 
