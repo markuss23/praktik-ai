@@ -75,7 +75,7 @@ async def endp_update_module(
     return update_module(db, module_id, module, user)
 
 
-@router.post("/{module_id}/complete", operation_id="complete_module", dependencies=[require_role("user")])
+@router.post("/{module_id}/complete", operation_id="complete_module", deprecated=True, dependencies=[require_role("user")])
 async def endp_complete_module(
     module_id: int,
     body: CompleteModuleRequest,
@@ -86,7 +86,7 @@ async def endp_complete_module(
     return complete_module(db, module_id, user, body.score)
 
 
-@router.get("/course/{course_id}/progress", operation_id="get_course_progress", dependencies=[require_role("user")])
+@router.get("/course/{course_id}/progress", operation_id="get_course_progress", deprecated=True, dependencies=[require_role("user")])
 async def endp_get_course_progress(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -96,7 +96,7 @@ async def endp_get_course_progress(
     return get_course_progress(db, course_id, user)
 
 
-@router.get("/{module_id}/practice-questions", operation_id="list_practice_questions")
+@router.get("/{module_id}/practice-questions", operation_id="list_practice_questions", deprecated=True)
 async def endp_list_practice_questions(
     module_id: int,
     db: SessionSqlSessionDependency,
@@ -106,7 +106,7 @@ async def endp_list_practice_questions(
     return list_practice_questions(db=db, module_id=module_id, user=user)
 
 
-@router.get("/{module_id}/assessment", operation_id="get_module_assessment")
+@router.get("/{module_id}/assessment", operation_id="get_module_assessment", deprecated=True)
 async def endp_get_assessment_question(
     module_id: int,
     db: SessionSqlSessionDependency,

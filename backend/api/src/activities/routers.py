@@ -62,21 +62,21 @@ async def endp_delete_learn_block(
 # ---------- PracticeQuestion ----------
 
 
-@router.post("/practice-questions", operation_id="create_practice_question")
+@router.post("/practice-questions", operation_id="create_practice_question", deprecated=True)
 async def endp_create_practice_question(
     question: PracticeQuestionCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> PracticeQuestion:
     return create_practice_question(db, question, user)
 
 
-@router.put("/practice-questions/{question_id}", operation_id="update_practice_question")
+@router.put("/practice-questions/{question_id}", operation_id="update_practice_question", deprecated=True)
 async def endp_update_practice_question(
     question_id: int, question: PracticeQuestionUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> PracticeQuestion:
     return update_practice_question(db, question_id, question, user)
 
 
-@router.delete("/practice-questions/{question_id}", operation_id="delete_practice_question", status_code=204)
+@router.delete("/practice-questions/{question_id}", operation_id="delete_practice_question", deprecated=True, status_code=204)
 async def endp_delete_practice_question(
     question_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
@@ -86,21 +86,21 @@ async def endp_delete_practice_question(
 # ---------- PracticeOption ----------
 
 
-@router.post("/practice-options", operation_id="create_practice_option")
+@router.post("/practice-options", operation_id="create_practice_option", deprecated=True)
 async def endp_create_practice_option(
     option: PracticeOptionCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> PracticeOption:
     return create_practice_option(db, option, user)
 
 
-@router.put("/practice-options/{option_id}", operation_id="update_practice_option")
+@router.put("/practice-options/{option_id}", operation_id="update_practice_option", deprecated=True)
 async def endp_update_practice_option(
     option_id: int, option: PracticeOptionUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> PracticeOption:
     return update_practice_option(db, option_id, option, user)
 
 
-@router.delete("/practice-options/{option_id}", operation_id="delete_practice_option", status_code=204)
+@router.delete("/practice-options/{option_id}", operation_id="delete_practice_option", deprecated=True, status_code=204)
 async def endp_delete_practice_option(
     option_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:
@@ -110,21 +110,21 @@ async def endp_delete_practice_option(
 # ---------- QuestionKeyword ----------
 
 
-@router.post("/question-keywords", operation_id="create_question_keyword")
+@router.post("/question-keywords", operation_id="create_question_keyword", deprecated=True)
 async def endp_create_question_keyword(
     keyword: QuestionKeywordCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> QuestionKeyword:
     return create_question_keyword(db, keyword, user)
 
 
-@router.put("/question-keywords/{keyword_id}", operation_id="update_question_keyword")
+@router.put("/question-keywords/{keyword_id}", operation_id="update_question_keyword", deprecated=True)
 async def endp_update_question_keyword(
     keyword_id: int, keyword: QuestionKeywordUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> QuestionKeyword:
     return update_question_keyword(db, keyword_id, keyword, user)
 
 
-@router.delete("/question-keywords/{keyword_id}", operation_id="delete_question_keyword", status_code=204)
+@router.delete("/question-keywords/{keyword_id}", operation_id="delete_question_keyword", deprecated=True, status_code=204)
 async def endp_delete_question_keyword(
     keyword_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:

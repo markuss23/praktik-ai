@@ -46,7 +46,8 @@ class Module(ModuleBase):
     updated_at: datetime
 
     learn_blocks: list[LearnBlock] = []
-    practice_questions: list[PracticeQuestion] = []
+    # Nahrazeno pretestem a closed_questions (assessments)
+    practice_questions: list[PracticeQuestion] = Field(default=[], deprecated=True)
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"

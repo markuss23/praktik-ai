@@ -569,6 +569,7 @@ async def wiki_sync() -> WikiSyncResponse:
 
 @router.post(
     "/generate-assessment",
+    deprecated=True,
     operation_id="generate_assessment",
 )
 async def generate_assessment(
@@ -634,6 +635,7 @@ async def generate_assessment(
 
 @router.post(
     "/evaluate-assessment",
+    deprecated=True,
     operation_id="evaluate_assessment",
 )
 async def evaluate_assessment(
@@ -719,6 +721,7 @@ async def evaluate_assessment(
 
 @router.post(
     "/generate-practice-question",
+    deprecated=True,
     operation_id="generate_practice_question",
 )
 async def endp_generate_practice_question(
@@ -737,6 +740,7 @@ async def endp_generate_practice_question(
 
 @router.post(
     "/evaluate-practice-answer",
+    deprecated=True,
     operation_id="evaluate_practice_answer",
 )
 async def endp_evaluate_practice_answer(
@@ -755,6 +759,7 @@ async def endp_evaluate_practice_answer(
 
 @router.post(
     "/evaluate-open-question",
+    deprecated=True,
     operation_id="evaluate_open_question",
 )
 async def endp_evaluate_open_question(
