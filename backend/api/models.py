@@ -23,6 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from api.enums import (
     AuditAction,
     AttachType,
+    EmailStatus,
     Difficulty,
     EduLevel,
     PubResourceStatus,
@@ -1841,3 +1842,41 @@ class NotificationOptOut(TimestampMixin, Base):
     )
     # identifikátor události, např course_generated, course_submitted
     event_key: Mapped[str] = mapped_column(String(50), nullable=False)
+
+
+class EmailLog(Base):
+    """
+    Záznam o každém pokusu o odeslání e-mailu (úspěšném i neúspěšném).
+    Slouží k zobrazení historie e-mailů na profilu uživatele a k diagnostice SMTP.
+    """
+
+    __tablename__ = "email_log"
+    __table_args__ = (
+        Index("ix_email_log_user_created", "user_id", "created_at"),
+    )
+
+    log_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id", ondelete="CASCADE")
+    )
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course.course_id", ondelete="SET NULL")
+    )
+    # identifikátor události, např course_generated, course_submitted
+    event_key: Mapped[str] = mapped_column(String(50), nullable=False)
+    # adresa v okamžiku odeslání, e-mail uživatele se může později změnit
+    recipient_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[EmailStatus] = mapped_column(
+        Enum(EmailStatus, name="email_status"), nullable=False
+    )
+    # text chyby SMTP, uživateli se nezobrazuje
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    course: Mapped[Course | None] = relationship(foreign_keys=[course_id])

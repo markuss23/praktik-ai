@@ -26,6 +26,7 @@ from api.config import settings
 from api.database import SessionLocal
 from api.enums import NotificationEvent, Status, UserRole
 from api.notifications.email import send_email
+from api.notifications.email_log import log_email
 from api.notifications.templates import Audience, render_email
 
 logger = logging.getLogger(__name__)
@@ -287,7 +288,9 @@ def notify_course_event(
         for r in recipients:
             context = {**base_context, "url": build_url(r.audience, course_id)}
             subject, body = render_email(event, r.audience, context, r.mandatory)
-            if not send_email(r.user.email, subject, body):
+            result = send_email(r.user.email, subject, body)
+            log_email(db, r.user, course_id, event, subject, body, result)
+            if not result.ok:
                 logger.warning(
                     "Notifikace %s pro uživatele %s (kurz %s) nebyla odeslána",
                     event, r.user.user_id, course_id,

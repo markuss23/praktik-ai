@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
-from api.enums import NotificationEvent, UserRole
+from api.enums import EmailStatus, NotificationEvent, UserRole
 from api.src.common.schemas import ORMModel
 
 
@@ -41,3 +43,22 @@ class NotificationPreferenceUpdateItem(BaseModel):
 
 class NotificationPreferencesUpdate(BaseModel):
     items: list[NotificationPreferenceUpdateItem]
+
+
+class EmailLogItem(BaseModel):
+    """Jeden odeslaný e-mail v historii na profilu (bez textu chyby SMTP)."""
+
+    log_id: int
+    event_key: str
+    label: str = Field(description="Čitelný název události")
+    course_id: int | None
+    course_title: str | None
+    subject: str
+    body: str | None
+    status: EmailStatus
+    created_at: datetime
+
+
+class EmailLogPage(BaseModel):
+    items: list[EmailLogItem]
+    total: int

@@ -101,4 +101,12 @@ class NotificationEvent(enum.StrEnum):
     course_approved = "course_approved"  
     course_rejected = "course_rejected"  
     course_approval_revoked = "course_approval_revoked"  
-    course_archived = "course_archived"  
+    course_archived = "course_archived"
+
+
+class EmailStatus(enum.StrEnum):
+    """Výsledek pokusu o odeslání e-mailu (záznam v email_log)."""
+
+    sent = "sent"
+    failed = "failed"
+    skipped = "skipped"  # odesílání vypnuté 

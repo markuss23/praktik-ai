@@ -4,14 +4,35 @@ Nízkoúrovňové odesílání e-mailů přes SMTP.
 
 import logging
 import smtplib
+from dataclasses import dataclass
 from email.message import EmailMessage
 
 from api.config import settings
+from api.enums import EmailStatus
 
 logger = logging.getLogger(__name__)
 
 
-def send_email(to: str, subject: str, body_text: str, body_html: str | None = None) -> bool:
+@dataclass(frozen=True)
+class SendResult:
+    """
+    Výsledek pokusu o odeslání e-mailu.
+
+    Attributes:
+        status: sent = odesláno, failed = chyba SMTP, skipped = odesílání vypnuté.
+        error: Text chyby, pokud odeslání selhalo.
+    """
+
+    status: EmailStatus
+    error: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        """True, pokud odeslání neselhalo (sent i skipped jsou v pořádku)."""
+        return self.status != EmailStatus.failed
+
+
+def send_email(to: str, subject: str, body_text: str, body_html: str | None = None) -> SendResult:
     """
     Odešle jeden e-mail jednomu příjemci přes SMTP server nastavený v settings.smtp.
 
@@ -27,12 +48,12 @@ def send_email(to: str, subject: str, body_text: str, body_html: str | None = No
         body_html: Volitelná HTML verze těla, posílá se jako alternativa k textu.
 
     Returns:
-        True při úspěchu nebo když je odesílání vypnuté (SMTP__ENABLED=false),
-        False při chybě odeslání.
+        SendResult se stavem sent, skipped (SMTP__ENABLED=false) nebo failed
+        včetně textu chyby.
     """
     cfg = settings.smtp
     if not cfg.enabled:
-        return True
+        return SendResult(EmailStatus.skipped)
 
     msg = EmailMessage()
     msg["From"] = cfg.sender
@@ -49,7 +70,7 @@ def send_email(to: str, subject: str, body_text: str, body_html: str | None = No
             if cfg.username:
                 smtp.login(cfg.username, cfg.password or "")
             smtp.send_message(msg)
-        return True
-    except Exception:
+        return SendResult(EmailStatus.sent)
+    except Exception as exc:
         logger.exception("Odeslání e-mailu na %s selhalo", to)
-        return False
+        return SendResult(EmailStatus.failed, f"{type(exc).__name__}: {exc}")
