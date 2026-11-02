@@ -33,12 +33,13 @@ def endp_sync(
     return UserResponse.model_validate(user)
 
 
-@router.get("/me")
+
+@router.get("/me", operation_id="get_current_user")
 def endp_me(current_user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(current_user)
 
 
-@router.get("/profile/ai-style")
+@router.get("/profile/ai-style", operation_id="get_profile_ai_style")
 def endp_get_profile_ai_style(
     current_user: CurrentUser,
     db: SessionSqlSessionDependency,
@@ -47,7 +48,7 @@ def endp_get_profile_ai_style(
     return {o.axis.code: o.code for o in get_user_ai_style(db, current_user.user_id)}
 
 
-@router.patch("/profile/ai-style")
+@router.patch("/profile/ai-style", operation_id="update_profile_ai_style")
 def endp_update_profile_ai_style(
     data: dict[str, str],
     current_user: CurrentUser,
@@ -58,7 +59,8 @@ def endp_update_profile_ai_style(
     return {o.axis.code: o.code for o in get_user_ai_style(db, current_user.user_id)}
 
 
-@router.put("/profile/name")
+
+@router.put("/profile/name", operation_id="update_profile_name")
 def endp_update_profile_name(
     data: ProfileNameUpdate,
     current_user: CurrentUser,
