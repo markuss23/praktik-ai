@@ -46,25 +46,45 @@ export function pretestErrors(p: PretestSettings): string[] {
   return errors;
 }
 
-/** Chyby nastavení formátu, kvůli kterým ho backend odmítne. */
+const isWholeInRange = (v: number | undefined, min: number, max = Infinity): v is number =>
+  v !== undefined && Number.isInteger(v) && v >= min && v <= max;
+
+/**
+ * Kolik kol dialogu student nejméně potřebuje, aby se z počátečního elo dostal
+ * na hranici splnění. 
+ * Lektor elo nenastavuje
+ */
+export function socraticTurnsToPass(s: AssessmentFormatSettings): number {
+  const startElo = s.startElo ?? 1000;
+  const passElo = s.passElo ?? 1200;
+  const maxStep = s.maxStep ?? 50;
+  return Math.max(0, Math.ceil((passElo - startElo) / maxStep));
+}
+
+/**
+ * Chyby nastavení formátu, kvůli kterým ho backend odmítne. Prázdné pole je taky cyhba
+ */
 export function formatSettingsErrors(code: string, s: AssessmentFormatSettings): string[] {
   const errors: string[] = [];
   if (code === 'closed_questions') {
     (s.questions ?? []).forEach((q, i) => errors.push(...closedQuestionErrors(q, `Otázka ${i + 1}`)));
   }
-  if (s.maxAttempts !== undefined && !(s.maxAttempts >= 1)) errors.push('Počet pokusů musí být aspoň 1');
-  if (s.passThreshold !== undefined && !(s.passThreshold >= 0 && s.passThreshold <= 1)) {
-    errors.push('Potřebné skóre musí být 0–100 %');
-  }
-  if (code === 'closed_questions_ai' && !(s.questionCount !== undefined && s.questionCount >= 1 && s.questionCount <= 20)) {
+  if (code === 'closed_questions_ai' && !isWholeInRange(s.questionCount, 1, 20)) {
     errors.push('Počet otázek musí být 1–20');
   }
   if (code === 'socratic_dialog_ai') {
-    const min = s.minTurns ?? 2;
-    const max = s.maxTurns ?? 4;
-    if (!(min >= 1 && min <= 10)) errors.push('Nejmenší počet kol musí být 1–10');
-    if (!(max >= 2 && max <= 10)) errors.push('Největší počet kol musí být 2–10');
-    if (min > max) errors.push('Nejmenší počet kol nesmí být větší než největší');
+    const min = s.minTurns;
+    const max = s.maxTurns;
+    const turnsToPass = socraticTurnsToPass(s);
+    if (!isWholeInRange(min, 1, 10)) errors.push('Nejmenší počet kol musí být 1–10');
+    if (!isWholeInRange(max, 2, 10)) errors.push('Největší počet kol musí být 2–10');
+    else if (max < turnsToPass) errors.push(`Největší počet kol musí být aspoň ${turnsToPass}, jinak dialog nejde splnit`);
+    if (min !== undefined && max !== undefined && min > max) errors.push('Nejmenší počet kol nesmí být větší než největší');
+  } else {
+    if (!isWholeInRange(s.maxAttempts, 1)) errors.push('Počet pokusů musí být aspoň 1');
+    if (!(s.passThreshold !== undefined && s.passThreshold >= 0 && s.passThreshold <= 1)) {
+      errors.push('Potřebné skóre musí být 0–100 %');
+    }
   }
   return errors;
 }

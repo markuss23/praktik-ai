@@ -13,7 +13,7 @@ interface AssessmentStepsProps {
   moduleId: number | null;
   context: AssessmentContext;
   items: AssessmentProgressItem[];
-  onFinished: (result: SessionResult) => void;
+  onFinished: (result: SessionResult | null) => void;
 }
 
 /**

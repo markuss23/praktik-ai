@@ -16,6 +16,13 @@ export function formatName(code: string): string {
   return FORMAT_NAMES[code] ?? code;
 }
 
+// Formaty, ve kterých student odpověd píše, v ostatních vybírá z možností
+const TYPED_FORMATS = new Set(['open_question_ai', 'socratic_dialog_ai']);
+
+export function isTypedFormat(code: string): boolean {
+  return TYPED_FORMATS.has(code);
+}
+
 export const CONTEXT_LABELS: Record<AssessmentContext, string> = {
   pretest: 'Pretest',
   practice: 'Procvičování',

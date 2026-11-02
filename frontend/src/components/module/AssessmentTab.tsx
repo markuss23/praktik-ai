@@ -1,34 +1,30 @@
 'use client';
 
 import type { ModuleProgressItem } from '@/api';
+import { isTypedFormat } from '@/lib/assessment-labels';
 import { Button } from '@/components/ui';
 import { ModuleCompletedCard } from './ModuleCompletedCard';
 import { AssessmentSteps } from './AssessmentSteps';
+import { ProgressStaleNotice } from './ProgressStaleNotice';
 
 interface AssessmentTabProps {
   courseId: number;
   moduleId: number;
-  /** Průběh modulu ze serveru; null = nepodařilo se načíst. */
   moduleProgress: ModuleProgressItem | null;
+  progressStale: boolean;
   courseCompleted: boolean;
-  /** 1-based pořadí modulu v kurzu — pro nadpis „Modul N dokončen!". */
   moduleNumber: number;
-  /** Název aktuálního modulu — zobrazuje se v textu o dokončení. */
   moduleTitle: string;
   nextModule: { moduleId: number; title: string } | null;
-  /** Po dokončení session — stránka znovu načte průběh. */
-  onProgressChange: () => void;
+  onProgressChange: () => void | Promise<void>;
   onModuleComplete: () => void;
 }
 
-/**
- * Test modulu — formáty v kontextu assessment. Modul je hotový, když má
- * student splněné všechny povinné testy modulu; to počítá backend.
- */
 export default function AssessmentTab({
   courseId,
   moduleId,
   moduleProgress,
+  progressStale,
   courseCompleted,
   moduleNumber,
   moduleTitle,
@@ -53,10 +49,13 @@ export default function AssessmentTab({
         <h3 className="text-xl font-bold text-foreground">Test</h3>
         {tests.length > 0 && (
           <p className="text-sm text-muted-foreground mt-1">
-            Ověřte si znalosti z modulu. Odpovědi v testu se píší vlastními slovy.
+            Ověřte si znalosti z modulu.
+            {tests.some((t) => isTypedFormat(t.assessmentTypeCode)) && ' Psané odpovědi pište vlastními slovy, vložit text nejde.'}
           </p>
         )}
       </div>
+
+      {progressStale && <ProgressStaleNotice onRetry={onProgressChange} />}
 
       {tests.length > 0 ? (
         <AssessmentSteps

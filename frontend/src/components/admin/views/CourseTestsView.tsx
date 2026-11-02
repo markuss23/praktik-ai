@@ -297,20 +297,23 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
+  // true = připojeno
   const handleAttach = async (code: string, context: AssessmentContext, isRequired: boolean, moduleId: number | null) => {
     try {
       const created = await attachCourseAssessment(courseId, { assessmentTypeCode: code, context, moduleId, isRequired });
       setConfigs((prev) => [...prev, created]);
       if (code === 'pretest') {
         setPretestDrafts((prev) => ({ ...prev, [created.courseAssessmentId]: emptyPretest() }));
-        return;
+        return true;
       }
       const defaults = formats.find((f) => f.code === code)?.defaultSettings ?? {};
       const draft: FormatDraft = { settings: created.settings ?? defaults, isEnabled: created.isEnabled, isRequired: created.isRequired };
       setFormatDrafts((prev) => ({ ...prev, [created.courseAssessmentId]: draft }));
       setSavedSnapshots((prev) => ({ ...prev, [formatKey(created.courseAssessmentId)]: JSON.stringify(draft) }));
+      return true;
     } catch (err) {
       toast.error(err, 'Formát se nepodařilo přidat.');
+      return false;
     }
   };
 
@@ -468,8 +471,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </div>
           {moduleFormatConfigs.map(renderFormatCard)}
           <AddFormatForm
+            key={selectedModule.moduleId}
             formats={formats}
             contexts={['practice', 'assessment']}
+            attached={moduleFormatConfigs}
             onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, selectedModule.moduleId)}
           />
         </section>
@@ -486,6 +491,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <AddFormatForm
         formats={formats}
         contexts={['course_final']}
+        attached={finalConfigs}
         onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, null)}
       />
     </section>

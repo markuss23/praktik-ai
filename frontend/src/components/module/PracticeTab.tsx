@@ -8,14 +8,15 @@ import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { AssessmentRunner } from './AssessmentRunner';
 import { AssessmentSteps } from './AssessmentSteps';
+import { ProgressStaleNotice } from './ProgressStaleNotice';
 
 interface PracticeTabProps {
   courseId: number;
   moduleId: number;
   /** Průběh modulu ze serveru; null = nepodařilo se načíst. */
   moduleProgress: ModuleProgressItem | null;
-  /** Po dokončení session — stránka znovu načte průběh. */
-  onProgressChange: () => void;
+  progressStale: boolean;
+  onProgressChange: () => void | Promise<void>;
   onComplete: () => void;
 }
 
@@ -23,7 +24,7 @@ interface PracticeTabProps {
  * Procvičování modulu: nejdřív pretest (povinný, otázky po jedné), pak formáty,
  * které lektor připojil do kontextu practice. Hodnotí vše server.
  */
-export default function PracticeTab({ courseId, moduleId, moduleProgress, onProgressChange, onComplete }: PracticeTabProps) {
+export default function PracticeTab({ courseId, moduleId, moduleProgress, progressStale, onProgressChange, onComplete }: PracticeTabProps) {
   // Pretest dokončený v tomhle zobrazení zůstane vidět i s vyhodnocením odpovědí
   const [pretestJustFinished, setPretestJustFinished] = useState(false);
 
@@ -51,6 +52,8 @@ export default function PracticeTab({ courseId, moduleId, moduleProgress, onProg
         </p>
       </div>
 
+      {progressStale && <ProgressStaleNotice onRetry={onProgressChange} />}
+
       {pretests.length > 0 && (
         <section className="mb-8">
           <h4 className="font-semibold text-foreground mb-1">Pretest</h4>
@@ -68,8 +71,9 @@ export default function PracticeTab({ courseId, moduleId, moduleProgress, onProg
               <AssessmentRunner
                 target={{ courseId, context: 'pretest', moduleId, assessmentTypeCode: 'pretest' }}
                 autoStart
-                onFinished={() => {
-                  setPretestJustFinished(true);
+                onFinished={(result) => {
+                  // Pretest dokončený jinde (null) — výsledek ukáže až obnovený průběh
+                  setPretestJustFinished(result !== null);
                   onProgressChange();
                 }}
               />

@@ -37,6 +37,7 @@ export default function ModulePage() {
   const [allModules, setAllModules] = useState<Module[]>([]);
   // Splněné testy po modulech; null = nepodařilo se načíst
   const [progress, setProgress] = useState<CourseProgressResponse | null>(null);
+  const [progressStale, setProgressStale] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
@@ -125,6 +126,7 @@ export default function ModulePage() {
       setCourse(courseData);
       setAllModules((courseData.modules ?? []).filter(m => m.isActive));
       setProgress(progressData);
+      setProgressStale(false);
 
       // Splněné části odemknou záložky i v jiném prohlížeči (sessionStorage je nezná)
       const moduleProgress = progressData?.modules.find((p) => p.moduleId === modId);
@@ -267,9 +269,12 @@ export default function ModulePage() {
   const refreshProgress = async () => {
     try {
       setProgress(await getAssessmentProgress(module.courseId));
+      setProgressStale(false);
       window.dispatchEvent(new CustomEvent('praktik:enrollments-changed'));
     } catch (err) {
       console.error('Failed to refresh course progress:', err);
+      // Se starým průběhem by další části zůstaly zamčené až do znovunačtení stránky
+      setProgressStale(true);
     }
   };
 
@@ -518,6 +523,7 @@ export default function ModulePage() {
                     courseId={module.courseId}
                     moduleId={activeModuleId}
                     moduleProgress={moduleProgress}
+                    progressStale={progressStale}
                     onProgressChange={refreshProgress}
                     onComplete={handlePracticeComplete}
                   />
@@ -537,6 +543,7 @@ export default function ModulePage() {
                     courseId={module.courseId}
                     moduleId={activeModuleId}
                     moduleProgress={moduleProgress}
+                    progressStale={progressStale}
                     courseCompleted={!!progress?.courseCompleted}
                     moduleNumber={currentIndex + 1}
                     moduleTitle={module.title}

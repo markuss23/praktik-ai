@@ -1,8 +1,9 @@
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 
 let hooksInstalled = false;
 
 /**
+ * dulezite:
  * Vyčistí HTML z backendu (obsah modulu) před vložením přes `dangerouslySetInnerHTML`.
  * Backend obsah nijak nekontroluje a lektor ho může uložit přímo přes API, takže
  * bez toho by `<img onerror>` / `<script>` běžel studentům i garantovi při schvalování
@@ -10,8 +11,10 @@ let hooksInstalled = false;
  *
  * Na serveru vrací prázdný řetězec — DOMPurify potřebuje DOM a obsah modulu se
  * stejně načítá až na klientu.
+ *
+ * `config` zúží povolené tagy (např. odpovědi AI mentora).
  */
-export function sanitizeHtml(html: string): string {
+export function sanitizeHtml(html: string, config?: Config): string {
   if (typeof window === 'undefined') return '';
 
   if (!hooksInstalled) {
@@ -24,5 +27,5 @@ export function sanitizeHtml(html: string): string {
     hooksInstalled = true;
   }
 
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['target'], ...config });
 }

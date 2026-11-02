@@ -5,6 +5,7 @@ import { Bot, X, SendHorizontal, UserRound, Maximize2 } from 'lucide-react';
 import type { MentorScope } from '@/api';
 import { mentorChat } from '@/lib/api-client';
 import { readApiErrorDetail } from '@/lib/api-error';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   Button,
@@ -34,6 +35,17 @@ const initialMessage = (scope: MentorScope): ChatMessage => ({
     ? 'Ahoj! 👋 Jsem tvůj AI asistent. Ptej se na cokoliv z celého kurzu nebo na pomoc s přípravou do výuky.'
     : 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?',
 });
+
+// Mentor odpovídá v HTML
+const looksLikeHtml = (text: string) => /<\/?[a-z][^>]*>/i.test(text);
+// Jen tagy, které mentorovi povoluje prompt
+const MENTOR_HTML = { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: [] };
+// Preflight maze okraje i odrázky a v bubline je potreba vrátit
+const AI_HTML_CLASS = cn(
+  'whitespace-normal',
+  '[&_p:not(:last-child)]:mb-2 [&_strong]:font-semibold [&_li]:mt-0.5',
+  '[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_ul:not(:last-child)]:mb-2 [&_ol:not(:last-child)]:mb-2',
+);
 
 const readStoredMessages = (key: string | null, scope: MentorScope): ChatMessage[] => {
   if (typeof window === 'undefined' || !key) return [initialMessage(scope)];
@@ -222,7 +234,9 @@ export function AiTutorChat({ courseId, learnBlockId, moduleId }: AiTutorChatPro
                   wordBreak: 'break-word',
                 }}
               >
-                {msg.text}
+                {msg.role === 'ai' && looksLikeHtml(msg.text) ? (
+                  <div className={AI_HTML_CLASS} dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.text, MENTOR_HTML) }} />
+                ) : msg.text}
               </div>
               {msg.role === 'user' && (
                 <div className={`${avatarSize} rounded-full flex items-center justify-center shrink-0`}

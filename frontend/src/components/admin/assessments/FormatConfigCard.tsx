@@ -4,9 +4,9 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { AssessmentContext } from '@/api';
 import type { AssessmentFormatSettings } from '@/lib/api-client';
 import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
-import { emptyClosedQuestion } from '@/lib/assessment-validation';
+import { emptyClosedQuestion, socraticTurnsToPass } from '@/lib/assessment-validation';
 import { Button, Input, Label, Switch } from '@/components/ui';
-import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { ClosedQuestionFields } from './ClosedQuestionFields';
 
 export interface FormatDraft {
@@ -60,6 +60,7 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
   const setSettings = (patch: Partial<AssessmentFormatSettings>) => onChange({ ...value, settings: { ...s, ...patch } });
   const questions = s.questions ?? [];
   const fieldId = (name: string) => `format-${id}-${name}`;
+  const turnsToPass = socraticTurnsToPass(s);
 
   return (
     <div className={cn('border border-border rounded-lg', !value.isEnabled && 'opacity-70')}>
@@ -147,6 +148,15 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
             </>
           )}
         </div>
+
+        {code === 'socratic_dialog_ai' && turnsToPass > 1 && (
+          <p className="text-xs text-muted-foreground">
+            Student projde nejdřív po {turnsToPass} kolech, a to jen s výbornými odpověďmi.
+            {/* Po nejmenším počtu kol smí AI rozhovor ukončit (KONEC) */}
+            {s.minTurns !== undefined && s.minTurns < turnsToPass &&
+              ` AI může rozhovor ukončit už po ${s.minTurns} ${czechPlural(s.minTurns, 'kole', 'kolech', 'kolech')} — pak student neprojde.`}
+          </p>
+        )}
 
         {errors.length > 0 && (
           <ul role="alert" className="list-disc list-inside text-sm text-destructive space-y-0.5">

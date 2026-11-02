@@ -33,7 +33,7 @@ interface AssessmentRunnerProps {
   /** Založit session hned po otevření (pretest — bez AI generování); jinak tlačítko. */
   autoStart?: boolean;
   startLabel?: string;
-  onFinished: (result: SessionResult) => void;
+  onFinished: (result: SessionResult | null) => void;
 }
 
 type Phase = 'loading' | 'idle' | 'running' | 'finished';
@@ -58,6 +58,7 @@ function startSession(target: AssessmentTarget): Promise<SessionStartResponse> {
 
 /** Průchod jedné session testu: otázky chodí po jedné a hodnotí je server. */
 export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spustit', onFinished }: AssessmentRunnerProps) {
+  const isPretest = target.assessmentTypeCode === 'pretest';
   const [phase, setPhase] = useState<Phase>('loading');
   const [current, setCurrent] = useState<SessionStartResponse | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -67,6 +68,7 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
   const [answered, setAnswered] = useState<AnsweredQuestion[]>([]);
   // Špatná odpověď a zbývá pokus — server vrátí stejnou otázku znovu
   const [retrying, setRetrying] = useState(false);
+  const [attemptsRanOut, setAttemptsRanOut] = useState(false);
   const [result, setResult] = useState<SessionResult | null>(null);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +80,7 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
     setAnswer('');
     setLastSubmittedAnswer('');
     setRetrying(false);
+    if (!isPretest) setAttemptsRanOut(false);
     setPhase('running');
   };
 
@@ -85,6 +88,7 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
     setStarting(true);
     setErrorMsg(null);
     setAnswered([]);
+    setAttemptsRanOut(false);
     setResult(null);
     try {
       showQuestion(await startSession(target));
@@ -104,6 +108,7 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
     setPhase('loading');
     setErrorMsg(null);
     setAnswered([]);
+    setAttemptsRanOut(false);
     setResult(null);
     getCurrentAssessmentSession(target)
       .then((session) => {
@@ -168,20 +173,30 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
         setCurrent(next);
         setSelected(null);
         setRetrying(true);
+        if (!isPretest) setAttemptsRanOut(false);
       } else {
         showQuestion(next);
+        if (!resp.isCorrect) setAttemptsRanOut(true);
       }
     } catch (err) {
       // Pokus se nezapočítal — stejnou odpověď jde odeslat znovu
       setLastSubmittedAnswer('');
-      const status = readApiErrorStatus(err);
-      setErrorMsg((await readApiErrorDetail(err)) ?? 'Nepodařilo se vyhodnotit odpověď. Zkuste to znovu.');
-      // 409 = session mezitím skončila (jiná záložka) — načteme aktuální stav
-      if (status === 409) {
+      // 409 = session mezitím skončila (jiná záložka). Hláška serveru je technická
+      // a k nové session nepatří — načteme aktuální stav a průběh obnoví rodič.
+      if (readApiErrorStatus(err) === 409) {
+        setAnswered([]);
+        setAttemptsRanOut(false);
+        onFinished(null);
         const session = await getCurrentAssessmentSession(target).catch(() => null);
-        if (session) showQuestion(session);
-        else setPhase('idle');
+        if (session) {
+          showQuestion(session);
+        } else {
+          setErrorMsg('Tento pokus mezitím skončil v jiném okně.');
+          setPhase('idle');
+        }
+        return;
       }
+      setErrorMsg((await readApiErrorDetail(err)) ?? 'Nepodařilo se vyhodnotit odpověď. Zkuste to znovu.');
     } finally {
       setSubmitting(false);
     }
@@ -263,6 +278,13 @@ export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spus
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
           >
+            {attemptsRanOut && (
+              <p role="status" className="mb-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+                {isPretest
+                  ? 'Na jednu z otázek vám došly pokusy, takže tento pretest už nesplníte. Dokončete ho a pak to zkuste znovu.'
+                  : 'Na předchozí otázku vám došly pokusy — počítá se jako nesprávná.'}
+              </p>
+            )}
             {retrying && (
               <p role="status" className="mb-3 text-sm font-medium text-destructive">
                 Nesprávně — zkuste to znovu.

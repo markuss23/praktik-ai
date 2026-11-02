@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import type { AssessmentContext } from '@/api';
-import type { AssessmentFormat } from '@/lib/api-client';
+import type { AssessmentFormat, CourseAssessmentConfig } from '@/lib/api-client';
 import { CONTEXT_LABELS } from '@/lib/assessment-labels';
 import { Button, FilterSelect, Switch } from '@/components/ui';
 
@@ -11,20 +11,26 @@ interface AddFormatFormProps {
   formats: AssessmentFormat[];
   /** Kontexty, které daná úroveň nabízí (modul: practice/assessment, kurz: course_final). */
   contexts: AssessmentContext[];
-  onAdd: (format: AssessmentFormat, context: AssessmentContext, isRequired: boolean) => Promise<void>;
+
+  attached: Pick<CourseAssessmentConfig, 'assessmentTypeCode' | 'context'>[];
+  onAdd: (format: AssessmentFormat, context: AssessmentContext, isRequired: boolean) => Promise<boolean>;
 }
 
 /** Připojení dalšího formátu — pretest se nepřipojuje, vytváří ho generátor kurzu. */
-export function AddFormatForm({ formats, contexts, onAdd }: AddFormatFormProps) {
-  const available = formats.filter((f) => f.code !== 'pretest' && f.allowedContexts.some((c) => contexts.includes(c)));
+export function AddFormatForm({ formats, contexts, attached, onAdd }: AddFormatFormProps) {
+  // Stejný formát podruhé ve stejném kontextu backend odmítne (unikátní index)
+  const freeContexts = (f: AssessmentFormat) => f.allowedContexts.filter(
+    (c) => contexts.includes(c) && !attached.some((a) => a.assessmentTypeCode === f.code && a.context === c),
+  );
+  const available = formats.filter((f) => f.code !== 'pretest' && freeContexts(f).length > 0);
   const [code, setCode] = useState('');
   const [context, setContext] = useState<AssessmentContext | ''>('');
   const [isRequired, setIsRequired] = useState(true);
   const [adding, setAdding] = useState(false);
 
   const format = available.find((f) => f.code === code);
-  const formatContexts = format ? format.allowedContexts.filter((c) => contexts.includes(c)) : [];
-  // Jediný možný kontext (např. závěrečný test) se vybere sám
+  const formatContexts = format ? freeContexts(format) : [];
+  // Jediný volný kontext (např. závěrečný test) se vybere sám
   const chosenContext = formatContexts.length === 1 ? formatContexts[0] : context;
 
   if (available.length === 0) return null;
@@ -33,9 +39,10 @@ export function AddFormatForm({ formats, contexts, onAdd }: AddFormatFormProps) 
     if (!format || !chosenContext) return;
     setAdding(true);
     try {
-      await onAdd(format, chosenContext, isRequired);
-      setCode('');
-      setContext('');
+      if (await onAdd(format, chosenContext, isRequired)) {
+        setCode('');
+        setContext('');
+      }
     } finally {
       setAdding(false);
     }
@@ -52,9 +59,10 @@ export function AddFormatForm({ formats, contexts, onAdd }: AddFormatFormProps) 
           options={available.map((f) => ({ value: f.code, label: f.name }))}
           className="min-w-56 data-[size=default]:h-auto px-3 py-2 border border-border rounded-md text-foreground text-sm bg-card"
         />
-        {formatContexts.length > 1 && (
+        {/* V modulu je vidět i jediný volný kontext — lektor ví, kam formát přidává */}
+        {contexts.length > 1 && formatContexts.length > 0 && (
           <FilterSelect
-            value={context}
+            value={chosenContext}
             onChange={(next) => setContext(next as AssessmentContext)}
             placeholder="Kde v modulu"
             options={formatContexts.map((c) => ({ value: c, label: CONTEXT_LABELS[c] }))}

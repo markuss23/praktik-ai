@@ -89,24 +89,25 @@ export default function CoursePage() {
 
     let cancelled = false;
     setEnrollmentLoading(true);
-    Promise.all([
-      getMyEnrollments()
-        .then(enrollments => {
-          if (cancelled) return;
-          // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
-          // splněné, takže se otevřou rovnou s odemčenými záložkami.
-          setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) setEnrollment(null);
-        }),
-      // Nezapsaný student dostane 403 — progress pak zůstane prázdný
-      getAssessmentProgress(courseId)
-        .then(p => { if (!cancelled) setProgress(p); })
-        .catch(() => { if (!cancelled) setProgress(null); }),
-    ]).finally(() => {
-      if (!cancelled) setEnrollmentLoading(false);
-    });
+    getMyEnrollments()
+      .then(async enrollments => {
+        // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
+        // splněné, takže se otevřou rovnou s odemčenými záložkami.
+        const mine = enrollments.find(e => e.courseId === courseId) ?? null;
+        // Průběh smí číst jen zapsaný — nezapsanému by backend vrátil 403
+        const p = mine ? await getAssessmentProgress(courseId).catch(() => null) : null;
+        if (cancelled) return;
+        setEnrollment(mine);
+        setProgress(p);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEnrollment(null);
+        setProgress(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEnrollmentLoading(false);
+      });
 
     return () => { cancelled = true; };
   }, [authLoading, isAuthenticated, courseId]);
