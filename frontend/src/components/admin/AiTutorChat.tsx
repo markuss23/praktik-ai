@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, X, SendHorizontal, UserRound, Maximize2 } from 'lucide-react';
-import { learnBlocksChat } from '@/lib/api-client';
+import type { MentorScope } from '@/api';
+import { mentorChat } from '@/lib/api-client';
+import { readApiErrorDetail } from '@/lib/api-error';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   Button,
@@ -14,35 +16,49 @@ import {
 } from '@/components/ui';
 
 interface AiTutorChatProps {
+  courseId?: number;
   learnBlockId?: number;
   moduleId?: number;
 }
 
 type ChatMessage = { role: 'user' | 'ai'; text: string };
 
-const INITIAL_MESSAGE: ChatMessage = {
-  role: 'ai',
-  text: 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?',
-};
+const SCOPE_OPTIONS: { value: MentorScope; label: string }[] = [
+  { value: 'module', label: 'Tento modul' },
+  { value: 'course', label: 'Celý kurz' },
+];
 
-const readStoredMessages = (key: string | null): ChatMessage[] => {
-  if (typeof window === 'undefined' || !key) return [INITIAL_MESSAGE];
+const initialMessage = (scope: MentorScope): ChatMessage => ({
+  role: 'ai',
+  text: scope === 'course'
+    ? 'Ahoj! 👋 Jsem tvůj AI asistent. Ptej se na cokoliv z celého kurzu nebo na pomoc s přípravou do výuky.'
+    : 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?',
+});
+
+const readStoredMessages = (key: string | null, scope: MentorScope): ChatMessage[] => {
+  if (typeof window === 'undefined' || !key) return [initialMessage(scope)];
   try {
     const raw = sessionStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : null;
     if (Array.isArray(parsed) && parsed.length > 0) return parsed as ChatMessage[];
   } catch { /* ignore */ }
-  return [INITIAL_MESSAGE];
+  return [initialMessage(scope)];
 };
 
-export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
-  const storageKey = moduleId !== undefined ? `ai-tutor-chat-${moduleId}` : null;
+export function AiTutorChat({ courseId, learnBlockId, moduleId }: AiTutorChatProps) {
+  // Modul potřebuje learn block — bez něj (modul bez obsahu) zbývá jen celý kurz
+  const [preferredScope, setPreferredScope] = useState<MentorScope>('module');
+  const scope: MentorScope = learnBlockId ? preferredScope : 'course';
+  // Historii vede backend zvlášť pro modul a pro kurz — konverzace se proto ukládají odděleně
+  const storageKey = scope === 'course'
+    ? (courseId !== undefined ? `ai-tutor-chat-course-${courseId}` : null)
+    : (moduleId !== undefined ? `ai-tutor-chat-${moduleId}` : null);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => readStoredMessages(storageKey));
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => readStoredMessages(storageKey, scope));
   const inlineEndRef = useRef<HTMLDivElement>(null);
   const modalEndRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
@@ -55,8 +71,8 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
     if (loadedKeyRef.current === storageKey) return;
     loadedKeyRef.current = storageKey;
     skipNextPersistRef.current = true;
-    setChatMessages(readStoredMessages(storageKey));
-  }, [storageKey]);
+    setChatMessages(readStoredMessages(storageKey, scope));
+  }, [storageKey, scope]);
 
   // Persist chat history across page refreshes.
   useEffect(() => {
@@ -108,34 +124,35 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
     };
   }, [expanded]);
 
-  const handleSendChat = async () => {
-    if (!chatMessage.trim() || isAiTyping) return;
-    const msg = chatMessage.trim();
+  const askTutor = async (msg: string) => {
     setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
-    setChatMessage('');
     setIsAiTyping(true);
     try {
-      if (!learnBlockId) throw new Error('No learn block');
-      const response = await learnBlocksChat(learnBlockId, msg);
+      if (courseId === undefined) throw new Error('No course');
+      const response = await mentorChat({ scope, courseId, learnBlockId, message: msg });
       setChatMessages(prev => [...prev, { role: 'ai', text: response.answer }]);
-    } catch {
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Omlouvám se, nepodařilo se spojit s AI tutorem. Zkuste to prosím znovu.' }]);
+    } catch (err) {
+      // Hláška ze serveru má přednost (např. vyčerpaný denní limit AI)
+      const detail = await readApiErrorDetail(err);
+      setChatMessages(prev => [...prev, {
+        role: 'ai',
+        text: detail ?? 'Omlouvám se, nepodařilo se spojit s AI tutorem. Zkuste to prosím znovu.',
+      }]);
     } finally {
       setIsAiTyping(false);
     }
   };
 
+  const handleSendChat = () => {
+    if (!chatMessage.trim() || isAiTyping) return;
+    const msg = chatMessage.trim();
+    setChatMessage('');
+    askTutor(msg);
+  };
+
   const handleSuggestion = (suggestion: string) => {
-    setChatMessages(prev => [...prev, { role: 'user', text: suggestion }]);
-    setIsAiTyping(true);
-    if (learnBlockId) {
-      learnBlocksChat(learnBlockId, suggestion)
-        .then(res => setChatMessages(prev => [...prev, { role: 'ai', text: res.answer }]))
-        .catch(() => setChatMessages(prev => [...prev, { role: 'ai', text: 'Omlouvám se, nepodařilo se spojit s AI tutorem.' }]))
-        .finally(() => setIsAiTyping(false));
-    } else {
-      setIsAiTyping(false);
-    }
+    if (isAiTyping) return;
+    askTutor(suggestion);
   };
 
   const renderChat = useCallback((variant: 'inline' | 'modal') => {
@@ -150,6 +167,40 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
 
     return (
       <>
+        {/* Rozsah mentora — podklady a historie z learn blocku, nebo z celého kurzu */}
+        <div
+          role="radiogroup"
+          aria-label="Rozsah AI tutora"
+          className={cn(
+            'flex flex-wrap gap-1.5 bg-card',
+            variant === 'modal' ? 'px-6 py-3 border-b border-border' : 'px-4 py-2 border-t border-border',
+          )}
+        >
+          {SCOPE_OPTIONS.map((option) => {
+            const active = scope === option.value;
+            return (
+              <Button
+                key={option.value}
+                variant="plain"
+                role="radio"
+                aria-checked={active}
+                disabled={isAiTyping || (option.value === 'module' && !learnBlockId)}
+                title={option.value === 'module' && !learnBlockId ? 'Modul nemá obsah, ke kterému se ptát' : undefined}
+                onClick={() => setPreferredScope(option.value)}
+                className={cn(
+                  BTN_KEEP_BOX,
+                  'text-xs px-3 py-1 rounded-full border transition-colors disabled:opacity-50',
+                  active
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-muted-foreground hover:bg-muted/50',
+                )}
+              >
+                {option.label}
+              </Button>
+            );
+          })}
+        </div>
+
         <div className={messagesAreaClass}>
           {chatMessages.map((msg, idx) => (
             <div key={idx} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -262,7 +313,7 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatMessages, isAiTyping, chatMessage]);
+  }, [chatMessages, isAiTyping, chatMessage, scope, learnBlockId, courseId]);
 
   return (
     <>
@@ -318,7 +369,7 @@ export function AiTutorChat({ learnBlockId, moduleId }: AiTutorChatProps) {
                 <Bot className="size-4 text-foreground" />
               </div>
               <p className="text-sm text-muted-foreground leading-snug break-words">
-                Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu?
+                Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo celému kurzu?
               </p>
             </div>
           </Button>

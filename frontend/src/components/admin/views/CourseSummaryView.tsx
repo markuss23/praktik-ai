@@ -14,6 +14,7 @@ import { StudentPreview } from '@/components/admin/StudentPreview';
 import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
+import { useCourseAssessments } from '@/hooks/useCourseAssessments';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   courseCategoryValues, courseToUpdate, crossSubjectsRule, validateCourseCategories,
@@ -38,6 +39,10 @@ interface CourseSummaryViewProps {
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const { goToCourseTests, goToCourses } = useAdminNavigation();
   const goToStep = useCourseStepNavigation(courseId);
+  // Testy kurzu (pretest a připojené formáty) pro souhrn
+  const courseAssessments = useCourseAssessments(courseId);
+  const testCount = (moduleId?: number) =>
+    (courseAssessments ?? []).filter((c) => moduleId === undefined || c.moduleId === moduleId).length;
   const { focusMode } = useAdminChrome();
   const [previewOpen, setPreviewOpen] = useState(false);
   
@@ -137,12 +142,6 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     });
   };
 
-  const getTotalQuestions = () => {
-    return modules.reduce((total, module) => {
-      return total + (module.practiceQuestions?.length || 0);
-    }, 0);
-  };
-
   const handleBack = () => {
     goToCourseTests(courseId);
   };
@@ -198,11 +197,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           perex: moduleForm.perex.trim(),
         }),
       );
-      // PUT vrací modul bez otázek a bloků — ty si necháme z načteného kurzu,
-      // aby souhrn dál počítal otázky správně.
+      // PUT vrací modul bez bloků — ty si necháme z načteného kurzu (náhled je potřebuje)
       setModules(prev => prev.map(m => (
         m.moduleId === updated.moduleId
-          ? { ...m, ...updated, learnBlocks: m.learnBlocks, practiceQuestions: m.practiceQuestions }
+          ? { ...m, ...updated, learnBlocks: m.learnBlocks }
           : m
       )));
       setModuleForm(null);
@@ -294,10 +292,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     return <ErrorState message={error || 'Kurz nenalezen'} />;
   }
 
-  const totalQuestions = getTotalQuestions();
+  const totalTests = testCount();
   const stepHints = {
     content: moduleCountHint(modules.length),
-    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+    ...(courseAssessments && { tests: `${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')} celkem` }),
   };
 
   // Náhled pro studenta — rozpracovaný název, popis a zařazení kurzu
@@ -397,6 +395,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
       {previewOpen ? (
         <StudentPreview
           course={previewCourse}
+          courseId={courseId}
           modules={modules}
           start={{ screen: 'catalog' }}
           onExit={() => setPreviewOpen(false)}
@@ -466,7 +465,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
             {/* Statistics - compact inline */}
             <div className="text-sm text-muted-foreground">
-              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')} • {getTotalQuestions()} {czechPlural(getTotalQuestions(), 'otázka', 'otázky', 'otázek')}
+              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')}
+              {courseAssessments && ` • ${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')}`}
             </div>
 
             {/* Modules List */}
@@ -482,9 +482,11 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{module.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
-                      </p>
+                      {courseAssessments && (
+                        <p className="text-xs text-muted-foreground">
+                          {testCount(module.moduleId)} {czechPlural(testCount(module.moduleId), 'test', 'testy', 'testů')}
+                        </p>
+                      )}
                       {module.perex && (
                         <p className="text-xs text-muted-foreground mt-1 break-words">{module.perex}</p>
                       )}

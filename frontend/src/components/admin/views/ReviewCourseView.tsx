@@ -37,6 +37,7 @@ import { COURSE_SUMMARY_FEEDBACK, isCourseSummaryFeedback, reviewFeedbackLabel }
 import { ReviewCourseSummary } from '@/components/admin/ReviewCourseSummary';
 import { CommentsDrawer } from '@/components/admin/ReviewComments';
 import { CommentsToggle } from '@/components/admin/CoursePageHeader';
+import { ReviewModuleTests } from '@/components/admin/assessments/ReviewModuleTests';
 
 // Plný (ne podtržený) aktivní stav — kitový `line` variant kreslí podtržení
 // a průhledné pozadí, obojí přebíjíme stejným modifikátorem.
@@ -166,7 +167,6 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   };
 
   const learnBlocks = selectedModule?.learnBlocks ?? [];
-  const practiceQuestions = selectedModule?.practiceQuestions ?? [];
   const currentBlock = learnBlocks[currentBlockIndex];
   const currentBlockHtml = useMemo(() => sanitizeHtml(currentBlock?.content ?? ''), [currentBlock?.content]);
   const totalBlocks = learnBlocks.length;
@@ -175,10 +175,9 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     if (activeTab === 'handbook') {
       if (currentBlockIndex < totalBlocks - 1) {
         setCurrentBlockIndex(prev => prev + 1);
-      } else if (practiceQuestions.length > 0) {
-        setActiveTab('practice');
       } else {
-        goToNextModule();
+        // Testy modulu (pretest a formáty) jsou v záložce Procvičování
+        setActiveTab('practice');
       }
     } else {
       goToNextModule();
@@ -592,85 +591,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 </div>
               )
             ) : (
-              /* ===== PRACTICE TAB ===== */
-              <div className="space-y-6">
-                {practiceQuestions.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Dumbbell size={40} className="mx-auto mb-3 text-muted-foreground" />
-                    <p className="font-medium">Žádné otázky k procvičování</p>
-                  </div>
-                ) : (
-                  practiceQuestions.map((q, idx) => (
-                    <div key={q.questionId} className="pb-5 border-b border-border last:border-b-0">
-                          <div className="mb-3">
-                            <p className="font-semibold text-foreground text-sm">
-                              <span className="text-gradient-r mr-1">{idx + 1}.</span>
-                              {q.question}
-                            </p>
-                          </div>
-                          {q.questionType === 'closed' && (
-                            <div className="space-y-2 ml-4">
-                              {(q.closedOptions ?? []).map(opt => {
-                                const isCorrect = q.correctAnswer != null && opt.text === q.correctAnswer;
-                                return (
-                                  <div
-                                    key={opt.optionId}
-                                    className={`flex items-center gap-3 p-2.5 rounded-lg border ${
-                                      isCorrect
-                                        ? 'border-success/30 bg-success/10'
-                                        : 'border-border bg-card'
-                                    }`}
-                                  >
-                                    <div className={`size-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                      isCorrect ? 'border-success/30 bg-primary' : 'border-border'
-                                    }`}>
-                                      {isCorrect && <Check size={10} className="text-primary-foreground" />}
-                                    </div>
-                                    <span className={`text-sm ${isCorrect ? 'text-success font-medium' : 'text-foreground'}`}>
-                                      {opt.text}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          {q.questionType === 'open' && (
-                            <div className="ml-4 space-y-2">
-                              {q.exampleAnswer && (
-                                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
-                                  <p className="text-xs text-success font-medium mb-1">Příklad odpovědi:</p>
-                                  <p className="text-sm text-success">{q.exampleAnswer}</p>
-                                </div>
-                              )}
-                              {q.correctAnswer && (
-                                <div className="p-3 bg-success/10 border border-success/30 rounded-lg">
-                                  <p className="text-xs text-success font-medium mb-1">Správná odpověď:</p>
-                                  <p className="text-sm text-success">{q.correctAnswer}</p>
-                                </div>
-                              )}
-                              {q.openKeywords && q.openKeywords.length > 0 && (
-                                <div className="p-3 bg-tip/10 border border-tip/30 rounded-lg">
-                                  <p className="text-xs text-tip font-medium mb-1">Klíčová slova:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {q.openKeywords.map(kw => (
-                                      <span key={kw.keywordId} className="px-2 py-0.5 bg-tip/20 text-tip rounded text-xs">
-                                        {kw.keyword}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {!q.exampleAnswer && !q.correctAnswer && (!q.openKeywords || q.openKeywords.length === 0) && (
-                                <div className="p-3 bg-muted/50 border border-border rounded-lg">
-                                  <p className="text-xs text-muted-foreground">Odpověď nebyla nastavena</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                    </div>
-                  ))
-                )}
-              </div>
+              /* ===== PRACTICE TAB — pretest a připojené formáty modulu ===== */
+              selectedModule && <ReviewModuleTests courseId={courseId} moduleId={selectedModule.moduleId} />
             )}
           </div>
 
@@ -732,7 +654,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               <Button
                 variant="plain"
                 onClick={handleContinue}
-                disabled={selectedModuleIndex >= modules.length - 1 && (activeTab === 'practice' || practiceQuestions.length === 0) && currentBlockIndex >= totalBlocks - 1}
+                disabled={selectedModuleIndex >= modules.length - 1 && activeTab === 'practice'}
                 className={cn(BTN_KEEP_BOX, "flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed")}
                 style={{ backgroundColor: 'var(--primary)' }}
               >

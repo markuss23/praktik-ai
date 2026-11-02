@@ -1,309 +1,46 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, CheckCircle, XCircle, Plus, Loader2 } from 'lucide-react';
-import {
-  listPracticeQuestions,
-  generatePracticeQuestion,
-  evaluatePracticeAnswer,
-  evaluateOpenQuestion,
-} from '@/lib/api-client';
-import { readApiErrorDetail } from '@/lib/api-error';
-import type {
-  PracticeQuestion,
-  PracticeQuestionWithAttempts,
-  EvaluatePracticeAnswerResponse,
-  GeneratePracticeQuestionResponse,
-  PracticeQuestionOption,
-} from '@/api';
-import { QuestionType } from '@/api';
-import { Button, Textarea } from '@/components/ui';
+import { useState } from 'react';
+import { CheckCircle, Lock } from 'lucide-react';
+import type { ModuleProgressItem } from '@/api';
+import { requiredPassed } from '@/lib/assessment-labels';
+import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
-
-// types
+import { AssessmentRunner } from './AssessmentRunner';
+import { AssessmentSteps } from './AssessmentSteps';
 
 interface PracticeTabProps {
+  courseId: number;
   moduleId: number;
-  practiceQuestions: PracticeQuestion[];
+  /** Průběh modulu ze serveru; null = nepodařilo se načíst. */
+  moduleProgress: ModuleProgressItem | null;
+  /** Po dokončení session — stránka znovu načte průběh. */
+  onProgressChange: () => void;
   onComplete: () => void;
-  /**
-   * Náhled pro autora kurzu (admin): stejné UI jako pro studenta, ale nic se
-   * neukládá (ani sessionStorage studenta) a AI otázky se negenerují.
-   * Otevřené odpovědi vyhodnotí backend stejně jako studentovi (endpoint nic neukládá).
-   */
-  preview?: boolean;
 }
 
-type Phase = 'static' | 'ai';
+/**
+ * Procvičování modulu: nejdřív pretest (povinný, otázky po jedné), pak formáty,
+ * které lektor připojil do kontextu practice. Hodnotí vše server.
+ */
+export default function PracticeTab({ courseId, moduleId, moduleProgress, onProgressChange, onComplete }: PracticeTabProps) {
+  // Pretest dokončený v tomhle zobrazení zůstane vidět i s vyhodnocením odpovědí
+  const [pretestJustFinished, setPretestJustFinished] = useState(false);
 
-// Local representation of an AI-generated question
-interface AIQuestion {
-  userQuestionId: number;
-  questionType: 'open' | 'closed';
-  generatedQuestion: string;
-  options: PracticeQuestionOption[] | null;
-  userInput: string;
-  evaluation: EvaluatePracticeAnswerResponse | null;
-  submitting: boolean;
-}
-
-// Výsledek vyhodnocení otevřené otázky na backendu. `answer` je odpověď, ke
-// které patří — po její změně se výsledek nepoužije a otázka se vyhodnotí znovu.
-interface OpenEvaluation {
-  answer: string;
-  isCorrect: boolean;
-  feedback: string;
-}
-
-//  component
-
-export default function PracticeTab({ moduleId, practiceQuestions, onComplete, preview = false }: PracticeTabProps) {
-  const hasPracticeQuestions = practiceQuestions.length > 0;
-
-  // Restore practice state from sessionStorage
-  const storageKey = `practice-state-${moduleId}`;
-  const savedState = (() => {
-    if (preview) return null;
-    try {
-      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  })();
-
-  // static course questions
-  const [phase, setPhase] = useState<Phase>(savedState?.phase ?? (hasPracticeQuestions ? 'static' : 'ai'));
-  const [staticAnswers, setStaticAnswers] = useState<Record<number, number | string>>(savedState?.staticAnswers ?? {});
-  const [staticSubmitted, setStaticSubmitted] = useState(savedState?.staticSubmitted ?? false);
-  const [openEvaluations, setOpenEvaluations] = useState<Record<number, OpenEvaluation>>(savedState?.openEvaluations ?? {});
-  const [evaluating, setEvaluating] = useState(false);
-  const [evaluationError, setEvaluationError] = useState<string | null>(null);
-
-  // AI-generated questions 
-  const [aiQuestions, setAiQuestions] = useState<AIQuestion[]>([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [showTypeSelector, setShowTypeSelector] = useState(false);
-  const [savedAiInputs] = useState<Record<number, string>>(() => savedState?.aiUserInputs ?? {});
-  const [aiLoaded, setAiLoaded] = useState(false);
-
-  // Persist practice state to sessionStorage
-  useEffect(() => {
-    if (preview) return;
-    try {
-      const aiUserInputs: Record<number, string> = aiLoaded
-        ? aiQuestions.reduce<Record<number, string>>((acc, q) => {
-            if (!q.evaluation && q.userInput) acc[q.userQuestionId] = q.userInput;
-            return acc;
-          }, {})
-        : savedAiInputs;
-      sessionStorage.setItem(storageKey, JSON.stringify({
-        phase,
-        staticAnswers,
-        staticSubmitted,
-        openEvaluations,
-        aiUserInputs,
-      }));
-    } catch { /* ignore */ }
-  }, [preview, storageKey, phase, staticAnswers, staticSubmitted, openEvaluations, aiQuestions, aiLoaded, savedAiInputs]);
-
-  const handleStaticAnswerChange = (questionId: number, value: number | string) => {
-    setStaticAnswers((prev) => ({ ...prev, [questionId]: value }));
-  };
-
-  const openAnswerOf = (q: PracticeQuestion) => String(staticAnswers[q.questionId] ?? '').trim();
-
-  // Otevřené otázky s odpovědí, ke které ještě není výsledek z backendu.
-  // Prázdná odpověď je nesprávná bez volání AI.
-  const unevaluatedOpenQuestions = practiceQuestions.filter((q) => {
-    if (q.questionType !== 'open') return false;
-    const answer = openAnswerOf(q);
-    return answer.length > 0 && openEvaluations[q.questionId]?.answer !== answer;
-  });
-  const showStaticResults = staticSubmitted && unevaluatedOpenQuestions.length === 0;
-
-  const calculateStaticScore = () => {
-    let correct = 0;
-    const results: {
-      questionId: number;
-      isCorrect: boolean;
-      userAnswer: string;
-      correctAnswer?: string;
-      feedback?: string;
-      question: string;
-    }[] = [];
-
-    practiceQuestions.forEach((q) => {
-      const answer = staticAnswers[q.questionId];
-      let isCorrect = false;
-      let userAnswerText = '';
-      let correctAnswer: string | undefined;
-      let feedback: string | undefined;
-
-      if (q.questionType === 'closed') {
-        const selectedOption = (q.closedOptions ?? []).find((o) => o.optionId === answer);
-        userAnswerText = selectedOption?.text || '';
-        isCorrect = !!(q.correctAnswer && userAnswerText === q.correctAnswer);
-        correctAnswer = q.correctAnswer ?? undefined;
-      } else {
-        userAnswerText = String(answer || '');
-        const evaluation = openEvaluations[q.questionId];
-        if (evaluation && evaluation.answer === openAnswerOf(q)) {
-          isCorrect = evaluation.isCorrect;
-          feedback = evaluation.feedback;
-        }
-      }
-
-      if (isCorrect) correct++;
-      results.push({ questionId: q.questionId, isCorrect, userAnswer: userAnswerText, correctAnswer, feedback, question: q.question });
-    });
-
-    return { correct, total: practiceQuestions.length, results };
-  };
-
-  // Otevřené odpovědi vyhodnotí backend (AI), uzavřené se porovnají se správnou
-  // možností. Výsledky se zobrazí, až jsou vyhodnocené všechny otevřené otázky.
-  const handleStaticSubmit = async () => {
-    setEvaluationError(null);
-    if (unevaluatedOpenQuestions.length === 0) {
-      setStaticSubmitted(true);
-      return;
-    }
-    // Rozpracovaná otázka v náhledu autora ještě nemá ID na backendu.
-    if (unevaluatedOpenQuestions.some((q) => q.questionId < 0)) {
-      setEvaluationError('Některé otázky ještě nejsou uložené. Počkejte na uložení a zkuste to znovu.');
-      return;
-    }
-
-    setEvaluating(true);
-    const settled = await Promise.allSettled(
-      unevaluatedOpenQuestions.map(async (q) => {
-        const answer = openAnswerOf(q);
-        const resp = await evaluateOpenQuestion(q.questionId, answer);
-        return { questionId: q.questionId, answer, isCorrect: resp.isCorrect, feedback: resp.feedback };
-      }),
+  if (!moduleProgress) {
+    return (
+      <div className="text-center py-16">
+        <p role="alert" className="text-sm text-muted-foreground mb-4">Průběh modulu se nepodařilo načíst.</p>
+        <Button variant="outline" onClick={onProgressChange}>Zkusit znovu</Button>
+      </div>
     );
+  }
 
-    const evaluated: Record<number, OpenEvaluation> = {};
-    let failure: unknown = null;
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        const { questionId, ...evaluation } = result.value;
-        evaluated[questionId] = evaluation;
-      } else if (failure === null) {
-        failure = result.reason;
-      }
-    }
-    // Úspěšně vyhodnocené odpovědi si necháme, opakovaný pokus pošle jen ty zbylé.
-    setOpenEvaluations((prev) => ({ ...prev, ...evaluated }));
-
-    if (failure !== null) {
-      console.error('Failed to evaluate open question:', failure);
-      setEvaluationError(
-        (await readApiErrorDetail(failure)) ?? 'Některé odpovědi se nepodařilo vyhodnotit. Zkuste to prosím znovu.',
-      );
-    } else {
-      setStaticSubmitted(true);
-    }
-    setEvaluating(false);
-  };
-
-  const handleStaticRetry = () => {
-    setStaticSubmitted(false);
-    setStaticAnswers({});
-    setOpenEvaluations({});
-    setEvaluationError(null);
-  };
-
-  const staticScore = showStaticResults ? calculateStaticScore() : null;
-  const staticPercentage = staticScore ? (staticScore.total > 0 ? Math.round((staticScore.correct / staticScore.total) * 100) : 0) : 0;
-  const staticPassed = staticPercentage >= 75;
-
-  // AI question helpers 
-
-  const loadAiQuestions = useCallback(async () => {
-    try {
-      setAiLoading(true);
-      const data = await listPracticeQuestions(moduleId);
-      const mapped: AIQuestion[] = data.map((q: PracticeQuestionWithAttempts) => {
-        const lastAttempt = q.attempts.length > 0 ? q.attempts[q.attempts.length - 1] : null;
-        return {
-          userQuestionId: q.userQuestionId,
-          questionType: q.questionType as 'open' | 'closed',
-          generatedQuestion: q.generatedQuestion,
-          options: q.options,
-          userInput: lastAttempt?.userInput ?? (savedAiInputs[q.userQuestionId] ?? ''),
-          evaluation: lastAttempt
-            ? { attemptId: lastAttempt.attemptId, isCorrect: lastAttempt.isCorrect ?? false, aiResponse: lastAttempt.aiResponse }
-            : null,
-          submitting: false,
-        };
-      });
-      setAiQuestions(mapped);
-      setAiLoaded(true);
-    } catch (err) {
-      console.error('Failed to load AI practice questions:', err);
-    } finally {
-      setAiLoading(false);
-    }
-  }, [moduleId, savedAiInputs]);
-
-  // When switching to AI phase, load existing AI questions
-  useEffect(() => {
-    if (phase === 'ai' && !preview) {
-      loadAiQuestions();
-    }
-  }, [phase, preview, loadAiQuestions]);
-
-  const handleGenerate = async (type: 'open' | 'closed') => {
-    setShowTypeSelector(false);
-    setGenerating(true);
-    try {
-      const qType = type === 'open' ? QuestionType.Open : QuestionType.Closed;
-      const resp: GeneratePracticeQuestionResponse = await generatePracticeQuestion(moduleId, qType);
-      const newQ: AIQuestion = {
-        userQuestionId: resp.userQuestionId,
-        questionType: type,
-        generatedQuestion: resp.generatedQuestion,
-        options: resp.options ?? null,
-        userInput: '',
-        evaluation: null,
-        submitting: false,
-      };
-      setAiQuestions((prev) => [...prev, newQ]);
-    } catch (err) {
-      console.error('Failed to generate practice question:', err);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleAiInputChange = (idx: number, value: string) => {
-    setAiQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, userInput: value } : q)));
-  };
-
-  const handleAiOptionSelect = (idx: number, optionText: string) => {
-    setAiQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, userInput: optionText } : q)));
-  };
-
-  const handleAiSubmit = async (idx: number) => {
-    const q = aiQuestions[idx];
-    if (!q.userInput.trim()) return;
-    setAiQuestions((prev) => prev.map((item, i) => (i === idx ? { ...item, submitting: true } : item)));
-    try {
-      const resp = await evaluatePracticeAnswer(q.userQuestionId, q.userInput);
-      setAiQuestions((prev) => prev.map((item, i) => (i === idx ? { ...item, evaluation: resp, submitting: false } : item)));
-    } catch (err) {
-      console.error('Failed to evaluate practice answer:', err);
-      setAiQuestions((prev) => prev.map((item, i) => (i === idx ? { ...item, submitting: false } : item)));
-    }
-  };
-
-  const handleAiRetry = (idx: number) => {
-    setAiQuestions((prev) => prev.map((item, i) => (i === idx ? { ...item, userInput: '', evaluation: null } : item)));
-  };
-
-  // ── Render ──
+  const pretests = moduleProgress.assessments.filter((a) => a.context === 'pretest');
+  const practices = moduleProgress.assessments.filter((a) => a.context === 'practice');
+  const pretestDone = requiredPassed(pretests);
+  // Stejná podmínka jako gate testu modulu na backendu (pretest + povinné practice)
+  const readyForTest = pretestDone && requiredPassed(practices);
 
   return (
     <div>
@@ -314,467 +51,78 @@ export default function PracticeTab({ moduleId, practiceQuestions, onComplete, p
         </p>
       </div>
 
-      <AnimatePresence mode="wait">
-        {/* 
-            PHASE 1 – Static course questions */}
-        {phase === 'static' && !showStaticResults && (
-          <motion.div
-            key="static-questions"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            <div className="space-y-8">
-              {practiceQuestions.map((q, qIdx) => (
-                <div key={q.questionId} className="pb-6 border-b border-border last:border-b-0">
-                  <p className="font-semibold text-foreground mb-3">
-                    <span className="text-gradient-r mr-2">{qIdx + 1}.</span>
-                    {q.question}
-                  </p>
-
-                  {q.questionType === 'closed' && q.closedOptions && (
-                    <div className="space-y-2 ml-6">
-                      {(q.closedOptions ?? []).map((opt) => (
-                        <label
-                          key={opt.optionId}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                            staticAnswers[q.questionId] === opt.optionId
-                              ? 'border-gradient-r/30 bg-gradient-r/10'
-                              : 'border-border hover:border-border hover:bg-muted/50'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`q-${q.questionId}`}
-                            value={opt.optionId}
-                            checked={staticAnswers[q.questionId] === opt.optionId}
-                            onChange={() => handleStaticAnswerChange(q.questionId, opt.optionId)}
-                            disabled={evaluating}
-                            className="size-4 text-gradient-r focus:ring-gradient-r/30"
-                          />
-                          <span className="text-sm text-foreground">{opt.text}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {q.questionType === 'open' && (
-                    <div className="ml-6">
-                      <Textarea
-                        value={String(staticAnswers[q.questionId] || '')}
-                        onChange={(e) => handleStaticAnswerChange(q.questionId, e.target.value)}
-                        disabled={evaluating}
-                        placeholder="Napište svou odpověď..."
-                        rows={3}
-                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none")}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {practiceQuestions.length > 0 && (
-              <div className="flex flex-wrap items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
-                {evaluationError && (
-                  <p role="alert" className="text-sm text-destructive mr-auto">{evaluationError}</p>
-                )}
-                <Button
-                  variant="plain"
-                  onClick={handleStaticSubmit}
-                  disabled={evaluating}
-                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed")}
-                  style={{ backgroundColor: 'var(--gradient-r)' }}
-                >
-                  {evaluating ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Vyhodnocuji...
-                    </>
-                  ) : (
-                    <>
-                      Odevzdat
-                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/*
-            PHASE 1 – Evaluation results */}
-        {phase === 'static' && staticScore && (
-          <motion.div
-            key="static-results"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* Score header */}
-            <div className="text-center mb-8">
-              <div className={`size-24 rounded-full flex items-center justify-center mx-auto mb-4 ${staticPassed ? 'bg-success/10' : 'bg-destructive/10'}`}>
-                {staticPassed ? <CheckCircle className="size-12 text-success" /> : <XCircle className="size-12 text-destructive" />}
-              </div>
-              <h3 className="text-2xl font-bold text-foreground mb-1">Vyhodnocení</h3>
-              <p className={`text-lg font-semibold ${staticPassed ? 'text-success' : 'text-destructive'}`}>
-                {staticScore.correct}/{staticScore.total} správně ({staticPercentage}%)
+      {pretests.length > 0 && (
+        <section className="mb-8">
+          <h4 className="font-semibold text-foreground mb-1">Pretest</h4>
+          {pretestDone && !pretestJustFinished ? (
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-success">
+              <CheckCircle className="size-5" />
+              Pretest máte splněný.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground mb-5">
+                Krátké ověření, že víte, o čem modul je: dvě otázky s výběrem a jedna otevřená.
+                Na každou máte tři pokusy a splnit je potřeba všechny.
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {staticPassed ? 'Gratulujeme! Úspěšně jste prošli procvičováním.' : 'Bohužel jste neprošli. Zkuste to znovu.'}
-              </p>
-            </div>
+              <AssessmentRunner
+                target={{ courseId, context: 'pretest', moduleId, assessmentTypeCode: 'pretest' }}
+                autoStart
+                onFinished={() => {
+                  setPretestJustFinished(true);
+                  onProgressChange();
+                }}
+              />
+            </>
+          )}
+        </section>
+      )}
 
-            {/* Per-question results */}
-            <div className="space-y-4 mb-8">
-              {staticScore.results.map((r, idx) => (
-                <div
-                  key={r.questionId}
-                  className={`p-4 rounded-lg border ${r.isCorrect ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="grow">
-                      <p className="font-medium text-foreground text-sm">
-                        {idx + 1}. {r.question}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Vaše odpověď: <span className="font-medium">{r.userAnswer || '(bez odpovědi)'}</span>
-                      </p>
-                      {!r.isCorrect && r.correctAnswer && (
-                        <p className="text-sm text-success mt-1">
-                          Správná odpověď: <span className="font-medium">{r.correctAnswer}</span>
-                        </p>
-                      )}
-                      {r.feedback && (
-                        <p className="text-sm text-muted-foreground mt-1">{r.feedback}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {practices.length > 0 && (
+        <section className="mb-8">
+          <h4 className="font-semibold text-foreground mb-3">
+            {pretests.length > 0 ? 'Další procvičování' : 'Procvičování'}
+          </h4>
+          {pretestDone ? (
+            <AssessmentSteps
+              courseId={courseId}
+              moduleId={moduleId}
+              context="practice"
+              items={practices}
+              onFinished={onProgressChange}
+            />
+          ) : (
+            <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Lock className="size-4" />
+              Odemkne se po splnění pretestu.
+            </p>
+          )}
+        </section>
+      )}
 
-            {/* Action buttons */}
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-border">
-              <Button
-                variant="plain"
-                onClick={handleStaticRetry}
-                className={cn(BTN_KEEP_BOX, "text-muted-foreground hover:text-foreground font-medium text-sm self-center sm:self-auto")}
-              >
-                Zkusit znovu
-              </Button>
+      {pretests.length === 0 && practices.length === 0 && (
+        <p className="text-muted-foreground py-8 text-center">Tento modul nemá procvičování.</p>
+      )}
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                {staticPassed && (
-                  <>
-                    <Button
-                      variant="plain"
-                      onClick={() => setPhase('ai')}
-                      className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center gap-2 font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 border w-full sm:w-auto text-sm sm:text-base")}
-                      style={{ color: 'var(--gradient-r)', borderColor: 'var(--gradient-r)' }}
-                    >
-                      Procvičovat dál
-                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </Button>
-                    <Button
-                      variant="plain"
-                      onClick={onComplete}
-                      className={cn(BTN_KEEP_BOX, "inline-flex items-center justify-center gap-2 text-primary-foreground font-semibold py-2.5 px-4 sm:px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md w-full sm:w-auto text-sm sm:text-base")}
-                      style={{ backgroundColor: 'var(--primary)' }}
-                    >
-                      Dokončit
-                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
+      <div className="flex flex-wrap items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
+        {!readyForTest && (
+          <p className="text-sm text-muted-foreground mr-auto">
+            Test se odemkne po splnění povinných částí procvičování.
+          </p>
         )}
-
-        {/*
-            PHASE 2 – AI-generated questions */}
-        {phase === 'ai' && (
-          <motion.div
-            key="ai-questions"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* Tlačítko zpět — návrat k výsledkům předem připravených otázek */}
-            {hasPracticeQuestions && (
-              <div className="mb-4">
-                <Button
-                  variant="plain"
-                  type="button"
-                  onClick={() => { setPhase('static'); setStaticSubmitted(true); }}
-                  className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors")}
-                >
-                  <ArrowLeft className="size-4" />
-                  Zpět na vyhodnocení procvičování
-                </Button>
-              </div>
-            )}
-            {preview ? (
-              <div className="rounded-lg border border-dashed border-gradient-r/40 bg-gradient-r/5 px-5 py-8 text-center">
-                <p className="font-medium text-foreground">Tady by si student generoval další otázky pomocí AI.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {hasPracticeQuestions
-                    ? 'V náhledu se AI otázky negenerují — pokračujte tlačítkem Dokončit.'
-                    : 'Modul nemá žádné připravené otázky, student by tedy začal rovnou otázkami od AI. V náhledu se negenerují.'}
-                </p>
-                <div className="flex justify-end mt-8 pt-6 border-t border-border">
-                  <Button
-                    variant="plain"
-                    onClick={onComplete}
-                    className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
-                    style={{ backgroundColor: 'var(--primary)' }}
-                  >
-                    Dokončit
-                  </Button>
-                </div>
-              </div>
-            ) : aiLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="size-8 animate-spin text-gradient-r" />
-                  <p className="text-sm text-muted-foreground">Načítání otázek...</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* AI question list */}
-                <div className="space-y-6">
-                  <AnimatePresence initial={false}>
-                    {aiQuestions.map((q, idx) => (
-                      <motion.div
-                        key={q.userQuestionId}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="pb-6 border-b border-border last:border-b-0"
-                      >
-                        <p className="font-semibold text-foreground mb-3">
-                          <span className="text-gradient-r mr-2">{idx + 1}.</span>
-                          {q.generatedQuestion}
-                        </p>
-
-                        {/* Closed options */}
-                        {q.questionType === 'closed' && q.options && (
-                          <div className="space-y-2 ml-6">
-                            {q.options.map((opt, optIdx) => (
-                              <label
-                                key={optIdx}
-                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                                  q.evaluation
-                                    ? q.userInput === opt.text
-                                      ? q.evaluation.isCorrect
-                                        ? 'border-success/30 bg-success/10'
-                                        : 'border-destructive/30 bg-destructive/10'
-                                      : 'border-border opacity-60'
-                                    : q.userInput === opt.text
-                                      ? 'border-gradient-r/30 bg-gradient-r/10'
-                                      : 'border-border hover:border-border hover:bg-muted/50'
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={`pq-${q.userQuestionId}`}
-                                  checked={q.userInput === opt.text}
-                                  onChange={() => handleAiOptionSelect(idx, opt.text)}
-                                  disabled={!!q.evaluation}
-                                  className="size-4 text-gradient-r focus:ring-gradient-r/30"
-                                />
-                                <span className="text-sm text-foreground">{opt.text}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Open textarea */}
-                        {q.questionType === 'open' && !q.evaluation && (
-                          <div className="ml-6">
-                            <Textarea
-                              value={q.userInput}
-                              onChange={(e) => handleAiInputChange(idx, e.target.value)}
-                              placeholder="Napište svou odpověď..."
-                              rows={3}
-                              className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-gradient-r/30 resize-none")}
-                            />
-                          </div>
-                        )}
-
-                        {/* Evaluation feedback */}
-                        {q.evaluation && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.25 }}
-                            className={`ml-6 mt-3 p-4 rounded-lg border ${
-                              q.evaluation.isCorrect ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'
-                            }`}
-                          >
-                            <div className="flex items-start gap-2">
-                              {q.evaluation.isCorrect ? (
-                                <CheckCircle className="size-5 text-success shrink-0 mt-0.5" />
-                              ) : (
-                                <XCircle className="size-5 text-destructive shrink-0 mt-0.5" />
-                              )}
-                              <div>
-                                <p className={`text-sm font-medium ${q.evaluation.isCorrect ? 'text-success' : 'text-destructive'}`}>
-                                  {q.evaluation.isCorrect ? 'Správně!' : 'Nesprávně'}
-                                </p>
-                                {q.questionType === 'open' && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    Vaše odpověď: <span className="font-medium">{q.userInput}</span>
-                                  </p>
-                                )}
-                                {q.evaluation.aiResponse && (
-                                  <p className="text-sm text-muted-foreground mt-1">{q.evaluation.aiResponse}</p>
-                                )}
-                                {!q.evaluation.isCorrect && (
-                                  <Button
-                                    variant="plain"
-                                    onClick={() => handleAiRetry(idx)}
-                                    className={cn(BTN_KEEP_BOX, "text-sm font-medium mt-2 hover:underline")}
-                                    style={{ color: 'var(--gradient-r)' }}
-                                  >
-                                    Zkusit znovu
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {/* Submit button */}
-                        {!q.evaluation && (
-                          <div className="ml-6 mt-3">
-                            <Button
-                              variant="plain"
-                              onClick={() => handleAiSubmit(idx)}
-                              disabled={!q.userInput.trim() || q.submitting}
-                              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-medium py-2 px-5 rounded-md text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed")}
-                              style={{ backgroundColor: 'var(--gradient-r)' }}
-                            >
-                              {q.submitting ? (
-                                <>
-                                  <Loader2 className="size-4 animate-spin" />
-                                  Vyhodnocuji...
-                                </>
-                              ) : (
-                                'Odevzdat'
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                {/* Add question button */}
-                <div className="mt-6 flex items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    {showTypeSelector ? (
-                      <motion.div
-                        key="type-selector"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex flex-wrap items-center justify-center gap-3"
-                      >
-                        <span className="text-sm text-muted-foreground">Typ otázky:</span>
-                        <Button
-                          variant="plain"
-                          onClick={() => handleGenerate('open')}
-                          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20")}
-                          style={{ color: 'var(--gradient-r)' }}
-                        >
-                          Otevřená
-                        </Button>
-                        <Button
-                          variant="plain"
-                          onClick={() => handleGenerate('closed')}
-                          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gradient-r/30 bg-gradient-r/10 text-sm font-medium transition-all hover:bg-gradient-r/20")}
-                          style={{ color: 'var(--gradient-r)' }}
-                        >
-                          Uzavřená
-                        </Button>
-                        <Button
-                          variant="plain"
-                          onClick={() => setShowTypeSelector(false)}
-                          className={cn(BTN_KEEP_BOX, "text-sm text-muted-foreground hover:text-muted-foreground ml-1")}
-                        >
-                          Zrušit
-                        </Button>
-                      </motion.div>
-                    ) : (
-                      <motion.button
-                        key="add-btn"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={() => setShowTypeSelector(true)}
-                        disabled={generating}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 border-dashed border-border text-muted-foreground font-medium text-sm transition-all hover:border-gradient-r/30 hover:text-gradient-r hover:bg-gradient-r/10 disabled:opacity-50"
-                      >
-                        {generating ? (
-                          <>
-                            <Loader2 className="size-4 animate-spin" />
-                            Generuji otázku...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="size-4" />
-                            Přidat otázku
-                          </>
-                        )}
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* No AI questions prompt */}
-                {aiQuestions.length === 0 && !generating && (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-2">Zatím nemáte žádné další otázky k procvičování.</p>
-                    <p className="text-sm text-muted-foreground">Klikněte na tlačítko výše a vygenerujte si otázku.</p>
-                  </div>
-                )}
-
-                {/* Dokončit button (always visible in AI phase if static was passed or skipped) */}
-                <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
-                  <Button
-                    variant="plain"
-                    onClick={onComplete}
-                    className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
-                    style={{ backgroundColor: 'var(--primary)' }}
-                  >
-                    Dokončit
-                    <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </Button>
-                </div>
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <Button
+          variant="plain"
+          onClick={onComplete}
+          disabled={!readyForTest}
+          className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed")}
+          style={{ backgroundColor: 'var(--primary)' }}
+        >
+          Pokračovat na test
+          <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </Button>
+      </div>
     </div>
   );
 }

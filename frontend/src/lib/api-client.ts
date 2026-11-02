@@ -18,13 +18,24 @@ import {
   LearnBlockUpdate,
   ModuleCreate,
   ModuleUpdate,
-  PracticeQuestionCreate,
-  PracticeQuestionUpdate,
-  PracticeOptionCreate,
-  PracticeOptionUpdate,
-  QuestionKeywordUpdate,
+  AssessmentsApi,
+  ResponseError,
+  ClosedQuestionsSettingsFromJSON,
+  ClosedQuestionsSettingsToJSON,
+  ClosedQuestionsAISettingsFromJSON,
+  ClosedQuestionsAISettingsToJSON,
+  OpenQuestionAISettingsFromJSON,
+  OpenQuestionAISettingsToJSON,
+  SocraticDialogAISettingsFromJSON,
+  SocraticDialogAISettingsToJSON,
+  type AssessmentContext,
+  type ClosedQuestionsSettings,
+  type ClosedQuestionsAISettings,
+  type SocraticDialogAISettings,
+  type MentorScope,
+  type PretestSettings,
+  type SessionStartResponse,
   type Middleware,
-  type QuestionType,
   type PubResourceCreate,
   type PubResourceUpdate,
   type PubResourceCreateFork,
@@ -43,6 +54,7 @@ import {
 import { API_BASE_URL, backendUrl } from "./constants";
 import { saveBlob } from "./download";
 import { getValidAccessToken } from "./keycloak";
+import { readApiErrorStatus } from "./api-error";
 
 
 const authMiddleware: Middleware = {
@@ -75,6 +87,7 @@ export const resourcesApi = new ResourcesApi(configuration);
 export const reviewsApi = new ReviewsApi(configuration);
 export const ratingsApi = new RatingsApi(configuration);
 export const collectionsApi = new CollectionsApi(configuration);
+export const assessmentsApi = new AssessmentsApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -273,9 +286,24 @@ export async function generateCourseWithAI(courseId: number) {
   return agentsApi.generateCourse({ courseId });
 }
 
-export async function learnBlocksChat(learnBlockId: number, message: string) {
+/**
+ * Dotaz na AI mentora. `scope: 'module'` hledá podklady a historii v learn
+ * blocku (povinné `learnBlockId`), `'course'` v celém kurzu (stačí `courseId`).
+ * Historii konverzace si backend vede sám, zvlášť pro modul a pro kurz.
+ */
+export async function mentorChat(params: {
+  scope: MentorScope;
+  courseId: number;
+  learnBlockId?: number;
+  message: string;
+}) {
   return agentsApi.learnBlocksChat({
-    learnBlocksChatRequest: { learnBlockId, message },
+    learnBlocksChatRequest: {
+      courseId: params.courseId,
+      learnBlockId: params.scope === 'module' ? params.learnBlockId : undefined,
+      message: params.message,
+    },
+    scope: params.scope,
   });
 }
 
@@ -456,26 +484,6 @@ export async function createLearnBlock(data: LearnBlockCreate) {
 
 export async function updateLearnBlock(learnId: number, data: LearnBlockUpdate) {
   return activitiesApi.updateLearnBlock({ learnId, learnBlockUpdate: data });
-}
-
-export async function createPracticeQuestion(data: PracticeQuestionCreate) {
-  return activitiesApi.createPracticeQuestion({ practiceQuestionCreate: data });
-}
-
-export async function updatePracticeQuestion(questionId: number, data: PracticeQuestionUpdate) {
-  return activitiesApi.updatePracticeQuestion({ questionId, practiceQuestionUpdate: data });
-}
-
-export async function createPracticeOption(data: PracticeOptionCreate) {
-  return activitiesApi.createPracticeOption({ practiceOptionCreate: data });
-}
-
-export async function updatePracticeOption(optionId: number, data: PracticeOptionUpdate) {
-  return activitiesApi.updatePracticeOption({ optionId, practiceOptionUpdate: data });
-}
-
-export async function updateQuestionKeyword(keywordId: number, data: QuestionKeywordUpdate) {
-  return activitiesApi.updateQuestionKeyword({ keywordId, questionKeywordUpdate: data });
 }
 
 //  Enrollments API functions
@@ -677,62 +685,177 @@ export async function leaveEnrollment(enrollmentId: number) {
   return enrollmentsApi.leaveEnrollment({ enrollmentId });
 }
 
-//  Module Progress API functions 
+//  Assessments API functions (pretest, practice, assessment, course_final)
 
-export async function completeModule(moduleId: number, score: number) {
-  return modulesApi.completeModule({
-    moduleId,
-    completeModuleRequest: { score },
+/** Co má student v kurzu splněné: testy po modulech, hotové moduly a kurz. */
+export async function getAssessmentProgress(courseId: number) {
+  return assessmentsApi.getAssessmentCourseProgress({ courseId });
+}
+
+/** Odevzdané i rozběhnuté sessions studenta v kurzu, nejnovější první. */
+export async function getAssessmentHistory(courseId: number) {
+  return assessmentsApi.getAssessmentSessionHistory({ courseId });
+}
+
+/** Který test: kontext, u modulových i modul; kód formátu, když jich je v kontextu víc. */
+export interface AssessmentTarget {
+  courseId: number;
+  context: AssessmentContext;
+  moduleId?: number | null;
+  assessmentTypeCode?: string | null;
+}
+
+/** Rozběhnutá session testu; null = žádná neběží. */
+export async function getCurrentAssessmentSession(target: AssessmentTarget): Promise<SessionStartResponse | null> {
+  try {
+    return await assessmentsApi.getCurrentAssessmentSession(target);
+  } catch (err) {
+    if (readApiErrorStatus(err) === 404) return null;
+    throw err;
+  }
+}
+
+/** Založí session a vrátí první otázku; rozběhnutou session vrátí místo nové. */
+export async function startAssessmentSession(target: AssessmentTarget) {
+  return assessmentsApi.startAssessmentSession(target);
+}
+
+/** Odpověď na aktuální otázku. Uzavřená otázka pretestu = index možnosti, ostatní formáty = text možnosti. */
+export async function submitAssessmentAnswer(sessionId: number, answer: string) {
+  return assessmentsApi.submitAssessmentAnswer({ sessionId, answer });
+}
+
+// Lektor — formáty připojené ke kurzu
+//
+// Generovaný `Settings` je sloučený union všech formátů a jeho (de)serializace
+// vyžaduje pole pretestu (`closed`, `open`) — u ostatních formátů spadne. Proto
+// se konfigurace čtou z `raw` odpovědi a nastavení převádí podle kódu formátu.
+
+/** Nastavení formátu (kromě pretestu); každý formát vyplní jen svá pole. */
+export type AssessmentFormatSettings = ClosedQuestionsSettings & ClosedQuestionsAISettings & SocraticDialogAISettings;
+
+type SettingsConverter = {
+  fromJson: (json: unknown) => AssessmentFormatSettings;
+  toJson: (settings: AssessmentFormatSettings) => unknown;
+};
+
+const FORMAT_SETTINGS: Record<string, SettingsConverter> = {
+  closed_questions: { fromJson: ClosedQuestionsSettingsFromJSON, toJson: ClosedQuestionsSettingsToJSON },
+  closed_questions_ai: { fromJson: ClosedQuestionsAISettingsFromJSON, toJson: ClosedQuestionsAISettingsToJSON },
+  open_question_ai: { fromJson: OpenQuestionAISettingsFromJSON, toJson: OpenQuestionAISettingsToJSON },
+  socratic_dialog_ai: { fromJson: SocraticDialogAISettingsFromJSON, toJson: SocraticDialogAISettingsToJSON },
+};
+
+/** Null u pretestu (obsah přes getPretestContent) a u formátu, který frontend nezná. */
+function formatSettingsFromJson(code: string, json: unknown): AssessmentFormatSettings | null {
+  const converter = FORMAT_SETTINGS[code];
+  return converter && json != null ? converter.fromJson(json) : null;
+}
+
+export interface AssessmentFormat {
+  code: string;
+  name: string;
+  description: string | null;
+  allowedContexts: AssessmentContext[];
+  defaultSettings: AssessmentFormatSettings | null;
+}
+
+export interface CourseAssessmentConfig {
+  courseAssessmentId: number;
+  courseId: number;
+  moduleId: number | null;
+  assessmentTypeCode: string;
+  context: AssessmentContext;
+  isEnabled: boolean;
+  isRequired: boolean;
+  settings: AssessmentFormatSettings | null;
+}
+
+function courseAssessmentFromJson(json: Record<string, unknown>): CourseAssessmentConfig {
+  const code = String(json.assessment_type_code);
+  return {
+    courseAssessmentId: Number(json.course_assessment_id),
+    courseId: Number(json.course_id),
+    moduleId: json.module_id == null ? null : Number(json.module_id),
+    assessmentTypeCode: code,
+    context: json.context as AssessmentContext,
+    isEnabled: Boolean(json.is_enabled),
+    isRequired: Boolean(json.is_required),
+    settings: formatSettingsFromJson(code, json.settings),
+  };
+}
+
+/** Katalog formátů (jen lektor) — povolené kontexty a výchozí nastavení. */
+export async function listAssessmentFormats(): Promise<AssessmentFormat[]> {
+  const res = await assessmentsApi.listAssessmentTypesRaw();
+  const data = (await res.raw.json()) as Record<string, unknown>[];
+  return data.map((json) => {
+    const code = String(json.code);
+    return {
+      code,
+      name: String(json.name),
+      description: typeof json.description === 'string' ? json.description : null,
+      allowedContexts: (json.allowed_contexts ?? []) as AssessmentContext[],
+      defaultSettings: formatSettingsFromJson(code, json.default_settings),
+    };
   });
 }
 
-export async function getCourseProgress(courseId: number) {
-  return modulesApi.getCourseProgress({ courseId });
+/** Formáty připojené ke kurzu včetně vypnutých (jen vlastník kurzu a superadmin). */
+export async function listCourseAssessments(courseId: number): Promise<CourseAssessmentConfig[]> {
+  const res = await assessmentsApi.listCourseAssessmentsRaw({ courseId });
+  const data = (await res.raw.json()) as Record<string, unknown>[];
+  return data.map(courseAssessmentFromJson);
 }
 
-//  Practice Questions (with attempts) API functions
-
-export async function listPracticeQuestions(moduleId: number) {
-  return modulesApi.listPracticeQuestions({ moduleId });
-}
-
-//  Assessment API functions
-
-export async function getModuleAssessment(moduleId: number) {
-  return modulesApi.getModuleAssessment({ moduleId });
-}
-
-export async function generateAssessment(moduleId: number) {
-  return agentsApi.generateAssessment({
-    generateAssessmentRequest: { moduleId },
+export async function attachCourseAssessment(
+  courseId: number,
+  body: { assessmentTypeCode: string; context: AssessmentContext; moduleId: number | null; isRequired: boolean },
+): Promise<CourseAssessmentConfig> {
+  const res = await assessmentsApi.attachCourseAssessmentRaw({
+    courseId,
+    courseAssessmentAttachRequest: { ...body, isEnabled: true },
   });
+  return courseAssessmentFromJson((await res.raw.json()) as Record<string, unknown>);
 }
 
-export async function evaluateAssessment(sessionId: number, userResponse: string) {
-  return agentsApi.evaluateAssessment({
-    evaluateAssessmentRequest: { sessionId, userResponse },
+/** Uloží nastavení formátu — posílá se celý objekt. Pretest se mění přes updatePretestContent. */
+export async function updateCourseAssessment(
+  config: Pick<CourseAssessmentConfig, 'courseAssessmentId' | 'assessmentTypeCode' | 'isEnabled' | 'isRequired'>,
+  settings: AssessmentFormatSettings,
+): Promise<CourseAssessmentConfig> {
+  const converter = FORMAT_SETTINGS[config.assessmentTypeCode];
+  if (!converter) throw new Error(`Nastavení formátu ${config.assessmentTypeCode} nejde upravit.`);
+
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Accept: 'application/json', 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/assessments/${config.courseAssessmentId}`), {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      settings: converter.toJson(settings),
+      is_enabled: config.isEnabled,
+      is_required: config.isRequired,
+    }),
   });
+  // ResponseError jako u generovaného klienta — chybu pak přečte readApiErrorDetail
+  if (!res.ok) throw new ResponseError(res, 'Response returned an error code');
+  return courseAssessmentFromJson((await res.json()) as Record<string, unknown>);
 }
 
-//  AI Practice Question Generation & Evaluation
-
-export async function generatePracticeQuestion(moduleId: number, questionType: QuestionType) {
-  return agentsApi.generatePracticeQuestion({
-    generatePracticeQuestionRequest: { moduleId, questionType },
-  });
+/** Odpojí formát od kurzu (soft delete); pretest odpojit nejde. */
+export async function detachCourseAssessment(courseAssessmentId: number) {
+  return assessmentsApi.detachCourseAssessment({ courseAssessmentId });
 }
 
-export async function evaluatePracticeAnswer(userQuestionId: number, userInput: string) {
-  return agentsApi.evaluatePracticeAnswer({
-    evaluatePracticeAnswerRequest: { userQuestionId, userInput },
-  });
+/** Otázky pretestu modulu (pevně 2 uzavřené + 1 otevřená) se správnými odpověďmi. */
+export async function getPretestContent(courseAssessmentId: number) {
+  return assessmentsApi.getPretestContent({ courseAssessmentId });
 }
 
-/** Vyhodnotí odpověď na předem připravenou otevřenou otázku modulu (nic neukládá). */
-export async function evaluateOpenQuestion(questionId: number, userInput: string) {
-  return agentsApi.evaluateOpenQuestion({
-    evaluateOpenQuestionRequest: { questionId, userInput },
-  });
+export async function updatePretestContent(courseAssessmentId: number, content: PretestSettings) {
+  return assessmentsApi.updatePretestContent({ courseAssessmentId, pretestSettings: content });
 }
 
 //  Feedbacks API functions 

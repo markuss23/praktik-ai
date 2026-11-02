@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ConfirmModal, Button } from '@/components/ui';
-import { getModules, getCourseProgress } from '@/lib/api-client';
+import { getModules, getAssessmentProgress } from '@/lib/api-client';
 import type { MyEnrollment } from '@/api';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
@@ -20,14 +20,14 @@ async function resumeInProgress(
   try {
     const [modules, progress] = await Promise.all([
       getModules({ courseId: enrollment.courseId, includeInactive: false }),
-      getCourseProgress(enrollment.courseId).catch(() => []),
+      getAssessmentProgress(enrollment.courseId).catch(() => null),
     ]);
     const activeModules = modules.filter(m => m.isActive);
-    // First module that hasn't been passed yet — resumes at the in-progress
+    // First module that hasn't been completed yet — resumes at the in-progress
     // or next-up module rather than dropping the user on the course landing.
     const next = activeModules.find(m => {
-      const p = progress.find(pp => pp.moduleId === m.moduleId);
-      return !(p?.passed);
+      const p = progress?.modules.find(pp => pp.moduleId === m.moduleId);
+      return !(p?.completed);
     });
     if (next) {
       nav(`/modules/${next.moduleId}`);

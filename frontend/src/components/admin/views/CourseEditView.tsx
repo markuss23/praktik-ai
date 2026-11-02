@@ -22,6 +22,8 @@ import { StudentPreview } from '@/components/admin/StudentPreview';
 import { CourseImageField } from '@/components/admin/CourseImageField';
 import { CatalogSelect, ConfirmModal, Button, Drawer, DrawerContent, Input, Textarea } from '@/components/ui';
 import { useCatalogData } from '@/hooks/useCatalogData';
+import { useCourseAssessments } from '@/hooks/useCourseAssessments';
+import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRole } from '@/hooks/useRole';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
@@ -54,6 +56,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
   const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
   const { focusMode } = useAdminChrome();
   const goToStep = useCourseStepNavigation(courseId);
+  // Testy kurzu (pretest a připojené formáty) pro nápovědu a přehled modulů
+  const courseAssessments = useCourseAssessments(courseId);
 
   // Komentáře garanta k souhrnu kurzu (popis, zařazení, obrázek) u vráceného kurzu
   const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
@@ -240,10 +244,10 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     );
   }
 
-  const totalQuestions = modules.reduce((total, m) => total + (m.practiceQuestions?.length ?? 0), 0);
+  const totalTests = courseAssessments?.length ?? 0;
   const stepHints = {
     content: moduleCountHint(modules.length),
-    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+    ...(courseAssessments && { tests: `${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')} celkem` }),
   };
 
   // Náhled pro studenta — stránka kurzu s rozpracovaným názvem, popisem a zařazením
@@ -292,6 +296,7 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
       {previewOpen ? (
         <StudentPreview
           course={previewCourse}
+          courseId={courseId}
           modules={modules}
           start={{ screen: 'catalog' }}
           onExit={() => setPreviewOpen(false)}
@@ -508,42 +513,31 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
                         </div>
                       )}
 
-                      {module.practiceQuestions && module.practiceQuestions.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-semibold text-foreground mb-2">Otázky ({module.practiceQuestions.length})</h4>
-                          <div className="space-y-2">
-                            {module.practiceQuestions.map((q, qIndex) => (
-                              <div key={qIndex} className="p-3 bg-success/10 rounded border border-success/30">
-                                <div className="text-sm text-foreground">
-                                  <div className="font-medium">{qIndex + 1}. {q.question}</div>
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Typ: {q.questionType === 'closed' ? 'Uzavřená' : 'Otevřená'}
-                                  </div>
-                                  {q.questionType === 'closed' && q.closedOptions && (
-                                    <div className="mt-1 text-xs text-muted-foreground">
-                                      {q.closedOptions.map((opt, oIndex) => (
-                                        <div key={oIndex} className={opt.text === q.correctAnswer ? 'text-success font-medium' : ''}>
-                                          {String.fromCharCode(65 + oIndex)}. {opt.text}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {q.questionType === 'open' && q.exampleAnswer && (
-                                    <div className="mt-1 text-xs text-muted-foreground">
-                                      Příklad odpovědi: {q.exampleAnswer}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                      {(() => {
+                        const moduleTests = (courseAssessments ?? []).filter((c) => c.moduleId === module.moduleId);
+                        if (moduleTests.length === 0) {
+                          return (!module.learnBlocks || module.learnBlocks.length === 0) && (
+                            <p className="text-sm text-muted-foreground italic">Tento modul nemá žádný obsah.</p>
+                          );
+                        }
+                        return (
+                          <div>
+                            <h4 className="text-sm font-semibold text-foreground mb-2">Testy ({moduleTests.length})</h4>
+                            <ul className="space-y-2">
+                              {moduleTests.map((test) => (
+                                <li key={test.courseAssessmentId} className="p-3 bg-success/10 rounded border border-success/30 text-sm text-foreground">
+                                  <span className="font-medium">{formatName(test.assessmentTypeCode)}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {' · '}{CONTEXT_LABELS[test.context]}
+                                    {test.isRequired ? ' · povinné' : ' · nepovinné'}
+                                    {!test.isEnabled && ' · vypnuté'}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                        </div>
-                      )}
-
-                      {(!module.learnBlocks || module.learnBlocks.length === 0) &&
-                       (!module.practiceQuestions || module.practiceQuestions.length === 0) && (
-                        <p className="text-sm text-muted-foreground italic">Tento modul nemá žádný obsah.</p>
-                      )}
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

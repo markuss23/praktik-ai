@@ -47,6 +47,7 @@ export function CoursePreviewView({ courseId }: CoursePreviewViewProps) {
       />
       <StudentPreview
         course={course}
+        courseId={courseId}
         modules={course.modules ?? []}
         start={{ screen: 'catalog' }}
         onExit={goToCourses}

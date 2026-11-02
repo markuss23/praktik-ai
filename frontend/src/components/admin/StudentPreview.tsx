@@ -16,11 +16,12 @@ import {
   LogIn,
   Search,
 } from 'lucide-react';
-import type { Course, Module } from '@/api';
+import type { Course, Module, PretestSettings } from '@/api';
 import { Button, CourseCard, CourseCategories, Input, ModuleCategories } from '@/components/ui';
 import PaperSheets from '@/components/module/PaperSheets';
-import PracticeTab from '@/components/module/PracticeTab';
+import { PretestPreview } from '@/components/module/PretestPreview';
 import { ModuleCompletedCard } from '@/components/module/ModuleCompletedCard';
+import { usePretestContents } from '@/hooks/useCourseAssessments';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 // Co náhled z kurzu a modulů potřebuje 
@@ -30,7 +31,7 @@ export type PreviewCourse = Pick<
 >;
 export type PreviewModule = Pick<
   Module,
-  'moduleId' | 'title' | 'perex' | 'maxTaskAttempts' | 'learnBlocks' | 'practiceQuestions' | 'neuroPrinciples' | 'krauuCompetences' | 'bloomLevels'
+  'moduleId' | 'title' | 'perex' | 'learnBlocks' | 'neuroPrinciples' | 'krauuCompetences' | 'bloomLevels'
 >;
 
 type ModuleTab = 'prirucka' | 'procvicovani' | 'test';
@@ -68,12 +69,19 @@ interface StudentPreviewProps {
   /** Text lišty nad náhledem — výchozí je náhled z editoru vlastního kurzu. */
   notice?: React.ReactNode;
   exitLabel?: string;
+  /** Pro načtení pretestů, když je volající nepředá. */
+  courseId?: number;
+  /** Obsah pretestů podle moduleId (krok Testy předává rozpracované). */
+  pretests?: Record<number, PretestSettings | null>;
 }
 
 /**
  * Náhled pro studenta
  */
-export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám' }: StudentPreviewProps) {
+export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám', courseId, pretests }: StudentPreviewProps) {
+  // Bez předaných pretestů si je náhled načte sám (vlastník kurzu a superadmin)
+  const loadedPretests = usePretestContents(pretests ? undefined : courseId);
+  const pretestByModule = pretests ?? (courseId ? loadedPretests : {});
   const startIndex = start.screen === 'module' ? Math.min(start.moduleIndex, Math.max(0, modules.length - 1)) : 0;
   const startsInModule = start.screen === 'module' && modules.length > 0;
 
@@ -139,6 +147,7 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
             key={activeModule.moduleId}
             courseTitle={course.title}
             module={activeModule}
+            pretest={pretestByModule === null ? undefined : (pretestByModule[activeModule.moduleId] ?? null)}
             moduleIndex={moduleIndex}
             moduleCount={modules.length}
             session={session}
@@ -444,6 +453,8 @@ function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenCatal
 interface ModuleScreenProps {
   courseTitle: string;
   module: PreviewModule;
+  /** undefined = načítá se, null = modul pretest nemá */
+  pretest: PretestSettings | null | undefined;
   moduleIndex: number;
   moduleCount: number;
   session: ModuleSession;
@@ -458,6 +469,7 @@ interface ModuleScreenProps {
 function ModuleScreen({
   courseTitle,
   module,
+  pretest,
   moduleIndex,
   moduleCount,
   session,
@@ -650,10 +662,8 @@ function ModuleScreen({
                 )}
 
                 {session.tab === 'procvicovani' && (
-                  <PracticeTab
-                    preview
-                    moduleId={module.moduleId}
-                    practiceQuestions={module.practiceQuestions ?? []}
+                  <PretestPreview
+                    content={pretest}
                     onComplete={() => {
                       onSessionChange((prev) => ({ ...prev, practiceDone: true, tab: 'test' }));
                       onScrollTop();
@@ -676,9 +686,8 @@ function ModuleScreen({
                       </div>
                       <h3 className="text-xl font-bold text-foreground">Test</h3>
                       <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-                        Ve skutečném kurzu tady student dostane test, který AI sestaví z obsahu modulu,
-                        a jeho odpovědi AI vyhodnotí (nejvýše {module.maxTaskAttempts ?? 3} pokusy, k úspěchu je potřeba 75 %).
-                        V náhledu se test negeneruje.
+                        Ve skutečném kurzu tady student projde testy, které jste k modulu připojili v kroku Testy,
+                        a vyhodnotí je server. V náhledu se testy nespouští.
                       </p>
                       <Button
                         variant="plain"

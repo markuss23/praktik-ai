@@ -13,7 +13,7 @@ export type CourseStep = 'description' | 'content' | 'tests' | 'summary';
 export const COURSE_STEPS: { key: CourseStep; label: string; hint: string }[] = [
   { key: 'description', label: 'Popis kurzu', hint: 'Název, zaměření, podklady' },
   { key: 'content', label: 'Podklady', hint: 'Moduly a jejich obsah' },
-  { key: 'tests', label: 'Testy', hint: 'Otázky k modulům' },
+  { key: 'tests', label: 'Testy', hint: 'Pretest a testy k modulům' },
   { key: 'summary', label: 'Souhrn', hint: 'Kontrola a dokončení' },
 ];
 
@@ -27,8 +27,9 @@ export function moduleCountHint(count: number): string {
   return `${count} ${czechPlural(count, 'modul', 'moduly', 'modulů')}`;
 }
 
-export function questionCountHint(count: number): string {
-  return `${count} ${czechPlural(count, 'otázka', 'otázky', 'otázek')} v modulu`;
+/** Počet testů (pretest + připojené formáty) u modulu. */
+export function testCountHint(count: number): string {
+  return `${count} ${czechPlural(count, 'test', 'testy', 'testů')} v modulu`;
 }
 
 /** Přechod na krok tvorby kurzu (bez ukládání — to si řeší pohled před voláním). */

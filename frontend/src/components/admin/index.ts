@@ -16,7 +16,7 @@ export {
   COURSE_STEPS,
   courseStepLabel,
   moduleCountHint,
-  questionCountHint,
+  testCountHint,
   useCourseStepNavigation,
   type CourseStep,
   type StepModuleItem,

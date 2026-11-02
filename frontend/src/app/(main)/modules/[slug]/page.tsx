@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getCourseProgress, getMyEnrollments, markModuleVisited } from "@/lib/api-client";
-import type { Module, Course, ModuleCompletionStatus } from "@/api";
+import { getModule, getCourse, getAssessmentProgress, getMyEnrollments, markModuleVisited } from "@/lib/api-client";
+import type { Module, Course, CourseProgressResponse } from "@/api";
+import { requiredPassed } from "@/lib/assessment-labels";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Eye, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
 import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
@@ -34,6 +35,8 @@ export default function ModulePage() {
   const [module, setModule] = useState<Module | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [allModules, setAllModules] = useState<Module[]>([]);
+  // Splněné testy po modulech; null = nepodařilo se načíst
+  const [progress, setProgress] = useState<CourseProgressResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
@@ -58,7 +61,6 @@ export default function ModulePage() {
   const [currentBlockIndex, setCurrentBlockIndex] = useState(() => readSavedProgress()?.currentBlockIndex ?? 0);
   const [handbookCompleted, setHandbookCompleted] = useState(() => readSavedProgress()?.handbookCompleted ?? false);
   const [practiceCompleted, setPracticeCompleted] = useState(() => readSavedProgress()?.practiceCompleted ?? false);
-  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -115,24 +117,29 @@ export default function ModulePage() {
 
       // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
       // getModules je vynechané záměrně: getCourse moduly už vrací.
-      const [courseData, progress, enrollments] = await Promise.all([
+      const [courseData, progressData, enrollments] = await Promise.all([
         getCourse(moduleData.courseId),
-        getCourseProgress(moduleData.courseId).catch(() => [] as ModuleCompletionStatus[]),
+        getAssessmentProgress(moduleData.courseId).catch(() => null),
         getMyEnrollments().catch(() => []),
       ]);
       setCourse(courseData);
       setAllModules((courseData.modules ?? []).filter(m => m.isActive));
+      setProgress(progressData);
 
-      // If the user already passed this module, unlock all sections
-      const moduleProgress = progress.find((p) => p.moduleId === modId);
-      if (moduleProgress?.passed) {
-        setHandbookCompleted(true);
-        setPracticeCompleted(true);
-        setAssessmentCompleted(true);
+      // Splněné části odemknou záložky i v jiném prohlížeči (sessionStorage je nezná)
+      const moduleProgress = progressData?.modules.find((p) => p.moduleId === modId);
+      if (moduleProgress) {
+        const pretests = moduleProgress.assessments.filter((a) => a.context === 'pretest');
+        const practices = moduleProgress.assessments.filter((a) => a.context === 'practice');
+        const pretestPassed = pretests.some((a) => a.passed);
+        if (moduleProgress.completed || pretestPassed) setHandbookCompleted(true);
+        if (moduleProgress.completed || (pretestPassed && requiredPassed(pretests) && requiredPassed(practices))) {
+          setPracticeCompleted(true);
+        }
       }
       // Modul přidaný až po dokončení kurzu splněný není, ten jde projít normálně.
       const courseCompleted = !!enrollments.find(e => e.courseId === moduleData.courseId)?.completedAt;
-      setReviewMode(courseCompleted && !!moduleProgress?.passed);
+      setReviewMode(courseCompleted && !!moduleProgress?.completed);
     } catch (err) {
       console.error('Failed to fetch module data:', err);
       setError('Nepodařilo se načíst data modulu.');
@@ -178,7 +185,6 @@ export default function ModulePage() {
     setCurrentBlockIndex(0);
     setHandbookCompleted(false);
     setPracticeCompleted(false);
-    setAssessmentCompleted(false);
     window.history.pushState(null, '', `/modules/${moduleId}`);
     setActiveModuleId(moduleId);
     scrollContentToTop();
@@ -255,7 +261,19 @@ export default function ModulePage() {
     }
   };
 
-  // Called when user clicks "Dokončit" in PracticeTab
+  const moduleProgress = progress?.modules.find((p) => p.moduleId === module.moduleId) ?? null;
+
+  // Po dokončené session — splněné testy a hotový modul/kurz počítá backend
+  const refreshProgress = async () => {
+    try {
+      setProgress(await getAssessmentProgress(module.courseId));
+      window.dispatchEvent(new CustomEvent('praktik:enrollments-changed'));
+    } catch (err) {
+      console.error('Failed to refresh course progress:', err);
+    }
+  };
+
+  // Called when user clicks "Pokračovat na test" in PracticeTab
   const handlePracticeComplete = () => {
     setPracticeCompleted(true);
     switchTab('test');
@@ -263,23 +281,12 @@ export default function ModulePage() {
 
   // Called when user completes the assessment or needs to move on
   const handleModuleComplete = () => {
-    setAssessmentCompleted(true);
     if (nextModule) {
       navigateToModule(nextModule.moduleId);
     } else {
       // Poslední modul — zpět na detail kurzu (tlačítko říká „Zpět na kurz" / „Dokončit kurz")
       router.push(`/courses/${module.courseId}`);
     }
-  };
-
-  // Called when assessment fails and module needs restart
-  const handleRestartModule = () => {
-    setActiveTab('prirucka');
-    setCurrentBlockIndex(0);
-    setHandbookCompleted(false);
-    setPracticeCompleted(false);
-    setAssessmentCompleted(false);
-    scrollContentToTop();
   };
 
   // Tab configuration
@@ -303,7 +310,7 @@ export default function ModulePage() {
       key: 'test',
       label: 'Test',
       sublabel: 'Ověření znalostí testem',
-      completed: assessmentCompleted,
+      completed: !!moduleProgress?.completed,
       locked: !practiceCompleted,
       icon: <ClipboardCheck className="size-5" />,
     },
@@ -396,7 +403,7 @@ export default function ModulePage() {
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
+                <AiTutorChat courseId={module.courseId} learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
               )}
             </div>
           </div>
@@ -502,14 +509,16 @@ export default function ModulePage() {
                 {/* Procvičování tab */}
                 {activeTab === 'procvicovani' && (reviewMode ? (
                   <PracticeReview
+                    courseId={module.courseId}
                     moduleId={activeModuleId}
-                    practiceQuestions={module.practiceQuestions ?? []}
                     onContinue={handlePracticeComplete}
                   />
                 ) : (
                   <PracticeTab
+                    courseId={module.courseId}
                     moduleId={activeModuleId}
-                    practiceQuestions={module.practiceQuestions ?? []}
+                    moduleProgress={moduleProgress}
+                    onProgressChange={refreshProgress}
                     onComplete={handlePracticeComplete}
                   />
                 ))}
@@ -517,6 +526,7 @@ export default function ModulePage() {
                 {/* Test tab */}
                 {activeTab === 'test' && reviewMode && (
                   <AssessmentReview
+                    courseId={module.courseId}
                     moduleId={activeModuleId}
                     ctaLabel={nextModule ? 'Pokračovat na další modul' : 'Zpět na kurz'}
                     onContinue={handleModuleComplete}
@@ -524,14 +534,15 @@ export default function ModulePage() {
                 )}
                 {activeTab === 'test' && !reviewMode && (
                   <AssessmentTab
-                    moduleId={activeModuleId}
                     courseId={module.courseId}
-                    maxAttempts={module.maxTaskAttempts ?? 3}
+                    moduleId={activeModuleId}
+                    moduleProgress={moduleProgress}
+                    courseCompleted={!!progress?.courseCompleted}
                     moduleNumber={currentIndex + 1}
                     moduleTitle={module.title}
                     nextModule={nextModule ? { moduleId: nextModule.moduleId, title: nextModule.title } : null}
+                    onProgressChange={refreshProgress}
                     onModuleComplete={handleModuleComplete}
-                    onRestartModule={handleRestartModule}
                   />
                 )}
 

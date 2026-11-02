@@ -8,7 +8,7 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
-  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, testCountHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
@@ -19,6 +19,7 @@ import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComment
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
+import { useCourseAssessments } from '@/hooks/useCourseAssessments';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
 import { useCatalogData } from '@/hooks/useCatalogData';
@@ -242,6 +243,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const { goToCourseTests, goBack } = useAdminNavigation();
   const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
+  // Testy kurzu jen pro nápovědu u kroku Testy
+  const courseAssessments = useCourseAssessments(courseId);
   const { isOwner } = useCurrentUser();
   const { neuroPrinciples, krauuCompetences, bloomLevels, loading: catalogsLoading } = useCatalogData();
 
@@ -581,9 +584,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         moduleId: module.moduleId,
         title: module.title,
         perex: module.perex,
-        maxTaskAttempts: module.maxTaskAttempts,
         learnBlocks: [...firstBlock, ...savedBlocks.slice(1)],
-        practiceQuestions: saved?.practiceQuestions ?? [],
         neuroPrinciples: neuroPrinciples.filter((n) => module.categories.neuroPrincipleIds.includes(n.principleId)),
         krauuCompetences: krauuCompetences.filter((k) => module.categories.krauuCompetenceIds.includes(k.krauuId)),
         bloomLevels: bloomLevels.filter((b) => module.categories.bloomLevelIds.includes(b.bloomId)),
@@ -604,9 +605,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       description: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
     }),
     content: moduleCountHint(modules.length),
-    tests: questionCountHint(
-      courseData?.modules?.find((m) => m.moduleId === selectedModule?.moduleId)?.practiceQuestions?.length ?? 0,
-    ),
+    ...(courseAssessments && {
+      tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId).length),
+    }),
   };
 
   // Moduly pod aktivním krokem karty „Tvorba kurzu" (dřív Osnova kurzu)
@@ -645,6 +646,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       {previewOpen && (
         <StudentPreview
           course={courseData ?? { title: courseTitle }}
+          courseId={courseId}
           modules={previewModules}
           start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'prirucka' }}
           onExit={() => setPreviewOpen(false)}
