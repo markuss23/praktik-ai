@@ -38,3 +38,4 @@ Caddyfile
 
 *.mcp
 *playwright.mcp*
+.playwright-mcp/

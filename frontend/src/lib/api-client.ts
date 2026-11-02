@@ -95,10 +95,19 @@ export async function getMe() {
   return authApi.endpMeApiV1AuthMeGet();
 }
 
-export async function updateProfile(aiTone: string, aiExpressionLevel: string) {
-  return authApi.endpUpdateProfileApiV1AuthProfilePut({
-    profileUpdate: { aiTone, aiExpressionLevel },
-  });
+export async function getAiStyles() {
+  return catalogsApi.listAiStyles();
+}
+
+export async function getMyAiStyle(): Promise<Record<string, string>> {
+  const style = await authApi.endpGetProfileAiStyleApiV1AuthProfileAiStyleGet();
+  return Object.fromEntries(
+    Object.entries(style).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  );
+}
+
+export async function updateMyAiStyle(choice: Record<string, string>) {
+  return authApi.endpUpdateProfileAiStyleApiV1AuthProfileAiStylePatch({ requestBody: choice });
 }
 
 export async function updateProfileName(displayName: string) {
