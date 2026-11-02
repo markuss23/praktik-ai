@@ -1,10 +1,10 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from api import models
 from api.src.common.utils import get_or_404
-from api.enums import TicketStatus, UserRole
+from api.enums import TicketEntityType, TicketStatus, TicketType, UserRole
 from api.src.tickets.resolvers import RESOLVERS, get_allowed_categories, get_resolver
 from api.src.tickets.schemas import (
     TicketCategoriesResponse,
@@ -13,6 +13,47 @@ from api.src.tickets.schemas import (
     TicketMessageCreate,
     TicketMessageItem,
 )
+
+
+# Stavy, ve kterých ticket ještě nikdo nevyřešil
+# v nich smí mít requester k entitě a kategorii jen jeden ticket
+UNRESOLVED_STATUSES = (
+    TicketStatus.open,
+    TicketStatus.in_progress,
+    TicketStatus.pending,
+)
+
+
+def _ensure_no_unresolved_duplicate(
+    db: Session,
+    requester_id: int,
+    entity_type: TicketEntityType,
+    entity_id: int | None,
+    category: TicketType,
+    exclude_ticket_id: int | None = None,
+) -> None:
+    """Vyhodí 409, pokud requester už má k entitě a kategorii jiný aktivní
+    nevyřešený ticket.
+    """
+    if entity_id is None:
+        return
+
+    stm = select(models.Ticket.ticket_id).where(
+        models.Ticket.requester_id == requester_id,
+        models.Ticket.entity_type == entity_type,
+        models.Ticket.entity_id == entity_id,
+        models.Ticket.category == category,
+        models.Ticket.status.in_(UNRESOLVED_STATUSES),
+        models.Ticket.is_active.is_(True),
+    )
+    if exclude_ticket_id is not None:
+        stm = stm.where(models.Ticket.ticket_id != exclude_ticket_id)
+
+    if db.scalar(stm) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="K této entitě už máte jiný nevyřešený ticket stejné kategorie",
+        )
 
 
 def get_ticket_categories() -> list[TicketCategoriesResponse]:
@@ -40,8 +81,9 @@ def get_tickets(
     actor: models.User,
     course_id: int | None = None,
 ) -> list[TicketItem]:
-    """Vrátí tickety. Student vidí jen své, staff role vidí všechny
-    (volitelně omezené na jeden kurz přes course_id)."""
+    """Vrátí tickety. Student vidí jen své, lektor své + tickety kurzů,
+    které vlastní, garant a superadmin všechny (volitelně omezené na jeden
+    kurz přes course_id)."""
     stm = (
         select(models.Ticket)
         .where(models.Ticket.is_active.is_(True))
@@ -51,9 +93,18 @@ def get_tickets(
     if course_id is not None:
         stm = stm.where(models.Ticket.course_id == course_id)
 
-    # Student vidí jen své tickety, staff role vidí všechny
     if actor.role == UserRole.user:
         stm = stm.where(models.Ticket.requester_id == actor.user_id)
+    elif actor.role == UserRole.lector:
+        owned_course_ids = select(models.Course.course_id).where(
+            models.Course.owner_id == actor.user_id
+        )
+        stm = stm.where(
+            or_(
+                models.Ticket.requester_id == actor.user_id,
+                models.Ticket.course_id.in_(owned_course_ids),
+            )
+        )
 
     tickets = db.scalars(stm).all()
     return [TicketItem.model_validate(t) for t in tickets]
@@ -92,6 +143,14 @@ def create_ticket(
     entity = resolver.load_entity(db, data.entity_id)
     resolver.authorize_create(db, actor, entity)
     course_id = resolver.get_course_id(entity)
+
+    _ensure_no_unresolved_duplicate(
+        db,
+        requester_id=actor.user_id,
+        entity_type=data.entity_type,
+        entity_id=data.entity_id,
+        category=data.category,
+    )
 
     ticket = models.Ticket(
         requester_id=actor.user_id,
@@ -196,6 +255,14 @@ def add_ticket_message(
 
     # ticket byl z pohledu staff vyřešený, ale student na něj reaguje — znovu se otevře
     if ticket.status == TicketStatus.resolved:
+        _ensure_no_unresolved_duplicate(
+            db,
+            requester_id=ticket.requester_id,
+            entity_type=ticket.entity_type,
+            entity_id=ticket.entity_id,
+            category=ticket.category,
+            exclude_ticket_id=ticket.ticket_id,
+        )
         ticket.status = TicketStatus.in_progress
 
     message = models.TicketMessage(

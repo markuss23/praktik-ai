@@ -27,8 +27,6 @@ router = APIRouter(prefix="/tickets", tags=["Tickets"])
 public_router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
 
-# Musí být před GET /{ticket_id} na hlavním routeru — jinak by "categories"
-# FastAPI zkusil převést na int jako ticket_id a spadlo by to na 422.
 @public_router.get("/categories", operation_id="get_ticket_categories")
 def endp_get_ticket_categories() -> list[TicketCategoriesResponse]:
     """Pro každý entity_type vrátí jeho povolené category — pro sestavení FE formuláře."""

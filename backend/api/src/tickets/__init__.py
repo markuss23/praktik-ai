@@ -1,0 +1,3 @@
+"""
+Obecný ticket systém
+"""

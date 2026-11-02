@@ -924,7 +924,9 @@ class Ticket(TimestampMixin, SoftDeleteMixin, Base):
 
     __tablename__ = "ticket"
     __table_args__ = (
-        # Jeden otevřený ticket na uživatele, entitu a kategorii
+        # Jeden nevyřešený aktivní ticket na uživatele, entitu a kategorii.
+        # Smazaný (is_active=false) ani vyřešený ticket založení nového neblokuje.
+        # Title unikátní není, dva studenti smí mít stejný titulek.
         Index(
             "uq_ticket_requester_entity_category",
             "requester_id",
@@ -932,16 +934,9 @@ class Ticket(TimestampMixin, SoftDeleteMixin, Base):
             "entity_id",
             "category",
             unique=True,
-            postgresql_where=text("status = 'open'"),
-        ),
-        Index(
-            "uq_title_category_entity_active",
-            "title",
-            "category",
-            "entity_type",
-            "entity_id",
-            unique=True,
-            postgresql_where=text("is_active"),
+            postgresql_where=text(
+                "is_active AND status IN ('open', 'in_progress', 'pending')"
+            ),
         ),
         Index("ix_ticket_requester_id", "requester_id"),
         Index("ix_ticket_assignee_id", "assignee_id"),

@@ -15,6 +15,16 @@ UNIVERSAL_CATEGORIES: set[TicketType] = {
 }
 
 
+def is_course_staff(actor: models.User, course: models.Course) -> bool:
+    """Zjistí, zda actor smí řešit tickety daného kurzu.
+
+    Garant a superadmin řeší tickety všech kurzů, lektor jen kurzů, které vlastní.
+    """
+    if actor.role in (UserRole.guarantor, UserRole.superadmin):
+        return True
+    return actor.role == UserRole.lector and course.owner_id == actor.user_id
+
+
 class TicketEntityResolver(Protocol):
     """Zapouzdřuje pravidla specifická pro jeden entity_type."""
 
@@ -55,7 +65,7 @@ class ModuleTicketResolver:
         check_enrollment(db, actor, entity.course)
 
     def is_staff_for(self, actor: models.User, entity: models.Module) -> bool:
-        return actor.role in (UserRole.guarantor, UserRole.superadmin, UserRole.lector)
+        return is_course_staff(actor, entity.course)
 
     def get_course_id(self, entity: models.Module) -> int:
         return entity.course_id
@@ -76,7 +86,7 @@ class CourseTicketResolver:
         check_enrollment(db, actor, entity, bypass_for_owner=True)
 
     def is_staff_for(self, actor: models.User, entity: models.Course) -> bool:
-        return actor.role in (UserRole.guarantor, UserRole.superadmin, UserRole.lector)
+        return is_course_staff(actor, entity)
 
     def get_course_id(self, entity: models.Course) -> int:
         return entity.course_id
@@ -108,7 +118,7 @@ class PubResourceTicketResolver:
 
 class GeneralTicketResolver:
     """Ticket bez vazby na entitu (bug/dotaz) — smí založit kdokoliv přihlášený,
-    staff je jen garant/superadmin/lektor."""
+    staff je jen garant/superadmin (lektor řeší jen tickety svých kurzů)."""
 
     allowed_categories: set[TicketType] = set()
 
@@ -119,7 +129,7 @@ class GeneralTicketResolver:
         pass
 
     def is_staff_for(self, actor: models.User, entity) -> bool:
-        return actor.role in (UserRole.guarantor, UserRole.superadmin, UserRole.lector)
+        return actor.role in (UserRole.guarantor, UserRole.superadmin)
 
     def get_course_id(self, entity) -> None:
         return None
