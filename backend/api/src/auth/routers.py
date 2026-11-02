@@ -33,7 +33,6 @@ def endp_sync(
     return UserResponse.model_validate(user)
 
 
-
 @router.get("/me", operation_id="get_current_user")
 def endp_me(current_user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(current_user)
@@ -57,7 +56,6 @@ def endp_update_profile_ai_style(
     """Změní AI styl přihlášeného uživatele, např. {"ton": "ton.frnd"}; neuvedené osy zůstanou."""
     update_user_ai_style(db, current_user.user_id, data)
     return {o.axis.code: o.code for o in get_user_ai_style(db, current_user.user_id)}
-
 
 
 @router.put("/profile/name", operation_id="update_profile_name")

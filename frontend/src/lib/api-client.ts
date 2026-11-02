@@ -92,7 +92,7 @@ export const assessmentsApi = new AssessmentsApi(configuration);
 // ============ Auth / Current User ============
 
 export async function getMe() {
-  return authApi.endpMeApiV1AuthMeGet();
+  return authApi.getCurrentUser();
 }
 
 export async function getAiStyles() {
@@ -100,14 +100,14 @@ export async function getAiStyles() {
 }
 
 export async function getMyAiStyle(): Promise<Record<string, string>> {
-  const style = await authApi.endpGetProfileAiStyleApiV1AuthProfileAiStyleGet();
+  const style = await authApi.getProfileAiStyle();
   return Object.fromEntries(
     Object.entries(style).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
   );
 }
 
 export async function updateMyAiStyle(choice: Record<string, string>) {
-  return authApi.endpUpdateProfileAiStyleApiV1AuthProfileAiStylePatch({ requestBody: choice });
+  return authApi.updateProfileAiStyle({ requestBody: choice });
 }
 
 export async function updateProfileName(displayName: string) {
