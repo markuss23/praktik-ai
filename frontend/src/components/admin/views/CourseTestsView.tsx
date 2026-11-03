@@ -5,7 +5,7 @@ import { Status, type AssessmentContext, type PretestSettings } from '@/api';
 import {
   attachCourseAssessment, detachCourseAssessment, getPretestContent, listAssessmentFormats, listCourseAssessments,
   updateCourseAssessment, updateCourseStatus, updatePretestContent,
-  type AssessmentFormat, type CourseAssessmentConfig,
+  type AssessmentFormat, type AssessmentFormatSettings, type CourseAssessmentConfig,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
@@ -15,11 +15,11 @@ import {
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
 import { PretestEditor } from '@/components/admin/assessments/PretestEditor';
-import { FormatConfigCard, type FormatDraft } from '@/components/admin/assessments/FormatConfigCard';
-import { AddFormatForm } from '@/components/admin/assessments/AddFormatForm';
+import type { FormatDraft } from '@/components/admin/assessments/FormatConfigCard';
+import { FormatCards } from '@/components/admin/assessments/FormatCards';
 // Osnova kurzu je nahrazená kartou „Tvorba kurzu" (viz zakomentované použití níže).
 // import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
-import { ConfirmModal, Drawer, DrawerContent, Button, useToast } from '@/components/ui';
+import { ConfirmModal, Drawer, DrawerContent, Button, Tabs, TabsList, TabsTrigger, useToast } from '@/components/ui';
 import { readApiErrorDetail, readApiErrorStatus } from '@/lib/api-error';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
@@ -27,9 +27,9 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
 import type { AssessmentContents } from '@/hooks/useCourseAssessments';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
-import { formatName } from '@/lib/assessment-labels';
+import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
 import {
-  emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors,
+  emptyClosedQuestion, emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors,
 } from '@/lib/assessment-validation';
 import { isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
 import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
@@ -46,6 +46,9 @@ interface ValidationError {
   message: string;
   // Krok, ve kterém se chyba opraví
   section: TestsSection;
+  // Záložka a karta formátu, kterou klik na chybu otevře
+  context: AssessmentContext;
+  code: string;
 }
 
 interface CourseTestsViewProps {
@@ -62,6 +65,34 @@ const formatKey = (id: number) => `f:${id}`;
 const CONTEXT_ORDER: AssessmentContext[] = ['pretest', 'practice', 'assessment', 'course_final'];
 const byContext = (a: CourseAssessmentConfig, b: CourseAssessmentConfig) =>
   CONTEXT_ORDER.indexOf(a.context) - CONTEXT_ORDER.indexOf(b.context) || a.courseAssessmentId - b.courseAssessmentId;
+
+// Záložky formátů v modulu
+const MODULE_CONTEXTS = ['practice', 'assessment'] as const;
+type ModuleContext = typeof MODULE_CONTEXTS[number];
+const isModuleContext = (c: AssessmentContext): c is ModuleContext => (MODULE_CONTEXTS as readonly string[]).includes(c);
+
+// Uzavřené otázky bez otázek začínají rovnou prázdnou otázkou k vyplnění
+const withStarterQuestion = (code: string, settings: AssessmentFormatSettings): AssessmentFormatSettings =>
+  code === 'closed_questions' && (settings.questions ?? []).length === 0
+    ? { ...settings, questions: [emptyClosedQuestion()] }
+    : settings;
+
+// Náhled ukazuje jen to, co lektor začal vyplňovat
+const withoutBlankQuestions = (code: string, settings: AssessmentFormatSettings): AssessmentFormatSettings =>
+  code === 'closed_questions'
+    ? { ...settings, questions: (settings.questions ?? []).filter((q) => q.question.trim() || q.options.some((o) => o.trim())) }
+    : settings;
+
+// Klíč rozbalených karet — modul (null = závěrečný test) a kontext
+const openFormatsKey = (moduleId: number | null, context: AssessmentContext) => `${moduleId ?? 'final'}:${context}`;
+
+// Stejný vzhled jako záložky Příručka/Procvičování ve schvalování
+const FORMAT_TAB = [
+  'flex-none gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium',
+  'text-muted-foreground hover:bg-muted',
+  'group-data-[variant=line]/tabs-list:data-active:bg-gradient-r data-active:text-primary-foreground',
+  'group-data-[variant=line]/tabs-list:data-active:after:opacity-0',
+].join(' ');
 
 // Editor kroků Pretest a Testy; společná data i autosave, section řídí render
 export function CourseTestsView({ section, courseId, initialModuleId }: CourseTestsViewProps) {
@@ -147,6 +178,9 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const finalSelected = section === 'tests' && finalPicked;
   const [detachTarget, setDetachTarget] = useState<CourseAssessmentConfig | null>(null);
   const [detaching, setDetaching] = useState(false);
+  // Záložka zůstává při přepnutí modulu
+  const [formatTab, setFormatTab] = useState<ModuleContext>('practice');
+  const [openFormats, setOpenFormats] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -175,7 +209,8 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         const drafts: Record<number, FormatDraft> = {};
         for (const c of list) {
           if (c.assessmentTypeCode === 'pretest' || !c.settings) continue;
-          drafts[c.courseAssessmentId] = { settings: c.settings, isEnabled: c.isEnabled, isRequired: c.isRequired };
+          // Snapshot i s prázdnou otázkou — chyby a autosave až po začátku vyplňování
+          drafts[c.courseAssessmentId] = { settings: withStarterQuestion(c.assessmentTypeCode, c.settings), isEnabled: c.isEnabled, isRequired: c.isRequired };
           snapshots[formatKey(c.courseAssessmentId)] = JSON.stringify(drafts[c.courseAssessmentId]);
         }
         setConfigs(list);
@@ -270,7 +305,9 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         ? (pretest ? pretestErrors(pretest).map((m) => `Pretest — ${m}`) : [])
         : (draft ? formatFinishErrors(config.assessmentTypeCode, draft.settings).map((m) => `${formatName(config.assessmentTypeCode)} — ${m}`) : []);
       const errorSection: TestsSection = isPretest ? 'pretest' : 'tests';
-      messages.forEach((message) => errors.push({ moduleIndex, moduleName, message, section: errorSection }));
+      messages.forEach((message) => errors.push({
+        moduleIndex, moduleName, message, section: errorSection, context: config.context, code: config.assessmentTypeCode,
+      }));
     }
     return errors;
   };
@@ -326,10 +363,15 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
-  // Chyba z druhého kroku přepne krok
+  // Chyba z druhého kroku přepne krok; u formátu otevře jeho záložku a kartu
   const showValidationError = (err: ValidationError) => {
     if (err.moduleIndex < 0) setFinalPicked(true);
     else selectModuleIndex(err.moduleIndex);
+    if (err.section === 'tests') {
+      if (isModuleContext(err.context)) setFormatTab(err.context);
+      const key = openFormatsKey(err.moduleIndex < 0 ? null : modules[err.moduleIndex].moduleId, err.context);
+      setOpenFormats((prev) => (prev[key]?.includes(err.code) ? prev : { ...prev, [key]: [...(prev[key] ?? []), err.code] }));
+    }
     if (err.section !== section) goToStep(err.section, modules[err.moduleIndex]?.moduleId);
   };
 
@@ -343,8 +385,13 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         return true;
       }
       const defaults = formats.find((f) => f.code === code)?.defaultSettings ?? {};
-      const draft: FormatDraft = { settings: created.settings ?? defaults, isEnabled: created.isEnabled, isRequired: created.isRequired };
+      const draft: FormatDraft = {
+        settings: withStarterQuestion(code, created.settings ?? defaults),
+        isEnabled: created.isEnabled,
+        isRequired: created.isRequired,
+      };
       setFormatDrafts((prev) => ({ ...prev, [created.courseAssessmentId]: draft }));
+      // Snapshot i s prázdnou otázkou — chyby a autosave až po začátku vyplňování
       setSavedSnapshots((prev) => ({ ...prev, [formatKey(created.courseAssessmentId)]: JSON.stringify(draft) }));
       return true;
     } catch (err) {
@@ -390,7 +437,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     }
     const withDrafts = configs.map((c) => {
       const draft = formatDrafts[c.courseAssessmentId];
-      return draft ? { ...c, ...draft } : c;
+      return draft ? { ...c, ...draft, settings: withoutBlankQuestions(c.assessmentTypeCode, draft.settings) } : c;
     });
     return { configs: withDrafts, pretests, loadError: null };
   }, [configs, pretestDrafts, formatDrafts]);
@@ -448,28 +495,29 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     }] : []),
   ];
 
-  const renderFormatCard = (config: CourseAssessmentConfig) => {
+  // Po pokusu o dokončení i chyby, které hlásí až Dokončit (např. žádná otázka)
+  const formatErrors = (config: CourseAssessmentConfig): string[] => {
     const draft = formatDrafts[config.courseAssessmentId];
-    if (!draft) {
-      // Formát, který frontend neumí nastavit — jde jen odebrat
-      return (
-        <div key={config.courseAssessmentId} className="flex items-center justify-between gap-3 border border-border rounded-lg px-4 py-3">
-          <p className="text-sm text-foreground">{formatName(config.assessmentTypeCode)} — nastavení zde nejde upravit.</p>
-          <Button variant="ghost-destructive" size="sm" onClick={() => setDetachTarget(config)}>Odebrat</Button>
-        </div>
-      );
-    }
-    const key = formatKey(config.courseAssessmentId);
+    if (!draft) return [];
+    if (showAllErrors) return formatFinishErrors(config.assessmentTypeCode, draft.settings);
+    return isDirty(formatKey(config.courseAssessmentId), draft) ? formatSettingsErrors(config.assessmentTypeCode, draft.settings) : [];
+  };
+
+  // Karty všech formátů kontextu (moduleId null = závěrečný test)
+  const renderFormatCards = (context: AssessmentContext, contextConfigs: CourseAssessmentConfig[], moduleId: number | null) => {
+    const key = openFormatsKey(moduleId, context);
     return (
-      <FormatConfigCard
-        key={config.courseAssessmentId}
-        id={config.courseAssessmentId}
-        code={config.assessmentTypeCode}
-        context={config.context}
-        value={draft}
-        onChange={(next) => setFormatDrafts((prev) => ({ ...prev, [config.courseAssessmentId]: next }))}
-        onRemove={() => setDetachTarget(config)}
-        errors={showAllErrors || isDirty(key, draft) ? formatSettingsErrors(config.assessmentTypeCode, draft.settings) : []}
+      <FormatCards
+        formats={formats}
+        context={context}
+        configs={contextConfigs}
+        drafts={formatDrafts}
+        errorsFor={formatErrors}
+        open={openFormats[key] ?? []}
+        onOpenChange={(next) => setOpenFormats((prev) => ({ ...prev, [key]: next }))}
+        onChange={(config, next) => setFormatDrafts((prev) => ({ ...prev, [config.courseAssessmentId]: next }))}
+        onRemove={setDetachTarget}
+        onAdd={(code) => handleAttach(code, context, true, moduleId)}
       />
     );
   };
@@ -512,17 +560,36 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
             Formáty v procvičování dostane student po pretestu, test na konci modulu. Povinné musí splnit, aby postoupil dál.
           </p>
         </div>
-        {moduleFormatConfigs.map(renderFormatCard)}
-        <AddFormatForm
-          key={selectedModule.moduleId}
-          formats={formats}
-          contexts={['practice', 'assessment']}
-          attached={moduleFormatConfigs}
-          onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, selectedModule.moduleId)}
-        />
+        {renderFormatCards(formatTab, moduleFormatConfigs.filter((c) => c.context === formatTab), selectedModule.moduleId)}
       </section>
     );
   };
+
+  // Záložky v hlavičce panelu (jako Příručka/Procvičování ve schvalování), karty jsou v body
+  const showFormatTabs = section === 'tests' && !finalSelected && !!selectedModule && !assessmentsLoading && !assessmentsError;
+  const renderFormatTabs = () => (
+    <Tabs value={formatTab} onValueChange={(value) => setFormatTab(value as ModuleContext)} className="mt-3 gap-0">
+      <TabsList variant="line" className="gap-2 p-0 group-data-horizontal/tabs:h-auto">
+        {MODULE_CONTEXTS.map((context) => {
+          const contextConfigs = moduleFormatConfigs.filter((c) => c.context === context);
+          const hasErrors = contextConfigs.some((c) => formatErrors(c).length > 0);
+          return (
+            <TabsTrigger key={context} value={context} className={FORMAT_TAB}>
+              {CONTEXT_LABELS[context]}
+              {contextConfigs.length > 0 && (
+                <span className="rounded-full bg-current/15 px-1.5 text-xs leading-5">{contextConfigs.length}</span>
+              )}
+              {hasErrors && (
+                <span className="size-1.5 rounded-full bg-destructive">
+                  <span className="sr-only">(obsahuje chyby)</span>
+                </span>
+              )}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
+  );
 
   const pageTitle = section === 'pretest' ? 'Tvorba pretestu' : 'Tvorba testů';
   const panelTitle = finalSelected
@@ -536,13 +603,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
       <p className="text-sm text-muted-foreground">
         Závěrečný test se studentovi odemkne po splnění testů všech modulů. Splněním povinného závěrečného testu je kurz dokončený.
       </p>
-      {finalConfigs.map(renderFormatCard)}
-      <AddFormatForm
-        formats={formats}
-        contexts={['course_final']}
-        attached={finalConfigs}
-        onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, null)}
-      />
+      {renderFormatCards('course_final', finalConfigs, null)}
     </section>
   );
 
@@ -718,6 +779,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
           <div className="p-4 border-b border-border">
             <h2 className="font-semibold text-foreground">{panelTitle}</h2>
+            {showFormatTabs && renderFormatTabs()}
           </div>
 
           <div ref={editorScrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">

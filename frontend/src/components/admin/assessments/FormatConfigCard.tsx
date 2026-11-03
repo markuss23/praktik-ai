@@ -1,11 +1,10 @@
 'use client';
 
 import { Plus, Trash2 } from 'lucide-react';
-import type { AssessmentContext } from '@/api';
 import type { AssessmentFormatSettings } from '@/lib/api-client';
-import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
+import { formatName } from '@/lib/assessment-labels';
 import { emptyClosedQuestion, socraticTurnsToPass } from '@/lib/assessment-validation';
-import { Button, Input, Label, Switch } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { ClosedQuestionFields } from './ClosedQuestionFields';
 
@@ -18,7 +17,6 @@ export interface FormatDraft {
 interface FormatConfigCardProps {
   id: number;
   code: string;
-  context: AssessmentContext;
   value: FormatDraft;
   onChange: (next: FormatDraft) => void;
   onRemove: () => void;
@@ -54,8 +52,8 @@ function NumberField({ id, label, value, onChange, min, max, suffix }: {
   );
 }
 
-/** Formát připojený ke kurzu (procvičování, test modulu, závěrečný test) a jeho nastavení. */
-export function FormatConfigCard({ id, code, context, value, onChange, onRemove, errors }: FormatConfigCardProps) {
+// Nastavení připojeného formátu — obsah rozbalené karty ve FormatCards
+export function FormatConfigCard({ id, code, value, onChange, onRemove, errors }: FormatConfigCardProps) {
   const s = value.settings;
   const setSettings = (patch: Partial<AssessmentFormatSettings>) => onChange({ ...value, settings: { ...s, ...patch } });
   const questions = s.questions ?? [];
@@ -63,30 +61,8 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
   const turnsToPass = code === 'socratic_dialog_ai' ? socraticTurnsToPass(s) : null;
 
   return (
-    <div className={cn('border border-border rounded-lg', !value.isEnabled && 'opacity-70')}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 sm:px-4 py-3 border-b border-border">
-        <div className="grow min-w-0">
-          <p className="text-sm font-semibold text-foreground">{formatName(code)}</p>
-          <p className="text-xs text-muted-foreground">{CONTEXT_LABELS[context]}</p>
-        </div>
-        <label className="inline-flex items-center gap-2 text-sm text-foreground">
-          <Switch checked={value.isRequired} onCheckedChange={(checked) => onChange({ ...value, isRequired: checked })} />
-          Povinné
-        </label>
-        <label className="inline-flex items-center gap-2 text-sm text-foreground">
-          <Switch checked={value.isEnabled} onCheckedChange={(checked) => onChange({ ...value, isEnabled: checked })} />
-          Zapnuté
-        </label>
-        <Button
-          variant="ghost-destructive"
-          onClick={onRemove}
-          aria-label={`Odebrat ${formatName(code)}`}
-          className={cn(BTN_KEEP_BOX, "p-2 rounded transition-colors shrink-0")}
-        >
-          <Trash2 size={16} />
-        </Button>
-      </div>
-
+    // Povinné a Zapnuté jsou v hlavičce karty (FormatCards)
+    <div className={cn(!value.isEnabled && 'opacity-70')}>
       <div className="p-3 sm:p-4 space-y-4">
         {code === 'closed_questions' && (
           <div className="space-y-3">
@@ -174,6 +150,13 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
             {errors.map((err) => <li key={err}>{err}</li>)}
           </ul>
         )}
+
+        <div className="flex justify-end">
+          <Button variant="ghost-destructive" size="sm" onClick={onRemove} aria-label={`Odebrat ${formatName(code)}`}>
+            <Trash2 data-icon="inline-start" />
+            Odebrat formát
+          </Button>
+        </div>
       </div>
     </div>
   );
