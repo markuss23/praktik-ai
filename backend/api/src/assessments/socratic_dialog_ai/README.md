@@ -1,18 +1,14 @@
 # Sokratovský dialog AI (`socratic_dialog_ai`)
 
-Interakční formát, kde AI vede se studentem rozhovor o tématu, které si sama vymyslí z učebního textu. Klade jen otázky a v průběhu nedává verdikt.
-
-> **Stav:** zatím jen kostra. Funkce v `service.py` vyhodí `NotImplementedError`. Formát není v `FORMATS`, takže ho žádný endpoint nevidí.
+AI vede se studentem rozhovor o tématu, které si sama vymyslí z učebního textu. Klade jen otázky a v průběhu nedává verdikt.
 
 ## Metodika
 
-1. Garant formát jen připojí ke kurzu a nastaví délku a elo.
-2. AI z učebního textu vymyslí téma (`topic`) a položí první otázku. Každý student tak může dostat jiné téma.
-3. Student odpoví a AI navazuje další otázkou. Odpověď neprozradí a neřekne, jestli je dobře nebo špatně.
-4. Rozhovor má 2–6 kroků. Jeden krok je jedna odpověď studenta.
-5. Na konci AI shrne průběh rozhovoru: co student promyslel a kde váhal. Shrnutí neobsahuje známku.
-
-Formát potřebuje paměť konverzace. AI při každém kroku dostane celou dosavadní historii.
+1. Garant formát připojí ke kurzu a nastaví délku a elo.
+2. AI z učebního textu vymyslí téma a první otázku. Každý student může dostat jiné téma.
+3. Student odpoví, AI navazuje další otázkou. Odpověď neprozradí ani neřekne, jestli je dobře.
+4. Rozhovor má 2–6 kroků. Krok = jedna odpověď studenta.
+5. Na konci AI shrne, co student promyslel a kde váhal. Bez známky.
 
 ## Settings (`course_assessment.settings`)
 
@@ -22,10 +18,10 @@ Formát potřebuje paměť konverzace. AI při každém kroku dostane celou dosa
 | `max_turns` | 6 | Největší počet kroků (2–6). Po něm rozhovor končí vždy. |
 | `start_elo` | 1000 | Počáteční elo. |
 | `min_elo` / `max_elo` | 800 / 1200 | Rozsah, na který se elo ořízne. |
-| `max_step` | 50 | O kolik nejvýš může AI posunout elo za jeden krok. |
+| `max_step` | 50 | Největší posun elo za jeden krok. |
 | `pass_elo` | 1000 | Hranice pro `is_passed`. |
 
-Union `AssessmentSettings` zkouší formáty zleva doprava. Pole `min_turns` žádný jiný formát nemá a ostatní formáty mají `extra="forbid"`, takže si nastavení tohoto formátu nespletou se svým. Všechna pole mají default, takže by tenhle formát prošel i s `{}`. Proto je `SocraticDialogAISettings` v unionu až úplně na konci.
+Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISettings` v unionu `AssessmentSettings` až na konci.
 
 ## State (`session.state`)
 
@@ -42,60 +38,41 @@ Union `AssessmentSettings` zkouší formáty zleva doprava. Pole `min_turns` ž�
 }
 ```
 
-- `topic` je téma, které AI vymyslela v `initial_state`. Platí pro celý rozhovor.
-- `turns` je paměť konverzace. Ukládá se jen sem, tabulka `assessment_turn` se nepoužívá.
-- `delta` je změna elo, kterou AI dala za odpověď studenta.
-- Typing guard v `submit_answer` čte `last_answer`, viz `TYPED_ANSWER`.
+- `turns` je celá paměť konverzace. Tabulka `assessment_turn` se nepoužívá.
+- `delta` je změna elo za odpověď studenta.
 
 ## Průběh
 
-**`initial_state`**
-- Načte učební text. Pokud je nastavené `module_id`, vezme text modulu. U `course_final` `module_id` chybí, tak vezme texty všech modulů kurzu.
-- Jedno volání AI vrátí téma i první otázku:
-  ```
-  TÉMA: <téma>
-  OTÁZKA: <první otázka>
-  ```
-- Výsledek: `topic`, `turns = [otázka]`, `elo = start_elo`.
+**`initial_state`**: načte učební text modulu, u `course_final` všech modulů kurzu. Jedno volání AI vrátí téma a první otázku (`TÉMA:` / `OTÁZKA:`).
 
-**`view`**
-- Vrátí `question` = poslední zpráva AI.
+**`view`**: vrátí poslední otázku AI.
 
 **`evaluate_answer`**
-1. Přidá do `turns` tah studenta.
-2. Zavolá AI s tématem, učebním textem a celou historií. AI odpoví ve formátu:
-   ```
-   DELTA: <-max_step..max_step>
-   OTÁZKA: <další otázka>   nebo   KONEC
-   ```
-3. Spočítá nové elo: `clamp(elo + clamp(delta, ±max_step), min_elo, max_elo)`.
-4. Rozhovor končí, když `kroky >= max_turns`, nebo když AI napíše `KONEC` a zároveň `kroky >= min_turns`. Pak:
-   - Druhé volání AI napíše shrnutí. Uloží se do `state.summary` a do `feedback`.
-   - `score = (elo - min_elo) / (max_elo - min_elo) * 100`
-   - `is_passed = elo >= pass_elo`
-   - `finished = True`
-5. Jinak přidá otázku do `turns` a vrátí `finished = False`, `is_correct = True` (formát verdikt nemá) a `feedback = None`.
 
-Student elo během rozhovoru nevidí. Projeví se až ve výsledném `score` a `is_passed`.
+1. Přidá tah studenta a zavolá AI s tématem, textem a celou historií. AI vrátí `DELTA:` a `OTÁZKA:` nebo `KONEC`.
+2. Nové elo: `clamp(elo + clamp(delta, ±max_step), min_elo, max_elo)`.
+3. Konec nastane při `kroky >= max_turns`, nebo při `KONEC` a `kroky >= min_turns`. Pak:
+   - druhé volání AI napíše shrnutí do `summary` a `feedback`,
+   - `score = (elo - min_elo) / (max_elo - min_elo) * 100`,
+   - `is_passed = elo >= pass_elo`.
+4. Jinak přidá další otázku a vrátí `finished = False`, `is_correct = True`. Verdikt v průběhu není a student elo nevidí.
+
+`TYPED_ANSWER = True`: `submit_answer` odmítne příliš rychle vložený text (`typed_too_fast`).
 
 ## Kontexty
 
-`practice`, `assessment`, `course_final`. Pretest ne.
+`practice`, `assessment`, `course_final`.
 
-## Prompty (`system_setting`)
+## Prompty
 
-- `socratic_dialog_ai_topic`: vymyslí z učebního textu téma a první otázku.
-- `socratic_dialog_ai`: tazatel. Klade jednu otázku za krok, odpověď neprozradí, před `min_turns` nesmí napsat KONEC.
-- `socratic_dialog_ai_summary`: shrnutí průběhu rozhovoru v 3–5 větách, bez známky.
+| Klíč `system_setting` | Soubor | Účel |
+|---|---|---|
+| `socratic_dialog_ai_topic` | `agents/topic/prompt.md` | Téma a první otázka. |
+| `socratic_dialog_ai` | `agents/dialog/prompt.md` | Další otázka, nebo KONEC. |
+| `socratic_dialog_ai_summary` | `agents/summary/prompt.md` | Shrnutí v 3–5 větách. |
 
-Texty promptů budou v `topic_prompt.md`, `prompt.md` a `summary_prompt.md` stejně jako u ostatních formátů. Z DB se čte jen model, přes `get_llm_config` a `create_chat_llm` v `agents/base/llm.py`.
+Z DB se čte jen model (`get_llm_config`).
 
-## TODO pro napojení
+## Testy
 
-- [ ] Doplnit pole do `schemas.py` a logiku do `service.py`.
-- [ ] Přidat `"socratic_dialog_ai": socratic_dialog_ai` do `FORMATS` v `assessments/utils.py`.
-- [x] Přidat `SocraticDialogAISettings` na konec unionu `AssessmentSettings` v `assessments/schemas.py`.
-- [x] Přidat formát do `ASSESSMENT_TYPES` v `seed.py`.
-- [ ] Přidat prompty do `SYSTEM_SETTINGS` v `seed.py`.
-- [ ] Migrace `0022_assessment_type_socratic_dialog_ai.sql`: řádek v `assessment_type` a tři řádky v `system_setting`.
-- [ ] Testy v `backend/tests/test_socratic_dialog_ai.py` s mockovaným LLM: konec po `max_turns`, ignorovaný KONEC před `min_turns`, oříznutí elo.
+`tests/test_socratic_dialog_ai.py` (mockované LLM).

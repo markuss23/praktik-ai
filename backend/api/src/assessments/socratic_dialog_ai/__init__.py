@@ -1,7 +1,6 @@
-"""Interakční formát „sokratovský dialog AI“ — kostra, zatím bez logiky.
+"""Interakční formát „sokratovský dialog AI“.
 
-Popis metodiky a návrhu: README.md v této složce.
-Zatím NENÍ registrovaný v FORMATS (assessments/utils.py).
+Popis metodiky a průběhu: README.md v této složce.
 """
 
 from api.src.assessments.socratic_dialog_ai.schemas import (
