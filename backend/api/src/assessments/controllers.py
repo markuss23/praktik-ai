@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api import models
-from api.authorization import validate_owner_or_superadmin
+from api.authorization import validate_owner_or_superadmin, validate_ownership
 from api.enums import AssessmentContext, AssessmentSessionStatus
 from api.src.agents.typing_guard import typed_too_fast
 from api.src.common.utils import (
@@ -74,10 +74,10 @@ def list_course_assessments(
     """Připojené formáty kurzu pro lektorskou editaci — včetně vypnutých.
 
     Odpojené (soft-deleted) nevrací. Obsahuje `settings` se správnými
-    odpověďmi, proto jen pro vlastníka kurzu / superadmina.
+    odpověďmi, proto jen pro vlastníka kurzu, garanta (schvalování) a superadmina.
     """
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
-    validate_owner_or_superadmin(course, user, "kurz")
+    validate_ownership(course, user, "kurz")
 
     rows = db.scalars(
         select(CA)
@@ -425,7 +425,8 @@ def get_pretest_content(
     course_assessment = get_or_404(
         db, CA, course_assessment_id, detail="Konfigurace formátu nenalezena"
     )
-    validate_owner_or_superadmin(course_assessment, user, "formát")
+    # Čte i garant — vidí pretest při schvalování
+    validate_ownership(course_assessment, user, "formát")
     _get_pretest(course_assessment)
     return parse_settings("pretest", course_assessment.settings)
 
