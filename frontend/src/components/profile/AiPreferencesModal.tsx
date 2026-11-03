@@ -5,13 +5,29 @@ import { Loader2 } from 'lucide-react';
 import type { AiStyleAxis } from '@/api';
 import { getAiStyles, getMyAiStyle, updateMyAiStyle } from '@/lib/api-client';
 import { readApiErrorDetail } from '@/lib/api-error';
-import { Button, Modal } from '@/components/ui';
+import { Button, Label, Modal, RadioGroup, RadioGroupItem } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface AiPreferencesModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// description je prompt pro AI; uživateli krátké shrnutí, neznámý code = jen name
+const OPTION_SUMMARIES: Record<string, string> = {
+  'ton.form': 'Vykání, věcně a s odstupem.',
+  'ton.neut': 'Vykání, věcně a vstřícně.',
+  'ton.frnd': 'Vykání, vřele a s povzbuzením.',
+  'dens.low': 'Jedna myšlenka na větu.',
+  'dens.med': 'Jedna až dvě myšlenky na větu.',
+  'dens.high': 'Víc informací v každé větě.',
+  'form.expo': 'Definice, vysvětlení, shrnutí.',
+  'form.instr': 'Postup v krocích.',
+  'form.narr': 'Krátký příběh z praxe.',
+  'rhet.plain': 'Bez přirovnání a příkladů navíc.',
+  'rhet.ex': 'Příklady z praxe.',
+  'rhet.meta': 'Vysvětlení přirovnáním.',
+};
 
 /** Styl komunikace AI tutora — na každé ose (tón, hustota…) jedna volba z číselníku. */
 export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps) {
@@ -74,7 +90,7 @@ export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps)
       }}
       title="AI Nastavení"
       description="Jak s vámi má AI tutor komunikovat."
-      maxWidth="max-w-lg"
+      maxWidth="max-w-4xl"
       footer={
         <Button
           size="lg"
@@ -98,47 +114,42 @@ export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps)
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Načítám nastavení" />
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5 md:gap-3">
           {axes.map((axis) => {
-            const selected = axis.options.find((o) => o.code === choice[axis.code]);
+            const labelId = `ai-style-${axis.code}-label`;
             return (
-              <fieldset key={axis.code} className="flex flex-col gap-2">
-                <legend className="mb-2 text-sm font-semibold text-foreground">{axis.name}</legend>
-                {axis.options.map((option) => {
-                  const checked = choice[axis.code] === option.code;
-                  return (
-                    <label
-                      key={option.code}
-                      className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all',
-                        checked
-                          ? 'border-gradient-r/30 bg-gradient-r/10'
-                          : 'border-border hover:bg-muted/50',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name={`ai-style-${axis.code}`}
-                        value={option.code}
-                        checked={checked}
-                        onChange={() => setChoice((prev) => ({ ...prev, [axis.code]: option.code }))}
-                        disabled={saving}
-                        className="mt-0.5 size-4 shrink-0 text-gradient-r focus:ring-gradient-r/30"
-                      />
-                      <span className="flex flex-col gap-0.5">
-                        <span className="text-sm font-medium text-foreground">{option.name}</span>
-                        <span className="text-xs text-muted-foreground">{option.description}</span>
-                      </span>
-                    </label>
-                  );
-                })}
-                {selected?.example && (
-                  <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">Ukázka: </span>
-                    {selected.example}
-                  </p>
-                )}
-              </fieldset>
+              // Osa vlevo, options v řadě — wide modal
+              <div key={axis.code} className="grid gap-2 md:grid-cols-[9rem_1fr] md:items-center md:gap-4">
+                <span id={labelId} className="text-sm font-semibold text-foreground">{axis.name}</span>
+                <RadioGroup
+                  aria-labelledby={labelId}
+                  value={choice[axis.code] ?? null}
+                  onValueChange={(value: string) => setChoice((prev) => ({ ...prev, [axis.code]: value }))}
+                  disabled={saving}
+                  className="sm:grid-cols-3"
+                >
+                  {axis.options.map((option) => {
+                    const summary = OPTION_SUMMARIES[option.code];
+                    return (
+                      <Label
+                        key={option.code}
+                        className={cn(
+                          'cursor-pointer items-start gap-2.5 rounded-lg border p-3 font-normal leading-normal transition-all',
+                          choice[axis.code] === option.code
+                            ? 'border-gradient-r/30 bg-gradient-r/10'
+                            : 'border-border hover:bg-muted/50',
+                        )}
+                      >
+                        <RadioGroupItem value={option.code} className="mt-0.5" />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground">{option.name}</span>
+                          {summary && <span className="text-xs text-muted-foreground">{summary}</span>}
+                        </span>
+                      </Label>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
             );
           })}
         </div>

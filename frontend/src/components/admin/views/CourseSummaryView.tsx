@@ -293,9 +293,11 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   }
 
   const totalTests = testCount();
+  const stepTests = (courseAssessments ?? []).filter((c) => c.assessmentTypeCode !== 'pretest').length;
   const stepHints = {
     content: moduleCountHint(modules.length),
-    ...(courseAssessments && { tests: `${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')} celkem` }),
+    // Pretest má vlastní krok
+    ...(courseAssessments && { tests: `${stepTests} ${czechPlural(stepTests, 'test', 'testy', 'testů')} celkem` }),
   };
 
   // Náhled pro studenta — rozpracovaný název, popis a zařazení kurzu

@@ -244,7 +244,8 @@ export function CourseEditView({ courseId }: CourseEditViewProps) {
     );
   }
 
-  const totalTests = courseAssessments?.length ?? 0;
+  // Pretest má vlastní krok
+  const totalTests = (courseAssessments ?? []).filter((c) => c.assessmentTypeCode !== 'pretest').length;
   const stepHints = {
     content: moduleCountHint(modules.length),
     ...(courseAssessments && { tests: `${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')} celkem` }),

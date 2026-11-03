@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react';
 export type AdminView = 
   | 'courses'           // Default - course list
   | 'course-content'    // Course content editor
+  | 'course-pretest'    // Pretest modulů (sdílí CourseTestsView s course-tests)
   | 'course-tests'      // Course test/exam editor
   | 'course-summary'    // Course summary/preview
   | 'course-edit'       // Course edit form
@@ -119,6 +120,11 @@ export function useAdminNavigation() {
     navigate({ view: 'module-edit', moduleId, courseId });
   }, [navigate]);
 
+  // Pretest modulů, volitelně s vybraným modulem
+  const goToCoursePretest = useCallback((courseId: number, moduleId?: number) => {
+    navigate({ view: 'course-pretest', courseId, moduleId });
+  }, [navigate]);
+
   /**
    * Navigate to course tests editor, optionally pre-selecting a module
    */
@@ -161,6 +167,7 @@ export function useAdminNavigation() {
     goToCourseUpload,
     goToAICreate,
     goToModuleEdit,
+    goToCoursePretest,
     goToCourseTests,
     goToCourseSummary,
     goToCoursePreview,

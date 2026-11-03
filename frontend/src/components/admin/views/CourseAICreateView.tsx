@@ -349,7 +349,7 @@ export function CourseAICreateView() {
           dostupné až po vygenerování (pak se otevřou Podklady) */}
       <CourseStepsCard
         current="description"
-        disabledSteps={['content', 'tests', 'summary']}
+        disabledSteps={['content', 'pretest', 'tests', 'summary']}
         className="lg:mt-8 lg:ml-8"
       />
 

@@ -49,15 +49,35 @@ export function pretestErrors(p: PretestSettings): string[] {
 const isWholeInRange = (v: number | undefined, min: number, max = Infinity): v is number =>
   v !== undefined && Number.isInteger(v) && v >= min && v <= max;
 
-/**
- * Kolik kol dialogu student nejméně potřebuje, aby se z počátečního elo dostal
- * na hranici splnění. 
- * Lektor elo nenastavuje
- */
-export function socraticTurnsToPass(s: AssessmentFormatSettings): number {
-  const startElo = s.startElo ?? 1000;
-  const passElo = s.passElo ?? 1200;
-  const maxStep = s.maxStep ?? 50;
+// Elo bounds podle SocraticDialogAISettings (backend schema)
+function socraticEloErrors(s: AssessmentFormatSettings): string[] {
+  const errors: string[] = [];
+  const { startElo, minElo, maxElo, passElo } = s;
+  if (!isWholeInRange(startElo, 500, 3000)) errors.push('Počáteční elo musí být 500–3000');
+  if (!isWholeInRange(minElo, 500, 3000)) errors.push('Nejnižší elo musí být 500–3000');
+  if (!isWholeInRange(maxElo, 1000, 3000)) errors.push('Nejvyšší elo musí být 1000–3000');
+  if (!isWholeInRange(passElo, 500, 3000)) errors.push('Elo ke splnění musí být 500–3000');
+  if (!isWholeInRange(s.maxStep, 1, 100)) errors.push('Změna elo za kolo musí být 1–100');
+  if (minElo === undefined || maxElo === undefined) return errors;
+  if (minElo >= maxElo) {
+    errors.push('Nejnižší elo musí být menší než nejvyšší');
+    return errors;
+  }
+  if (startElo !== undefined && (startElo < minElo || startElo > maxElo)) {
+    errors.push('Počáteční elo musí být mezi nejnižším a nejvyšším');
+  }
+  if (passElo !== undefined && (passElo < minElo || passElo > maxElo)) {
+    errors.push('Elo ke splnění musí být mezi nejnižším a nejvyšším');
+  }
+  return errors;
+}
+
+// Min. počet kol ze start elo na pass elo; null = neplatné elo
+export function socraticTurnsToPass(s: AssessmentFormatSettings): number | null {
+  const { startElo, passElo, maxStep } = s;
+  if (socraticEloErrors(s).length > 0 || startElo === undefined || passElo === undefined || maxStep === undefined) {
+    return null;
+  }
   return Math.max(0, Math.ceil((passElo - startElo) / maxStep));
 }
 
@@ -78,8 +98,12 @@ export function formatSettingsErrors(code: string, s: AssessmentFormatSettings):
     const turnsToPass = socraticTurnsToPass(s);
     if (!isWholeInRange(min, 1, 10)) errors.push('Nejmenší počet kol musí být 1–10');
     if (!isWholeInRange(max, 2, 10)) errors.push('Největší počet kol musí být 2–10');
-    else if (max < turnsToPass) errors.push(`Největší počet kol musí být aspoň ${turnsToPass}, jinak dialog nejde splnit`);
+    else if (turnsToPass !== null && turnsToPass <= 10 && max < turnsToPass) errors.push(`Největší počet kol musí být aspoň ${turnsToPass}, jinak dialog nejde splnit`);
+    if (turnsToPass !== null && turnsToPass > 10) {
+      errors.push('S tímto elo nejde dialog splnit ani za 10 kol — zvyšte max. změnu elo za kolo nebo snižte elo ke splnění');
+    }
     if (min !== undefined && max !== undefined && min > max) errors.push('Nejmenší počet kol nesmí být větší než největší');
+    errors.push(...socraticEloErrors(s));
   } else {
     if (!isWholeInRange(s.maxAttempts, 1)) errors.push('Počet pokusů musí být aspoň 1');
     if (!(s.passThreshold !== undefined && s.passThreshold >= 0 && s.passThreshold <= 1)) {

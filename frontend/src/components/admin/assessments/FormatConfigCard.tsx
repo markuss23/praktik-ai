@@ -60,7 +60,7 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
   const setSettings = (patch: Partial<AssessmentFormatSettings>) => onChange({ ...value, settings: { ...s, ...patch } });
   const questions = s.questions ?? [];
   const fieldId = (name: string) => `format-${id}-${name}`;
-  const turnsToPass = socraticTurnsToPass(s);
+  const turnsToPass = code === 'socratic_dialog_ai' ? socraticTurnsToPass(s) : null;
 
   return (
     <div className={cn('border border-border rounded-lg', !value.isEnabled && 'opacity-70')}>
@@ -149,7 +149,18 @@ export function FormatConfigCard({ id, code, context, value, onChange, onRemove,
           )}
         </div>
 
-        {code === 'socratic_dialog_ai' && turnsToPass > 1 && (
+        {code === 'socratic_dialog_ai' && (
+          <div className="flex flex-wrap gap-4">
+            <NumberField id={fieldId('start-elo')} label="Počáteční elo" value={s.startElo} onChange={(v) => setSettings({ startElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('min-elo')} label="Nejnižší elo" value={s.minElo} onChange={(v) => setSettings({ minElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('max-elo')} label="Nejvyšší elo" value={s.maxElo} onChange={(v) => setSettings({ maxElo: v })} min={1000} max={3000} />
+            <NumberField id={fieldId('pass-elo')} label="Elo ke splnění" value={s.passElo} onChange={(v) => setSettings({ passElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('max-step')} label="Max. změna elo za kolo" value={s.maxStep} onChange={(v) => setSettings({ maxStep: v })} min={1} max={100} />
+          </div>
+        )}
+
+        {turnsToPass !== null && turnsToPass > 1 && turnsToPass <= 10 && (
+          // Víc než 10 kol hlásí validation
           <p className="text-xs text-muted-foreground">
             Student projde nejdřív po {turnsToPass} kolech, a to jen s výbornými odpověďmi.
             {/* Po nejmenším počtu kol smí AI rozhovor ukončit (KONEC) */}

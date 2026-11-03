@@ -37,14 +37,20 @@ import {
   ArrowUpCircle,
 } from 'lucide-react';
 
+type TestsSection = Extract<CourseStep, 'pretest' | 'tests'>;
+
 interface ValidationError {
   /** -1 = závěrečný test kurzu */
   moduleIndex: number;
   moduleName: string;
   message: string;
+  // Krok, ve kterém se chyba opraví
+  section: TestsSection;
 }
 
 interface CourseTestsViewProps {
+  // 'pretest' = pretest modulů, 'tests' = formáty a závěrečný test
+  section: TestsSection;
   courseId: number;
   initialModuleId?: number;
 }
@@ -57,8 +63,8 @@ const CONTEXT_ORDER: AssessmentContext[] = ['pretest', 'practice', 'assessment',
 const byContext = (a: CourseAssessmentConfig, b: CourseAssessmentConfig) =>
   CONTEXT_ORDER.indexOf(a.context) - CONTEXT_ORDER.indexOf(b.context) || a.courseAssessmentId - b.courseAssessmentId;
 
-// Editor testů kurzu: pretest každého modulu, další formáty modulu a závěrečný test
-export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
+// Editor kroků Pretest a Testy; společná data i autosave, section řídí render
+export function CourseTestsView({ section, courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
   const toast = useToast();
   const { isOwner } = useCurrentUser();
@@ -80,6 +86,11 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const [commentsOpen, setCommentsOpen] = useState(false);
   // Panel komentářů začíná pod hlavičkou stránky
   const reviewHeaderRef = useRef<HTMLDivElement>(null);
+  // Sdílená instance — po přepnutí kroku scroll editoru nahoru
+  const editorScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    editorScrollRef.current?.scrollTo({ top: 0 });
+  }, [section]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const { focusMode } = useAdminChrome();
   const goToStep = useCourseStepNavigation(courseId);
@@ -131,8 +142,9 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, string>>({});
   // Po pokusu o dokončení se chyby ukážou i u neupravených částí
   const [showAllErrors, setShowAllErrors] = useState(false);
-  // Vybraný závěrečný test kurzu místo modulu
-  const [finalSelected, setFinalSelected] = useState(false);
+  // Vybraný závěrečný test místo modulu; v kroku Pretest se ignoruje
+  const [finalPicked, setFinalPicked] = useState(false);
+  const finalSelected = section === 'tests' && finalPicked;
   const [detachTarget, setDetachTarget] = useState<CourseAssessmentConfig | null>(null);
   const [detaching, setDetaching] = useState(false);
 
@@ -182,16 +194,17 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
 
   const isDirty = (key: string, value: unknown) => savedSnapshots[key] !== JSON.stringify(value);
 
-  // Uloží změněné a platné části; vrací počet neplatných, které zůstaly neuložené.
-  const saveChanges = async (): Promise<number> => {
+  // Uloží změněné platné části; vrací počet přeskočených neplatných (celkem a z toho pretestů)
+  const saveChanges = async (): Promise<{ skipped: number; skippedPretests: number }> => {
     let skipped = 0;
+    let skippedPretests = 0;
     const saved: Record<string, string> = {};
     try {
       for (const [idText, draft] of Object.entries(pretestDrafts)) {
         const id = Number(idText);
         const snapshot = JSON.stringify(draft);
         if (savedSnapshots[pretestKey(id)] === snapshot) continue;
-        if (pretestErrors(draft).length > 0) { skipped++; continue; }
+        if (pretestErrors(draft).length > 0) { skipped++; skippedPretests++; continue; }
         await updatePretestContent(id, normalizePretest(draft));
         saved[pretestKey(id)] = snapshot;
       }
@@ -213,7 +226,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     } finally {
       setSavedSnapshots((prev) => ({ ...prev, ...saved }));
     }
-    return skipped;
+    return { skipped, skippedPretests };
   };
 
   const autosaveValue = useMemo(() => ({ pretestDrafts, formatDrafts }), [pretestDrafts, formatDrafts]);
@@ -222,7 +235,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     autosaveValue,
     async () => {
       // Neplatné části zůstanou neuložené — stav „neuloženo", dokud je lektor neopraví
-      if (await saveChanges() > 0) throw new Error('Neplatné části testů');
+      if ((await saveChanges()).skipped > 0) throw new Error('Neplatné části testů');
     },
     { delay: 3000, enabled: !assessmentsLoading && !assessmentsError },
   );
@@ -230,26 +243,34 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   // Před odchodem z kroku — chyba uložení už je v toastu, odchod nesmí blokovat
   const saveBeforeLeaving = async () => {
     try {
-      if (await saveChanges() > 0) {
-        toast.info('Neúplné části testů se neuložily. Doplňte je, jinak se změny ztratí.');
+      const { skipped, skippedPretests } = await saveChanges();
+      if (skipped > 0) {
+        // Neplatná část z druhého kroku tu není vidět — toast řekne, kde ji doplnit
+        const where = section === 'tests' && skippedPretests > 0
+          ? ' Neúplný pretest doplňte v kroku Pretest.'
+          : section === 'pretest' && skipped > skippedPretests ? ' Neúplné testy doplňte v kroku Testy.' : '';
+        toast.info(`Neúplné části testů se neuložily. Doplňte je, jinak se změny ztratí.${where}`);
       }
     } catch {
       // toast už je zobrazený
     }
   };
 
+  // Pretesty i formáty — Dokončit validuje celý kurz
   const collectErrors = (): ValidationError[] => {
     const errors: ValidationError[] = [];
     for (const config of configs) {
       const moduleIndex = config.moduleId === null ? -1 : modules.findIndex((m) => m.moduleId === config.moduleId);
       if (config.moduleId !== null && moduleIndex < 0) continue;
       const moduleName = moduleIndex >= 0 ? modules[moduleIndex].title : 'Závěrečný test kurzu';
+      const isPretest = config.assessmentTypeCode === 'pretest';
       const pretest = pretestDrafts[config.courseAssessmentId];
       const draft = formatDrafts[config.courseAssessmentId];
-      const messages = config.assessmentTypeCode === 'pretest'
+      const messages = isPretest
         ? (pretest ? pretestErrors(pretest).map((m) => `Pretest — ${m}`) : [])
         : (draft ? formatFinishErrors(config.assessmentTypeCode, draft.settings).map((m) => `${formatName(config.assessmentTypeCode)} — ${m}`) : []);
-      messages.forEach((message) => errors.push({ moduleIndex, moduleName, message }));
+      const errorSection: TestsSection = isPretest ? 'pretest' : 'tests';
+      messages.forEach((message) => errors.push({ moduleIndex, moduleName, message, section: errorSection }));
     }
     return errors;
   };
@@ -272,7 +293,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   };
 
   const selectModuleIndex = (index: number) => {
-    setFinalSelected(false);
+    setFinalPicked(false);
     selectModule(index);
   };
 
@@ -281,21 +302,35 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     if (selectedModuleIndex < modules.length - 1) {
       const nextIndex = selectedModuleIndex + 1;
       setSelectedModuleIndex(nextIndex);
+      setFinalPicked(false);
       setExpandedOutlineItems(prev => new Set(prev).add(nextIndex));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleBack = async () => {
+    if (section === 'tests') {
+      goToStep('pretest', modules[selectedModuleIndex]?.moduleId);
+      return;
+    }
     await saveBeforeLeaving();
     goToCourseContent(courseId);
   };
 
   // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
-    if (step === 'tests') return;
-    await saveBeforeLeaving();
+    if (step === section) return;
+    setMobileOutlineOpen(false);
+    // Pretest ↔ Testy je stejná instance (AdminViewRouter), ukládá autosave
+    if (step !== 'pretest' && step !== 'tests') await saveBeforeLeaving();
     goToStep(step, modules[selectedModuleIndex]?.moduleId);
+  };
+
+  // Chyba z druhého kroku přepne krok
+  const showValidationError = (err: ValidationError) => {
+    if (err.moduleIndex < 0) setFinalPicked(true);
+    else selectModuleIndex(err.moduleIndex);
+    if (err.section !== section) goToStep(err.section, modules[err.moduleIndex]?.moduleId);
   };
 
   // true = připojeno
@@ -387,7 +422,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       description: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
     }),
     content: moduleCountHint(modules.length),
-    tests: testCountHint(moduleConfigs.length),
+    tests: testCountHint(moduleFormatConfigs.length),
   };
 
   const stepModuleItems = (onPicked?: () => void): StepModuleItem[] => [
@@ -401,15 +436,16 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         onPicked?.();
       },
     })),
-    {
+    // Závěrečný test jen v kroku Testy
+    ...(section === 'tests' ? [{
       id: -1,
       title: 'Závěrečný test kurzu',
       selected: finalSelected,
       onSelect: () => {
-        setFinalSelected(true);
+        setFinalPicked(true);
         onPicked?.();
       },
-    },
+    }] : []),
   ];
 
   const renderFormatCard = (config: CourseAssessmentConfig) => {
@@ -441,9 +477,9 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const renderModuleEditor = () => {
     if (!selectedModule) return <p className="text-sm text-muted-foreground">Kurz zatím nemá žádné moduly.</p>;
     const pretestDraft = pretestConfig ? pretestDrafts[pretestConfig.courseAssessmentId] : undefined;
-    return (
-      <>
-        <section className="space-y-3">
+    if (section === 'pretest') {
+      return (
+        <section className="flex flex-col gap-3">
           <div>
             <h3 className="font-semibold text-foreground">Pretest</h3>
             <p className="text-sm text-muted-foreground mt-1">
@@ -466,26 +502,34 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
             </div>
           )}
         </section>
-
-        <section className="space-y-3">
-          <div>
-            <h3 className="font-semibold text-foreground">Procvičování a test modulu</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Formáty v procvičování dostane student po pretestu, test na konci modulu. Povinné musí splnit, aby postoupil dál.
-            </p>
-          </div>
-          {moduleFormatConfigs.map(renderFormatCard)}
-          <AddFormatForm
-            key={selectedModule.moduleId}
-            formats={formats}
-            contexts={['practice', 'assessment']}
-            attached={moduleFormatConfigs}
-            onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, selectedModule.moduleId)}
-          />
-        </section>
-      </>
+      );
+    }
+    return (
+      <section className="flex flex-col gap-3">
+        <div>
+          <h3 className="font-semibold text-foreground">Procvičování a test modulu</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Formáty v procvičování dostane student po pretestu, test na konci modulu. Povinné musí splnit, aby postoupil dál.
+          </p>
+        </div>
+        {moduleFormatConfigs.map(renderFormatCard)}
+        <AddFormatForm
+          key={selectedModule.moduleId}
+          formats={formats}
+          contexts={['practice', 'assessment']}
+          attached={moduleFormatConfigs}
+          onAdd={(format, context, isRequired) => handleAttach(format.code, context, isRequired, selectedModule.moduleId)}
+        />
+      </section>
     );
   };
+
+  const pageTitle = section === 'pretest' ? 'Tvorba pretestu' : 'Tvorba testů';
+  const panelTitle = finalSelected
+    ? 'Závěrečný test kurzu'
+    : selectedModule
+      ? `${section === 'pretest' ? 'Pretest' : 'Testy'} modulu: ${selectedModule.title}`
+      : section === 'pretest' ? 'Pretest' : 'Testy';
 
   const renderFinalEditor = () => (
     <section className="space-y-3">
@@ -505,9 +549,9 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   return (
     <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
-        breadcrumb={`Kurzy / ${courseTitle} / Tvorba testů`}
-        title="Tvorba testů"
-        stepLabel={courseStepLabel('tests')}
+        breadcrumb={`Kurzy / ${courseTitle} / ${pageTitle}`}
+        title={pageTitle}
+        stepLabel={courseStepLabel(section)}
         saveStatus={saveStatus}
         preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
         showFullscreenToggle
@@ -565,12 +609,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </div>
           <ul className="list-disc list-inside text-foreground text-sm space-y-1">
             {validationErrors.map((err, idx) => (
-              <li
-                key={idx}
-                className="cursor-pointer hover:underline"
-                onClick={() => (err.moduleIndex < 0 ? setFinalSelected(true) : selectModuleIndex(err.moduleIndex))}
-              >
-                <span className="font-medium">{err.moduleName}</span>: {err.message}
+              <li key={idx}>
+                <Button
+                  variant="plain"
+                  onClick={() => showValidationError(err)}
+                  className={cn(BTN_KEEP_BOX, 'cursor-pointer justify-start p-0 text-left font-normal whitespace-normal hover:underline')}
+                >
+                  <span><span className="font-medium">{err.moduleName}</span>: {err.message}</span>
+                </Button>
               </li>
             ))}
           </ul>
@@ -580,7 +626,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
         {!focusMode && (
-          <CourseStepsCard current="tests" onNavigate={handleStepNavigate} hints={stepHints}>
+          <CourseStepsCard current={section} onNavigate={handleStepNavigate} hints={stepHints}>
             <StepModuleList items={stepModuleItems()} />
           </CourseStepsCard>
         )}
@@ -621,7 +667,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
           <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
             <CourseStepsCard
-              current="tests"
+              current={section}
               onNavigate={handleStepNavigate}
               hints={stepHints}
               onClose={() => setMobileOutlineOpen(false)}
@@ -671,12 +717,10 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         {/* Center Content - Test Editor */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
           <div className="p-4 border-b border-border">
-            <h2 className="font-semibold text-foreground">
-              {finalSelected ? 'Závěrečný test kurzu' : selectedModule ? `Testy modulu: ${selectedModule.title}` : 'Testy'}
-            </h2>
+            <h2 className="font-semibold text-foreground">{panelTitle}</h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-8">
+          <div ref={editorScrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
             {assessmentsLoading ? (
               <LoadingState />
             ) : assessmentsError ? (
@@ -703,13 +747,24 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
                 </Button>
               )}
-              <Button
-                variant="default"
-                onClick={handleFinish}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
-              >
-                <span>Dokončit</span>
-              </Button>
+              {section === 'pretest' ? (
+                <Button
+                  variant="default"
+                  onClick={() => handleStepNavigate('tests')}
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
+                >
+                  <span className="hidden sm:inline">Pokračovat na testy</span>
+                  <span className="sm:hidden">Pokračovat</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  onClick={handleFinish}
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
+                >
+                  <span>Dokončit</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -240,7 +240,7 @@ function ModuleItem({
 
 // Editor obsahu kurzu s rich text editorem
 export function CourseContentView({ courseId, initialModuleId }: CourseContentViewProps) {
-  const { goToCourseTests, goBack } = useAdminNavigation();
+  const { goToCoursePretest, goBack } = useAdminNavigation();
   const toast = useToast();
   const { loading: courseLoading, error: courseError, courseTitle, courseData } = useCourseData({ courseId, initialModuleId });
   // Testy kurzu jen pro nápovědu u kroku Testy
@@ -530,7 +530,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       return; // uložení selhalo (chyba je zobrazena), zůstaneme na místě
     }
     const selectedModule = (savedModules ?? modules)[selectedModuleIndex];
-    goToCourseTests(courseId, selectedModule?.moduleId);
+    goToCoursePretest(courseId, selectedModule?.moduleId);
   };
 
   const handleBack = async () => {
@@ -606,7 +606,8 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     }),
     content: moduleCountHint(modules.length),
     ...(courseAssessments && {
-      tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId).length),
+      // Pretest má vlastní krok
+      tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId && c.assessmentTypeCode !== 'pretest').length),
     }),
   };
 
