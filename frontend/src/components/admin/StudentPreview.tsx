@@ -91,7 +91,7 @@ interface StudentPreviewProps {
  * Náhled pro studenta
  */
 export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám', courseId, assessments }: StudentPreviewProps) {
-  // Bez předaných testů si je náhled načte sám (vlastník kurzu a superadmin)
+  // Bez předaných testů si je náhled načte sám (vlastník kurzu, garant a superadmin)
   const loadedAssessments = useAssessmentContents(assessments ? undefined : courseId);
   const contents = assessments ?? (courseId ? loadedAssessments : NO_ASSESSMENTS);
   // Student vidí jen zapnuté formáty
@@ -746,7 +746,7 @@ function TestsUnavailableNotice({ reason }: { reason: 'denied' | 'failed' }) {
   return (
     <p role="status" className="mb-6 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">
       {reason === 'denied'
-        ? 'Testy kurzu smí zatím číst jen autor kurzu a superadmin, v náhledu proto chybí.'
+        ? 'Testy kurzu smí číst jen autor kurzu, garant a superadmin, v náhledu proto chybí.'
         : 'Testy kurzu se nepodařilo načíst, v náhledu proto chybí.'}
     </p>
   );

@@ -68,11 +68,9 @@ function FormatReview({ config }: { config: CourseAssessmentConfig }) {
   );
 }
 
-/**
- * Testy modulu (nebo závěrečný test kurzu) pro kontrolu garantem — pretest
- * se správnými odpověďmi a připojené formáty. Číst je backend zatím dovoluje
- * jen vlastníkovi kurzu a superadminovi; garant dostane 403 a uvidí vysvětlení.
- */
+// Testy modulu (nebo závěrečný test kurzu) pro kontrolu garantem — pretest
+// se správnými odpověďmi a připojené formáty. Číst je smí vlastník kurzu,
+// garant a superadmin; ostatní dostanou 403 a uvidí vysvětlení.
 export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps) {
   const isCourseFinal = moduleId === null;
   const [configs, setConfigs] = useState<CourseAssessmentConfig[] | null>(null);
@@ -108,13 +106,13 @@ export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps
 
   if (denied) {
     if (isCourseFinal) {
-      return <p className="text-sm text-muted-foreground">Závěrečný test může zatím číst jen autor kurzu a superadmin.</p>;
+      return <p className="text-sm text-muted-foreground">Závěrečný test může číst jen autor kurzu, garant a superadmin.</p>;
     }
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Dumbbell size={40} className="mx-auto mb-3 text-muted-foreground" />
-        <p className="font-medium">Testy modulu zatím nejde zobrazit</p>
-        <p className="text-sm mt-1">Obsah testů může zatím číst jen autor kurzu a superadmin.</p>
+        <p className="font-medium">Testy modulu nejde zobrazit</p>
+        <p className="text-sm mt-1">Obsah testů může číst jen autor kurzu, garant a superadmin.</p>
       </div>
     );
   }

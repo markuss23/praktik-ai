@@ -5,10 +5,8 @@ import type { PretestSettings } from '@/api';
 import { getPretestContent, listCourseAssessments, type CourseAssessmentConfig } from '@/lib/api-client';
 import { readApiErrorStatus } from '@/lib/api-error';
 
-/**
- * Formáty připojené ke kurzu. Číst je smí jen vlastník kurzu a superadmin —
- * ostatním (garant) zůstane prázdný seznam. null = načítá se.
- */
+// Formáty připojené ke kurzu. Číst je smí vlastník kurzu, garant a superadmin,
+// ostatním zůstane prázdný seznam. null = načítá se.
 export function useCourseAssessments(courseId: number | undefined): CourseAssessmentConfig[] | null {
   const [configs, setConfigs] = useState<CourseAssessmentConfig[] | null>(null);
 
@@ -30,7 +28,7 @@ export interface AssessmentContents {
   configs: CourseAssessmentConfig[];
   /** Obsah pretestů podle moduleId; pretest, který nejde načíst, má null. */
   pretests: Record<number, PretestSettings | null>;
-  /** Proč testy chybí: číst je smí jen vlastník kurzu a superadmin (garant ne), nebo chyba. */
+  // Proč testy chybí: číst je smí jen vlastník kurzu, garant a superadmin, nebo chyba
   loadError: 'denied' | 'failed' | null;
 }
 
