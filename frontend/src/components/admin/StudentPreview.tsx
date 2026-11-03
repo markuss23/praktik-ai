@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Dumbbell,
   Eye,
+  Loader2,
   Lock,
   LogIn,
   Search,
@@ -20,8 +21,11 @@ import type { Course, Module, PretestSettings } from '@/api';
 import { Button, CourseCard, CourseCategories, Input, ModuleCategories } from '@/components/ui';
 import PaperSheets from '@/components/module/PaperSheets';
 import { PretestPreview } from '@/components/module/PretestPreview';
+import { PreviewAssessmentSteps } from '@/components/module/PreviewAssessmentSteps';
 import { ModuleCompletedCard } from '@/components/module/ModuleCompletedCard';
-import { usePretestContents } from '@/hooks/useCourseAssessments';
+import { useAssessmentContents, type AssessmentContents } from '@/hooks/useCourseAssessments';
+import type { CourseAssessmentConfig } from '@/lib/api-client';
+import { isTypedFormat } from '@/lib/assessment-labels';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 // Co náhled z kurzu a modulů potřebuje 
@@ -61,27 +65,44 @@ const freshSession = (tab: ModuleTab = 'prirucka'): ModuleSession => ({
 
 const PAGE_CLASS = 'mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-10';
 
+/** Testy jednoho modulu v náhledu — jen zapnuté formáty, jako u studenta. */
+interface ModuleTests {
+  /** null = modul pretest nemá nebo ho nejde načíst */
+  pretest: PretestSettings | null;
+  practice: CourseAssessmentConfig[];
+  assessment: CourseAssessmentConfig[];
+  loadError: AssessmentContents['loadError'];
+}
+
+const NO_ASSESSMENTS: AssessmentContents = { configs: [], pretests: {}, loadError: null };
+
 interface StudentPreviewProps {
   course: PreviewCourse;
   modules: PreviewModule[];
   start: PreviewStart;
   onExit: () => void;
-  /** Text lišty nad náhledem — výchozí je náhled z editoru vlastního kurzu. */
   notice?: React.ReactNode;
   exitLabel?: string;
-  /** Pro načtení pretestů, když je volající nepředá. */
   courseId?: number;
-  /** Obsah pretestů podle moduleId (krok Testy předává rozpracované). */
-  pretests?: Record<number, PretestSettings | null>;
+  assessments?: AssessmentContents;
 }
 
 /**
  * Náhled pro studenta
  */
-export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám', courseId, pretests }: StudentPreviewProps) {
-  // Bez předaných pretestů si je náhled načte sám (vlastník kurzu a superadmin)
-  const loadedPretests = usePretestContents(pretests ? undefined : courseId);
-  const pretestByModule = pretests ?? (courseId ? loadedPretests : {});
+export function StudentPreview({ course, modules, start, onExit, notice, exitLabel = 'Zpět k úpravám', courseId, assessments }: StudentPreviewProps) {
+  // Bez předaných testů si je náhled načte sám (vlastník kurzu a superadmin)
+  const loadedAssessments = useAssessmentContents(assessments ? undefined : courseId);
+  const contents = assessments ?? (courseId ? loadedAssessments : NO_ASSESSMENTS);
+  // Student vidí jen zapnuté formáty
+  const enabledConfigs = useMemo(() => (contents?.configs ?? []).filter((c) => c.isEnabled), [contents]);
+  const testsFor = (moduleId: number): ModuleTests | undefined => contents ? {
+    pretest: contents.pretests[moduleId] ?? null,
+    practice: enabledConfigs.filter((c) => c.moduleId === moduleId && c.context === 'practice'),
+    assessment: enabledConfigs.filter((c) => c.moduleId === moduleId && c.context === 'assessment'),
+    loadError: contents.loadError,
+  } : undefined;
+  const finalTests = enabledConfigs.filter((c) => c.context === 'course_final');
   const startIndex = start.screen === 'module' ? Math.min(start.moduleIndex, Math.max(0, modules.length - 1)) : 0;
   const startsInModule = start.screen === 'module' && modules.length > 0;
 
@@ -147,7 +168,7 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
             key={activeModule.moduleId}
             courseTitle={course.title}
             module={activeModule}
-            pretest={pretestByModule === null ? undefined : (pretestByModule[activeModule.moduleId] ?? null)}
+            tests={testsFor(activeModule.moduleId)}
             moduleIndex={moduleIndex}
             moduleCount={modules.length}
             session={session}
@@ -173,6 +194,7 @@ export function StudentPreview({ course, modules, start, onExit, notice, exitLab
           <CourseScreen
             course={course}
             modules={modules}
+            finalTests={finalTests}
             enrolled={enrolled}
             passed={passed}
             onEnroll={() => setEnrolled(true)}
@@ -241,6 +263,8 @@ function CatalogScreen({ course, modules, enrolled, passed, onOpenCourse }: Cata
 interface CourseScreenProps {
   course: PreviewCourse;
   modules: PreviewModule[];
+  /** Zapnuté formáty závěrečného testu kurzu */
+  finalTests: CourseAssessmentConfig[];
   enrolled: boolean;
   passed: Set<number>;
   onEnroll: () => void;
@@ -248,7 +272,7 @@ interface CourseScreenProps {
   onOpenModule: (index: number) => void;
 }
 
-function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenCatalog, onOpenModule }: CourseScreenProps) {
+function CourseScreen({ course, modules, finalTests, enrolled, passed, onEnroll, onOpenCatalog, onOpenModule }: CourseScreenProps) {
   const [justEnrolled, setJustEnrolled] = useState(false);
   const [moduleSearch, setModuleSearch] = useState('');
 
@@ -443,6 +467,19 @@ function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenCatal
             })}
           </div>
         )}
+
+        {/* Závěrečný test kurzu — student ho má zamčený do dokončení modulů, náhled ho ukáže hned */}
+        {finalTests.length > 0 && (
+          <section className="mt-8 bg-card rounded-lg p-6 sm:p-8" style={{ border: '1px solid var(--border)' }}>
+            <h2 className="text-xl font-bold text-foreground">Závěrečný test kurzu</h2>
+            <p className="text-sm text-muted-foreground mt-1">Ověřte si znalosti z celého kurzu.</p>
+            <p className="mt-1 mb-5 flex items-center gap-2 text-xs text-muted-foreground">
+              <Lock className="size-3.5" />
+              Student ho uvidí až po dokončení všech modulů, v náhledu je přístupný hned.
+            </p>
+            <PreviewAssessmentSteps configs={finalTests} />
+          </section>
+        )}
       </div>
     </div>
   );
@@ -453,8 +490,8 @@ function CourseScreen({ course, modules, enrolled, passed, onEnroll, onOpenCatal
 interface ModuleScreenProps {
   courseTitle: string;
   module: PreviewModule;
-  /** undefined = načítá se, null = modul pretest nemá */
-  pretest: PretestSettings | null | undefined;
+  /** undefined = načítají se */
+  tests: ModuleTests | undefined;
   moduleIndex: number;
   moduleCount: number;
   session: ModuleSession;
@@ -469,7 +506,7 @@ interface ModuleScreenProps {
 function ModuleScreen({
   courseTitle,
   module,
-  pretest,
+  tests,
   moduleIndex,
   moduleCount,
   session,
@@ -662,8 +699,8 @@ function ModuleScreen({
                 )}
 
                 {session.tab === 'procvicovani' && (
-                  <PretestPreview
-                    content={pretest}
+                  <PracticePreview
+                    tests={tests}
                     onComplete={() => {
                       onSessionChange((prev) => ({ ...prev, practiceDone: true, tab: 'test' }));
                       onScrollTop();
@@ -672,40 +709,158 @@ function ModuleScreen({
                 )}
 
                 {session.tab === 'test' && (
-                  session.testDone ? (
-                    <ModuleCompletedCard
-                      moduleNumber={moduleIndex + 1}
-                      moduleTitle={module.title}
-                      ctaLabel={isLastModule ? 'Zpět na kurz' : 'Pokračovat na další modul'}
-                      onContinue={onContinue}
-                    />
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-gradient-r/10">
-                        <ClipboardCheck className="size-8 text-gradient-r" />
-                      </div>
-                      <h3 className="text-xl font-bold text-foreground">Test</h3>
-                      <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-                        Ve skutečném kurzu tady student projde testy, které jste k modulu připojili v kroku Testy,
-                        a vyhodnotí je server. V náhledu se testy nespouští.
-                      </p>
-                      <Button
-                        variant="plain"
-                        onClick={onModulePassed}
-                        className={cn(BTN_KEEP_BOX, 'mt-6 inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90')}
-                        style={{ backgroundColor: 'var(--gradient-r)' }}
-                      >
-                        <CheckCircle className="size-4" />
-                        Simulovat splnění testu
-                      </Button>
-                    </div>
-                  )
+                  <TestPreview
+                    tests={tests}
+                    done={session.testDone}
+                    onPassed={onModulePassed}
+                    completedCard={
+                      <ModuleCompletedCard
+                        moduleNumber={moduleIndex + 1}
+                        moduleTitle={module.title}
+                        ctaLabel={isLastModule ? 'Zpět na kurz' : 'Pokračovat na další modul'}
+                        onContinue={onContinue}
+                      />
+                    }
+                  />
                 )}
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Procvičování a test modulu
+
+function TestsLoading() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="size-8 animate-spin text-gradient-r" />
+    </div>
+  );
+}
+
+function TestsUnavailableNotice({ reason }: { reason: 'denied' | 'failed' }) {
+  return (
+    <p role="status" className="mb-6 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-foreground">
+      {reason === 'denied'
+        ? 'Testy kurzu smí zatím číst jen autor kurzu a superadmin, v náhledu proto chybí.'
+        : 'Testy kurzu se nepodařilo načíst, v náhledu proto chybí.'}
+    </p>
+  );
+}
+
+function PracticePreview({ tests, onComplete }: { tests: ModuleTests | undefined; onComplete: () => void }) {
+  if (!tests) return <TestsLoading />;
+  const { pretest, practice, loadError } = tests;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h3 className="text-xl font-bold text-foreground">Procvičování</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Odpovězte na otázky a ověřte si své znalosti z příručky.
+        </p>
+      </div>
+
+      {loadError && <TestsUnavailableNotice reason={loadError} />}
+
+      {pretest && (
+        <section className="mb-8">
+          <h4 className="font-semibold text-foreground mb-1">Pretest</h4>
+          <p className="text-sm text-muted-foreground mb-5">
+            Krátké ověření, že víte, o čem modul je: dvě otázky s výběrem a jedna otevřená.
+            Na každou máte tři pokusy a splnit je potřeba všechny.
+          </p>
+          <PretestPreview content={pretest} />
+        </section>
+      )}
+
+      {practice.length > 0 && (
+        <section className="mb-8">
+          <h4 className={cn('font-semibold text-foreground', pretest ? 'mb-1' : 'mb-3')}>
+            {pretest ? 'Další procvičování' : 'Procvičování'}
+          </h4>
+          {pretest && (
+            <p className="text-sm text-muted-foreground mb-3">
+              Student ho uvidí až po splnění pretestu, v náhledu je přístupné hned.
+            </p>
+          )}
+          <PreviewAssessmentSteps configs={practice} />
+        </section>
+      )}
+
+      {!pretest && practice.length === 0 && !loadError && (
+        <p className="text-muted-foreground py-8 text-center">Tento modul nemá procvičování.</p>
+      )}
+
+      <div className="flex justify-end mt-8 pt-6 border-t border-border">
+        <Button
+          variant="plain"
+          onClick={onComplete}
+          className={cn(BTN_KEEP_BOX, 'inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md')}
+          style={{ backgroundColor: 'var(--primary)' }}
+        >
+          Pokračovat na test
+          <ArrowRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface TestPreviewProps {
+  tests: ModuleTests | undefined;
+  /** Test je (simulovaně) splněný */
+  done: boolean;
+  onPassed: () => void;
+  completedCard: React.ReactNode;
+}
+
+function TestPreview({ tests, done, onPassed, completedCard }: TestPreviewProps) {
+  if (!tests) return <TestsLoading />;
+  const { assessment, loadError } = tests;
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h3 className="text-xl font-bold text-foreground">Test</h3>
+        {assessment.length > 0 && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Ověřte si znalosti z modulu.
+            {assessment.some((t) => isTypedFormat(t.assessmentTypeCode)) && ' Psané odpovědi pište vlastními slovy, vložit text nejde.'}
+          </p>
+        )}
+      </div>
+
+      {loadError && <TestsUnavailableNotice reason={loadError} />}
+
+      {assessment.length > 0 ? (
+        <PreviewAssessmentSteps configs={assessment} />
+      ) : !loadError && (
+        <p className="text-muted-foreground py-6 text-center">Tento modul nemá test.</p>
+      )}
+
+      {done ? (
+        <div className="mt-8">{completedCard}</div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
+          <p className="text-sm text-muted-foreground mr-auto">
+            Splnění modulu u studenta vyhodnotí server, v náhledu ho jen nasimulujete.
+          </p>
+          <Button
+            variant="plain"
+            onClick={onPassed}
+            className={cn(BTN_KEEP_BOX, 'inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90')}
+            style={{ backgroundColor: 'var(--gradient-r)' }}
+          >
+            <CheckCircle className="size-4" />
+            Simulovat splnění testu
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

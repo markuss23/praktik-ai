@@ -5,11 +5,13 @@ import { Check, Dumbbell, Loader2 } from 'lucide-react';
 import type { ClosedQuestionItem, PretestSettings } from '@/api';
 import { getPretestContent, listCourseAssessments, type CourseAssessmentConfig } from '@/lib/api-client';
 import { readApiErrorStatus } from '@/lib/api-error';
-import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
+import { CONTEXT_LABELS, formatName, isAiFormat } from '@/lib/assessment-labels';
+import { AiFormatPlaceholder } from '@/components/module/AiFormatPlaceholder';
 
 interface ReviewModuleTestsProps {
   courseId: number;
-  moduleId: number;
+  // null = závěrečný test kurzu
+  moduleId: number | null;
 }
 
 function ClosedQuestionReview({ index, question }: { index: number; question: ClosedQuestionItem }) {
@@ -39,12 +41,40 @@ function ClosedQuestionReview({ index, question }: { index: number; question: Cl
   );
 }
 
+/** Připojený formát — uzavřené otázky lektora se správnými odpověďmi, u AI formátu popis. */
+function FormatReview({ config }: { config: CourseAssessmentConfig }) {
+  const code = config.assessmentTypeCode;
+  const questions = config.settings?.questions ?? [];
+
+  return (
+    <div className="rounded-lg border border-border p-4 space-y-4">
+      <p className="text-sm">
+        <span className="font-semibold text-foreground">{formatName(code)}</span>
+        <span className="text-muted-foreground">
+          {' · '}{CONTEXT_LABELS[config.context]}
+          {config.isRequired ? ' · povinné' : ' · nepovinné'}
+          {!config.isEnabled && ' · vypnuté'}
+        </span>
+      </p>
+      {code === 'closed_questions' && (
+        questions.length > 0
+          ? questions.map((q, i) => <ClosedQuestionReview key={i} index={i + 1} question={q} />)
+          : <p className="text-sm text-warning">Test zatím nemá žádné otázky.</p>
+      )}
+      {isAiFormat(code) && (
+        <AiFormatPlaceholder code={code} settings={config.settings} courseLevel={config.context === 'course_final'} />
+      )}
+    </div>
+  );
+}
+
 /**
- * Testy modulu pro kontrolu garantem — pretest se správnými odpověďmi a
- * připojené formáty. Číst je backend zatím dovoluje jen vlastníkovi kurzu a
- * superadminovi; garant dostane 403 a uvidí vysvětlení.
+ * Testy modulu (nebo závěrečný test kurzu) pro kontrolu garantem — pretest
+ * se správnými odpověďmi a připojené formáty. Číst je backend zatím dovoluje
+ * jen vlastníkovi kurzu a superadminovi; garant dostane 403 a uvidí vysvětlení.
  */
 export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps) {
+  const isCourseFinal = moduleId === null;
   const [configs, setConfigs] = useState<CourseAssessmentConfig[] | null>(null);
   const [pretest, setPretest] = useState<PretestSettings | null>(null);
   const [denied, setDenied] = useState(false);
@@ -58,7 +88,9 @@ export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps
     setFailed(false);
     (async () => {
       try {
-        const list = (await listCourseAssessments(courseId)).filter((c) => c.moduleId === moduleId);
+        const list = (await listCourseAssessments(courseId)).filter((c) =>
+          moduleId === null ? c.context === 'course_final' : c.moduleId === moduleId,
+        );
         const pretestConfig = list.find((c) => c.assessmentTypeCode === 'pretest');
         // Pretest bez otázek (422) se ukáže jako nevyplněný
         const content = pretestConfig ? await getPretestContent(pretestConfig.courseAssessmentId).catch(() => null) : null;
@@ -75,6 +107,9 @@ export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps
   }, [courseId, moduleId]);
 
   if (denied) {
+    if (isCourseFinal) {
+      return <p className="text-sm text-muted-foreground">Závěrečný test může zatím číst jen autor kurzu a superadmin.</p>;
+    }
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Dumbbell size={40} className="mx-auto mb-3 text-muted-foreground" />
@@ -83,16 +118,32 @@ export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps
       </div>
     );
   }
-  if (failed) return <p role="alert" className="text-sm text-destructive">Testy modulu se nepodařilo načíst.</p>;
+  if (failed) {
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        {isCourseFinal ? 'Závěrečný test se nepodařilo načíst.' : 'Testy modulu se nepodařilo načíst.'}
+      </p>
+    );
+  }
   if (!configs) {
     return (
-      <div className="flex justify-center py-12">
+      <div className={`flex justify-center ${isCourseFinal ? 'py-6' : 'py-12'}`}>
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   const formats = configs.filter((c) => c.assessmentTypeCode !== 'pretest');
+
+  if (isCourseFinal) {
+    return formats.length > 0 ? (
+      <div className="space-y-4">
+        {formats.map((config) => <FormatReview key={config.courseAssessmentId} config={config} />)}
+      </div>
+    ) : (
+      <p className="text-sm text-muted-foreground">Kurz nemá závěrečný test.</p>
+    );
+  }
 
   if (!pretest && formats.length === 0) {
     return (
@@ -137,21 +188,7 @@ export function ReviewModuleTests({ courseId, moduleId }: ReviewModuleTestsProps
       {formats.length > 0 && (
         <section className="space-y-4">
           <h3 className="font-semibold text-foreground">Procvičování a test modulu</h3>
-          {formats.map((config) => (
-            <div key={config.courseAssessmentId} className="rounded-lg border border-border p-4 space-y-4">
-              <p className="text-sm">
-                <span className="font-semibold text-foreground">{formatName(config.assessmentTypeCode)}</span>
-                <span className="text-muted-foreground">
-                  {' · '}{CONTEXT_LABELS[config.context]}
-                  {config.isRequired ? ' · povinné' : ' · nepovinné'}
-                  {!config.isEnabled && ' · vypnuté'}
-                </span>
-              </p>
-              {(config.settings?.questions ?? []).map((q, i) => (
-                <ClosedQuestionReview key={i} index={i + 1} question={q} />
-              ))}
-            </div>
-          ))}
+          {formats.map((config) => <FormatReview key={config.courseAssessmentId} config={config} />)}
         </section>
       )}
     </div>

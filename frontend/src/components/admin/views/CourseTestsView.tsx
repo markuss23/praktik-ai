@@ -25,6 +25,7 @@ import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCourseData } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import type { AssessmentContents } from '@/hooks/useCourseAssessments';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { formatName } from '@/lib/assessment-labels';
 import {
@@ -346,14 +347,18 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const moduleFormatConfigs = moduleConfigs.filter((c) => c.assessmentTypeCode !== 'pretest');
   const finalConfigs = configs.filter((c) => c.context === 'course_final').sort(byContext);
 
-  // Náhled pro studenta — rozpracovaný obsah pretestů podle modulu
-  const previewPretests = useMemo(() => {
-    const byModule: Record<number, PretestSettings | null> = {};
+  // Náhled pro studenta — rozpracované pretesty a nastavení formátů
+  const previewAssessments = useMemo((): AssessmentContents => {
+    const pretests: Record<number, PretestSettings | null> = {};
     for (const c of configs) {
-      if (c.assessmentTypeCode === 'pretest' && c.moduleId !== null) byModule[c.moduleId] = pretestDrafts[c.courseAssessmentId] ?? null;
+      if (c.assessmentTypeCode === 'pretest' && c.moduleId !== null) pretests[c.moduleId] = pretestDrafts[c.courseAssessmentId] ?? null;
     }
-    return byModule;
-  }, [configs, pretestDrafts]);
+    const withDrafts = configs.map((c) => {
+      const draft = formatDrafts[c.courseAssessmentId];
+      return draft ? { ...c, ...draft } : c;
+    });
+    return { configs: withDrafts, pretests, loadError: null };
+  }, [configs, pretestDrafts, formatDrafts]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -519,7 +524,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         <StudentPreview
           course={courseData ?? { title: courseTitle }}
           modules={modules}
-          pretests={previewPretests}
+          assessments={previewAssessments}
           start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
           onExit={() => setPreviewOpen(false)}
         />

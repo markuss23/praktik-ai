@@ -464,12 +464,16 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
             <p className="text-xs text-muted-foreground mb-0.5">Krok 1 z {totalSteps}</p>
             <h2 className="font-semibold text-foreground">Souhrn kurzu</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Zkontrolujte popis, zařazení a náhledový obrázek kurzu.
+              Zkontrolujte popis, zařazení, náhledový obrázek a závěrečný test kurzu.
             </p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             <ReviewCourseSummary course={course} modulesCount={modules.length} />
+            <section className="mt-8 border-t border-border pt-6">
+              <h3 className="mb-4 font-semibold text-foreground">Závěrečný test kurzu</h3>
+              <ReviewModuleTests courseId={courseId} moduleId={null} />
+            </section>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-4 border-t border-border shrink-0">

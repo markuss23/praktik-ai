@@ -18,9 +18,32 @@ interface AssessmentStepsProps {
 
 /**
  * Formáty připojené k jednomu kontextu (procvičování, test modulu, závěrečný
- * test). Rozbalený je vždy nejvýš jeden — výchozí první nesplněný povinný.
+ * test). Každý se spouští jako session na serveru.
  */
 export function AssessmentSteps({ courseId, moduleId, context, items, onFinished }: AssessmentStepsProps) {
+  return (
+    <AssessmentStepList
+      items={items}
+      renderContent={(item) => (
+        <AssessmentRunner
+          target={{ courseId, context, moduleId, assessmentTypeCode: item.assessmentTypeCode }}
+          startLabel={item.passed ? 'Projít znovu' : 'Spustit'}
+          onFinished={onFinished}
+        />
+      )}
+    />
+  );
+}
+
+export type AssessmentStepItem = Pick<AssessmentProgressItem, 'courseAssessmentId' | 'assessmentTypeCode' | 'isRequired' | 'passed'>;
+
+interface AssessmentStepListProps<T extends AssessmentStepItem> {
+  items: T[];
+  renderContent: (item: T) => React.ReactNode;
+}
+
+/** Rozbalovací seznam formátů — rozbalený je vždy nejvýš jeden, výchozí první nesplněný povinný. */
+export function AssessmentStepList<T extends AssessmentStepItem>({ items, renderContent }: AssessmentStepListProps<T>) {
   const [openId, setOpenId] = useState<number | null>(() => {
     const first = items.find((i) => i.isRequired && !i.passed) ?? items.find((i) => !i.passed);
     return first?.courseAssessmentId ?? null;
@@ -52,11 +75,7 @@ export function AssessmentSteps({ courseId, moduleId, context, items, onFinished
             </Button>
             {open && (
               <div className="border-t border-border px-4 py-4">
-                <AssessmentRunner
-                  target={{ courseId, context, moduleId, assessmentTypeCode: item.assessmentTypeCode }}
-                  startLabel={item.passed ? 'Projít znovu' : 'Spustit'}
-                  onFinished={onFinished}
-                />
+                {renderContent(item)}
               </div>
             )}
           </div>
