@@ -91,6 +91,7 @@ export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps)
       title="AI Nastavení"
       description="Jak s vámi má AI tutor komunikovat."
       maxWidth="max-w-4xl"
+      padding="lg"
       footer={
         <Button
           size="lg"
@@ -114,12 +115,16 @@ export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps)
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Načítám nastavení" />
         </div>
       ) : (
-        <div className="flex flex-col gap-5 md:gap-3">
+        // Linka mezi osami, pod poslední je border footeru
+        <div className="flex flex-col divide-y divide-border">
           {axes.map((axis) => {
             const labelId = `ai-style-${axis.code}-label`;
             return (
               // Osa vlevo, options v řadě — wide modal
-              <div key={axis.code} className="grid gap-2 md:grid-cols-[9rem_1fr] md:items-center md:gap-4">
+              <div
+                key={axis.code}
+                className="grid gap-3 py-5 first:pt-0 last:pb-0 md:grid-cols-[9rem_1fr] md:items-center md:gap-6"
+              >
                 <span id={labelId} className="text-sm font-semibold text-foreground">{axis.name}</span>
                 <RadioGroup
                   aria-labelledby={labelId}
@@ -134,10 +139,8 @@ export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps)
                       <Label
                         key={option.code}
                         className={cn(
-                          'cursor-pointer items-start gap-2.5 rounded-lg border p-3 font-normal leading-normal transition-all',
-                          choice[axis.code] === option.code
-                            ? 'border-gradient-r/30 bg-gradient-r/10'
-                            : 'border-border hover:bg-muted/50',
+                          'cursor-pointer items-start gap-2.5 rounded-lg p-3 font-normal leading-normal transition-colors',
+                          choice[axis.code] === option.code ? 'bg-gradient-r/10' : 'hover:bg-muted/50',
                         )}
                       >
                         <RadioGroupItem value={option.code} className="mt-0.5" />
