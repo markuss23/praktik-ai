@@ -5,11 +5,14 @@ import Image from "next/image";
 import {
   ArrowRight,
   BookMarked,
+  BookOpen,
   Check,
   ChevronsDownUp,
   ChevronsUpDown,
   CircleCheck,
   CircleX,
+  Database,
+  GraduationCap,
   Lightbulb,
   Loader2,
   LogIn,
@@ -17,6 +20,7 @@ import {
   Menu,
   MessageSquareWarning,
   Plus,
+  Sparkles,
   Trash2,
   TriangleAlert,
   UserRound,
@@ -63,6 +67,17 @@ import {
   SelectValue,
 } from "@/components/ui-kit/select";
 import {
+  CookieConsent,
+  CookieConsentActions,
+  CookieConsentCategories,
+  CookieConsentCategory,
+  CookieConsentDescription,
+  CookieConsentHeader,
+  CookieConsentIcon,
+  CookieConsentTitle,
+  CookieConsentTrigger,
+} from "@/components/ui-kit/cookie-consent";
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -73,6 +88,14 @@ import {
   DialogTrigger,
 } from "@/components/ui-kit/dialog";
 import { Input } from "@/components/ui-kit/input";
+import { Logo, LogoMark } from "@/components/ui-kit/logo";
+import {
+  Onboarding,
+  OnboardingDialog,
+  OnboardingIcon,
+  OnboardingMedia,
+  type OnboardingStep,
+} from "@/components/ui-kit/onboarding";
 import {
   Navbar,
   NavbarAction,
@@ -140,6 +163,7 @@ const NAV_ITEMS = [
  * plní zároveň obsah v levém sloupci i tlačítko „rozbalit vše".
  */
 const SECTIONS = [
+  { value: "logo", label: "Logo" },
   { value: "barvy", label: "Barvy" },
   { value: "button", label: "Button" },
   { value: "alert", label: "Alert" },
@@ -153,6 +177,40 @@ const SECTIONS = [
   { value: "card-cover", label: "Card — SVG covery" },
   { value: "card-review", label: "Card — ke schválení" },
   { value: "dialog", label: "Dialog" },
+  { value: "cookie-consent", label: "Cookie lišta" },
+  { value: "onboarding", label: "Onboarding" },
+];
+
+/** Kroky jednoduchého onboardingu — jen hotové části aplikace. */
+const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    tone: "purple",
+    icon: <Sparkles />,
+    title: "Vítejte v Praktik-AI",
+    description:
+      "Tady se budoucí učitelé učí pracovat s umělou inteligencí — prakticky, na úlohách z vlastní výuky.",
+  },
+  {
+    tone: "green",
+    icon: <BookOpen />,
+    title: "Vyberte si kurz",
+    description:
+      "Kurzy najdete na úvodní stránce i v přehledu všech kurzů. Každý má krátké moduly, které projdete svým tempem.",
+  },
+  {
+    tone: "blue",
+    icon: <GraduationCap />,
+    title: "Sledujte svůj pokrok",
+    description:
+      "Po přihlášení najdete v sekci Moje kurzy rozpracované kurzy i splněné moduly.",
+  },
+  {
+    tone: "orange",
+    icon: <Database />,
+    title: "Inspirujte se u ostatních",
+    description:
+      "Ve veřejné databázi jsou materiály od ostatních a sbírky, do kterých si je můžete ukládat.",
+  },
 ];
 
 /** Tóny coverů i s tokenem, ze kterého berou podklad. */
@@ -443,6 +501,109 @@ function AppNavbar({
   );
 }
 
+/**
+ * První vrstva cookie lišty se stejným textem pro lištu i kartu. Obě
+ * odpovědi (přijmout / odmítnout) jdou přes `onChoice` — jde jen o vzhled.
+ */
+function CookieBanner({
+  variant,
+  onChoice,
+  onSettings,
+  className,
+}: {
+  variant: "bar" | "card";
+  onChoice?: () => void;
+  onSettings?: () => void;
+  className?: string;
+}) {
+  return (
+    <CookieConsent variant={variant} className={className}>
+      <CookieConsentIcon />
+      <CookieConsentHeader>
+        <CookieConsentTitle>Používáme cookies</CookieConsentTitle>
+        <CookieConsentDescription>
+          Nezbytné cookies drží web v chodu. S vaším souhlasem použijeme i
+          analytické, abychom věděli, které kurzy vylepšit. Více v{" "}
+          <a href="#">zásadách cookies</a>.
+        </CookieConsentDescription>
+      </CookieConsentHeader>
+      <CookieConsentActions>
+        <Button variant="ghost" onClick={onSettings}>
+          Nastavení
+        </Button>
+        <Button variant="outline" onClick={onChoice}>
+          Odmítnout vše
+        </Button>
+        <Button onClick={onChoice}>Přijmout vše</Button>
+      </CookieConsentActions>
+    </CookieConsent>
+  );
+}
+
+/** Druhá vrstva — kategorie s přepínači. Přepínače jsou nekontrolované. */
+function CookiePreferences({
+  onChoice,
+  className,
+}: {
+  onChoice?: () => void;
+  className?: string;
+}) {
+  return (
+    <CookieConsent variant="panel" className={className}>
+      <CookieConsentIcon />
+      <CookieConsentHeader>
+        <CookieConsentTitle>Nastavení cookies</CookieConsentTitle>
+        <CookieConsentDescription>
+          Vyberte, které cookies smíme používat. Volbu můžete kdykoli změnit
+          přes ikonu sušenky v rohu stránky.
+        </CookieConsentDescription>
+      </CookieConsentHeader>
+      <CookieConsentCategories>
+        <CookieConsentCategory
+          required
+          title="Nezbytné"
+          description="Přihlášení, zabezpečení a uložení vaší volby. Bez nich web nefunguje."
+        />
+        <CookieConsentCategory
+          title="Analytické"
+          description="Anonymní statistiky návštěvnosti — podle nich víme, které kurzy a moduly vylepšit."
+        />
+        <CookieConsentCategory
+          title="Marketingové"
+          description="Měření kampaní a relevantnější nabídka kurzů na jiných webech."
+        />
+      </CookieConsentCategories>
+      <CookieConsentActions>
+        <Button variant="outline" onClick={onChoice}>
+          Odmítnout vše
+        </Button>
+        <Button variant="outline" onClick={onChoice}>
+          Uložit výběr
+        </Button>
+        <Button onClick={onChoice}>Přijmout vše</Button>
+      </CookieConsentActions>
+    </CookieConsent>
+  );
+}
+
+/**
+ * Onboarding na ztmaveném podkladu, jako by byl v dialogu. Zavření ho
+ * přemountuje, takže začne znovu od prvního kroku.
+ */
+function OnboardingPreview() {
+  const [run, setRun] = useState(0);
+
+  return (
+    <div className="flex justify-center rounded-xl bg-black/40 px-4 py-10">
+      <Onboarding
+        key={run}
+        steps={ONBOARDING_STEPS}
+        onClose={() => setRun((n) => n + 1)}
+      />
+    </div>
+  );
+}
+
 export default function UiKitPage() {
   return (
     <Toaster>
@@ -457,11 +618,21 @@ function UiKitContent() {
   const [sort, setSort] = useState<string>("newest");
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [tab, setTab] = useState<"courses" | "materials">("courses");
+  // Živý náhled cookie lišty přilepený k viewportu. Po volbě zůstane jen
+  // ikona pro znovuotevření nastavení.
+  const [liveCookies, setLiveCookies] = useState<
+    "bar" | "card" | "panel" | "trigger" | null
+  >(null);
   // Otevřené sekce accordionu. Start jen s první, ať je stránka přehledná.
   const [open, setOpen] = useState<string[]>([SECTIONS[0].value]);
   const hexes = useTokenHexes();
 
   const allOpen = open.length === SECTIONS.length;
+
+  function saveCookieChoice() {
+    setLiveCookies("trigger");
+    toast.add({ type: "success", title: "Volba cookies uložena" });
+  }
 
   function toggleAll() {
     setOpen(allOpen ? [] : SECTIONS.map((section) => section.value));
@@ -515,6 +686,46 @@ function UiKitContent() {
             onValueChange={(value) => setOpen(value as string[])}
             className="min-w-0"
           >
+        <Section
+          value="logo"
+          title="Logo"
+          description="Tvář rysa zjednodušená z maskota — silueta s ostrými chomáči na lících, černé chomáče uší, velké kulaté brýle. Drží i v 24 px. Značka má pevné značkové barvy (v tmavém režimu se nemění), wordmark bere currentColor."
+        >
+          <Row label="značka">
+            <LogoMark className="size-24" title="PRAKTIK-AI" />
+            <LogoMark className="size-16" />
+            <LogoMark className="size-10" />
+            <LogoMark className="size-6" />
+          </Row>
+
+          <Row label="tile (ikona)">
+            <LogoMark tile className="size-24" title="PRAKTIK-AI" />
+            <LogoMark tile className="size-16" />
+            <LogoMark tile className="size-10" />
+            <LogoMark tile className="size-6" />
+          </Row>
+
+          <Row label="logo">
+            <Logo size="lg" />
+            <Logo />
+            <Logo size="sm" />
+          </Row>
+
+          <Row label="na tmavé" className="block">
+            <div className="flex flex-wrap items-center gap-x-10 gap-y-5 rounded-2xl bg-[#0D2F31] px-6 py-5 text-white">
+              <Logo size="lg" />
+              <Logo size="lg" tile />
+            </div>
+          </Row>
+
+          <Row label="na šedé" className="block">
+            <div className="flex flex-wrap items-center gap-x-10 gap-y-5 rounded-2xl bg-[#F0F0F0] px-6 py-5 text-[#111111]">
+              <Logo size="lg" />
+              <Logo size="lg" tile />
+            </div>
+          </Row>
+        </Section>
+
         <Section
           value="barvy"
           title="Barvy"
@@ -1436,9 +1647,135 @@ function UiKitContent() {
             </Dialog>
           </Row>
         </Section>
+
+        <Section
+          value="cookie-consent"
+          title="Cookie lišta"
+          description="Souhlas s cookies — zatím jen vzhled, bez ukládání volby. Lišta přes celou šířku, nebo karta v rohu; „Nastavení“ otevře druhou vrstvu s kategoriemi. „Odmítnout vše“ je na první vrstvě a stejně velké jako „Přijmout vše“ (požadavek ÚOOÚ). Lišta se skládá podle vlastní šířky, v úzkém sloupci se zalomí jako na mobilu."
+        >
+          <Row label="lišta" className="block">
+            <div className="border-foreground/15 bg-background overflow-hidden rounded-xl border">
+              {/* Naznačený obsah stránky, ať je vidět, jak lišta sedí dole. */}
+              <div aria-hidden className="space-y-2 p-6">
+                <div className="bg-muted h-4 w-1/3 rounded" />
+                <div className="bg-muted h-3 w-2/3 rounded" />
+                <div className="bg-muted h-3 w-1/2 rounded" />
+              </div>
+              <CookieBanner variant="bar" />
+            </div>
+          </Row>
+
+          <Row label="karta">
+            <CookieBanner variant="card" />
+          </Row>
+
+          <Row label="nastavení">
+            <CookiePreferences />
+          </Row>
+
+          <Row label="znovuotevření">
+            <CookieConsentTrigger />
+            <span className="text-muted-foreground text-xs">
+              plovoucí ikona po uložení volby — souhlas jde kdykoli změnit
+            </span>
+          </Row>
+
+          <Row label="v provozu">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLiveCookies("bar")}
+            >
+              Zobrazit lištu
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLiveCookies("card")}
+            >
+              Zobrazit kartu
+            </Button>
+            {liveCookies && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setLiveCookies(null)}
+              >
+                <X data-icon="inline-start" />
+                Skrýt náhled
+              </Button>
+            )}
+          </Row>
+        </Section>
+
+        <Section
+          value="onboarding"
+          title="Onboarding"
+          description="Jednoduchý onboarding v dialogu — kroky s ikonou, titulkem a popisem, tečky postupu a Zpět / Další. Horní plocha je slot: krok s `media` místo ikony vykreslí vlastní obsah, tudy přijde verze s maskotem. `tone` kroku přebarví plochu, dlaždici i aktivní tečku. Zapamatování „už viděno“ řeší aplikace."
+        >
+          <Row label="náhled" className="block">
+            <OnboardingPreview />
+          </Row>
+
+          <Row label="v dialogu">
+            <OnboardingDialog
+              steps={ONBOARDING_STEPS}
+              onFinish={() =>
+                toast.add({ type: "success", title: "Vítejte na palubě!" })
+              }
+            >
+              <DialogTrigger render={<Button />}>
+                <Sparkles data-icon="inline-start" />
+                Spustit onboarding
+              </DialogTrigger>
+            </OnboardingDialog>
+          </Row>
+
+          <Row label="tone" className="block">
+            <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+              {COVER_TONE_ITEMS.map(({ tone, token }, i) => (
+                <figure key={tone} className="m-0 flex flex-col gap-1.5">
+                  <OnboardingMedia tone={tone} className="h-28 rounded-md">
+                    <OnboardingIcon className="size-14 [&_svg:not([class*='size-'])]:size-6">
+                      {ONBOARDING_STEPS[i % ONBOARDING_STEPS.length].icon}
+                    </OnboardingIcon>
+                  </OnboardingMedia>
+                  <figcaption className="text-muted-foreground font-mono text-[11px]">
+                    {tone} · {token}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Row>
+        </Section>
           </Accordion>
         </div>
       </div>
+
+      {(liveCookies === "bar" || liveCookies === "card") && (
+        <CookieBanner
+          variant={liveCookies}
+          onChoice={saveCookieChoice}
+          onSettings={() => setLiveCookies("panel")}
+          className={
+            liveCookies === "bar"
+              ? "fixed inset-x-0 bottom-0 z-40"
+              : "fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)]"
+          }
+        />
+      )}
+      {liveCookies === "panel" && (
+        <CookiePreferences
+          onChoice={saveCookieChoice}
+          className="fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)]"
+        />
+      )}
+      {liveCookies === "trigger" && (
+        <CookieConsentTrigger
+          className="fixed bottom-4 left-4 z-40"
+          onClick={() => setLiveCookies("panel")}
+        />
+      )}
     </main>
   );
 }
