@@ -150,11 +150,7 @@ export function CourseRow({
     </div>
   );
 
-  // Completed courses are not clickable
-  if (isCompleted) {
-    return row;
-  }
-
+  // Dokončený kurz je klikací taky — detail kurzu slouží jako zpětný náhled.
   return (
     <Link href={`/courses/${id}`} className="group block outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset">
       {row}
