@@ -43,8 +43,12 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
   const router = useRouter();
   const isCompleted = !!enrollment.completedAt;
 
+  // Dokončený kurz → detail kurzu jako zpětný náhled, rozpracovaný → první nesplněný modul.
   const handleClick = () => {
-    if (isCompleted) return;
+    if (isCompleted) {
+      router.push(`/courses/${enrollment.courseId}`);
+      return;
+    }
     void resumeInProgress(enrollment, (url) => router.push(url));
   };
 
@@ -56,17 +60,15 @@ function ModuleCard({ enrollment }: { enrollment: MyEnrollment }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.25 }}
       onClick={handleClick}
-      role={isCompleted ? undefined : 'button'}
-      tabIndex={isCompleted ? undefined : 0}
-      onKeyDown={isCompleted ? undefined : (e) => {
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           handleClick();
         }
       }}
-      className={`bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col justify-between w-full ${
-        isCompleted ? '' : 'cursor-pointer hover:shadow-md transition-shadow'
-      }`}
+      className="bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col justify-between w-full cursor-pointer hover:shadow-md transition-shadow"
     >
       <div>
         <div className="flex items-center justify-between mb-2">

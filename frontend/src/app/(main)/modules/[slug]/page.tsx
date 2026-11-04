@@ -3,14 +3,16 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getCourseProgress, markModuleVisited } from "@/lib/api-client";
+import { getModule, getCourse, getCourseProgress, getMyEnrollments, markModuleVisited } from "@/lib/api-client";
 import type { Module, Course, ModuleCompletionStatus } from "@/api";
-import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
+import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Eye, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
 import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
+import PracticeReview from "@/components/module/PracticeReview";
+import AssessmentReview from "@/components/module/AssessmentReview";
 import PaperSheets from "@/components/module/PaperSheets";
 import NotesPanel from "@/components/module/NotesPanel";
 import ScrollToBottomButton from "@/components/module/ScrollToBottomButton";
@@ -34,6 +36,7 @@ export default function ModulePage() {
   const [allModules, setAllModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
 
   // Transition animation
   const [transitioning, setTransitioning] = useState(false);
@@ -112,9 +115,10 @@ export default function ModulePage() {
 
       // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
       // getModules je vynechané záměrně: getCourse moduly už vrací.
-      const [courseData, progress] = await Promise.all([
+      const [courseData, progress, enrollments] = await Promise.all([
         getCourse(moduleData.courseId),
         getCourseProgress(moduleData.courseId).catch(() => [] as ModuleCompletionStatus[]),
+        getMyEnrollments().catch(() => []),
       ]);
       setCourse(courseData);
       setAllModules((courseData.modules ?? []).filter(m => m.isActive));
@@ -126,6 +130,9 @@ export default function ModulePage() {
         setPracticeCompleted(true);
         setAssessmentCompleted(true);
       }
+      // Modul přidaný až po dokončení kurzu splněný není, ten jde projít normálně.
+      const courseCompleted = !!enrollments.find(e => e.courseId === moduleData.courseId)?.completedAt;
+      setReviewMode(courseCompleted && !!moduleProgress?.passed);
     } catch (err) {
       console.error('Failed to fetch module data:', err);
       setError('Nepodařilo se načíst data modulu.');
@@ -260,8 +267,8 @@ export default function ModulePage() {
     if (nextModule) {
       navigateToModule(nextModule.moduleId);
     } else {
-      // Course finished — go to homepage
-      router.push('/');
+      // Poslední modul — zpět na detail kurzu (tlačítko říká „Zpět na kurz" / „Dokončit kurz")
+      router.push(`/courses/${module.courseId}`);
     }
   };
 
@@ -336,6 +343,12 @@ export default function ModulePage() {
                   <h2 className="text-lg font-bold text-foreground mt-1">{module.title}</h2>
                   {module.perex && (
                     <p className="text-sm text-muted-foreground mt-2 break-words">{module.perex}</p>
+                  )}
+                  {reviewMode && (
+                    <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                      <Eye className="size-3.5" />
+                      Náhled dokončeného kurzu
+                    </p>
                   )}
                 </div>
 
@@ -464,7 +477,9 @@ export default function ModulePage() {
                             className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
                             style={{ backgroundColor: 'var(--primary)' }}
                           >
-                            {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
+                            {currentBlockIndex < totalBlocks - 1
+                              ? 'Pokračovat'
+                              : reviewMode ? 'Přejít na procvičování' : 'Dokončit příručku'}
                             <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
@@ -485,16 +500,29 @@ export default function ModulePage() {
                 )}
 
                 {/* Procvičování tab */}
-                {activeTab === 'procvicovani' && (
+                {activeTab === 'procvicovani' && (reviewMode ? (
+                  <PracticeReview
+                    moduleId={activeModuleId}
+                    practiceQuestions={module.practiceQuestions ?? []}
+                    onContinue={handlePracticeComplete}
+                  />
+                ) : (
                   <PracticeTab
                     moduleId={activeModuleId}
                     practiceQuestions={module.practiceQuestions ?? []}
                     onComplete={handlePracticeComplete}
                   />
-                )}
+                ))}
 
                 {/* Test tab */}
-                {activeTab === 'test' && (
+                {activeTab === 'test' && reviewMode && (
+                  <AssessmentReview
+                    moduleId={activeModuleId}
+                    ctaLabel={nextModule ? 'Pokračovat na další modul' : 'Zpět na kurz'}
+                    onContinue={handleModuleComplete}
+                  />
+                )}
+                {activeTab === 'test' && !reviewMode && (
                   <AssessmentTab
                     moduleId={activeModuleId}
                     courseId={module.courseId}
