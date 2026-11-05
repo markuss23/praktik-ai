@@ -37,14 +37,42 @@ class UserRole(enum.StrEnum):
 
 
 class TicketStatus(enum.StrEnum):
-    open = "open"
+    open = "open"  # nový, nikdo si ho ještě nevzal
+    in_progress = "in_progress"  # staff si ticket přiřadil (assignee_id), řeší se
+    pending = (
+        "pending"  # nepoužito v aktuálním flow, zachováno kvůli DB enum kompatibilitě
+    )
     resolved = "resolved"
+    closed = "closed"
 
 
 class TicketType(enum.StrEnum):
+    """
+    Typ kategorie ticketu. Kategorie se liší podle entity_type, ke které je ticket vázán.
+    """
+
+    # Kategorie dostupné pro EntityType module
     task_session = "task_session"  # reklamace concept checku
     practice = "practice"  # reklamace practice AI evaluátoru
-    other = "other"  # ostatní
+    # Kategorie dostupné pro EntityType course
+    course_feedback = "course_feedback"  # obecná stížnost/dotaz ke kurzu jako celku
+    # Kategorie dostupné pro EntityType pub_resource
+    content_issue = "content_issue"  # chyba/zastaralost v obsahu veřejného materiálu
+    # Univerzální kategorie dostupné pro libovolný entity_type (viz UNIVERSAL_CATEGORIES)
+    bug = "bug"  # nahlášení chyby v appce
+    question = "question"  # obecný dotaz na podporu
+    other = "other"  # cokoliv ostatní
+
+
+class TicketEntityType(enum.StrEnum):
+    """
+    Typ entity, ke které se ticket váže (entity_id ukazuje do její tabulky).
+    """
+
+    module = "module"
+    course = "course"
+    pub_resource = "pub_resource"
+    general = "general"
 
 
 class EduLevel(enum.StrEnum):
