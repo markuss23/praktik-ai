@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import Field
 from api.src.common.schemas import ORMModel
-from api.src.activities.schemas import LearnBlock, PracticeQuestion
+from api.src.activities.schemas import LearnBlock
 from api.src.catalogs.schemas import BloomLevel, KrauuCompetence, NeuroPrinciple
 
 
@@ -46,8 +46,6 @@ class Module(ModuleBase):
     updated_at: datetime
 
     learn_blocks: list[LearnBlock] = []
-    # Nahrazeno pretestem a closed_questions (assessments)
-    practice_questions: list[PracticeQuestion] = Field(default=[], deprecated=True)
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"
@@ -58,34 +56,3 @@ class Module(ModuleBase):
     bloom_levels: list[BloomLevel] = Field(
         default=[], validation_alias="bloom_level_list"
     )
-
-
-class ModuleCompletionStatus(ORMModel):
-    module_id: int
-    passed: bool = False
-    score: int | None = None
-    course_completed: bool = False
-    task_session_status: str | None = None
-    attempts_used: int = 0
-    max_attempts: int = 0
-    passing_score: int = 75
-
-
-class CompleteModuleRequest(ORMModel):
-    score: int = Field(ge=0, le=100, description="Test score percentage")
-
-
-class AssessmentAttemptDetail(ORMModel):
-    attempt_id: int
-    ai_score: int
-    is_passed: bool
-    ai_feedback: str | None = None
-
-
-class ModuleAssessmentQuestion(ORMModel):
-    session_id: int
-    generated_task: str
-    status: str
-    attempts_used: int = 0
-    max_attempts: int = 3
-    attempts: list[AssessmentAttemptDetail] = []

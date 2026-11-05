@@ -27,13 +27,10 @@ from api.enums import (
     Difficulty,
     EduLevel,
     PubResourceStatus,
-    QuestionType,
     ReviewVerdict,
     Status,
     TicketType,
     UserRole,
-    ModuleTaskSessionStatus,
-    AttemptStatus,
     TicketStatus,
     AssessmentContext,
     AssessmentSessionStatus,
@@ -144,12 +141,6 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="User.user_id == Course.owner_id",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(
-        back_populates="user",
-    )
-    task_sessions: Mapped[list[ModuleTaskSession]] = relationship(
-        back_populates="user",
-    )
-    practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
         back_populates="user",
     )
     mentor_logs: Mapped[list[MentorInteractionLog]] = relationship(
@@ -906,16 +897,6 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==LearnBlock.module_id, LearnBlock.is_active==True)",
     )
-    practice_questions: Mapped[list[PracticeQuestion]] = relationship(
-        back_populates="module",
-        primaryjoin="and_(Module.module_id==PracticeQuestion.module_id, PracticeQuestion.is_active==True)",
-    )
-    task_sessions: Mapped[list[ModuleTaskSession]] = relationship(
-        back_populates="module", cascade="all, delete-orphan"
-    )
-    user_practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
-        back_populates="module",
-    )
     neuro_principles: Mapped[list[ModuleNeuroPrinciple]] = relationship(
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleNeuroPrinciple.module_id, ModuleNeuroPrinciple.is_active==True)",
@@ -931,7 +912,6 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
 
     _soft_delete_cascade = [
         "learn_blocks",
-        "practice_questions",
         "neuro_principles",
         "krauu_competences",
         "bloom_levels",
@@ -1142,181 +1122,6 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
         return self.module.course.owner_id
 
 
-# ---------- Practice (sdílené) ----------
-
-
-class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice_question"
-    __table_args__ = (
-        Index(
-            "uq_question_module_text_active",
-            "module_id",
-            "question",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_question_module_id", "module_id"),
-        CheckConstraint(
-            """
-            (
-              question_type = 'closed'
-              AND correct_answer IS NOT NULL
-              AND example_answer IS NULL
-            )
-            OR
-            (
-              question_type = 'open'
-              AND correct_answer IS NULL
-            )
-            """,
-            name="ck_practice_question_open_closed",
-        ),
-    )
-
-    question_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    question_type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), nullable=False
-    )
-    question: Mapped[str] = mapped_column(Text, nullable=False)
-    correct_answer: Mapped[str | None] = mapped_column(String(255))
-    example_answer: Mapped[str | None] = mapped_column(Text)
-
-    module: Mapped[Module] = relationship(back_populates="practice_questions")
-    closed_options: Mapped[list[PracticeOption]] = relationship(
-        back_populates="question",
-        primaryjoin="and_(PracticeQuestion.question_id==PracticeOption.question_id, PracticeOption.is_active==True)",
-    )
-    open_keywords: Mapped[list[QuestionKeyword]] = relationship(
-        back_populates="question",
-        primaryjoin="and_(PracticeQuestion.question_id==QuestionKeyword.question_id, QuestionKeyword.is_active==True)",
-    )
-
-    _soft_delete_cascade = ["closed_options", "open_keywords"]
-
-    def get_owner_id(self) -> int:
-        return self.module.course.owner_id
-
-
-class PracticeOption(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice_option"
-    __table_args__ = (
-        Index(
-            "uq_option_question_text_active",
-            "question_id",
-            "text",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_option_question_id", "question_id"),
-    )
-
-    option_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("practice_question.question_id"), nullable=False
-    )
-    text: Mapped[str] = mapped_column(Text, nullable=False)
-
-    question: Mapped[PracticeQuestion] = relationship(back_populates="closed_options")
-
-    def get_owner_id(self) -> int:
-        return self.question.module.course.owner_id
-
-
-class QuestionKeyword(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "question_keyword"
-    __table_args__ = (
-        Index(
-            "uq_keyword_question_keyword_active",
-            "question_id",
-            "keyword",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_keyword_question_id", "question_id"),
-    )
-
-    keyword_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("practice_question.question_id"), nullable=False
-    )
-    keyword: Mapped[str] = mapped_column(String(200), nullable=False)
-
-    question: Mapped[PracticeQuestion] = relationship(back_populates="open_keywords")
-
-    def get_owner_id(self) -> int:
-        return self.question.module.course.owner_id
-
-
-# ---------- Practice (personalizované) ----------
-
-
-class UserPracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Personalizovaná otázka dogenerovaná pro konkrétního uživatele a modul.
-    Nová otázka = nový řádek. Opakování odpovědí řeší UserPracticeAttempt.
-    """
-
-    __tablename__ = "user_practice_question"
-    __table_args__ = (
-        Index("ix_user_practice_question_user_module", "user_id", "module_id"),
-    )
-
-    user_question_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    question_type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), nullable=False
-    )
-    user_input: Mapped[str] = mapped_column(Text, nullable=False)
-    generated_question: Mapped[str] = mapped_column(Text, nullable=False)
-    # Snapshot možností pro closed otázky: [{"text": "..."}, ...]
-    options: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-
-    user: Mapped[User] = relationship(back_populates="practice_questions")
-    module: Mapped[Module] = relationship(back_populates="user_practice_questions")
-    attempts: Mapped[list[UserPracticeAttempt]] = relationship(
-        back_populates="question",
-        order_by="UserPracticeAttempt.created_at",
-    )
-
-
-class UserPracticeAttempt(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Jeden pokus uživatele na personalizovanou otázku.
-    Dokud is_correct = False, může uživatel přidat další pokus.
-    """
-
-    __tablename__ = "user_practice_attempt"
-    __table_args__ = (
-        Index("ix_user_practice_attempt_question_id", "user_question_id"),
-    )
-
-    attempt_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_question_id: Mapped[int] = mapped_column(
-        ForeignKey("user_practice_question.user_question_id"), nullable=False
-    )
-    user_input: Mapped[str] = mapped_column(Text, nullable=False)
-    ai_response: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-
-    question: Mapped[UserPracticeQuestion] = relationship(back_populates="attempts")
-
-
 # ---------- Enrollment ----------
 
 
@@ -1365,76 +1170,6 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
     last_visited_module: Mapped[Module | None] = relationship(
         "Module", foreign_keys=[last_visited_module_id]
     )
-
-
-# ---------- AI Session / Test ----------
-
-
-class ModuleTaskSession(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Záznam pro závěrečný AI test modulu.
-    Je navázán na Usera (uchování dat nezávisle na Enrollmentu).
-    Oprávnění ke spuštění se řeší v Python aplikaci.
-    """
-
-    __tablename__ = "module_task_session"
-    __table_args__ = (
-        Index(
-            "uq_module_task_session_user_active",
-            "user_id",
-            "module_id",
-            unique=True,
-            postgresql_where=text("status IN ('in_progress', 'passed')"),
-        ),
-        Index("ix_module_task_session_user_id", "user_id"),
-        Index("ix_module_task_session_module_id", "module_id"),
-    )
-
-    session_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    status: Mapped[ModuleTaskSessionStatus] = mapped_column(
-        Enum(ModuleTaskSessionStatus, name="module_task_session_status"),
-        nullable=False,
-        default=ModuleTaskSessionStatus.in_progress,
-    )
-    generated_task: Mapped[str] = mapped_column(Text, nullable=False)
-
-    user: Mapped[User] = relationship(back_populates="task_sessions")
-    module: Mapped[Module] = relationship(back_populates="task_sessions")
-    attempts: Mapped[list[TaskAttempt]] = relationship(
-        back_populates="session",
-        order_by="TaskAttempt.created_at",
-    )
-
-
-class TaskAttempt(TimestampMixin, SoftDeleteMixin, Base):
-    """Konkrétní pokus uživatele o splnění AI úkolu."""
-
-    __tablename__ = "task_attempt"
-    __table_args__ = (Index("ix_task_attempt_session_id", "session_id"),)
-
-    attempt_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("module_task_session.session_id"), nullable=False
-    )
-    user_response: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[AttemptStatus] = mapped_column(
-        Enum(AttemptStatus, name="attempt_status"),
-        nullable=False,
-        default=AttemptStatus.pending,
-    )
-    ai_feedback: Mapped[str | None] = mapped_column(Text)
-    ai_score: Mapped[int | None] = mapped_column(Integer)
-    is_passed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
-    session: Mapped[ModuleTaskSession] = relationship(back_populates="attempts")
 
 
 # ---------- Ticket ----------

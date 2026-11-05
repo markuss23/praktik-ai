@@ -1,11 +1,6 @@
 import enum
 
 
-class QuestionType(enum.StrEnum):
-    closed = "closed"
-    open = "open"
-
-
 class Status(enum.StrEnum):
     draft: str = "draft"
     generated: str = "generated"
@@ -39,18 +34,6 @@ class UserRole(enum.StrEnum):
     lector = "lector"
     guarantor = "guarantor"
     superadmin = "superadmin"
-
-
-class ModuleTaskSessionStatus(enum.StrEnum):
-    in_progress = "in_progress"
-    passed = "passed"
-    failed = "failed"
-
-
-class AttemptStatus(enum.StrEnum):
-    pending = "pending"  # Uživatel odeslal, čeká se na odpověď od AI API
-    evaluated = "evaluated"  # AI úspěšně vyhodnotilo
-    error = "error"  # API spadlo (nepočítá se jako vyčerpaný pokus!)
 
 
 class TicketStatus(enum.StrEnum):

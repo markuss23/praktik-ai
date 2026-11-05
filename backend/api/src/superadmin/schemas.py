@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from api.enums import MentorScope, ModuleTaskSessionStatus
+from api.enums import MentorScope
 from api.src.common.schemas import ORMModel
 
 
@@ -36,31 +36,3 @@ class SystemSettingUpdate(BaseModel):
     model: str | None = None
     prompt: str | None = None
     description: str | None = None
-
-
-# ---------- TaskSession ----------
-
-
-class TaskAttemptItem(ORMModel):
-    attempt_id: int
-    user_response: str
-    ai_feedback: str | None
-    ai_score: int | None
-    is_passed: bool
-    created_at: datetime
-
-
-class TaskSessionResponse(ORMModel):
-    session_id: int
-    user_id: int
-    module_id: int
-    status: ModuleTaskSessionStatus
-    generated_task: str
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-    attempts: list[TaskAttemptItem]
-
-
-class TaskSessionStatusUpdate(BaseModel):
-    status: ModuleTaskSessionStatus

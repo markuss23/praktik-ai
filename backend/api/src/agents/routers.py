@@ -2,7 +2,7 @@ import asyncio
 import base64
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api.dependencies import CurrentUser, require_role
@@ -11,26 +11,16 @@ from api.src.common.utils import assert_course_editable, get_or_404, check_enrol
 from api.src.agents.schemas import (
     ActiveImageGeneration,
     CourseGenerationProgressResponse,
-    EvaluateAssessmentRequest,
-    EvaluateAssessmentResponse,
-    EvaluateOpenQuestionRequest,
-    EvaluatePracticeAnswerRequest,
-    EvaluatePracticeAnswerResponse,
-    GenerateAssessmentRequest,
-    GenerateAssessmentResponse,
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
     GenerateImageResponse,
-    GeneratePracticeQuestionRequest,
     ImageGenerationProgressResponse,
-    GeneratePracticeQuestionResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
     WikiChatRequest,
     WikiChatResponse,
     WikiSyncResponse,
 )
-from api.src.agents.typing_guard import typed_too_fast
 from api.src.agents.progress import (
     get_progress,
     list_running_course_ids,
@@ -55,12 +45,6 @@ from api.src.agents.image_progress import (
 from api.database import SessionLocal
 from api.src.courses.controllers.image import normalize_course_image, store_course_image
 from api.storage import seaweedfs
-from api.src.agents.practice_controllers import (
-    generate_practice_question,
-    evaluate_practice_answer,
-    evaluate_open_question_answer,
-)
-from agents.open_question_evaluator import OpenQuestionEvaluation
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.image_generator.course.service import CourseImageGeneratorService
@@ -69,8 +53,6 @@ from agents.image_generator.service import ImageGenerationResult
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
 from agents.wiki.agent.service import sync_wiki
-from agents.assessment_generator.service import AssessmentService
-from agents.assessment_evaluator.service import EvaluationService
 from api.database import SessionSqlSessionDependency
 from api import models
 from api.enums import MentorScope
@@ -575,212 +557,3 @@ async def wiki_sync() -> WikiSyncResponse:
     result = await sync_wiki()
 
     return WikiSyncResponse(pages_processed=result.pages_processed)
-
-
-@router.post(
-    "/generate-assessment",
-    deprecated=True,
-    operation_id="generate_assessment",
-)
-async def generate_assessment(
-    body: GenerateAssessmentRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> GenerateAssessmentResponse:
-    """Vygeneruje assessment otázku pro modul. Vyžaduje zápis do kurzu."""
-
-    module = get_or_404(db, models.Module, body.module_id, detail="Modul nenalezen")
-
-    course = module.course
-    if not course.is_active or course.status not in ("approved", "archived"):
-        raise HTTPException(
-            status_code=400,
-            detail="Modul není v aktivním a schváleném kurzu",
-        )
-
-    # Ověření zápisu – platí pro všechny uživatele včetně vlastníka a superadmina
-    check_enrollment(db, user, course)
-
-    # Nelze generovat, pokud existuje session ve stavu passed nebo in_progress
-    existing_session: models.ModuleTaskSession | None = (
-        db.execute(
-            select(models.ModuleTaskSession).where(
-                models.ModuleTaskSession.user_id == user.user_id,
-                models.ModuleTaskSession.module_id == body.module_id,
-                models.ModuleTaskSession.is_active.is_(True),
-                models.ModuleTaskSession.status.in_(
-                    [
-                        models.ModuleTaskSessionStatus.passed,
-                        models.ModuleTaskSessionStatus.in_progress,
-                    ]
-                ),
-            )
-        )
-        .scalars()
-        .first()
-    )
-    if existing_session is not None:
-        if existing_session.status == models.ModuleTaskSessionStatus.passed:
-            raise HTTPException(
-                status_code=409,
-                detail="Tento modul jste již úspěšně splnili",
-            )
-        raise HTTPException(
-            status_code=409,
-            detail="Pro tento modul již máte aktivní assessment",
-        )
-
-    service = AssessmentService(db=db, module_id=body.module_id, user_id=user.user_id)
-
-    try:
-        result = await service.generate()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return GenerateAssessmentResponse(
-        session_id=result.session_id,
-        generated_question=result.generated_question,
-    )
-
-
-@router.post(
-    "/evaluate-assessment",
-    deprecated=True,
-    operation_id="evaluate_assessment",
-)
-async def evaluate_assessment(
-    body: EvaluateAssessmentRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> EvaluateAssessmentResponse:
-    """Vyhodnotí odpověď studenta na assessment otázku."""
-
-    # Ověření, že session patří tomuto uživateli
-    session: models.ModuleTaskSession | None = (
-        db.execute(
-            select(models.ModuleTaskSession).where(
-                models.ModuleTaskSession.session_id == body.session_id,
-                models.ModuleTaskSession.user_id == user.user_id,
-                models.ModuleTaskSession.is_active.is_(True),
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if session is None:
-        raise HTTPException(status_code=404, detail="Assessment session nenalezena")
-
-    if session.status != models.ModuleTaskSessionStatus.in_progress:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Session není ve stavu in_progress (aktuální: {session.status.value})",
-        )
-
-    # Kontrola počtu pokusů proti max_task_attempts modulu
-    module = session.module
-    evaluated_attempts_count: int = db.execute(
-        select(func.count()).where(
-            models.TaskAttempt.session_id == session.session_id,
-            models.TaskAttempt.status == models.AttemptStatus.evaluated,
-        )
-    ).scalar_one()
-
-    if evaluated_attempts_count >= module.max_task_attempts:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Vyčerpali jste maximální počet pokusů ({module.max_task_attempts}) pro tento modul",
-        )
-
-    # Odpověď se v testu musí napsat — nereálně rychle vzniklou odpověď
-    # (vložený text) odmítneme dřív, než se pokus započítá a zavolá se AI.
-    previous_attempts = [a for a in session.attempts if a.is_active]
-    last_attempt = previous_attempts[-1] if previous_attempts else None
-    if typed_too_fast(
-        previous=last_attempt.user_response if last_attempt else "",
-        current=body.user_response,
-        since=last_attempt.created_at if last_attempt else session.created_at,
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Odpověď vznikla rychleji, než je možné ji napsat. V testu je potřeba "
-                "odpověď napsat vlastními slovy — pokus se nezapočítal."
-            ),
-        )
-
-    service = EvaluationService(
-        db=db,
-        session_id=body.session_id,
-        user_id=user.user_id,
-        user_response=body.user_response,
-    )
-
-    try:
-        result = await service.evaluate()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return EvaluateAssessmentResponse(
-        attempt_id=result.attempt_id,
-        ai_score=result.ai_score,
-        is_passed=result.is_passed,
-        ai_feedback=result.ai_feedback,
-    )
-
-
-@router.post(
-    "/generate-practice-question",
-    deprecated=True,
-    operation_id="generate_practice_question",
-)
-async def endp_generate_practice_question(
-    body: GeneratePracticeQuestionRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> GeneratePracticeQuestionResponse:
-    """Vygeneruje personalizovanou procvičovací otázku z obsahu modulu."""
-    return await generate_practice_question(
-        db=db,
-        module_id=body.module_id,
-        question_type=body.question_type,
-        user=user,
-    )
-
-
-@router.post(
-    "/evaluate-practice-answer",
-    deprecated=True,
-    operation_id="evaluate_practice_answer",
-)
-async def endp_evaluate_practice_answer(
-    body: EvaluatePracticeAnswerRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> EvaluatePracticeAnswerResponse:
-    """Vyhodnotí odpověď studenta na procvičovací otázku."""
-    return await evaluate_practice_answer(
-        db=db,
-        user_question_id=body.user_question_id,
-        user_input=body.user_input,
-        user=user,
-    )
-
-
-@router.post(
-    "/evaluate-open-question",
-    deprecated=True,
-    operation_id="evaluate_open_question",
-)
-async def endp_evaluate_open_question(
-    body: EvaluateOpenQuestionRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> OpenQuestionEvaluation:
-    """Vyhodnotí odpověď na otevřenou otázku modulu. Nic neukládá."""
-    return await evaluate_open_question_answer(
-        db=db,
-        question_id=body.question_id,
-        user_input=body.user_input,
-        user=user,
-    )

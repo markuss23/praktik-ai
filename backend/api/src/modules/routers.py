@@ -5,14 +5,9 @@ from api.src.modules.controllers import (
     get_modules,
     get_module,
     update_module,
-    complete_module,
-    get_course_progress,
-    get_assessment_question,
     # delete_module,
 )
-from api.src.agents.practice_controllers import list_practice_questions
-from api.src.agents.schemas import PracticeQuestionWithAttempts
-from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate, ModuleCompletionStatus, CompleteModuleRequest, ModuleAssessmentQuestion
+from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api.src.common.annotations import (
     INCLUDE_INACTIVE_ANNOTATION,
     TEXT_SEARCH_ANNOTATION,
@@ -73,47 +68,6 @@ async def endp_update_module(
     module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Module:
     return update_module(db, module_id, module, user)
-
-
-@router.post("/{module_id}/complete", operation_id="complete_module", deprecated=True, dependencies=[require_role("user")])
-async def endp_complete_module(
-    module_id: int,
-    body: CompleteModuleRequest,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> ModuleCompletionStatus:
-    """Označí modul jako dokončený po úspěšném testu."""
-    return complete_module(db, module_id, user, body.score)
-
-
-@router.get("/course/{course_id}/progress", operation_id="get_course_progress", deprecated=True, dependencies=[require_role("user")])
-async def endp_get_course_progress(
-    course_id: int,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> list[ModuleCompletionStatus]:
-    """Vrátí stav dokončení všech modulů kurzu pro aktuálního uživatele."""
-    return get_course_progress(db, course_id, user)
-
-
-@router.get("/{module_id}/practice-questions", operation_id="list_practice_questions", deprecated=True)
-async def endp_list_practice_questions(
-    module_id: int,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> list[PracticeQuestionWithAttempts]:
-    """Vrátí seznam procvičovacích otázek s pokusy pro aktuálního uživatele a daný modul."""
-    return list_practice_questions(db=db, module_id=module_id, user=user)
-
-
-@router.get("/{module_id}/assessment", operation_id="get_module_assessment", deprecated=True)
-async def endp_get_assessment_question(
-    module_id: int,
-    db: SessionSqlSessionDependency,
-    user: CurrentUser,
-) -> ModuleAssessmentQuestion:
-    """Vrátí aktivní assessment otázku pro modul a aktuálního uživatele."""
-    return get_assessment_question(db, module_id, user)
 
 
 # @router.delete("/{module_id}", operation_id="delete_module", status_code=204)
