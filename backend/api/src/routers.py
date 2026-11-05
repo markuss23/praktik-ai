@@ -20,6 +20,7 @@ from api.src.tickets.routers import (
     router as tickets_router,
     public_router as tickets_public_router,
 )
+from api.src.assessments.routers import router as assessments_router
 from api.src.editor_images.routers import (
     router as editor_images_router,
     public_router as editor_images_public_router,
@@ -41,6 +42,7 @@ router.include_router(auth_router)
 router.include_router(courses_public_router)
 router.include_router(catalogs_router)
 router.include_router(tickets_public_router)
+router.include_router(agents_public_router)
 
 # Všechny ostatní routery s povinnou autentizací
 router.include_router(courses_router, dependencies=[Depends(auth.get_current_user)])
@@ -53,6 +55,10 @@ router.include_router(users_router, dependencies=[Depends(auth.get_current_user)
 router.include_router(enrollments_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(feedbacks_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(superadmin_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(
+    assessments_router,
+    dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],
+)
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
 )
