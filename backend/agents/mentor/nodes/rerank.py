@@ -1,49 +1,43 @@
 # backend/agents/mentor/nodes/rerank_documents.py
+import logging
+from pathlib import Path
+
 from langchain_core.messages.ai import AIMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.mentor.state import AgentState, ChunkData
 
-DEFAULT_MODEL = "gpt-4o-mini"
+logger = logging.getLogger(__name__)
 
-DEFAULT_PROMPT = (
-    "Máš seznam dokumentů a otázku uživatele.\n"
-    "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
-    "Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího "
-    "(např: 3, 7, 1, 5).\n"
-    "Odpověz pouze čísly oddělenými čárkami, nic dalšího."
-)
+PROMPT = (Path(__file__).parent.parent / "reranker_prompt.md").read_text(encoding="utf-8")
+TOP_K = 5
 
 
-def rerank_documents(state: AgentState) -> dict:
+async def rerank_documents(state: AgentState) -> dict:
     """LLM reranking dokumentů podle relevance k otázce."""
-    print("Reranking dokumentů pomocí LLM...")
+    logger.info("Reranking dokumentů pomocí LLM...")
 
     context_chunks = state.get("context_chunks", [])
-    user_message = state["message"]
+    # Přepsaný dotaz z routeru — u navazující otázky („a proč?“) samotná zpráva nedává smysl
+    user_message = state.get("search_query") or state["message"]
     db = state["db"]
 
-    if len(context_chunks) <= 3:
-        print("Málo dokumentů, přeskakuji reranking")
+    if len(context_chunks) <= TOP_K:
+        logger.info("Málo dokumentů, přeskakuji reranking")
         return {}  # Necháme původní pořadí
 
-    cfg = get_llm_config(
-        db,
-        "mentor_reranker",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
+    cfg = get_llm_config(db, "mentor_reranker")
     llm = create_chat_llm(cfg.model, temperature=0)
 
     # Vytvoř prompt s dokumenty
     docs_text = "\n\n".join(
         [
-            f"[DOC {idx}]\n{chunk.content[:400]}"
+            f"[DOC {idx}]\n{chunk.content[:800]}"
             for idx, chunk in enumerate(context_chunks, 1)
         ]
     )
 
-    rerank_prompt = f"""{cfg.prompt}
+    rerank_prompt = f"""{PROMPT}
 
             OTÁZKA: {user_message}
 
@@ -51,28 +45,32 @@ def rerank_documents(state: AgentState) -> dict:
             {docs_text}"""
 
     try:
-        response: AIMessage = llm.invoke(rerank_prompt)
+        response: AIMessage = await llm.ainvoke(rerank_prompt)
 
-        # Parse odpovědi
-        ranked_indices: list[int] = [
-            int(x.strip()) - 1  # Convert to 0-based
-            for x in response.content.strip().split(",")
-            if x.strip().isdigit()
-        ]
+        # Parse odpovědi — bez duplicit a čísel mimo rozsah
+        ranked_indices: list[int] = []
+        for x in response.text.split(","):
+            idx = int(x) - 1 if x.strip().isdigit() else -1
+            if 0 <= idx < len(context_chunks) and idx not in ranked_indices:
+                ranked_indices.append(idx)
 
-        # Vyber top 3
+        # Doplní z původního pořadí, když LLM vrátí méně než TOP_K
+        for idx in range(len(context_chunks)):
+            if len(ranked_indices) >= TOP_K:
+                break
+            if idx not in ranked_indices:
+                ranked_indices.append(idx)
+
         reranked_chunks: list[ChunkData] = [
-            context_chunks[idx]
-            for idx in ranked_indices[:3]
-            if 0 <= idx < len(context_chunks)
+            context_chunks[idx] for idx in ranked_indices[:TOP_K]
         ]
 
-        print(f"Reranking: {[i + 1 for i in ranked_indices[:3]]}")
-        print(f"Vybráno {len(reranked_chunks)} top dokumentů")
+        logger.debug(f"Reranking: {[i + 1 for i in ranked_indices[:TOP_K]]}")
+        logger.info(f"Vybráno {len(reranked_chunks)} top dokumentů")
 
         return {"context_chunks": reranked_chunks}
 
     except Exception as e:
-        print(f"Chyba při rerankingu: {e}")
-        # Fallback: vrať top 3 z původních
-        return {"context_chunks": context_chunks[:3]}
+        logger.exception(f"Chyba při rerankingu: {e}")
+        # Fallback: vrať TOP_K z původních
+        return {"context_chunks": context_chunks[:TOP_K]}

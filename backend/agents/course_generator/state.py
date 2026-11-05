@@ -1,45 +1,41 @@
 from typing import NotRequired, TypedDict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from api.enums import QuestionType
+from api.src.assessments.pretest.schemas import PretestSettings
 
 
 # ---------- Agentní schémata (LLM structured output) ----------
 # Tato schémata jsou oddělena od API response schémat.
 
 
-class LearnBlockGenerated(BaseModel):
-    content: str
-
-
-class PracticeOptionGenerated(BaseModel):
-    text: str
-
-
-class QuestionKeywordGenerated(BaseModel):
-    keyword: str
-
-
-class PracticeQuestionGenerated(BaseModel):
-    question_type: QuestionType
-    question: str
-    correct_answer: str | None = None
-    example_answer: str | None = None
-    closed_options: list[PracticeOptionGenerated] = []
-    open_keywords: list[QuestionKeywordGenerated] = []
-
-
 class ModuleGenerated(BaseModel):
     title: str
-    learn_blocks: list[LearnBlockGenerated] = []
-    practice_questions: list[PracticeQuestionGenerated] = []
+    perex: str
+    content: str  # výklad modulu (HTML), ukládá se jako jediný learn block
 
 
 class CourseGenerated(BaseModel):
     title: str
     modules: list[ModuleGenerated] = []
+
+
+class ModuleEnrichment(BaseModel):
+    """Zařazení hotového výkladu modulu do číselníků.
+
+    Otázky (pretest) generuje zvlášť api/src/assessments/pretest/generator.py.
+    """
+
+    neuro_principle_code: str = Field(
+        description='Kód přesně jednoho neurovědního principu, např. "NP-01".'
+    )
+    krauu_competence_codes: list[str] = Field(
+        description='1–3 kódy kompetencí KRAUU, např. "2.4"; nikdy kódy oblastí "x.0".'
+    )
+    bloom_level_codes: list[str] = Field(
+        description='1–3 číselné kódy úrovní Bloomovy taxonomie, např. "3".'
+    )
 
 
 # ---------- Vstupní data kurzu ----------
@@ -64,3 +60,5 @@ class AgentState(TypedDict):
     summarize_content: str
     # Výstup
     course: NotRequired[CourseGenerated]
+    enrichments: NotRequired[list[ModuleEnrichment]]  # 1:1 k course.modules
+    pretests: NotRequired[list[PretestSettings]]  # 1:1 k course.modules

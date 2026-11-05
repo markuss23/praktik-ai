@@ -2,7 +2,12 @@
 
 import { ReactNode } from 'react';
 import { Pencil, Eye, EyeOff, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
+// Ikony mají volitelnou velikost (16/14/12 px podle hustoty tabulky), takže
+// místo pevného `size="icon"` necháváme rozměr určit padding + ikona.
+const ICON_BTN = cn(BTN_KEEP_BOX, 'p-2 rounded-md');
 
 interface ActionButtonProps {
   onClick: () => void;
@@ -16,13 +21,9 @@ interface ActionButtonProps {
  */
 export function EditActionButton({ onClick, title = 'Editovat', iconSize = 16 }: ActionButtonProps) {
   return (
-    <button
-      onClick={onClick}
-      className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-      title={title}
-    >
+    <Button size="icon" onClick={onClick} className={ICON_BTN} title={title}>
       <Pencil size={iconSize} />
-    </button>
+    </Button>
   );
 }
 
@@ -36,17 +37,17 @@ export function PublishActionButton({
   iconSize = 16,
 }: ActionButtonProps & { isPublished: boolean }) {
   return (
-    <button
+    <Button
+      size="icon"
       onClick={onClick}
-      className={`p-2 text-white rounded-md transition-colors ${
-        isPublished
-          ? 'bg-orange-500 hover:bg-orange-600'
-          : 'bg-green-500 hover:bg-green-600'
-      }`}
+      className={cn(
+        ICON_BTN,
+        isPublished && 'bg-brand-accent hover:bg-brand-accent/80',
+      )}
       title={title ?? (isPublished ? 'Zrušit publikování' : 'Publikovat')}
     >
       {isPublished ? <EyeOff size={iconSize} /> : <Eye size={iconSize} />}
-    </button>
+    </Button>
   );
 }
 
@@ -55,13 +56,14 @@ export function PublishActionButton({
  */
 export function DeleteActionButton({ onClick, title = 'Smazat', iconSize = 16 }: ActionButtonProps) {
   return (
-    <button
+    <Button
+      size="icon"
       onClick={onClick}
-      className="p-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+      className={cn(ICON_BTN, 'bg-destructive text-primary-foreground hover:bg-destructive/80')}
       title={title}
     >
       <Trash2 size={iconSize} />
-    </button>
+    </Button>
   );
 }
 
@@ -76,16 +78,18 @@ export function ApproveActionButton({
   iconSize = 16,
 }: ActionButtonProps & { isApproved: boolean; isLoading?: boolean }) {
   return (
-    <button
+    <Button
+      size="icon"
       onClick={onClick}
       disabled={disabled || isLoading}
-      className={`p-2 text-white rounded-md transition-colors ${
+      className={cn(
+        ICON_BTN,
         isLoading
-          ? 'bg-amber-400 cursor-wait'
+          ? 'bg-warning cursor-wait'
           : isApproved
-            ? 'bg-amber-500 hover:bg-amber-600'
-            : 'bg-teal-600 hover:bg-teal-700'
-      }`}
+            ? 'bg-warning hover:bg-warning/80'
+            : '',
+      )}
       title={isApproved ? 'Zrušit schválení (zpět na Vygenerováno)' : 'Schválit kurz a generovat embeddingy'}
     >
       {isLoading ? (
@@ -98,7 +102,7 @@ export function ApproveActionButton({
       ) : (
         <CheckCircle size={iconSize} />
       )}
-    </button>
+    </Button>
   );
 }
 

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from api.config import settings
+
 from agents.wiki.agent.graph import create_graph
 
 
@@ -7,6 +9,14 @@ from agents.wiki.agent.graph import create_graph
 class WikiSyncResult:
     repo_url: str
     pages_processed: int
+
+
+async def sync_wiki() -> "WikiSyncResult":
+    """Naklonuje/aktualizuje projektovou GitHub wiki a znovu ji zaindexuje."""
+    service = WikiAgentService(
+        repo_url=settings.wiki.repo_url, local_path=settings.wiki.local_path
+    )
+    return await service.sync()
 
 
 class WikiAgentService:

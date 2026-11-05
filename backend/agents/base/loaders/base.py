@@ -1,18 +1,21 @@
-"""Základní třída a typy pro data loadery."""
+"""Základní třída pro data loadery a převod libovolného souboru na text."""
 
+import io
 from abc import ABC, abstractmethod
-from enum import StrEnum
 from pathlib import Path
 
+from markitdown import MarkItDown, StreamInfo
+from openai import OpenAI
 
-class SourceType(StrEnum):
-    """Typy podporovaných datových zdrojů."""
-
-    MARKDOWN = "md"
-    TEXT = "txt"
-    CSV = "csv"
-    DOCX = "docx"  # Pro budoucí Google Docs API
-    PDF = "pdf"
+AUDIO_VIDEO = (".mp3", ".mp4", ".m4a", ".wav", ".webm", ".mpeg", ".mpga")
+# Přípony, které MarkItDown (s nainstalovanými extras) umí převést na text
+MARKITDOWN = (
+    ".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".csv", ".html", ".htm",
+    ".txt", ".text", ".md", ".markdown", ".json", ".jsonl",
+    ".epub", ".ipynb", ".zip", ".jpg", ".jpeg", ".png",
+)  # fmt: skip
+SUPPORTED_EXTENSIONS = AUDIO_VIDEO + MARKITDOWN
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB, limit přepisu audia v OpenAI
 
 
 class BaseLoader(ABC):
@@ -32,67 +35,23 @@ class BaseLoader(ABC):
         return path
 
 
-class DataLoader:
-    """Univerzální loader s autodetekcí typu souboru."""
+def file_to_text(content: bytes, filename: str) -> str:
+    """Převede obsah souboru na text (Markdown).
 
-    def __init__(self) -> None:
-        from agents.base.loaders.docx_file import DocxLoader
-        from agents.base.loaders.markdown import MarkdownLoader
-        from agents.base.loaders.pdf_file import PdfLoader
-        # from agents.base.loaders.text import TextLoader
-        # from agents.base.loaders.csv_loader import CSVLoader
+    Audio/video se přepíše přes OpenAI, ostatní formáty (PDF, DOCX, PPTX,
+    XLSX, HTML, obrázky, ...) převede MarkItDown; obrázky popíše gpt-4o.
+    """
+    client = OpenAI()
+    suffix = Path(filename).suffix.lower()
 
-        self._loaders = {
-            SourceType.MARKDOWN: MarkdownLoader(),
-            SourceType.DOCX: DocxLoader(),
-            SourceType.PDF: PdfLoader(),
-            # SourceType.TEXT: TextLoader(),
-            # SourceType.CSV: CSVLoader(),
-        }
+    if suffix in AUDIO_VIDEO:
+        return client.audio.transcriptions.create(
+            model="gpt-4o-transcribe",
+            file=(filename, content),
+        ).text
 
-    def _detect_type(self, source: str) -> SourceType:
-        """Detekuje typ souboru podle přípony."""
-        path = Path(source)
-        suffix: str = path.suffix.lower()
-
-        type_mapping: dict[str, SourceType] = {
-            ".md": SourceType.MARKDOWN,
-            ".csv": SourceType.CSV,
-            ".txt": SourceType.TEXT,
-            ".docx": SourceType.DOCX,
-            ".pdf": SourceType.PDF,
-        }
-
-        return type_mapping.get(suffix, SourceType.TEXT)
-
-    def load(self, source: str, source_type: SourceType | None = None) -> str:
-        """
-        Načte data ze zdroje.
-
-        Args:
-            source: Cesta k souboru
-            source_type: Typ zdroje (volitelné, autodetekce podle přípony)
-
-        Returns:
-            Načtený text
-        """
-        if source_type is None:
-            source_type = self._detect_type(source)
-
-        loader = self._loaders.get(source_type)
-        if not loader:
-            raise ValueError(f"Nepodporovaný typ zdroje: {source_type}")
-
-        return loader.load(source)
-
-    def load_multiple(self, sources: list[str]) -> str:
-        """
-        Načte více souborů a spojí jejich obsah.
-
-        Args:
-            sources: Seznam cest k souborům
-
-        Returns:
-            Spojený text ze všech zdrojů
-        """
-        ...
+    md = MarkItDown(llm_client=client, llm_model="gpt-4o")
+    return md.convert_stream(
+        io.BytesIO(content),
+        stream_info=StreamInfo(extension=suffix, filename=filename),
+    ).text_content

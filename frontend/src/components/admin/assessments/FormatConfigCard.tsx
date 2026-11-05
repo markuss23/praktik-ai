@@ -1,0 +1,163 @@
+'use client';
+
+import { Plus, Trash2 } from 'lucide-react';
+import type { AssessmentFormatSettings } from '@/lib/api-client';
+import { formatName } from '@/lib/assessment-labels';
+import { emptyClosedQuestion, socraticTurnsToPass } from '@/lib/assessment-validation';
+import { Button, Input, Label } from '@/components/ui';
+import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
+import { ClosedQuestionFields } from './ClosedQuestionFields';
+
+export interface FormatDraft {
+  settings: AssessmentFormatSettings;
+  isEnabled: boolean;
+  isRequired: boolean;
+}
+
+interface FormatConfigCardProps {
+  id: number;
+  code: string;
+  value: FormatDraft;
+  onChange: (next: FormatDraft) => void;
+  onRemove: () => void;
+  errors: string[];
+}
+
+function NumberField({ id, label, value, onChange, min, max, suffix }: {
+  id: string;
+  label: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  min: number;
+  max?: number;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label htmlFor={id} className="text-xs font-normal text-muted-foreground">{label}</Label>
+      <div className="flex items-center gap-1.5">
+        <Input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          className="h-auto w-20 px-2 py-1.5 text-sm"
+        />
+        {suffix && <span className="text-sm text-muted-foreground">{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Nastavení připojeného formátu — obsah rozbalené karty ve FormatCards
+export function FormatConfigCard({ id, code, value, onChange, onRemove, errors }: FormatConfigCardProps) {
+  const s = value.settings;
+  const setSettings = (patch: Partial<AssessmentFormatSettings>) => onChange({ ...value, settings: { ...s, ...patch } });
+  const questions = s.questions ?? [];
+  const fieldId = (name: string) => `format-${id}-${name}`;
+  const turnsToPass = code === 'socratic_dialog_ai' ? socraticTurnsToPass(s) : null;
+
+  return (
+    // Povinné a Zapnuté jsou v hlavičce karty (FormatCards)
+    <div className={cn(!value.isEnabled && 'opacity-70')}>
+      <div className="p-3 sm:p-4 space-y-4">
+        {code === 'closed_questions' && (
+          <div className="space-y-3">
+            {questions.map((q, index) => (
+              <ClosedQuestionFields
+                key={index}
+                label={`Otázka ${index + 1}`}
+                value={q}
+                editableOptionCount
+                onChange={(next) => setSettings({ questions: questions.map((item, i) => (i === index ? next : item)) })}
+                onRemove={() => setSettings({ questions: questions.filter((_, i) => i !== index) })}
+              />
+            ))}
+            <Button
+              variant="dashed"
+              onClick={() => setSettings({ questions: [...questions, emptyClosedQuestion()] })}
+              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors w-full justify-center")}
+            >
+              <Plus size={16} />
+              <span className="text-sm">Přidat otázku</span>
+            </Button>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-4">
+          {code === 'closed_questions_ai' && (
+            <NumberField
+              id={fieldId('count')}
+              label="Počet otázek (AI)"
+              value={s.questionCount}
+              onChange={(v) => setSettings({ questionCount: v })}
+              min={1}
+              max={20}
+            />
+          )}
+          {code === 'socratic_dialog_ai' ? (
+            <>
+              <NumberField id={fieldId('min-turns')} label="Nejméně kol" value={s.minTurns} onChange={(v) => setSettings({ minTurns: v })} min={1} max={10} />
+              <NumberField id={fieldId('max-turns')} label="Nejvíce kol" value={s.maxTurns} onChange={(v) => setSettings({ maxTurns: v })} min={2} max={10} />
+            </>
+          ) : (
+            <>
+              <NumberField
+                id={fieldId('attempts')}
+                label="Pokusů na otázku"
+                value={s.maxAttempts}
+                onChange={(v) => setSettings({ maxAttempts: v })}
+                min={1}
+              />
+              <NumberField
+                id={fieldId('threshold')}
+                label="Potřebné skóre"
+                value={s.passThreshold === undefined ? undefined : Math.round(s.passThreshold * 100)}
+                onChange={(v) => setSettings({ passThreshold: v === undefined ? undefined : v / 100 })}
+                min={0}
+                max={100}
+                suffix="%"
+              />
+            </>
+          )}
+        </div>
+
+        {code === 'socratic_dialog_ai' && (
+          <div className="flex flex-wrap gap-4">
+            <NumberField id={fieldId('start-elo')} label="Počáteční elo" value={s.startElo} onChange={(v) => setSettings({ startElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('min-elo')} label="Nejnižší elo" value={s.minElo} onChange={(v) => setSettings({ minElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('max-elo')} label="Nejvyšší elo" value={s.maxElo} onChange={(v) => setSettings({ maxElo: v })} min={1000} max={3000} />
+            <NumberField id={fieldId('pass-elo')} label="Elo ke splnění" value={s.passElo} onChange={(v) => setSettings({ passElo: v })} min={500} max={3000} />
+            <NumberField id={fieldId('max-step')} label="Max. změna elo za kolo" value={s.maxStep} onChange={(v) => setSettings({ maxStep: v })} min={1} max={100} />
+          </div>
+        )}
+
+        {turnsToPass !== null && turnsToPass > 1 && turnsToPass <= 10 && (
+          // Víc než 10 kol hlásí validation
+          <p className="text-xs text-muted-foreground">
+            Student projde nejdřív po {turnsToPass} kolech, a to jen s výbornými odpověďmi.
+            {/* Po nejmenším počtu kol smí AI rozhovor ukončit (KONEC) */}
+            {s.minTurns !== undefined && s.minTurns < turnsToPass &&
+              ` AI může rozhovor ukončit už po ${s.minTurns} ${czechPlural(s.minTurns, 'kole', 'kolech', 'kolech')} — pak student neprojde.`}
+          </p>
+        )}
+
+        {errors.length > 0 && (
+          <ul role="alert" className="list-disc list-inside text-sm text-destructive space-y-0.5">
+            {errors.map((err) => <li key={err}>{err}</li>)}
+          </ul>
+        )}
+
+        <div className="flex justify-end">
+          <Button variant="ghost-destructive" size="sm" onClick={onRemove} aria-label={`Odebrat ${formatName(code)}`}>
+            <Trash2 data-icon="inline-start" />
+            Odebrat formát
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

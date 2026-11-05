@@ -9,11 +9,13 @@ import { useCallback, useMemo } from 'react';
 export type AdminView = 
   | 'courses'           // Default - course list
   | 'course-content'    // Course content editor
+  | 'course-pretest'    // Pretest modulů (sdílí CourseTestsView s course-tests)
   | 'course-tests'      // Course test/exam editor
   | 'course-summary'    // Course summary/preview
   | 'course-edit'       // Course edit form
   | 'course-upload'     // Upload course files
   | 'course-ai-create'  // AI course generation
+  | 'course-preview'    // Read-only náhled kurzu (cizí kurz nebo „Náhled" z menu)
   | 'module-edit';      // Module edit form
 
 export interface AdminNavigationState {
@@ -48,7 +50,7 @@ export function useAdminNavigation() {
   /**
    * Navigate to a new view with shallow routing (no full page reload)
    */
-  const navigate = useCallback((newState: Partial<AdminNavigationState>) => {
+  const navigate = useCallback((newState: Partial<AdminNavigationState>, { replace = false }: { replace?: boolean } = {}) => {
     const params = new URLSearchParams();
     
     const mergedState = { ...currentState, ...newState };
@@ -71,7 +73,9 @@ export function useAdminNavigation() {
     
     // Use router.push with shallow: false is default in App Router
     // But the navigation happens client-side without full reload
-    router.push(newUrl, { scroll: false });
+    // `replace` pro přesměrování (např. z editoru cizího kurzu do náhledu), ať Zpět nevede do smyčky.
+    if (replace) router.replace(newUrl, { scroll: false });
+    else router.push(newUrl, { scroll: false });
   }, [currentState, pathname, router]);
 
   /**
@@ -116,6 +120,11 @@ export function useAdminNavigation() {
     navigate({ view: 'module-edit', moduleId, courseId });
   }, [navigate]);
 
+  // Pretest modulů, volitelně s vybraným modulem
+  const goToCoursePretest = useCallback((courseId: number, moduleId?: number) => {
+    navigate({ view: 'course-pretest', courseId, moduleId });
+  }, [navigate]);
+
   /**
    * Navigate to course tests editor, optionally pre-selecting a module
    */
@@ -128,6 +137,13 @@ export function useAdminNavigation() {
    */
   const goToCourseSummary = useCallback((courseId: number) => {
     navigate({ view: 'course-summary', courseId, moduleId: undefined });
+  }, [navigate]);
+
+  /**
+   * Read-only náhled kurzu (studentský pohled bez možnosti úprav)
+   */
+  const goToCoursePreview = useCallback((courseId: number, options?: { replace?: boolean }) => {
+    navigate({ view: 'course-preview', courseId, moduleId: undefined }, options);
   }, [navigate]);
 
   /**
@@ -151,8 +167,10 @@ export function useAdminNavigation() {
     goToCourseUpload,
     goToAICreate,
     goToModuleEdit,
+    goToCoursePretest,
     goToCourseTests,
     goToCourseSummary,
+    goToCoursePreview,
     goBack,
   };
 }

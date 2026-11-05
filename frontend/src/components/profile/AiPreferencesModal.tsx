@@ -1,151 +1,163 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { updateProfile } from '@/lib/api-client';
-import { useModalDismiss } from '@/hooks';
+import { Loader2 } from 'lucide-react';
+import type { AiStyleAxis } from '@/api';
+import { getAiStyles, getMyAiStyle, updateMyAiStyle } from '@/lib/api-client';
+import { readApiErrorDetail } from '@/lib/api-error';
+import { Button, Label, Modal, RadioGroup, RadioGroupItem } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 interface AiPreferencesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialAiTone: string;
-  initialAiExpressionLevel: string;
-  onSaved: () => void;
 }
 
-export function AiPreferencesModal({
-  isOpen,
-  onClose,
-  initialAiTone,
-  initialAiExpressionLevel,
-  onSaved,
-}: AiPreferencesModalProps) {
-  const [aiTone, setAiTone] = useState(initialAiTone);
-  const [aiExpressionLevel, setAiExpressionLevel] = useState(initialAiExpressionLevel);
+// description je prompt pro AI; uživateli krátké shrnutí, neznámý code = jen name
+const OPTION_SUMMARIES: Record<string, string> = {
+  'ton.form': 'Vykání, věcně a s odstupem.',
+  'ton.neut': 'Vykání, věcně a vstřícně.',
+  'ton.frnd': 'Vykání, vřele a s povzbuzením.',
+  'dens.low': 'Jedna myšlenka na větu.',
+  'dens.med': 'Jedna až dvě myšlenky na větu.',
+  'dens.high': 'Víc informací v každé větě.',
+  'form.expo': 'Definice, vysvětlení, shrnutí.',
+  'form.instr': 'Postup v krocích.',
+  'form.narr': 'Krátký příběh z praxe.',
+  'rhet.plain': 'Bez přirovnání a příkladů navíc.',
+  'rhet.ex': 'Příklady z praxe.',
+  'rhet.meta': 'Vysvětlení přirovnáním.',
+};
 
-  useEffect(() => {
-    if (isOpen) {
-      setAiTone(initialAiTone);
-      setAiExpressionLevel(initialAiExpressionLevel);
-    }
-  }, [isOpen, initialAiTone, initialAiExpressionLevel]);
-
-  useModalDismiss(isOpen, onClose);
-
+/** Styl komunikace AI tutora — na každé ose (tón, hustota…) jedna volba z číselníku. */
+export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps) {
+  const [axes, setAxes] = useState<AiStyleAxis[]>([]);
+  // {kód osy: kód nastavení} — uložený stav a rozpracovaná volba
+  const [saved, setSaved] = useState<Record<string, string>>({});
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([getAiStyles(), getMyAiStyle()])
+      .then(([catalog, style]) => {
+        if (cancelled) return;
+        setAxes(catalog);
+        setSaved(style);
+        setChoice(style);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Nastavení se nepodařilo načíst. Zkuste to znovu.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  // Posílají se jen změněné osy, neuvedené zůstanou na serveru beze změny
+  const changed = Object.fromEntries(
+    Object.entries(choice).filter(([axis, option]) => saved[axis] !== option),
+  );
+  const hasChanges = Object.keys(changed).length > 0;
+
   const handleSave = async () => {
-    if (!aiTone.trim() || !aiExpressionLevel.trim()) return;
+    if (!hasChanges) return;
     setSaving(true);
     setError(null);
     try {
-      await updateProfile(aiTone.trim(), aiExpressionLevel.trim());
-      onSaved();
+      await updateMyAiStyle(changed);
       onClose();
-    } catch {
-      setError('Nepodařilo se uložit. Zkuste to znovu.');
+    } catch (err) {
+      setError((await readApiErrorDetail(err)) ?? 'Nepodařilo se uložit. Zkuste to znovu.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[2000] flex items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ai-preferences-modal-title"
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      title="AI Nastavení"
+      description="Jak s vámi má AI tutor komunikovat."
+      maxWidth="max-w-4xl"
+      padding="lg"
+      footer={
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={saving || loading || !hasChanges}
+          onClick={handleSave}
         >
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-2">
-              <h2 id="ai-preferences-modal-title" className="text-xl font-bold text-gray-900">AI Nastavení</h2>
-              <button
-                onClick={onClose}
-                aria-label="Zavřít"
-                type="button"
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          {saving ? (
+            <>
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+              Ukládám…
+            </>
+          ) : (
+            'Uložit'
+          )}
+        </Button>
+      }
+    >
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Načítám nastavení" />
+        </div>
+      ) : (
+        // Linka mezi osami, pod poslední je border footeru
+        <div className="flex flex-col divide-y divide-border">
+          {axes.map((axis) => {
+            const labelId = `ai-style-${axis.code}-label`;
+            return (
+              // Osa vlevo, options v řadě — wide modal
+              <div
+                key={axis.code}
+                className="grid gap-3 py-5 first:pt-0 last:pb-0 md:grid-cols-[9rem_1fr] md:items-center md:gap-6"
               >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 pb-6 pt-4 space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  AI Tón
-                </label>
-                <input
-                  type="text"
-                  value={aiTone}
-                  onChange={(e) => setAiTone(e.target.value)}
-                  maxLength={100}
-                  placeholder="Profesionální a neutrální"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300"
-                />
-                <p className="text-xs text-gray-400 mt-1">Styl komunikace AI tutora</p>
+                <span id={labelId} className="text-sm font-semibold text-foreground">{axis.name}</span>
+                <RadioGroup
+                  aria-labelledby={labelId}
+                  value={choice[axis.code] ?? null}
+                  onValueChange={(value: string) => setChoice((prev) => ({ ...prev, [axis.code]: value }))}
+                  disabled={saving}
+                  className="sm:grid-cols-3"
+                >
+                  {axis.options.map((option) => {
+                    const summary = OPTION_SUMMARIES[option.code];
+                    return (
+                      <Label
+                        key={option.code}
+                        className={cn(
+                          'cursor-pointer items-start gap-2.5 rounded-lg p-3 font-normal leading-normal transition-colors',
+                          choice[axis.code] === option.code ? 'bg-gradient-r/10' : 'hover:bg-muted/50',
+                        )}
+                      >
+                        <RadioGroupItem value={option.code} className="mt-0.5" />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground">{option.name}</span>
+                          {summary && <span className="text-xs text-muted-foreground">{summary}</span>}
+                        </span>
+                      </Label>
+                    );
+                  })}
+                </RadioGroup>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  AI Vyjadřování
-                </label>
-                <input
-                  type="text"
-                  value={aiExpressionLevel}
-                  onChange={(e) => setAiExpressionLevel(e.target.value)}
-                  maxLength={100}
-                  placeholder="Standardní srozumitelný jazyk"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-300"
-                />
-                <p className="text-xs text-gray-400 mt-1">Jazyková úroveň odpovědí AI</p>
-              </div>
-
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
-
-              <button
-                onClick={handleSave}
-                disabled={saving || !aiTone.trim() || !aiExpressionLevel.trim()}
-                className="w-full inline-flex items-center justify-center gap-2 text-white font-semibold py-2.5 rounded-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#8B5BA8' }}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Ukládám...
-                  </>
-                ) : (
-                  'Uložit'
-                )}
-              </button>
-            </div>
-          </motion.div>
+            );
+          })}
         </div>
       )}
-    </AnimatePresence>
+      {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
+    </Modal>
   );
 }

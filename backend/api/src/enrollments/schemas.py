@@ -38,6 +38,8 @@ class MyEnrollmentCourse(ORMModel):
     title: str
     description: str | None = None
     modules_count: int = 0
+    # Náhledový obrázek kurzu; None = výchozí obrázek.
+    image_url: str | None = None
 
 
 class MyEnrollmentNextModule(ORMModel):

@@ -1,23 +1,25 @@
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
-import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
-import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
+import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getAssessmentProgress } from "@/lib/api-client";
+import type { Course, Module, MyEnrollment, CourseProgressResponse } from "@/api";
+import { AssessmentSteps } from "@/components/module/AssessmentSteps";
+import { BookOpen, Eye, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CourseDetailSkeleton } from "@/components/ui";
+import { CourseCategories, ModuleCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 
+import { cn } from '@/lib/utils';
 export default function CoursePage() {
   const params = useParams();
-  const router = useRouter();
   const slug = params.slug as string;
   const courseId = Number(slug);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useCurrentUser();
+  const toast = useToast();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -30,7 +32,8 @@ export default function CoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<MyEnrollment | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
-  const [moduleProgress, setModuleProgress] = useState<ModuleCompletionStatus[]>([]);
+  // Splněné testy po modulech a závěrečný test kurzu; null = nezapsaný / nenačteno
+  const [progress, setProgress] = useState<CourseProgressResponse | null>(null);
   const [moduleSearch, setModuleSearch] = useState('');
   // Track that enrollment just happened so we can animate the transition
   const [justEnrolled, setJustEnrolled] = useState(false);
@@ -79,37 +82,35 @@ export default function CoursePage() {
       // Nepřihlášený uživatel — nečekáme na žádné další API volání,
       // ale nastavíme prázdný stav, aby render nezůstal v loadingu.
       setEnrollment(null);
-      setModuleProgress([]);
+      setProgress(null);
       setEnrollmentLoading(false);
       return;
     }
 
     let cancelled = false;
     setEnrollmentLoading(true);
-    Promise.all([
-      getMyEnrollments()
-        .then(enrollments => {
-          if (cancelled) return;
-          const found = enrollments.find(e => e.courseId === courseId);
-          if (found?.completedAt) {
-            // Course already completed — redirect to homepage
-            router.replace('/');
-            return;
-          }
-          setEnrollment(found ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) setEnrollment(null);
-        }),
-      getCourseProgress(courseId)
-        .then(p => { if (!cancelled) setModuleProgress(p); })
-        .catch(() => { if (!cancelled) setModuleProgress([]); }),
-    ]).finally(() => {
-      if (!cancelled) setEnrollmentLoading(false);
-    });
+    getMyEnrollments()
+      .then(async enrollments => {
+        // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
+        // splněné, takže se otevřou rovnou s odemčenými záložkami.
+        const mine = enrollments.find(e => e.courseId === courseId) ?? null;
+        // Průběh smí číst jen zapsaný — nezapsanému by backend vrátil 403
+        const p = mine ? await getAssessmentProgress(courseId).catch(() => null) : null;
+        if (cancelled) return;
+        setEnrollment(mine);
+        setProgress(p);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEnrollment(null);
+        setProgress(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEnrollmentLoading(false);
+      });
 
     return () => { cancelled = true; };
-  }, [authLoading, isAuthenticated, courseId, router]);
+  }, [authLoading, isAuthenticated, courseId]);
 
   // Hlavní loading flag — dokud jeden ze zdrojů nebyl vyřešen, UI se nerenderuje.
   // Tím se eliminuje flicker mezi „Zapsat se" stavem a skutečným zápisem.
@@ -122,14 +123,14 @@ export default function CoursePage() {
       await createEnrollment(currentUser.userId, courseId);
       const [enrollments] = await Promise.all([
         getMyEnrollments(),
-        getCourseProgress(courseId).then(setModuleProgress).catch(() => {}),
+        getAssessmentProgress(courseId).then(setProgress).catch(() => {}),
       ]);
       setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
       setJustEnrolled(true);
       setTimeout(() => setJustEnrolled(false), 1500);
     } catch (err) {
       console.error('Failed to enroll:', err);
-      alert('Nepodařilo se zapsat do kurzu.');
+      toast.error(err, 'Nepodařilo se zapsat do kurzu.');
     } finally {
       setEnrollLoading(false);
     }
@@ -143,13 +144,29 @@ export default function CoursePage() {
       setEnrollment(null);
     } catch (err) {
       console.error('Failed to leave:', err);
-      alert('Nepodařilo se opustit kurz.');
+      toast.error(err, 'Nepodařilo se opustit kurz.');
     } finally {
       setEnrollLoading(false);
     }
   };
 
   const isEnrolled = !!enrollment;
+  // Modul je hotový, když má student splněné všechny jeho povinné testy (počítá backend)
+  const isModuleCompleted = (moduleId: number | undefined) =>
+    !!progress?.modules.find(p => p.moduleId === moduleId)?.completed;
+  const courseFinal = progress?.courseFinal ?? [];
+  const allModulesCompleted = modules.every(m => isModuleCompleted(m.moduleId));
+
+  // Závěrečný test dokončí kurz — znovu načteme průběh i zápis (completedAt)
+  const handleCourseFinalFinished = async () => {
+    try {
+      const [p, enrollments] = await Promise.all([getAssessmentProgress(courseId), getMyEnrollments()]);
+      setProgress(p);
+      setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
+    } catch (err) {
+      console.error('Failed to refresh course progress:', err);
+    }
+  };
 
   const filteredModules = useMemo(() => {
     if (!moduleSearch.trim()) return [...modules];
@@ -163,34 +180,34 @@ export default function CoursePage() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Kurz nebyl nalezen.'}</p>
-          <Link href="/" className="text-purple-600 hover:underline">← Zpět na přehled</Link>
+          <p className="text-destructive mb-4">{error || 'Kurz nebyl nalezen.'}</p>
+          <Link href="/" className="text-gradient-r hover:underline">← Zpět na přehled</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#F0F0F0' }} className="min-h-screen">
+    <div style={{ backgroundColor: 'var(--muted)' }} className="min-h-screen">
       {/* Breadcrumb */}
       <div className="px-4 sm:px-6 lg:px-[100px] py-4" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <p className="text-sm text-gray-500">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+        <p className="text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">Home</Link>
           {' / '}
           <span>kurzy</span>
           {' / '}
-          <span className="text-gray-700">{course.title}</span>
+          <span className="text-foreground">{course.title}</span>
         </p>
       </div>
 
       {/* Course Header */}
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-black break-words min-w-0">{course.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground break-words min-w-0">{course.title}</h1>
           {isAuthenticated && (
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <AnimatePresence mode="wait">
                 {enrollment ? (
                   // TODO: "Opustit kurz" button temporarily disabled
@@ -201,10 +218,21 @@ export default function CoursePage() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-success bg-success/10 border border-success/30 whitespace-nowrap"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle className="size-4" />
                       Zapsáno!
+                    </motion.div>
+                  ) : enrollment.completedAt ? (
+                    <motion.div
+                      key="course-completed"
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium text-success bg-success/10 border border-success/30 whitespace-nowrap"
+                    >
+                      <CheckCircle className="size-4" />
+                      Kurz dokončen
                     </motion.div>
                   ) : null
                 ) : (
@@ -212,8 +240,8 @@ export default function CoursePage() {
                     key="enroll-btn"
                     onClick={handleEnroll}
                     disabled={enrollLoading}
-                    className="flex items-center gap-2 px-5 py-2.5 text-white rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
-                    style={{ backgroundColor: '#00C896' }}
+                    className="flex items-center gap-2 px-5 py-2.5 text-primary-foreground rounded-md text-sm font-medium whitespace-nowrap disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--primary)' }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     initial={{ opacity: 0, y: -5 }}
@@ -223,13 +251,13 @@ export default function CoursePage() {
                   >
                     {enrollLoading ? (
                       <motion.div
-                        className="w-4 h-4 rounded-full"
+                        className="size-4 rounded-full"
                         style={{ border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }}
                         animate={{ rotate: 360 }}
                         transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                       />
                     ) : (
-                      <LogIn className="w-4 h-4" />
+                      <LogIn className="size-4" />
                     )}
                     {enrollLoading ? 'Zpracování...' : 'Zapsat se do kurzu'}
                   </motion.button>
@@ -239,22 +267,23 @@ export default function CoursePage() {
           )}
         </div>
         {course.description && (
-          <p className="text-gray-600 mt-3 max-w-3xl break-words">{course.description}</p>
+          <p className="text-muted-foreground mt-3 max-w-3xl break-words">{course.description}</p>
         )}
+        <CourseCategories course={course} className="mt-5 max-w-3xl" />
       </div>
 
       {/* Module Filter */}
       {modules.length > 3 && (
         <div className="px-4 sm:px-6 lg:px-[100px] pb-6" style={{ maxWidth: '1440px', margin: '0 auto' }}>
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
               type="text"
               value={moduleSearch}
               onChange={(e) => setModuleSearch(e.target.value)}
               placeholder="Hledat modul…"
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              style={{ backgroundColor: '#F0F0F0' }}
+              className={cn("h-auto", "w-full pl-10 pr-4 py-2.5 border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 focus:border-transparent")}
+              style={{ backgroundColor: 'var(--muted)' }}
             />
           </div>
         </div>
@@ -266,28 +295,28 @@ export default function CoursePage() {
           {modules.length === 0 ? (
             <motion.div
               key="modules-empty"
-              className="bg-white rounded-lg border border-gray-200 p-8 sm:p-10 text-center"
+              className="bg-card rounded-lg border border-border p-8 sm:p-10 text-center"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
             >
-              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <BookOpen className="w-6 h-6 text-gray-400" />
+              <div className="mx-auto size-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                <BookOpen className="size-6 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <h3 className="text-lg font-semibold text-foreground mb-1">
                 V tomto kurzu zatím nejsou moduly
               </h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Obsah ještě nebyl vygenerován nebo publikován. Zkuste se vrátit později — nebo se
                 podívejte na další kurzy.
               </p>
               {/* 
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-purple-600 hover:text-purple-700"
+                className="inline-flex items-center gap-2 mt-5 text-sm font-medium text-gradient-r hover:text-gradient-r"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                 </svg>
                 Zpět na přehled kurzů
@@ -297,12 +326,12 @@ export default function CoursePage() {
           ) : filteredModules.length === 0 && moduleSearch ? (
             <motion.p
               key="no-results"
-              className="text-center text-gray-500 py-12"
+              className="text-center text-muted-foreground py-12"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              Žádné moduly neodpovídají hledání „{moduleSearch}"
+              Žádné moduly neodpovídají hledání „{moduleSearch}&quot;
             </motion.p>
           ) : (
             <motion.div
@@ -324,20 +353,16 @@ export default function CoursePage() {
                 let currentModuleIndex = -1;
                 if (isEnrolled) {
                   for (let i = 0; i < modules.length; i++) {
-                    const p = moduleProgress.find(mp => mp.moduleId === modules[i].moduleId);
-                    if (!(p?.passed)) { currentModuleIndex = i; break; }
+                    if (!isModuleCompleted(modules[i].moduleId)) { currentModuleIndex = i; break; }
                   }
                 }
                 return filteredModules.map((module) => {
                   // Find the original index in full sorted modules
                   const index = modules.findIndex(m => m.moduleId === module.moduleId);
-                  const progress = moduleProgress.find(p => p.moduleId === module.moduleId);
-                  const isPassed = progress?.passed ?? false;
+                  const isPassed = isModuleCompleted(module.moduleId);
                   const isCurrent = index === currentModuleIndex;
 
-                  const prevModulePassed = index === 0 || (moduleProgress.find(
-                    p => p.moduleId === modules[index - 1]?.moduleId
-                  )?.passed ?? false);
+                  const prevModulePassed = index === 0 || isModuleCompleted(modules[index - 1]?.moduleId);
 
                   const isAccessible = isEnrolled && prevModulePassed;
                   const isLocked = !isAccessible;
@@ -345,27 +370,27 @@ export default function CoursePage() {
 
                   const cardContent = (
                     <div
-                      className={`bg-white rounded-lg flex flex-col transition-all duration-300 overflow-hidden ${
+                      className={`bg-card rounded-lg flex flex-col transition-all duration-300 overflow-hidden ${
                         isAccessible ? 'hover:shadow-lg' : ''
                       } ${isLocked ? 'opacity-60' : ''}`}
                       style={{
-                        border: isPassed ? '2px solid #00C896' : '1px solid #e5e7eb',
+                        border: isPassed ? '2px solid var(--primary)' : '1px solid var(--border)',
                         padding: '24px',
                         minHeight: '260px',
                       }}
                     >
                       {/* Header row */}
                       <div className="flex items-start justify-between mb-1">
-                        <span className="text-sm text-gray-500">Modul {index + 1}</span>
+                        <span className="text-sm text-muted-foreground">Modul {index + 1}</span>
                         {isPassed && (
-                          <span className="flex items-center gap-1.5 text-sm font-medium text-green-600">
-                            <CheckCircle className="w-4 h-4" />
+                          <span className="flex items-center gap-1.5 text-sm font-medium text-success">
+                            <CheckCircle className="size-4" />
                             Dokončeno
                           </span>
                         )}
                         {isCurrent && !isPassed && (
-                          <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: '#8B5BA8' }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--gradient-r)' }}>
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
@@ -373,8 +398,8 @@ export default function CoursePage() {
                           </span>
                         )}
                         {isLocked && !isPassed && !isCurrent && (
-                          <span className="flex items-center gap-1.5 text-sm text-gray-400">
-                            <Lock className="w-4 h-4" />
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Lock className="size-4" />
                             {!isEnrolled ? 'Zapište se' : `Splňte modul ${index}`}
                           </span>
                         )}
@@ -385,8 +410,8 @@ export default function CoursePage() {
                         className="text-xl font-bold mb-3 break-words"
                         style={{
                           background: isLocked && !isPassed
-                            ? '#9CA3AF'
-                            : 'linear-gradient(90deg, #B1475C, #857AD2)',
+                            ? 'var(--muted-foreground)'
+                            : 'linear-gradient(90deg, var(--gradient-l), var(--gradient-r))',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
@@ -394,21 +419,26 @@ export default function CoursePage() {
                       >
                         {module.title}
                       </h3>
+                      {module.perex && (
+                        <p className="text-sm text-muted-foreground mb-3 break-words">{module.perex}</p>
+                      )}
+                      {/* Zařazení modulu — stejné štítky jako u kurzu v hlavičce */}
+                      <ModuleCategories module={module} className="mb-3" />
 
                       {/* Footer */}
                       <div className="flex items-center justify-between mt-auto pt-2">
                         {/* 
-                        <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                          <BookOpen className="w-5 h-5" />
+                        <div className={`flex items-center gap-2 text-sm ${isLocked ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                          <BookOpen className="size-5" />
                           <span>{learnBlockCount} {learnBlockCount === 1 ? 'lekce' : 'lekcí'}</span>
                         </div>
                         */}
                         {isAccessible && !isPassed && (
                           <span
-                            className="text-white font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
-                            style={{ backgroundColor: isCurrent ? '#00C896' : '#8B5BA8' }}
+                            className="text-primary-foreground font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2"
+                            style={{ backgroundColor: isCurrent ? 'var(--primary)' : 'var(--gradient-r)' }}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
                             {isCurrent ? 'Pokračovat' : 'Začít modul'}
@@ -416,9 +446,15 @@ export default function CoursePage() {
                         )}
                         {isPassed && (
                           <span
-                            className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-green-700 bg-green-50"
+                            className="font-semibold py-2.5 px-5 rounded-md text-sm flex items-center gap-2 text-success bg-success/10"
                           >
-                            Opakovat
+                            {/* Dokončený kurz se jen prohlíží (read-only), nic se neopakuje. */}
+                            {enrollment?.completedAt ? (
+                              <>
+                                <Eye className="size-4" />
+                                Zobrazit
+                              </>
+                            ) : 'Opakovat'}
                           </span>
                         )}
                       </div>
@@ -463,12 +499,36 @@ export default function CoursePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Závěrečný test kurzu (course_final) — backend ho pustí po splnění testů všech modulů */}
+        {isEnrolled && courseFinal.length > 0 && (
+          <section className="mt-8 bg-card rounded-lg p-6 sm:p-8" style={{ border: '1px solid var(--border)' }}>
+            <h2 className="text-xl font-bold text-foreground">Závěrečný test kurzu</h2>
+            {allModulesCompleted ? (
+              <>
+                <p className="text-sm text-muted-foreground mt-1 mb-5">Ověřte si znalosti z celého kurzu.</p>
+                <AssessmentSteps
+                  courseId={courseId}
+                  moduleId={null}
+                  context="course_final"
+                  items={courseFinal}
+                  onFinished={handleCourseFinalFinished}
+                />
+              </>
+            ) : (
+              <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <Lock className="size-4" />
+                Odemkne se po dokončení všech modulů.
+              </p>
+            )}
+          </section>
+        )}
       </div>
 
-      {/* Bottom Navigation 
+      {/* Bottom Navigation
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
           </svg>
           Zpět na přehled kurzů

@@ -20,10 +20,9 @@ _ITEMS_LOAD = joinedload(models.PubCollection.items).joinedload(
 
 def get_public_collections(
     db: Session,
-    user: models.User,
     text_search: str | None = None,
 ) -> list[PubCollectionDetail]:
-    """Vrátí seznam veřejných sbírek – včetně vlastních zveřejněných sbírek uživatele."""
+    """Vrátí seznam veřejných sbírek."""
 
     stm = (
         select(models.PubCollection)
@@ -44,7 +43,7 @@ def get_public_collections(
         )
 
     results = db.execute(stm).unique().scalars().all()
-    return [_build_collection_detail(c, user.user_id) for c in results]
+    return [_build_collection_detail(c, None) for c in results]
 
 
 def get_my_collections(
@@ -115,7 +114,7 @@ def get_collection(
 def _is_item_visible(
     resource: models.PubResource,
     collection_owner_id: int,
-    viewer_id: int,
+    viewer_id: int | None,
 ) -> bool:
     """Vrátí True pokud je položka sbírky viditelná pro daného uživatele.
 
@@ -130,7 +129,7 @@ def _is_item_visible(
 
 def _build_collection_detail(
     collection: models.PubCollection,
-    viewer_id: int,
+    viewer_id: int | None,
     text_search: str | None = None,
 ) -> PubCollectionDetail:
     """Sestaví PubCollectionDetail s aplikovanými pravidly viditelnosti a volitelným filtrem položek."""

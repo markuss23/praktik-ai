@@ -1,97 +1,106 @@
-from langchain_core.messages import HumanMessage, SystemMessage
+import logging
+from pathlib import Path
+
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from agents.base.llm import get_llm_config, create_chat_llm
+from agents.embedding_generator.nodes.generate_embeddings import html_to_text
 from agents.mentor.state import AgentState
 from agents.mentor.state import ChunkData
 
-DEFAULT_MODEL = "gpt-5-mini"
+logger = logging.getLogger(__name__)
 
-DEFAULT_PROMPT = (
-    "Jsi AI asistent pro výuku - mentor studenta.\n"
-    "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
-    "PRAVIDLA:\n"
-    "- Odpověz výhradně na základě poskytnutého kontextu\n"
-    "- Pokud kontext neobsahuje odpověď, řekni to otevřeně\n"
-    "- Buď přátelský, trpělivý a pedagogický\n"
-    "- Používej příklady z kontextu pro lepší pochopení\n"
-    "- Pokud student nerozumí, zkus vysvětlit jinak\n"
-    "- Odpovídej vždy v češtině\n"
-    "- odpověd maximálně 500 znaků"
-)
+PROMPT = (Path(__file__).parent.parent / "prompt.md").read_text(encoding="utf-8")
+
+# Maximální délka odpovědi podle osy Informační hustota (číselník AI stylu)
+ANSWER_LENGTH = {"dens.low": 250, "dens.med": 500, "dens.high": 1000}
+DEFAULT_ANSWER_LENGTH = 500
+FALLBACK_CONTENT_LIMIT = 4000
 
 
-def generate_answer(state: AgentState) -> AgentState:
+async def generate_answer(state: AgentState) -> AgentState:
     """Uzlu pro generování odpovědi."""
-    print("Generuji odpověď...")
+    logger.info("Generuji odpověď...")
 
     context_chunks: list[ChunkData] = state.get("context_chunks", [])
     user_message: str = state["message"]
-    ai_tone: str = state.get("ai_tone", "profesionální a neutrální")
-    ai_expression_level: str = state.get(
-        "ai_expression_level", "standardní srozumitelný jazyk"
+    ai_style: str = state.get("ai_style", "")
+    history: list[tuple[str, str]] = state.get("history", [])
+    max_length = next(
+        (ANSWER_LENGTH[c] for c in state.get("ai_style_codes", []) if c in ANSWER_LENGTH),
+        DEFAULT_ANSWER_LENGTH,
     )
     db = state["db"]
 
-    print(f"Uživatelská otázka: {user_message}")
-    print(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
-    if not context_chunks:
+    logger.debug(f"Uživatelská otázka: {user_message}")
+    logger.info(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
+
+    if context_chunks:
+        context_text = "\n\n---\n\n".join(
+            [
+                f"[Chunk {idx}]\n{chunk.content}"
+                for idx, chunk in enumerate(context_chunks, 1)
+            ]
+        )
+    elif state.get("learn_block_content"):
+        # Vyhledávání nic nenašlo nebo ho router přeskočil — kontextem je přímo text učebního bloku
+        context_text = html_to_text(state["learn_block_content"])[:FALLBACK_CONTENT_LIMIT]
+    elif history and not state.get("needs_retrieval", True):
+        # Router usoudil, že stačí předchozí konverzace
+        context_text = "Nové materiály nejsou potřeba — odpověz z předchozí konverzace."
+    else:
         return {
             "answer": "Omlouvám se, ale nenašel jsem relevantní informace k vaší otázce v tomto učebním bloku.",
         }
 
-    # Spojení kontextu z chunků
-    context_text = "\n\n---\n\n".join(
-        [
-            f"[Chunk {idx}]\n{chunk.content}"
-            for idx, chunk in enumerate(context_chunks, 1)
-        ]
-    )
+    cfg = get_llm_config(db, "mentor_answer")
+    # Nízká teplota = méně vymýšlení mimo kontext (Claude ji ignoruje, viz create_chat_llm)
+    llm = create_chat_llm(cfg.model, temperature=0.3)
 
-    cfg = get_llm_config(
-        db,
-        "mentor_answer",
-        default_model=DEFAULT_MODEL,
-        default_prompt=DEFAULT_PROMPT,
-    )
-    llm = create_chat_llm(cfg.model, temperature=0.7)
+    system_prompt = f"""{PROMPT.rstrip()}
+- Odpověď maximálně {max_length} znaků (počítá se text bez HTML tagů)
 
-    system_prompt = f"""{cfg.prompt}
+STUDENT PRÁVĚ STUDUJE:
+- Kurz: {state.get("course_title", "")}
+- Modul: {state.get("module_title", "")}
+- Učební blok: {state.get("learn_block_title", "")}
 
-            STYL KOMUNIKACE:
-            - Tón: {ai_tone}
-            - Úroveň vyjadřování: {ai_expression_level}
+STYL KOMUNIKACE (zvolil si ho student, dodržuj ho přednostně):
+{ai_style}
 """
 
     user_prompt: str = f"""KONTEXT Z UČEBNÍCH MATERIÁLŮ:
-                {context_text}
+{context_text}
 
-                ---
+---
 
-                OTÁZKA STUDENTA:
-                {user_message}
+OTÁZKA STUDENTA:
+{user_message}
 
-            ---
+---
 
-                Odpověz na otázku studenta na základě výše uvedeného kontextu. Buď konkrétní a pedagogický.
-        """
+Odpověz na otázku studenta na základě výše uvedeného kontextu.
+"""
 
-    messages: list[SystemMessage | HumanMessage] = [
+    messages: list[SystemMessage | HumanMessage | AIMessage] = [
         SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt),
     ]
+    for question, answer in history:
+        messages += [HumanMessage(content=question), AIMessage(content=answer)]
+    messages.append(HumanMessage(content=user_prompt))
 
     try:
-        response = llm.invoke(messages)
-        answer = response.content
+        response = await llm.ainvoke(messages)
+        answer = response.text
 
-        print(f"Odpověď vygenerována ({len(answer)} znaků)")
+        logger.info(f"Odpověď vygenerována ({len(answer)} znaků)")
 
         return {
             "answer": answer,
         }
 
     except Exception as e:
-        print(f"Chyba při generování odpovědi: {e}")
+        logger.exception(f"Chyba při generování odpovědi: {e}")
         return {
             "answer": "Omlouvám se, vyskytla se chyba při generování odpovědi.",
         }

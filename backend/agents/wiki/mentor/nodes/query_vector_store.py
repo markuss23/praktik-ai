@@ -1,9 +1,12 @@
 """Node pro dotazování wiki vector store."""
 
+import logging
 from langchain_core.documents.base import Document
 
 from agents.wiki.mentor.state import WikiMentorState, ChunkData
 from agents.wiki.vector_store import get_wiki_vector_store
+
+logger = logging.getLogger(__name__)
 
 
 def query_vector_store_node(state: WikiMentorState) -> WikiMentorState:
@@ -11,7 +14,7 @@ def query_vector_store_node(state: WikiMentorState) -> WikiMentorState:
     Najde nejrelevantnější wiki chunky k otázce uživatele.
 
     """
-    print("Dotazuji wiki vector store...")
+    logger.info("Dotazuji wiki vector store...")
 
     vector_store = get_wiki_vector_store()
 
@@ -20,7 +23,7 @@ def query_vector_store_node(state: WikiMentorState) -> WikiMentorState:
         k=10,
     )
 
-    print(f"Nalezeno {len(results)} relevantnich chunku")
+    logger.info(f"Nalezeno {len(results)} relevantnich chunku")
 
     context_chunks: list[ChunkData] = [
         ChunkData(

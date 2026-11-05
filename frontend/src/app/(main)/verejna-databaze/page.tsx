@@ -11,11 +11,13 @@ import {
 } from "@/components/material/api";
 import type { Material, MaterialFolder } from "@/components/material/types";
 import type { PubResource } from "@/api";
-import { MaterialGridSkeleton } from "@/components/ui";
+import { MaterialGridSkeleton, Button } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
 import { TabSwitcher, type DatabaseTab } from "./TabSwitcher";
 import { PublicDatabaseClient } from "./PublicDatabaseClient";
 import { PublicCollectionsClient } from "./PublicCollectionsClient";
 import { MyCollectionClient } from "./MyCollectionClient";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 export default function PublicDatabasePage() {
   return (
@@ -27,9 +29,12 @@ export default function PublicDatabasePage() {
 
 function PublicDatabasePageInner() {
   const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
-  const activeTab: DatabaseTab =
+  const requestedTab: DatabaseTab =
     tabParam === "mine" ? "mine" : tabParam === "collections" ? "collections" : "public";
+  const activeTab: DatabaseTab =
+    requestedTab === "mine" && !isAuthenticated ? "public" : requestedTab;
 
   const [myMaterials, setMyMaterials] = useState<Material[]>([]);
   const [folders, setFolders] = useState<MaterialFolder[]>([]);
@@ -37,8 +42,8 @@ function PublicDatabasePageInner() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Data načítáme jen pro záložku „Moje sbírka". Veřejná databáze si data
-  // (vč. filtrů, řazení a stránkování) řeší sama v PublicDatabaseClient.
+  // Data načítáme jen pro záložku „Moje sbírka" a jen pro přihlášené uživatele.
+  // Veřejná databáze si data (vč. filtrů, řazení a stránkování) řeší sama v PublicDatabaseClient.
   useEffect(() => {
     if (activeTab !== "mine") return;
     let cancelled = false;
@@ -88,16 +93,17 @@ function PublicDatabasePageInner() {
     }
     if (error) {
       return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-sm text-red-700 mb-3">Materiály se nepodařilo načíst: {error}</p>
-          <button
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 text-center">
+          <p className="text-sm text-destructive mb-3">Materiály se nepodařilo načíst: {error}</p>
+          <Button
+            variant="default"
             type="button"
             onClick={() => setReloadKey((k) => k + 1)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
           >
             <RotateCcw size={15} strokeWidth={1.75} />
             Zkusit znovu
-          </button>
+          </Button>
         </div>
       );
     }
@@ -114,7 +120,7 @@ function PublicDatabasePageInner() {
   return (
     <PageShell>
       <div className="flex justify-end mb-4">
-        <TabSwitcher active={activeTab} />
+        <TabSwitcher active={activeTab} isAuthenticated={isAuthenticated} />
       </div>
       {content}
     </PageShell>
@@ -128,12 +134,12 @@ function PageShell({ children }: { children: React.ReactNode }) {
         className="mx-auto px-4 sm:px-6 lg:px-[100px]"
         style={{ maxWidth: "1440px", width: "100%" }}
       >
-        <p className="text-sm text-gray-500 mb-4">
-          <Link href="/" className="hover:text-gray-700">
+        <p className="text-sm text-muted-foreground mb-4">
+          <Link href="/" className="hover:text-foreground">
             Home
           </Link>
           {" / "}
-          <span className="text-gray-700">Veřejná databáze</span>
+          <span className="text-foreground">Veřejná databáze</span>
         </p>
         {children}
       </div>

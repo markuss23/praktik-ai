@@ -24,11 +24,11 @@ export default function CoursesContent() {
   }, []);
 
   if (loading) {
-    return <p className="text-gray-500">Načítání kurzů...</p>;
+    return <p className="text-muted-foreground">Načítání kurzů...</p>;
   }
 
   if (courses.length === 0) {
-    return <p className="text-gray-500">Žádné kurzy nejsou k dispozici.</p>;
+    return <p className="text-muted-foreground">Žádné kurzy nejsou k dispozici.</p>;
   }
 
   return (
@@ -41,6 +41,7 @@ export default function CoursesContent() {
           description={course.description || ''}
           duration={course.modulesCount ? course.modulesCount * 20 : 60}
           difficulty={course.difficulty}
+          imageUrl={course.imageUrl}
           completedModules={0}
           totalModules={course.modulesCount || 0}
         />

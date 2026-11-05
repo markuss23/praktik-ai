@@ -3,17 +3,21 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getModule, getCourse, getModules, getCourseProgress, markModuleVisited } from "@/lib/api-client";
-import type { Module, Course } from "@/api";
-import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Lock, XCircle } from "lucide-react";
+import { getModule, getCourse, getAssessmentProgress, getMyEnrollments, markModuleVisited } from "@/lib/api-client";
+import type { Module, Course, CourseProgressResponse } from "@/api";
+import { requiredPassed } from "@/lib/assessment-labels";
+import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Eye, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
-import { Alert, AlertTitle, AlertDescription, PageSpinner } from "@/components/ui";
+import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
 import AssessmentTab from "@/components/module/AssessmentTab";
+import PracticeReview from "@/components/module/PracticeReview";
+import AssessmentReview from "@/components/module/AssessmentReview";
 import PaperSheets from "@/components/module/PaperSheets";
 import NotesPanel from "@/components/module/NotesPanel";
 import ScrollToBottomButton from "@/components/module/ScrollToBottomButton";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
@@ -31,27 +35,33 @@ export default function ModulePage() {
   const [module, setModule] = useState<Module | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [allModules, setAllModules] = useState<Module[]>([]);
+  // Splněné testy po modulech; null = nepodařilo se načíst
+  const [progress, setProgress] = useState<CourseProgressResponse | null>(null);
+  const [progressStale, setProgressStale] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
 
   // Transition animation
   const [transitioning, setTransitioning] = useState(false);
 
-  // Restore tab progress from sessionStorage
-  const storageKey = `module-progress-${initialModuleId}`;
-  const savedProgress = (() => {
+  // Restore tab progress from sessionStorage. Čte se jednou (lazy initializer),
+  // ne při každém renderu. Klíč zůstává initialModuleId — po přepnutí modulu
+  // uvnitř stránky se stav resetuje v navigateToModule, ne odsud.
+  const readSavedProgress = () => {
     try {
-      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(storageKey) : null;
+      const raw = typeof window !== 'undefined'
+        ? sessionStorage.getItem(`module-progress-${initialModuleId}`)
+        : null;
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
-  })();
+  };
 
   // Tab & handbook navigation
-  const [activeTab, setActiveTab] = useState<TabType>(savedProgress?.activeTab ?? 'prirucka');
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(savedProgress?.currentBlockIndex ?? 0);
-  const [handbookCompleted, setHandbookCompleted] = useState(savedProgress?.handbookCompleted ?? false);
-  const [practiceCompleted, setPracticeCompleted] = useState(savedProgress?.practiceCompleted ?? false);
-  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>(() => readSavedProgress()?.activeTab ?? 'prirucka');
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(() => readSavedProgress()?.currentBlockIndex ?? 0);
+  const [handbookCompleted, setHandbookCompleted] = useState(() => readSavedProgress()?.handbookCompleted ?? false);
+  const [practiceCompleted, setPracticeCompleted] = useState(() => readSavedProgress()?.practiceCompleted ?? false);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -106,28 +116,32 @@ export default function ModulePage() {
       // Fire-and-forget; nikdy nesmí rozbít načítání stránky.
       void markModuleVisited(modId);
 
-      const [courseData, modulesData] = await Promise.all([
+      // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
+      // getModules je vynechané záměrně: getCourse moduly už vrací.
+      const [courseData, progressData, enrollments] = await Promise.all([
         getCourse(moduleData.courseId),
-        getModules({ courseId: moduleData.courseId }),
+        getAssessmentProgress(moduleData.courseId).catch(() => null),
+        getMyEnrollments().catch(() => []),
       ]);
       setCourse(courseData);
-      setAllModules(
-        (courseData.modules?.length ? courseData.modules : modulesData)
-          .filter(m => m.isActive)
-      );
+      setAllModules((courseData.modules ?? []).filter(m => m.isActive));
+      setProgress(progressData);
+      setProgressStale(false);
 
-      // If the user already passed this module, unlock all sections
-      try {
-        const progress = await getCourseProgress(moduleData.courseId);
-        const moduleProgress = progress.find((p) => p.moduleId === modId);
-        if (moduleProgress?.passed) {
-          setHandbookCompleted(true);
+      // Splněné části odemknou záložky i v jiném prohlížeči (sessionStorage je nezná)
+      const moduleProgress = progressData?.modules.find((p) => p.moduleId === modId);
+      if (moduleProgress) {
+        const pretests = moduleProgress.assessments.filter((a) => a.context === 'pretest');
+        const practices = moduleProgress.assessments.filter((a) => a.context === 'practice');
+        const pretestPassed = pretests.some((a) => a.passed);
+        if (moduleProgress.completed || pretestPassed) setHandbookCompleted(true);
+        if (moduleProgress.completed || (pretestPassed && requiredPassed(pretests) && requiredPassed(practices))) {
           setPracticeCompleted(true);
-          setAssessmentCompleted(true);
         }
-      } catch {
-        // fall back to session state
       }
+      // Modul přidaný až po dokončení kurzu splněný není, ten jde projít normálně.
+      const courseCompleted = !!enrollments.find(e => e.courseId === moduleData.courseId)?.completedAt;
+      setReviewMode(courseCompleted && !!moduleProgress?.completed);
     } catch (err) {
       console.error('Failed to fetch module data:', err);
       setError('Nepodařilo se načíst data modulu.');
@@ -173,7 +187,6 @@ export default function ModulePage() {
     setCurrentBlockIndex(0);
     setHandbookCompleted(false);
     setPracticeCompleted(false);
-    setAssessmentCompleted(false);
     window.history.pushState(null, '', `/modules/${moduleId}`);
     setActiveModuleId(moduleId);
     scrollContentToTop();
@@ -194,7 +207,7 @@ export default function ModulePage() {
   // Loading state
   if (loading && !transitioning) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--muted)' }}>
         <PageSpinner message="Načítání modulu…" />
       </div>
     );
@@ -203,7 +216,7 @@ export default function ModulePage() {
   // Error state
   if (error || !module) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F0F0F0' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
         <div className="w-full max-w-lg px-4">
           <Alert variant="error">
             <XCircle />
@@ -215,7 +228,7 @@ export default function ModulePage() {
             </AlertDescription>
           </Alert>
           <div className="text-center mt-4">
-            <Link href="/" className="text-purple-600 hover:underline text-sm">← Zpět na přehled</Link>
+            <Link href="/" className="text-gradient-r hover:underline text-sm">← Zpět na přehled</Link>
           </div>
         </div>
       </div>
@@ -250,7 +263,22 @@ export default function ModulePage() {
     }
   };
 
-  // Called when user clicks "Dokončit" in PracticeTab
+  const moduleProgress = progress?.modules.find((p) => p.moduleId === module.moduleId) ?? null;
+
+  // Po dokončené session — splněné testy a hotový modul/kurz počítá backend
+  const refreshProgress = async () => {
+    try {
+      setProgress(await getAssessmentProgress(module.courseId));
+      setProgressStale(false);
+      window.dispatchEvent(new CustomEvent('praktik:enrollments-changed'));
+    } catch (err) {
+      console.error('Failed to refresh course progress:', err);
+      // Se starým průběhem by další části zůstaly zamčené až do znovunačtení stránky
+      setProgressStale(true);
+    }
+  };
+
+  // Called when user clicks "Pokračovat na test" in PracticeTab
   const handlePracticeComplete = () => {
     setPracticeCompleted(true);
     switchTab('test');
@@ -258,23 +286,12 @@ export default function ModulePage() {
 
   // Called when user completes the assessment or needs to move on
   const handleModuleComplete = () => {
-    setAssessmentCompleted(true);
     if (nextModule) {
       navigateToModule(nextModule.moduleId);
     } else {
-      // Course finished — go to homepage
-      router.push('/');
+      // Poslední modul — zpět na detail kurzu (tlačítko říká „Zpět na kurz" / „Dokončit kurz")
+      router.push(`/courses/${module.courseId}`);
     }
-  };
-
-  // Called when assessment fails and module needs restart
-  const handleRestartModule = () => {
-    setActiveTab('prirucka');
-    setCurrentBlockIndex(0);
-    setHandbookCompleted(false);
-    setPracticeCompleted(false);
-    setAssessmentCompleted(false);
-    scrollContentToTop();
   };
 
   // Tab configuration
@@ -284,7 +301,7 @@ export default function ModulePage() {
       label: 'Příručka',
       sublabel: 'učebnice a metodická příručka',
       completed: handbookCompleted,
-      icon: <BookOpenText className="w-5 h-5" />,
+      icon: <BookOpenText className="size-5" />,
     },
     {
       key: 'procvicovani',
@@ -292,15 +309,15 @@ export default function ModulePage() {
       sublabel: 'Zkus si svoje znalosti v praxi',
       completed: practiceCompleted,
       locked: !handbookCompleted,
-      icon: <Dumbbell className="w-5 h-5" />,
+      icon: <Dumbbell className="size-5" />,
     },
     {
       key: 'test',
       label: 'Test',
       sublabel: 'Ověření znalostí testem',
-      completed: assessmentCompleted,
+      completed: !!moduleProgress?.completed,
       locked: !practiceCompleted,
-      icon: <ClipboardCheck className="w-5 h-5" />,
+      icon: <ClipboardCheck className="size-5" />,
     },
   ];
 
@@ -309,16 +326,16 @@ export default function ModulePage() {
        vnější scrollování — to obstará jen vnitřní content area. */
     <div
       className="flex flex-col lg:h-[calc(100dvh-70px)]"
-      style={{ backgroundColor: '#F0F0F0' }}
+      style={{ backgroundColor: 'var(--muted)' }}
     >
       {/* Breadcrumb — pevná hlavička, nescrolluje. */}
-      <div className="px-4 sm:px-6 lg:px-[100px] py-4 flex-shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
-        <p className="text-sm text-gray-500 truncate">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+      <div className="px-4 sm:px-6 lg:px-[100px] py-4 shrink-0" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+        <p className="text-sm text-muted-foreground truncate">
+          <Link href="/" className="hover:text-foreground">Home</Link>
           {' / '}
-          <Link href={`/courses/${course?.courseId}`} className="hover:text-gray-700">{course?.title}</Link>
+          <Link href={`/courses/${course?.courseId}`} className="hover:text-foreground">{course?.title}</Link>
           {' / '}
-          <span className="text-gray-700">{module.title}</span>
+          <span className="text-foreground">{module.title}</span>
         </p>
       </div>
 
@@ -329,57 +346,69 @@ export default function ModulePage() {
 
           {/* Left Sidebar — uvnitř fixní kolony se může vlastním overflow-auto
               scrollovat, aby AI tutor a karty modulu nepřetékaly mimo viewport. */}
-          <div className="lg:w-72 flex-shrink-0 lg:overflow-y-auto no-scrollbar">
+          <div className="lg:w-72 shrink-0 lg:overflow-y-auto no-scrollbar">
             <div className="space-y-4">
               {/* Module tabs card */}
-              <div className="bg-white rounded-lg p-5" style={{ border: '1px solid #e5e7eb' }}>
+              <div className="bg-card rounded-lg p-5" style={{ border: '1px solid var(--border)' }}>
                 <div className="mb-4">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Modul {currentIndex + 1}</span>
-                  <h2 className="text-lg font-bold text-gray-900 mt-1">{module.title}</h2>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Modul {currentIndex + 1}</span>
+                  <h2 className="text-lg font-bold text-foreground mt-1">{module.title}</h2>
+                  {module.perex && (
+                    <p className="text-sm text-muted-foreground mt-2 break-words">{module.perex}</p>
+                  )}
+                  {reviewMode && (
+                    <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                      <Eye className="size-3.5" />
+                      Náhled dokončeného kurzu
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   {tabs.map((tab) => (
-                    <button
+                    <Button
+                      variant="plain"
                       key={tab.key}
                       onClick={() => {
                         if (!tab.locked) switchTab(tab.key);
                       }}
-                      className={`w-full text-left px-3 py-3 rounded-lg transition-colors flex items-start gap-3 ${
+                      className={cn(BTN_KEEP_BOX, `w-full text-left px-3 py-3 rounded-lg transition-colors flex items-start gap-3 ${
                         activeTab === tab.key
                           ? 'border'
                           : tab.locked
                             ? 'cursor-not-allowed opacity-50'
-                            : 'hover:bg-gray-50'
-                      }`}
+                            : 'hover:bg-muted/50'
+                      }`)}
                       style={activeTab === tab.key ? { backgroundColor: 'rgba(138, 56, 245, 0.2)', borderColor: 'rgba(138, 56, 245, 0.3)' } : undefined}
                       disabled={tab.locked}
                     >
-                      <span className="mt-0.5 text-black">
+                      <span className="mt-0.5 text-foreground">
                         {tab.completed ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <CheckCircle className="size-5 text-success" />
                         ) : tab.locked ? (
-                          <Lock className="w-5 h-5 text-gray-400" />
+                          <Lock className="size-5 text-muted-foreground" />
                         ) : (
                           tab.icon
                         )}
                       </span>
                       <div>
-                        <div className="text-sm font-semibold text-black">
+                        <div className="text-sm font-semibold text-foreground">
                           {tab.label}
                         </div>
-                        <div className="text-xs text-black" style={{ opacity: 0.5 }}>
+                        <div className="text-xs text-foreground" style={{ opacity: 0.5 }}>
                           {tab.sublabel}
                         </div>
                       </div>
-                    </button>
+                    </Button>
                   ))}
                 </div>
+
+                <ModuleCategories module={module} className="mt-4 pt-4 border-t border-border" />
               </div>
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
+                <AiTutorChat courseId={module.courseId} learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
               )}
             </div>
           </div>
@@ -387,7 +416,7 @@ export default function ModulePage() {
           {/* Main Content — vlastní scroll na úrovni karty obsahu, aby
               breadcrumb a sidebar zůstaly fixní a posouvalo se jen pole lekce.
               pb-12 dává tlačítkům na konci obsahu prostor nad spodním okrajem. */}
-          <div ref={scrollAreaRef} className="flex-grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar pb-12">
+          <div ref={scrollAreaRef} className="grow min-w-0 lg:h-full lg:overflow-y-auto no-scrollbar pb-12">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeModuleId}
@@ -396,15 +425,15 @@ export default function ModulePage() {
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 /* Příručka se zobrazuje jako samostatné bílé listy na šedém pozadí. */
-                className={activeTab === 'prirucka' ? 'rounded-lg' : 'bg-white rounded-lg p-6 sm:p-10'}
-                style={activeTab === 'prirucka' ? undefined : { border: '1px solid #e5e7eb' }}
+                className={activeTab === 'prirucka' ? 'rounded-lg' : 'bg-card rounded-lg p-6 sm:p-10'}
+                style={activeTab === 'prirucka' ? undefined : { border: '1px solid var(--border)' }}
               >
                 {/* Transition loading overlay */}
                 {transitioning && (
                   <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-                      <p className="text-sm text-gray-500">Načítání dalšího modulu...</p>
+                      <div className="size-8 border-3 border-gradient-r/30 border-t-purple-600 rounded-full animate-spin" />
+                      <p className="text-sm text-muted-foreground">Načítání dalšího modulu...</p>
                     </div>
                   </div>
                 )}
@@ -427,7 +456,7 @@ export default function ModulePage() {
                       <>
                         {totalBlocks > 1 && (
                           <div className="mb-4">
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               Část {currentBlockIndex + 1} z {totalBlocks}
                             </span>
                           </div>
@@ -438,36 +467,40 @@ export default function ModulePage() {
                         </div>
 
                         <div className="flex items-center justify-between mt-6 sm:mt-8 pt-6">
-                          <button
+                          <Button
+                            variant="plain"
                             onClick={handlePrevBlock}
                             disabled={currentBlockIndex === 0}
-                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                            className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
                               currentBlockIndex === 0
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                            }`}
+                                ? 'text-muted-foreground cursor-not-allowed'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`)}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                             </svg>
                             Předchozí
-                          </button>
+                          </Button>
 
-                          <button
+                          <Button
+                            variant="plain"
                             onClick={handleContinue}
-                            className="inline-flex items-center gap-2 text-white font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md"
-                            style={{ backgroundColor: '#00C896' }}
+                            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 text-primary-foreground font-semibold py-2.5 px-6 rounded-md transition-all hover:opacity-90 hover:shadow-md")}
+                            style={{ backgroundColor: 'var(--primary)' }}
                           >
-                            {currentBlockIndex < totalBlocks - 1 ? 'Pokračovat' : 'Dokončit příručku'}
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {currentBlockIndex < totalBlocks - 1
+                              ? 'Pokračovat'
+                              : reviewMode ? 'Přejít na procvičování' : 'Dokončit příručku'}
+                            <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
-                          </button>
+                          </Button>
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-16 text-gray-400">
-                        <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="text-center py-16 text-muted-foreground">
+                        <svg className="size-16 mx-auto mb-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
@@ -479,25 +512,44 @@ export default function ModulePage() {
                 )}
 
                 {/* Procvičování tab */}
-                {activeTab === 'procvicovani' && (
-                  <PracticeTab
+                {activeTab === 'procvicovani' && (reviewMode ? (
+                  <PracticeReview
+                    courseId={module.courseId}
                     moduleId={activeModuleId}
-                    practiceQuestions={module.practiceQuestions ?? []}
+                    onContinue={handlePracticeComplete}
+                  />
+                ) : (
+                  <PracticeTab
+                    courseId={module.courseId}
+                    moduleId={activeModuleId}
+                    moduleProgress={moduleProgress}
+                    progressStale={progressStale}
+                    onProgressChange={refreshProgress}
                     onComplete={handlePracticeComplete}
                   />
-                )}
+                ))}
 
                 {/* Test tab */}
-                {activeTab === 'test' && (
-                  <AssessmentTab
-                    moduleId={activeModuleId}
+                {activeTab === 'test' && reviewMode && (
+                  <AssessmentReview
                     courseId={module.courseId}
-                    maxAttempts={module.maxTaskAttempts ?? 3}
+                    moduleId={activeModuleId}
+                    ctaLabel={nextModule ? 'Pokračovat na další modul' : 'Zpět na kurz'}
+                    onContinue={handleModuleComplete}
+                  />
+                )}
+                {activeTab === 'test' && !reviewMode && (
+                  <AssessmentTab
+                    courseId={module.courseId}
+                    moduleId={activeModuleId}
+                    moduleProgress={moduleProgress}
+                    progressStale={progressStale}
+                    courseCompleted={!!progress?.courseCompleted}
                     moduleNumber={currentIndex + 1}
                     moduleTitle={module.title}
                     nextModule={nextModule ? { moduleId: nextModule.moduleId, title: nextModule.title } : null}
+                    onProgressChange={refreshProgress}
                     onModuleComplete={handleModuleComplete}
-                    onRestartModule={handleRestartModule}
                   />
                 )}
 

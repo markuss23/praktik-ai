@@ -13,9 +13,10 @@ import {
 import { MaterialAttachments } from "@/components/material/MaterialAttachments";
 import { MaterialForkModal } from "@/components/material/MaterialForkModal";
 import { RatingsSection } from "@/components/material/RatingsSection";
-import { MaterialDetailSkeleton } from "@/components/ui";
+import { MaterialCategories, MaterialDetailSkeleton, Button } from "@/components/ui";
 import { useAuth } from "@/hooks/useAuth";
 import type { Material, MaterialCategory } from "@/components/material/types";
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -62,29 +63,30 @@ export default function MaterialDetailPage({ params }: PageProps) {
         className="mx-auto px-4 sm:px-6 lg:px-[100px]"
         style={{ maxWidth: "1440px", width: "100%" }}
       >
-        <p className="text-sm text-gray-500 mb-4">
-          <Link href="/" className="hover:text-gray-700">
+        <p className="text-sm text-muted-foreground mb-4">
+          <Link href="/" className="hover:text-foreground">
             Home
           </Link>
           {" / "}
-          <Link href={ROUTES.PUBLIC_DATABASE} className="hover:text-gray-700">
+          <Link href={ROUTES.PUBLIC_DATABASE} className="hover:text-foreground">
             Veřejná databáze
           </Link>
         </p>
 
         {showLoginPrompt ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center view-fade-in">
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-card border border-border rounded-lg p-8 text-center view-fade-in">
+            <p className="text-sm text-muted-foreground mb-4">
               Pro zobrazení detailu materiálu se nejprve přihlas.
             </p>
-            <button
+            <Button
+              variant="default"
               type="button"
-              onClick={login}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
+              onClick={() => login()}
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors")}
             >
               <LogIn size={15} strokeWidth={1.75} />
               Přihlásit se
-            </button>
+            </Button>
           </div>
         ) : loading || !material ? (
           <MaterialDetailSkeleton />
@@ -117,19 +119,20 @@ function MaterialDetail({
           <MaterialStatusBadge status={material.status} />
         </div>
         {material.allowForks && material.isPublic && (
-          <button
+          <Button
+            variant="plain"
             type="button"
             onClick={() => setForkOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
           >
             <Copy size={14} strokeWidth={1.75} />
             Vytvořit kopii
-          </button>
+          </Button>
         )}
       </div>
 
-      <h1 className="text-2xl sm:text-3xl font-bold text-black mb-3">{material.title}</h1>
-      <p className="text-sm text-gray-600 max-w-3xl mb-6">{material.description}</p>
+      <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">{material.title}</h1>
+      <p className="text-sm text-muted-foreground max-w-3xl mb-6">{material.description}</p>
 
       <MaterialForkModal
         isOpen={forkOpen}
@@ -141,15 +144,16 @@ function MaterialDetail({
       />
 
       {material.targets && material.targets.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+        <div className="bg-card border border-border rounded-lg p-5 mb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {material.targets.map((target, index) => (
               <div key={`${target.label}-${index}`} className="flex flex-col gap-1">
-                <span className="text-xs text-gray-500">{target.label}</span>
-                <span className="text-sm font-semibold text-gray-900">{target.value}</span>
+                <span className="text-xs text-muted-foreground">{target.label}</span>
+                <span className="text-sm font-semibold text-foreground">{target.value}</span>
               </div>
             ))}
           </div>
+          <MaterialCategories material={material} className="mt-4 border-t border-border pt-4" />
         </div>
       )}
 

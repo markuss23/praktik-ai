@@ -6,6 +6,12 @@
 // Zbytek jsou projektové komponenty postavené nad těmito primitivy.
 
 // ── shadcn UI kit (primitiva) ────────────────────────────────────────────────
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "../ui-kit/accordion";
 export { Button, buttonVariants } from "../ui-kit/button";
 export { Badge, badgeVariants, type BadgeVariant } from "../ui-kit/badge";
 export {
@@ -62,12 +68,62 @@ export {
   SelectScrollDownButton,
 } from "../ui-kit/select";
 export { StatusSelect, STATUSES } from "../ui-kit/status-select";
+export { Input } from "../ui-kit/input";
+export { Textarea } from "../ui-kit/textarea";
+export { Label } from "../ui-kit/label";
+export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants } from "../ui-kit/tabs";
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../ui-kit/tooltip";
+export { Checkbox } from "../ui-kit/checkbox";
+export { RadioGroup, RadioGroupItem } from "../ui-kit/radio-group";
+export { Switch } from "../ui-kit/switch";
+export {
+  Progress,
+  ProgressTrack,
+  ProgressIndicator,
+  ProgressLabel,
+  ProgressValue,
+} from "../ui-kit/progress";
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from "../ui-kit/table";
+export { Separator } from "../ui-kit/separator";
+export { Slider } from "../ui-kit/slider";
+export { Skeleton } from "../ui-kit/skeleton";
+export {
+  DropdownMenu,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "../ui-kit/dropdown-menu";
 
 // ── Projektové komponenty ────────────────────────────────────────────────────
-export { Input } from "./Input";
 export { Dropdown, SimpleBotIcon } from "./Dropdown";
+export { FilterSelect, type FilterOption } from "./FilterSelect";
+export { FilterMultiSelect } from "./FilterMultiSelect";
+export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
+export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
+export { CategoryGroup, CourseCategories, MaterialCategories, ModuleCategories } from "./CategoryTags";
 export { CourseCard } from "./CourseCard";
-export { StatusBadge, PublishBadge, ModuleActiveBadge } from "./Badge";
+export { CourseRow } from "./CourseRow";
+export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
 export { RichTextEditor, useRichTextEditor } from "./RichTextEditor";
@@ -82,9 +138,12 @@ export {
   MaterialDetailSkeleton,
   MaterialGridSkeleton,
   RatingListSkeleton,
+  ProfileStatsSkeleton,
+  ProfileCoursesSkeleton,
+  TicketCardsSkeleton,
 } from "./Skeletons";
 
 // Toasty jedou na vlastním providerů z `./Toast` (mountovaný v app/layout.tsx),
 // ne na kitovém Base UI toastu — ten je zatím jen v showcase na /ui-kit.
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";
-export type { Toast, ToastVariant } from "./Toast";
+export type { Toast, ToastAction, ToastVariant } from "./Toast";

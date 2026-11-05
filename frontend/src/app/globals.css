@@ -6,12 +6,18 @@
 
 :root {
 
+  /* Škála vrstev. Shadcn kit (Base UI) drží všechny své portály — overlay,
+     drawer, dialog, select, tooltip, menu — napevno na `z-50` a pořadí mezi
+     nimi řeší pořadím v DOM. Appka se proto musí vejít kolem té padesátky:
+     hlavička pod ni (jinak by překryla otevřený drawer/dialog), vlastní
+     nedismissovatelné overlaye nad ni. Kit soubory needitujeme — přepsal by
+     je `shadcn add`. */
   --z-base: 0;
-  --z-dropdown: 500;
-  --z-header: 1000;
-  --z-overlay: 1500;
-  --z-modal: 2000;
-  --z-toast: 2500;
+  --z-dropdown: 30;
+  --z-header: 45;
+  --z-overlay: 55;
+  --z-modal: 60;
+  --z-toast: 70;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -30,6 +36,7 @@
   /* Figma alert palette (697:1823) */
   --destructive: oklch(0.5507 0.2224 23.35); /* Error   #D5002A */
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
+  --warning-foreground: oklch(0.145 0 0); /* tmavý text na amber ploše */
   --success: oklch(0.6777 0.1137 154.05); /* Succes  #59AC77 */
   --tip: oklch(0.4981 0.2645 270.9); /* Tip     #383BF5 */
 
@@ -40,7 +47,8 @@
   --gradient-r: oklch(0.6274 0.1301 287.77); /* gradientR #857AD2 */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Fokusový prstenec jede na brandové fialové (gradientR), ne na šedé. */
+  --ring: var(--gradient-r);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -55,14 +63,27 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* SupportChatWidget*/
+  --support-fab-size: 3rem;
+  --support-fab-offset: 1rem;
+  --support-fab-clearance: calc(var(--support-fab-offset) + var(--support-fab-size) + 0.75rem);
+}
+
+@media (width >= 40rem) {
+  :root {
+    --support-fab-size: 3.5rem;
+    --support-fab-offset: 1.5rem;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-bricolage);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -81,6 +102,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-tip: var(--tip);
   --color-brand-accent: var(--brand-accent);
@@ -109,22 +131,6 @@
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-}
-
-/* Nav link: reserve bold-text width so active ↔ inactive doesn't shift layout */
-.nav-link {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-}
-.nav-link::after {
-  content: attr(data-text);
-  font-weight: 700;
-  height: 0;
-  visibility: hidden;
-  overflow: hidden;
-  pointer-events: none;
-  user-select: none;
 }
 
 /* Module content styles for rendered learn blocks */
@@ -333,20 +339,6 @@ hr.page-break::after {
   color: #9333ea;
 }
 
-/* ── Changelog accordion */
-.changelog-glow {
-  position: relative;
-  border-radius: 0.85rem;
-  border: 1px solid #e5e7eb;
-}
-.changelog-glow > * {
-  border-radius: 0.7rem;
-}
-
-.changelog-title {
-  color: #111827;
-}
-
 .no-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE / starší Edge */
@@ -497,6 +489,8 @@ body.module-fullscreen footer {
 
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
 
+  --warning-foreground: oklch(0.145 0 0); /* amber zůstává světlý i v dark */
+
   --success: oklch(0.72 0.1137 154.05); /* Succes  #59AC77 */
 
   --tip: oklch(0.7 0.18 270.9); /* Tip     #383BF5 */
@@ -511,7 +505,7 @@ body.module-fullscreen footer {
 
   --input: oklch(1 0 0 / 15%);
 
-  --ring: oklch(0.556 0 0);
+  --ring: var(--gradient-r);
 
   --chart-1: oklch(0.87 0 0);
 
@@ -549,5 +543,157 @@ body.module-fullscreen footer {
   }
   html {
     @apply font-sans;
+    /* Full-bleed sekce (viz ProjectAboutSection) se vylamují ze 1440px rámu
+       <main> pomocí 100vw. Protože 100vw počítá i šířku scrollbaru, přesahují
+       o pár px za viewport — clip je uřízne, aniž by vznikl vodorovný scroll.
+       Záměrně clip, ne hidden: nevytváří scroll kontejner, takže position:
+       sticky uvnitř stránky funguje dál. */
+    overflow-x: clip;
   }
+}
+
+/* Organické „blob" tvary na pozadí landing sekcí — pomalý drift, čistě
+   dekorativní. Při prefers-reduced-motion stojí. */
+@keyframes blobFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-20px, 28px, 0) rotate(9deg);
+  }
+}
+@keyframes blobFloatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(16px, -22px, 0) rotate(-7deg);
+  }
+}
+.blob-float {
+  animation: blobFloat 20s ease-in-out infinite;
+}
+.blob-float-slow {
+  animation: blobFloatSlow 24s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .blob-float,
+  .blob-float-slow {
+    animation: none;
+  }
+}
+
+/* Nájezd hero hned po načtení. Záměrně CSS, ne motion: hero je nad ohybem
+   a s JS animací by zůstal neviditelný, dokud se stránka nehydratuje. */
+@keyframes heroEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Pop bubliny s překmitem (náhrada springu). Rotaci drží utilita -rotate-3. */
+@keyframes heroPop {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-5deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-enter {
+  animation: heroEnter 0.5s ease-out both;
+}
+.hero-pop {
+  animation: heroPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-enter,
+  .hero-pop {
+    animation: none;
+  }
+}
+
+/* Maskot rysa v hero (LynxMascot) — zamává, chvíli stojí, zamává znovu;
+   pomalu švihá ocasem a občas mrkne. Originy jsou v jednotkách viewBoxu
+   SVG (loket mávající paže, kořen ocasu). */
+@keyframes lynxWave {
+  0%,
+  44%,
+  100% {
+    transform: rotate(0deg);
+  }
+  8% {
+    transform: rotate(8deg);
+  }
+  16% {
+    transform: rotate(-2deg);
+  }
+  24% {
+    transform: rotate(8deg);
+  }
+  32% {
+    transform: rotate(0deg);
+  }
+}
+@keyframes lynxTail {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+@keyframes lynxBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+.lynx-wave {
+  transform-origin: 292px 332px;
+  animation: lynxWave 4.5s ease-in-out 1s infinite;
+}
+.lynx-tail {
+  transform-origin: 228px 456px;
+  animation: lynxTail 3.2s ease-in-out infinite;
+}
+.lynx-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lynxBlink 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lynx-wave,
+  .lynx-tail,
+  .lynx-blink {
+    animation: none;
+  }
+}
+
+/* Sjednocený focus nativních polí.
+   Bez vlastního focus stylu kreslil prohlížeč svůj tmavý outline, jinde se
+   po appce potkávaly fialové a modré ringy. Všechno stahujeme na šedý prstenec
+   z --ring, tedy stejný vzhled, jaký má <Input> z ui-kitu.
+   Pravidlo je záměrně mimo @layer — nevrstvená pravidla přebíjejí utility
+   třídy, takže přeplácne i focus:ring-purple-200 apod. Komponenty z ui-kitu
+   mají data-slot a řeší si focus samy, proto jsou z výběru vyjmuté. */
+input:not([data-slot]):not([type="checkbox"]):not([type="radio"]):focus-visible,
+textarea:not([data-slot]):focus-visible,
+select:not([data-slot]):focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
 }

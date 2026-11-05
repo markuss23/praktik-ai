@@ -1,5 +1,6 @@
 """LangGraph pro synchronizaci a indexování GitHub wiki."""
 
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.wiki.agent.state import WikiAgentState
@@ -9,10 +10,12 @@ from agents.wiki.agent.nodes import (
     generate_embeddings_node,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_graph():
     """Vytváří graf uzlů pro synchronizaci a indexování wiki."""
-    print("Vytvářím graf uzlů pro wiki agenta...")
+    logger.info("Vytvářím graf uzlů pro wiki agenta...")
     workflow = StateGraph(WikiAgentState)
 
     # nodes

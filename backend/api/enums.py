@@ -1,11 +1,6 @@
 import enum
 
 
-class QuestionType(enum.StrEnum):
-    closed = "closed"
-    open = "open"
-
-
 class Status(enum.StrEnum):
     draft: str = "draft"
     generated: str = "generated"
@@ -39,18 +34,6 @@ class UserRole(enum.StrEnum):
     lector = "lector"
     guarantor = "guarantor"
     superadmin = "superadmin"
-
-
-class ModuleTaskSessionStatus(enum.StrEnum):
-    in_progress = "in_progress"
-    passed = "passed"
-    failed = "failed"
-
-
-class AttemptStatus(enum.StrEnum):
-    pending = "pending"  # Uživatel odeslal, čeká se na odpověď od AI API
-    evaluated = "evaluated"  # AI úspěšně vyhodnotilo
-    error = "error"  # API spadlo (nepočítá se jako vyčerpaný pokus!)
 
 
 class TicketStatus(enum.StrEnum):
@@ -118,3 +101,38 @@ class ReviewVerdict(enum.StrEnum):
     approved = "approved"
     rejected = "rejected"
     needs_revision = "needs_revision"
+
+
+class MentorScope(enum.StrEnum):
+    """Kde AI mentor hledá podklady a historii konverzace."""
+
+    module = "module"
+    course = "course"
+
+
+class AssessmentContext(enum.StrEnum):
+    """Kde v kurzu je interakční formát nasazen."""
+
+    pretest = "pretest"
+    practice = "practice"
+    assessment = "assessment"
+    course_final = "course_final"
+
+
+class AssessmentSessionStatus(enum.StrEnum):
+    """Stav běhu studenta. awaiting_review/reviewer zatím nevyužito —
+    rezervováno pro formáty s hodnocením člověkem (open_questions a další)."""
+
+    in_progress = "in_progress"
+    awaiting_review = "awaiting_review"
+    completed = "completed"
+    passed = "passed"
+    failed = "failed"
+    abandoned = "abandoned"
+
+
+class AssessmentTurnRole(enum.StrEnum):
+    student = "student"
+    assistant = "assistant"
+    reviewer = "reviewer"
+    system = "system"

@@ -3,7 +3,16 @@ from datetime import datetime
 from pydantic import Field, model_validator
 
 from api.enums import AttachType, Difficulty, EduLevel, PubResourceStatus
-from api.src.catalogs.schemas import CourseSubject, CourseTarget
+from api.src.catalogs.schemas import (
+    BloomLevel,
+    CourseBlock,
+    CourseEqfLevel,
+    CourseLevel,
+    CourseSubject,
+    CourseTarget,
+    CourseType,
+    KrauuCompetence,
+)
 from api.src.common.schemas import ORMModel
 
 
@@ -14,11 +23,27 @@ class PubResourceBase(ORMModel):
     target_id: int | None = None
     education_level: EduLevel
     difficulty_level: Difficulty = Field(default=Difficulty.slightly_advanced)
+    eqf_level_id: int
+    course_type_id: int
+    block_id: int | None = None
+    level_id: int | None = None
     allow_forks: bool = False
 
 
+KRAUU_IDS_FIELD = Field(
+    min_length=1,
+    description="ID KRAUU kompetencí (lze vybrat více; oblasti vybírat nelze)",
+)
+
+BLOOM_IDS_FIELD = Field(
+    min_length=1,
+    description="ID Bloomových úrovní (lze vybrat více)",
+)
+
+
 class PubResourceCreate(PubResourceBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class PubResourceCreateFork(ORMModel):
@@ -27,7 +52,8 @@ class PubResourceCreateFork(ORMModel):
 
 
 class PubResourceUpdate(PubResourceBase):
-    pass
+    krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
+    bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 
 
 class PubResourceFile(ORMModel):
@@ -48,6 +74,10 @@ class PubResourceCreated(ORMModel):
     description: str | None = None
     education_level: EduLevel
     difficulty_level: Difficulty
+    eqf_level: CourseEqfLevel
+    course_type: CourseType
+    block: CourseBlock | None = None
+    level: CourseLevel | None = None
     status: PubResourceStatus
     author_id: int
     allow_forks: bool
@@ -99,6 +129,16 @@ class PubResource(PubResourceBase):
     files: list[PubResourceFile] = []
     subject: CourseSubject | None = None
     target: CourseTarget | None = None
+    eqf_level: CourseEqfLevel
+    course_type: CourseType
+    block: CourseBlock | None = None
+    level: CourseLevel | None = None
+    krauu_competences: list[KrauuCompetence] = Field(
+        default=[], validation_alias="krauu_competence_list"
+    )
+    bloom_levels: list[BloomLevel] = Field(
+        default=[], validation_alias="bloom_level_list"
+    )
     created_at: datetime
     updated_at: datetime
 

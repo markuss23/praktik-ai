@@ -11,14 +11,16 @@ from keycloak import (
     KeycloakOpenID,
     KeycloakOpenIDConnection,
 )
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import settings
 from api.database import get_sql
-from api.models import User
+from agents.base.usage import UsageContext, usage_context
+from api.models import AiUsage, User
 from api.enums import UserRole
 
 log = logging.getLogger(__name__)
@@ -91,8 +93,8 @@ class Auth:
                 realm_name=settings.keycloak.realm_name,
                 client_secret_key=settings.keycloak.client_secret,
             )
-        except Exception as e:
-            print(f"Warning: Failed to initialize Keycloak: {e}")
+        except Exception:
+            log.warning("Nepodařilo se inicializovat Keycloak", exc_info=True)
             self.keycloak_openid = None
 
     def get_token(self, username: str, password: str) -> dict:
@@ -108,7 +110,7 @@ class Auth:
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
         except Exception as e:
-            print(e)
+            log.exception("Chyba při získávání tokenu z Keycloak")
             raise HTTPException(
                 status_code=500,
                 detail="Chyba při získávání tokenu z Keycloak",
@@ -151,8 +153,6 @@ class Auth:
             ) from e
 
         sub: str = user_info["sub"]
-        email: str = user_info.get("email", "")
-        name: str | None = user_info.get("name")
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
 
@@ -161,15 +161,7 @@ class Auth:
         if user is None:
             # First request — sync role from Admin API
             resolved_role = _fetch_roles_from_admin_api(sub)
-            user = User(
-                sub=sub,
-                email=email,
-                display_name=name,
-                role=resolved_role,
-                last_synced_at=now,
-            )
-            db.add(user)
-            db.commit()
+            user = _create_user(db, user_info, resolved_role, now)
         else:
             last_synced = user.last_synced_at
             if last_synced is not None and last_synced.tzinfo is None:
@@ -213,14 +205,7 @@ class Auth:
 
         user: User | None = db.scalar(select(User).where(User.sub == sub))
         if user is None:
-            user = User(
-                sub=sub,
-                email=email,
-                display_name=name,
-                role=resolved_role,
-                last_synced_at=now,
-            )
-            db.add(user)
+            user = _create_user(db, user_info, resolved_role, now)
         else:
             user.email = email
             if not user.display_name and name:
@@ -230,6 +215,48 @@ class Auth:
         db.commit()
         db.refresh(user)
         return user
+
+
+def _create_user(db: Session, user_info: dict, role: UserRole, now: datetime) -> User:
+    """Založí uživatele z Keycloak userinfo a commitne.
+
+    Když už v DB je řádek se stejným e-mailem (uživatel dostal v Keycloaku
+    nové ``sub`` — reset realmu, smazání a nová registrace), převezme se
+    tento řádek.
+    """
+    sub: str = user_info["sub"]
+    email: str = user_info.get("email", "")
+    user = User(
+        sub=sub,
+        email=email,
+        display_name=user_info.get("name"),
+        role=role,
+        last_synced_at=now,
+    )
+    db.add(user)
+    try:
+        db.commit()
+        return user
+    except IntegrityError:
+        db.rollback()
+
+    # ponytail: převzetí bez kontroly email_verified — při otevřené registraci bez
+    # ověřování e-mailu si kdokoliv přivlastní cizí účet; před produkcí přidat
+    # `and user_info.get("email_verified")` nebo zapnout verifyEmail v realmu.
+    existing = db.scalar(select(User).where(User.email == email)) if email else None
+    if existing is None:
+        log.warning("Nelze založit uživatele sub=%s email=%s: kolize v DB", sub, email)
+        raise HTTPException(
+            status_code=409,
+            detail="Účet s tímto e-mailem už existuje a nelze ho automaticky propojit",
+        )
+
+    log.warning("Přepojuji uživatele %s: sub %s -> %s", email, existing.sub, sub)
+    existing.sub = sub
+    existing.role = role
+    existing.last_synced_at = now
+    db.commit()
+    return existing
 
 
 ROLE_HIERARCHY: dict[str, int] = {
@@ -253,3 +280,55 @@ def require_role(min_role: str):
 
 auth = Auth()
 CurrentUser = Annotated[User, Depends(auth.get_current_user)]
+
+
+def get_optional_user(
+    token: Annotated[str | None, Depends(oauth2_bearer)],
+    db: Annotated[Session, Depends(get_sql)],
+) -> User | None:
+    """Přihlášený uživatel pro veřejné endpointy; None bez tokenu nebo s neplatným tokenem."""
+    if not token:
+        return None
+    try:
+        return auth.get_current_user(token, db)
+    except HTTPException:
+        return None
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+def is_staff(user: User | None) -> bool:
+    """Lektor a výš (lektor, garant, superadmin)."""
+    return user is not None and ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]
+
+
+async def ai_budget(
+    request: Request,
+    user: Annotated[User, Depends(auth.get_current_user)],
+    db: Annotated[Session, Depends(get_sql)],
+) -> None:
+    """Připíše AI tokeny requestu uživateli a hlídá denní limit role user.
+
+    Musí být async: ContextVar nastavený v sync dependency (threadpool)
+    by se do endpointu nepropsal.
+    """
+    usage_context.set(UsageContext(user_id=user.user_id, endpoint=request.url.path))
+
+    limit = settings.ai_daily_token_limit
+    if not limit or user.role != UserRole.user or request.method == "GET":
+        return
+
+    used = db.scalar(
+        select(
+            func.coalesce(func.sum(AiUsage.input_tokens + AiUsage.output_tokens), 0)
+        ).where(
+            AiUsage.user_id == user.user_id,
+            AiUsage.created_at >= datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    if used >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail="Vyčerpali jste denní limit AI. Zkuste to znovu později.",
+        )

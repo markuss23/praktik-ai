@@ -42,6 +42,10 @@ export function useAutosave<T>(
       timerRef.current = null;
     }
     if (savingRef.current) return; // už běží; po dokončení se znovu zkontroluje
+    // Bez baseline (hook ještě nebyl zapnutý, data se načítají) není s čím
+    // porovnat — uložila by se prázdná hodnota a stala by se baseline, takže
+    // načtená data by pak vypadala jako změna a celá by se uložila znovu.
+    if (savedSnapshotRef.current === null) return;
 
     const snapshot = JSON.stringify(valueRef.current);
     if (snapshot === savedSnapshotRef.current) return; // není co ukládat
@@ -97,10 +101,13 @@ export function useAutosave<T>(
   }, [JSON.stringify(value), enabled, delay]);
 
   // Flush na unmount – ať se rozepsaný obsah neztratí při odchodu z editace.
+  // Před nastavením baseline není co flushovat (StrictMode v dev odmontuje
+  // každou komponentu hned po prvním mountu, ještě než se načtou data).
   useEffect(() => {
     const runSave = runSaveRef.current;
     return () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (savedSnapshotRef.current === null) return;
       if (JSON.stringify(valueRef.current) !== savedSnapshotRef.current) void runSave();
     };
   }, []);

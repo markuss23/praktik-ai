@@ -1,3 +1,4 @@
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.course_generator.state import AgentState
@@ -6,13 +7,16 @@ from agents.course_generator.nodes import (
     load_data_node,
     summarize_content_node,
     plan_content_node,
+    enrich_modules_node,
     save_to_db_node,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def create_graph():
     """Vytváří graf uzlů pro generování kurzu."""
-    print("Vytvářím graf uzlů...")
+    logger.info("Vytvářím graf uzlů...")
     workflow = StateGraph(AgentState)
 
     # nodes
@@ -20,6 +24,7 @@ def create_graph():
     workflow.add_node("load_data", load_data_node)
     workflow.add_node("summarize_content", summarize_content_node)
     workflow.add_node("plan_content", plan_content_node)
+    workflow.add_node("enrich_modules", enrich_modules_node)
     workflow.add_node("save_to_db", save_to_db_node)
 
     # edges
@@ -27,11 +32,8 @@ def create_graph():
     workflow.add_edge("load_data_db", "load_data")
     workflow.add_edge("load_data", "summarize_content")
     workflow.add_edge("summarize_content", "plan_content")
-    workflow.add_edge("plan_content", "save_to_db")
+    workflow.add_edge("plan_content", "enrich_modules")
+    workflow.add_edge("enrich_modules", "save_to_db")
     workflow.add_edge("save_to_db", END)
-    # workflow.set_entry_point("load_data_db")
-    # workflow.add_edge("load_data_db", "load_data")
-    # workflow.add_edge("load_data", "summarize_content")
-    # workflow.add_edge("summarize_content", END)
 
     return workflow.compile()

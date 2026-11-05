@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, type BadgeVariant } from "@/components/ui-kit/badge";
+import { Badge, type BadgeStatusVariant } from "@/components/ui-kit/badge";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,7 @@ import {
  * (2092:4936): 10px bold label, one badge per row, check mark on the selection.
  */
 
-const STATUSES: { value: BadgeVariant; label: string }[] = [
+const STATUSES: { value: BadgeStatusVariant; label: string }[] = [
   { value: "new", label: "Nové" },
   { value: "open", label: "Otevřené" },
   { value: "waiting", label: "Čeká na uživatele" },
@@ -28,8 +28,8 @@ function StatusSelect({
   onValueChange,
   label = "Změnit stav",
 }: {
-  value: BadgeVariant;
-  onValueChange: (value: BadgeVariant) => void;
+  value: BadgeStatusVariant;
+  onValueChange: (value: BadgeStatusVariant) => void;
   label?: string;
 }) {
   const selected = STATUSES.find((status) => status.value === value);
@@ -37,7 +37,7 @@ function StatusSelect({
   return (
     <Select
       value={value}
-      onValueChange={(next) => onValueChange(next as BadgeVariant)}
+      onValueChange={(next) => onValueChange(next as BadgeStatusVariant)}
     >
       {/* The design only shows the open panel, so the closed trigger simply
           echoes the current badge. */}

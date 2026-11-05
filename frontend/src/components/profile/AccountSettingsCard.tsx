@@ -4,6 +4,8 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Camera } from 'lucide-react';
 
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/components/ui';
+
 interface AccountFormValues {
   firstName: string;
   lastName: string;
@@ -25,7 +27,6 @@ export function AccountSettingsCard({
   avatarSrc,
   saving = false,
   onSave,
-  onChangePassword,
   onAvatarChange,
 }: AccountSettingsCardProps) {
   const [values, setValues] = useState<AccountFormValues>({
@@ -75,101 +76,92 @@ export function AccountSettingsCard({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">Nastavení účtu</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>Nastavení účtu</CardTitle>
+      </CardHeader>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Avatar upload */}
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gray-100 overflow-hidden border-2 border-gray-200 flex-shrink-0">
-              {previewUrl ? (
-                <Image
-                  src={previewUrl}
-                  alt="Avatar"
-                  width={80}
-                  height={80}
-                  className="object-cover w-full h-full"
-                />
-              ) : (
-                <Image
-                  src="/logo.svg"
-                  alt="Avatar"
-                  width={60}
-                  height={60}
-                  className="object-contain w-full h-full p-2"
-                />
-              )}
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* Avatar upload */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="size-20 shrink-0 overflow-hidden rounded-full border-2 border-border bg-muted">
+                {previewUrl ? (
+                  <Image
+                    src={previewUrl}
+                    alt="Avatar"
+                    width={80}
+                    height={80}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src="/logo.svg"
+                    alt="Avatar"
+                    width={60}
+                    height={60}
+                    className="size-full object-contain p-2"
+                  />
+                )}
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                className="absolute -right-1 -bottom-1 rounded-full"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                aria-label="Nahrát profilový obrázek"
+              >
+                <Camera />
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-sm transition-colors disabled:opacity-50"
-            >
-              <Camera size={14} />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={handleAvatarUpload}
-              className="hidden"
-            />
+            <div>
+              <p className="text-sm font-medium text-foreground">Profilový obrázek</p>
+              <p className="text-xs text-muted-foreground">
+                {uploading ? 'Nahrávání…' : 'JPG, PNG, WebP nebo GIF. Max 5MB.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">Profilový obrázek</p>
-            <p className="text-xs text-gray-500">
-              {uploading ? 'Nahrávání...' : 'JPG, PNG, WebP nebo GIF. Max 5MB.'}
-            </p>
-          </div>
-        </div>
 
-        {/* Row: Jméno + Příjmení */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500 font-medium">Jméno</label>
-            <input
-              type="text"
-              value={values.firstName}
-              onChange={(e) => handleChange('firstName', e.target.value)}
-              className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition"
-              placeholder="Zadejte jméno"
-            />
+          {/* Row: Jméno + Příjmení */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="account-first-name">Jméno</Label>
+              <Input
+                id="account-first-name"
+                type="text"
+                value={values.firstName}
+                onChange={(e) => handleChange('firstName', e.target.value)}
+                placeholder="Zadejte jméno"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="account-last-name">Příjmení</Label>
+              <Input
+                id="account-last-name"
+                type="text"
+                value={values.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                placeholder="Zadejte příjmení"
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm text-gray-500 font-medium">Příjmení</label>
-            <input
-              type="text"
-              value={values.lastName}
-              onChange={(e) => handleChange('lastName', e.target.value)}
-              className="h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition"
-              placeholder="Zadejte příjmení"
-            />
-          </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 mt-1">
-          {/* 
-          <button
-            type="button"
-            onClick={onChangePassword}
-            className="px-4 py-2 text-sm font-semibold text-gray-800 bg-transparent hover:bg-gray-50 rounded-lg transition"
-          >
-            Změnit heslo
-          </button>
-          */}
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="px-5 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Ukládání...' : 'Uložit změny'}
-          </button>
-          
-        </div>
-      </form>
-    </div>
+          <div className="flex items-center justify-end">
+            <Button type="submit" size="lg" disabled={saving || uploading}>
+              {saving ? 'Ukládání…' : 'Uložit změny'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

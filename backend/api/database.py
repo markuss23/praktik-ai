@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from fastapi import Depends
 from psycopg import ProgrammingError
@@ -5,9 +6,10 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
-from api.models import Base
 from api.config import settings
+from api.models import Base
 
+logger = logging.getLogger(__name__)
 
 engine: Engine = create_engine(settings.postgres.get_connection_string(), echo=False)
 
@@ -40,8 +42,7 @@ def init_db(create_extensions: bool = True) -> None:
                 # Pro trigram indexy (používá se u ix_course_title_trgm)
                 conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
             except ProgrammingError as e:
-                print(e)
-                pass
+                logger.warning("Nepodařilo se vytvořit rozšíření pg_trgm: %s", e)
 
         # Vytvoření všech tabulek a enum typů
         Base.metadata.create_all(bind=conn)

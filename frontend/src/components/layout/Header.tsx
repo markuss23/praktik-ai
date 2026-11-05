@@ -1,344 +1,219 @@
 "use client";
 
 import Link from "next/link";
-import { ROUTES } from "@/lib/constants";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { MessageCircle, UserRound, LogIn, LogOut, Menu, X, LayoutDashboard } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useRole } from "@/hooks/useRole";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useEffect, useState } from "react";
+import { LogIn, LogOut, Menu, UserRound, X } from "lucide-react";
+import {
+  Navbar,
+  NavbarAction,
+  NavbarActions,
+  NavbarBar,
+  NavbarBrand,
+  NavbarCta,
+  NavbarLink,
+  NavbarMobileLink,
+  NavbarMobileNav,
+  NavbarNav,
+} from "@/components/ui-kit/navbar";
+import { Logo } from "@/components/ui-kit/logo";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useRole } from "@/hooks/useRole";
+import { ROUTES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
+type NavItem = { href: string; label: string; auth?: boolean; lector?: boolean };
+
+const NAV: NavItem[] = [
+  { href: ROUTES.HOME, label: "Home" },
+  { href: "/moje-kurzy", label: "Moje kurzy", auth: true },
+  { href: ROUTES.PUBLIC_DATABASE, label: "Veřejná databáze" },
+  { href: "/odmeny", label: "Odměny" },
+  { href: "/tutor", label: "Tutor" },
+  { href: "/admin", label: "Admin", lector: true },
+];
+
+/**
+ * Lišta je buď průhledná (úvodní stránka úplně nahoře, nad hero), nebo plná
+ * světlá jako ostatní plovoucí plochy aplikace. Rozostření ani sklo nikde —
+ * jinde v aplikaci nejsou.
+ */
+const NAV_BASE = cn(
+  "border-b-0 backdrop-blur-none transition-[background-color] duration-300 [--nav-border:rgba(13,47,49,0.08)]",
+  // Spodní hrana: vlasová linka zelená → fialová, do stran mizí.
+  "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent_0%,#5AAC78_30%,#857AD2_70%,transparent_100%)] after:transition-opacity after:duration-300",
+);
+const NAV_TRANSPARENT = "bg-transparent after:opacity-0";
+const NAV_SOLID = "bg-card after:opacity-70";
+
+/**
+ * Položky bez pilulek: kitovou pilulku (`::before`) skrýváme a místo ní je
+ * pod popiskem značková linka zelená → fialová (`::after`). Na hover se
+ * napůl vykreslí od středu, aktivní položka ji má celou.
+ */
+const NAV_LINK = cn(
+  "px-3.5 py-2 text-[17px] before:hidden",
+  "after:pointer-events-none after:absolute after:inset-x-3.5 after:bottom-0.5 after:h-0.5 after:scale-x-0 after:rounded-full after:bg-[linear-gradient(90deg,#5AAC78,#857AD2)] after:transition-transform after:duration-300",
+  "hover:after:scale-x-100 hover:after:opacity-50",
+);
+/** Aktivní popisek zůstává tmavý (kit ho jinak bělí pro pilulku). */
+const ACTIVE_LINK = "text-[var(--nav-fg)] after:scale-x-100 hover:after:opacity-100";
+/**
+ * Přihlašovací CTA v hluboké petrolejové z hero místo kitového vínovo-
+ * fialového přechodu (`bg-none` ho shodí). Drží kontrast na průhledné liště
+ * nad zelenou plochou i na plné bílé.
+ */
+const LOGIN_CTA = cn(
+  "h-10 bg-none bg-[#0D2F31] px-5 shadow-[0_6px_16px_rgba(13,47,49,0.22)] hover:bg-[#164A46] hover:brightness-100",
+  // Stejný hover jako tlačítka v hero: zvednutí o 2 px a hlubší stín.
+  "transition-[translate,box-shadow,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-8px_rgba(13,47,49,0.5)] active:translate-y-0 motion-reduce:hover:translate-y-0",
+);
+
+/** Mobilní řádek: jen jemný zelený nádech, žádná výrazná výplň. */
+const ACTIVE_ROW = "bg-[#5AAC78]/12 text-[var(--nav-fg)]";
+
+/**
+ * Hlavička webu — lišta z UI kitu (`components/ui-kit/navbar.tsx`), stejná
+ * skladba jako `AppNavbar` na stránce /ui-kit, jen napojená na přihlášení,
+ * role a skutečné routy.
+ *
+ * Položek je víc než v ukázce kitu, takže se desktopová navigace zapíná až
+ * od `lg` (v kitu od `md`) — na tabletu by se do lišty nevešla.
+ *
+ * Oproti kitu je štíhlejší (64 px místo 80/96) a ladí s hero úvodní stránky:
+ * - na úvodní stránce je úplně nahoře průhledná (hero pod ni podjíždí);
+ *   jakmile se začne scrollovat, dostane plné světlé pozadí celá lišta;
+ * - vodorovné logo z kitu (`Logo`) a hned vedle něj navigace — bez pilulek,
+ *   aktivní položka má pod sebou značkovou linku;
+ * - v plném stavu spodní hrana ve značkovém přechodu, do stran mizí;
+ * - přihlašovací CTA je plná petrolejová pilulka z palety hero.
+ */
 export function Header() {
   const pathname = usePathname();
   const { isAuthenticated, user, loading, login, logout } = useAuth();
   const { can } = useRole();
   const { currentUser } = useCurrentUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Úvodní stránka se načítá nahoře, takže výchozí stav = průhledná.
+  const isHome = pathname === ROUTES.HOME;
+  const [atTop, setAtTop] = useState(isHome);
 
   const displayName = currentUser?.displayName ?? user?.preferred_username ?? null;
 
-  const isActive = (path: string) => pathname === path;
+  // Home jen přesně, ostatní i s podstránkami (detail materiálu apod.).
+  const isActive = (path: string) =>
+    path === ROUTES.HOME ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
+
+  const links = NAV.filter(
+    (item) => (!item.auth || isAuthenticated) && (!item.lector || can("lector")),
+  );
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  // Průhledná jen na úvodní stránce úplně nahoře — po prvním scrollu by pod
+  // průhlednou lištou podjížděl text hero.
+  useEffect(() => {
+    if (!isHome) {
+      setAtTop(false);
+      return;
+    }
+    const update = () => setAtTop(window.scrollY <= 4);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [isHome]);
+
+  // Rozbalené mobilní menu potřebuje pod sebou plnou plochu.
+  const transparent = atTop && !mobileMenuOpen;
+
   // Close mobile menu on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileMenuOpen(false);
+      if (e.key === "Escape") setMobileMenuOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
   return (
-    <header className="bg-white sticky top-0 z-[1000]" style={{ borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', borderBottom: '1px solid #e5e7eb' }}>
-      <div className="mx-auto px-3 sm:px-6 lg:px-6 xl:px-10 py-2 lg:py-[7px]" style={{ maxWidth: '1600px', width: '100%', minHeight: '56px', height: 'auto' }}>
-        <nav className="flex items-center justify-between h-full gap-2">
-          {/* Logo and Brand */}
-          <Link href={ROUTES.HOME} className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
-            <Image
-              src="/logo.svg"
-              alt="PRAKTIK-AI Logo"
-              width={221}
-              height={83}
-              className="w-[64px] h-[24px] sm:w-[180px] sm:h-[68px] lg:w-[221px] lg:h-[83px] flex-shrink-0"
-            />
-            <span className="text-sm sm:text-lg lg:text-xl font-bold text-black whitespace-nowrap">PRAKTIK-AI</span>
-          </Link>
+    <Navbar className={cn(NAV_BASE, transparent ? NAV_TRANSPARENT : NAV_SOLID)}>
+      <NavbarBar className="h-16 sm:h-16">
+        {/* Logo a navigace vlevo u sebe, akce vpravo. */}
+        <div className="flex min-w-0 items-center gap-6 xl:gap-10">
+          <NavbarBrand render={<Link href={ROUTES.HOME} />} aria-label="PRAKTIK-AI — úvodní stránka">
+            <Logo />
+          </NavbarBrand>
 
-          {/* Navigation Links */}
-          <ul className="hidden md:flex items-center gap-4 lg:gap-8 whitespace-nowrap">
-            <li>
-              <Link
-                href={ROUTES.HOME}
-                data-text="Home"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.HOME)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
+          <NavbarNav className="gap-0.5 md:hidden lg:flex">
+            {links.map(({ href, label }) => (
+              <NavbarLink
+                key={href}
+                render={<Link href={href} />}
+                active={isActive(href)}
+                className={cn(NAV_LINK, isActive(href) && ACTIVE_LINK)}
               >
-                Home
-                {isActive(ROUTES.HOME) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            {isAuthenticated && (
-              <li>
-                <Link
-                  href="/moje-kurzy"
-                  data-text="Moje kurzy"
-                  className={`nav-link relative pb-1 transition-colors ${
-                    isActive('/moje-kurzy')
-                      ? 'text-black font-bold'
-                      : 'text-gray-700 hover:text-black font-medium'
-                  }`}
-                >
-                  Moje kurzy
-                  {isActive('/moje-kurzy') && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-0.5"
-                      style={{
-                        background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                      }}
-                    />
-                  )}
-                </Link>
-              </li>
-            )}
-            <li>
-              <Link
-                href={ROUTES.PUBLIC_DATABASE}
-                data-text="Veřejná databáze"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive(ROUTES.PUBLIC_DATABASE)
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Veřejná databáze
-                {isActive(ROUTES.PUBLIC_DATABASE) && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/odmeny"
-                data-text="Odměny"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/odmeny')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Odměny
-                {isActive('/odmeny') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/tutor"
-                data-text="Tutor"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/tutor')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Tutor
-                {isActive('/tutor') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            {can('lector') && (
-            <li>
-              <Link
-                href="/admin"
-                data-text="Admin"
-                className={`nav-link relative pb-1 transition-colors ${
-                  isActive('/admin')
-                    ? 'text-black font-bold'
-                    : 'text-gray-700 hover:text-black font-medium'
-                }`}
-              >
-                Admin
-                {isActive('/admin') && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-0.5"
-                    style={{
-                      background: 'linear-gradient(90deg, #B1475C 0%, #857AD2 100%)'
-                    }}
-                  />
-                )}
-              </Link>
-            </li>
-            )}
-          </ul>
-
-          {/* User Actions */}
-          <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
-            {isAuthenticated && (
-              <Link
-                href="/tutor"
-                aria-label="AI tutor"
-                title="AI tutor"
-                className={`hidden sm:inline-flex p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/tutor') ? 'bg-gray-100' : ''
-                }`}
-              >
-                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-              </Link>
-            )}
-
-            {/* Admin shortcut on mobile (md:hidden, only for lectors+) */}
-            {isAuthenticated && can('lector') && (
-              <Link
-                href="/admin"
-                title="Admin dashboard"
-                aria-label="Admin dashboard"
-                className={`md:hidden p-1.5 hover:bg-gray-100 rounded-full transition-colors ${
-                  isActive('/admin') ? 'bg-gray-100' : ''
-                }`}
-              >
-                <LayoutDashboard className="w-5 h-5 text-black" strokeWidth={1.5} />
-              </Link>
-            )}
-
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse" />
-            ) : isAuthenticated ? (
-              <div className="flex items-center gap-1 sm:gap-3">
-                <Link
-                  href={ROUTES.PROFILE}
-                  className={`flex items-center gap-1.5 p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors ${
-                    isActive(ROUTES.PROFILE) ? "bg-gray-100" : ""
-                  }`}
-                  title={displayName ?? "Můj profil"}
-                >
-                  <UserRound className="w-5 h-5 sm:w-6 sm:h-6 text-black" strokeWidth={1.5} />
-                  {displayName && (
-                    <span className="hidden lg:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
-                      {displayName}
-                    </span>
-                  )}
-                </Link>
-                <button
-                  onClick={logout}
-                  title="Odhlásit se"
-                  aria-label="Odhlásit se"
-                  className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full sm:rounded-md transition-colors"
-                >
-                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                  <span className="hidden sm:block">Odhlásit</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={login}
-                title="Přihlásit se"
-                aria-label="Přihlásit se"
-                className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white rounded-md shadow-sm transition-colors"
-                style={{ background: "linear-gradient(90deg, #B1475C 0%, #857AD2 100%)" }}
-              >
-                <LogIn className="w-4 h-4" strokeWidth={2} />
-                <span className="hidden sm:inline">Přihlásit se</span>
-                <span className="sm:hidden">Přihlásit</span>
-              </button>
-            )}
-
-            {/* Mobile hamburger toggle */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
-              aria-label="Otevřít menu"
-            >
-              <Menu className="w-6 h-6 text-black" strokeWidth={1.5} />
-            </button>
-          </div>
-        </nav>
-      </div>
-
-      {/* Mobile menu drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[2000] flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative w-72 max-w-[85%] bg-white shadow-xl flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <span className="text-base font-bold text-black">Menu</span>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
-                aria-label="Zavřít menu"
-              >
-                <X className="w-5 h-5 text-black" strokeWidth={1.5} />
-              </button>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto py-2">
-              <MobileNavLink href={ROUTES.HOME} active={isActive(ROUTES.HOME)}>Home</MobileNavLink>
-              {isAuthenticated && (
-                <MobileNavLink href="/moje-kurzy" active={isActive('/moje-kurzy')}>Moje kurzy</MobileNavLink>
-              )}
-              <MobileNavLink href={ROUTES.PUBLIC_DATABASE} active={isActive(ROUTES.PUBLIC_DATABASE)}>Veřejná databáze</MobileNavLink>
-              <MobileNavLink href="/odmeny" active={isActive('/odmeny')}>Odměny</MobileNavLink>
-              <MobileNavLink href="/tutor" active={isActive('/tutor')}>Tutor</MobileNavLink>
-              {can('lector') && (
-                <MobileNavLink href="/admin" active={isActive('/admin')} icon={<LayoutDashboard className="w-4 h-4" strokeWidth={1.5} />}>
-                  Admin
-                </MobileNavLink>
-              )}
-            </nav>
-
-            {isAuthenticated && displayName && (
-              <div className="px-4 py-3 border-t border-gray-200 text-xs text-gray-500 truncate">
-                {displayName}
-              </div>
-            )}
-          </div>
+                {label}
+              </NavbarLink>
+            ))}
+          </NavbarNav>
         </div>
-      )}
-    </header>
-  );
-}
 
-function MobileNavLink({
-  href,
-  active,
-  icon,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2 px-4 py-3 text-sm transition-colors ${
-        active
-          ? 'text-black font-bold bg-gray-50 border-l-4 border-l-purple-600 pl-3'
-          : 'text-gray-700 hover:bg-gray-50 hover:text-black font-medium border-l-4 border-l-transparent pl-3'
-      }`}
-    >
-      {icon}
-      <span>{children}</span>
-    </Link>
+        <NavbarActions>
+          {loading ? (
+            <div aria-hidden className="size-9 animate-pulse rounded-full bg-[var(--nav-hover)]" />
+          ) : isAuthenticated ? (
+            <>
+              <NavbarAction
+                size="default"
+                render={<Link href={ROUTES.PROFILE} />}
+                title={displayName ?? "Můj profil"}
+                aria-label={displayName ? undefined : "Můj profil"}
+                className={cn(isActive(ROUTES.PROFILE) && "bg-[var(--nav-hover)] text-[var(--nav-fg)]")}
+              >
+                <UserRound />
+                {displayName && (
+                  // Až od xl — mezi lg a xl by se s šesti odkazy lišta nevešla.
+                  <span className="hidden max-w-[140px] truncate xl:inline">{displayName}</span>
+                )}
+              </NavbarAction>
+              <NavbarAction onClick={logout} aria-label="Odhlásit se" title="Odhlásit se">
+                <LogOut />
+              </NavbarAction>
+            </>
+          ) : (
+            <NavbarCta onClick={() => login()} className={LOGIN_CTA}>
+              <LogIn className="text-[#5AAC78]" />
+              Přihlásit se
+            </NavbarCta>
+          )}
+
+          <NavbarAction
+            className="lg:hidden"
+            aria-label={mobileMenuOpen ? "Zavřít menu" : "Otevřít menu"}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X /> : <Menu />}
+          </NavbarAction>
+        </NavbarActions>
+      </NavbarBar>
+
+      <NavbarMobileNav open={mobileMenuOpen} className="md:flex lg:hidden">
+        {links.map(({ href, label }) => (
+          <NavbarMobileLink
+            key={href}
+            render={<Link href={href} />}
+            active={isActive(href)}
+            className={cn(isActive(href) && ACTIVE_ROW)}
+          >
+            {label}
+          </NavbarMobileLink>
+        ))}
+      </NavbarMobileNav>
+    </Navbar>
   );
 }

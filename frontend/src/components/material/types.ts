@@ -1,3 +1,5 @@
+import type { BloomLevel, KrauuCompetence } from "@/api";
+
 export type MaterialApprovalStatus = "draft" | "approved" | "in_review" | "rejected";
 
 export interface MaterialAttachment {
@@ -57,9 +59,18 @@ export interface Material {
   isFork?: boolean;
   folderId?: string;
   ownerId?: string;
+  /** Jméno autora materiálu (pro filtr „Autor"). */
+  authorName?: string;
   targetAudience?: string;
+  /** Lokalizovaný popisek úrovně vzdělání (pro zobrazení). */
   educationLevel?: string;
+  /** Hodnota `EduLevel` z backendu (pro filtrování — nezávislá na jazyku popisku). */
+  educationLevelValue?: string;
+  /** Typy příloh (`AttachType`) obsažené v materiálu — pro filtr podle typu souboru. */
+  fileTypes?: string[];
   difficulty?: string;
   targets?: MaterialTarget[];
+  krauuCompetences?: KrauuCompetence[];
+  bloomLevels?: BloomLevel[];
   attachments?: MaterialAttachment[];
 }

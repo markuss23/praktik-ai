@@ -1,121 +1,233 @@
 # Praktik-AI
 
-Platforma pro systematický rozvoj AI kompetencí akademických pracovníků pedagogických fakult. Umožňuje tvorbu, správu a absolvování kurzů s podporou AI agentů pro generování obsahu, evaluaci a mentoring.
+Platforma pro rozvoj AI kompetencí akademických pracovníků pedagogických fakult. Lektoři v ní s pomocí AI tvoří kurzy, studenti je procházejí s AI mentorem a AI je i hodnotí.
+
+**Stack:** Next.js 15 · FastAPI · PostgreSQL 18 + pgvector · LangGraph · Keycloak · SeaweedFS · Docker Compose
+
+## Obsah
+
+- [Rychlý start](#rychlý-start)
+- [Konfigurace](#konfigurace)
+- [Vývoj](#vývoj)
+- [Architektura](#architektura)
+- [Učební model a testy](#učební-model-a-testy)
+  - [Typy testů](#typy-testů)
+- [AI agenti](#ai-agenti)
+- [Role](#role)
+- [Struktura projektu](#struktura-projektu)
+- [Další dokumentace](#další-dokumentace)
+- [Přispívání](#přispívání)
+- [Licence](#licence)
 
 ---
 
-## High-Level Design
+## Rychlý start
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                             UŽIVATEL                                 │
-└─────────────────────────────┬────────────────────────────────────────┘
-                              │ HTTPS
-                              ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                        FRONTEND  (Next.js 15)                        │
-│                                                                      │
-│  /courses   /courses/:slug   /modules/:slug   /moje-kurzy   /tutor   │
-│  /profil    /odmeny          /admin/*                                │
-└──────────────┬───────────────────────────────┬───────────────────────┘
-               │ REST / JSON                   │ OpenID Connect
-               ▼                               ▼
-┌──────────────────────────┐       ┌───────────────────────┐
-│     BACKEND API          │       │   KEYCLOAK 26.4        │
-│     (FastAPI :8000)      │◄──────│   Identity Provider    │
-│                          │  JWT  │   :8080                │
-│  /auth                   │       └───────────────────────┘
-│  /courses  /modules      │
-│  /activities             │
-│  /enrollments            │
-│  /feedbacks              │
-│  /module-tickets         │
-│  /users   /superadmin    │
-│  /catalogs               │
-│  /agents ─────────────────────────────────────────────┐
-│                          │                            │
-│  SQLAlchemy ORM          │                            │
-│  + AuditLog listener     │                            │
-└──────────┬───────────────┘                            │
-           │                                            │
-           ▼                                            ▼
-┌──────────────────────┐              ┌─────────────────────────────┐
-│  POSTGRESQL 18       │              │   AI AGENTI  (LangGraph)    │
-│  + pgvector          │◄────────────►│                             │
-│  :5432               │              │  • course_generator         │
-│                      │              │  • embedding_generator      │
-│  courses, modules,   │              │  • assessment_generator     │
-│  activities, users,  │              │  • assessment_evaluator     │
-│  enrollments,        │              │  • practice_q_generator     │
-│  audit_log, vectors  │              │  • practice_a_evaluator     │
-└──────────────────────┘              │  • mentor  (RAG)            │
-                                      └──────────────┬──────────────┘
-┌──────────────────────┐                             │ API calls
-│  SEAWEEDFS           │                             ▼
-│  master  :9333       │              ┌─────────────────────────────┐
-│  volume  :8081       │              │   ANTHROPIC / OPENAI API    │
-│  filer   :8888       │              │   Claude / GPT-4o           │
-└──────────────────────┘              └─────────────────────────────┘
+**Potřebuješ:** Docker s Compose v2 a API klíč k Anthropic nebo OpenAI.
+
+```bash
+git clone https://github.com/markuss23/praktik-ai.git
+cd praktik-ai
+cp .env_example .env     # vyplň hodnoty, viz Konfigurace
+docker compose up -d --build
 ```
 
----
+Při prvním startu API samo vytvoří tabulky (`init_db`) a naplní číselníky a systémová nastavení (`seed_db`). Keycloak importuje dev realm z `infra/keycloak/praktikai-dev-realm.json`.
 
-## Učební model — průchod kurzem
-
-```text
-                             KURZ
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│    Modul 1           Modul 2  . . .     Modul N         │
-│  ┌──────────┐      ┌──────────┐       ┌──────────┐      │
-│  │ Learn    │      │ Learn    │       │ Learn    │      │
-│  │ (obsah)  │      │ (obsah)  │       │ (obsah)  │      │
-│  │    ↓     │ ──►  │    ↓     │ ──►   │    ↓     │      │
-│  │ Practice │unlock│ Practice │unlock │ Practice │      │
-│  │ (cvičení)│      │ (cvičení)│       │ (cvičení)│      │
-│  │    ↓     │      │    ↓     │       │    ↓     │      │
-│  │ Assess.  │      │ Assess.  │       │ Assess.  │      │
-│  │ (AI test)│      │ (AI test)│       │ (AI test)│      │
-│  └──────────┘      └──────────┘       └──────────┘      │
-│      PASS ✓            PASS ✓             PASS ✓        │
-│                                               = HOTOVO  │
-└─────────────────────────────────────────────────────────┘
-```
-
-Každý modul je samostatná uzavřená jednotka:
-
-| Fáze | Popis |
+| Služba | URL |
 | --- | --- |
-| **Learn** | Studijní obsah (LearnBlock) s AI mentorem |
-| **Practice** | Procvičovací otázky (closed/open), personalizované AI otázky |
-| **Assessment** | AI-generovaný úkol, evaluace AI agentem, max. N pokusů |
+| Frontend | <http://localhost:3000> |
+| API + Swagger UI | <http://localhost:8000> (endpointy pod `/api/v1`) |
+| Health check | <http://localhost:8000/health> |
+| Keycloak admin | <http://localhost:8080> |
+| SeaweedFS filer | <http://localhost:8888> |
+| PostgreSQL | `localhost:5433` |
+
+Funguje to, když `/health` vrátí `{"message": "ok"}` a na frontendu se dá přihlásit.
 
 ---
 
-## AI Agenti
+## Konfigurace
 
-| Agent | Funkce | Pipeline |
+Všechno jde přes kořenový `.env`. Šablona je v [`.env_example`](.env_example). Vnořená nastavení backendu oddělují dvě podtržítka (`POSTGRES__HOST` → `settings.postgres.host`).
+
+| Proměnná | Povinná | Popis |
 | --- | --- | --- |
-| `course_generator` | Generuje strukturu kurzu ze zdrojových materiálů | `load_data → summarize → plan → save_to_db` |
-| `embedding_generator` | Vytváří vektory LearnBlocků pro sémantické vyhledávání | `load → embed → upsert pgvector` |
-| `assessment_generator` | Generuje zadání závěrečného úkolu modulu | `load_context → generate_task` |
-| `assessment_evaluator` | Vyhodnocuje odpověď studenta na assessment | `load_task → evaluate → score` |
-| `practice_q_generator` | Generuje personalizované procvičovací otázky | `load_context → generate_question` |
-| `practice_a_evaluator` | Vyhodnocuje odpověď na open otázku | `load_question → evaluate` |
-| `mentor` | RAG chatbot pro dotazy k obsahu LearnBlocku | `load_learn_block → rerank → generate_answer` |
+| `POSTGRES__HOST`, `__PORT`, `__USER`, `__PASSWORD`, `__DB` | ano | Připojení k DB. V Dockeru `db` / `5432`, z hostu `localhost` / `5433` |
+| `KEYCLOAK__SERVER_URL`, `__REALM_NAME`, `__CLIENT_ID`, `__CLIENT_SECRET` | ano | Ověřování JWT na backendu |
+| `KC_BOOTSTRAP_ADMIN_USERNAME`, `KC_BOOTSTRAP_ADMIN_PASSWORD` | ano | Admin účet Keycloaku |
+| `ANTHROPIC_API_KEY` | ano* | Výchozí modely jsou Claude. V `.env_example` zatím chybí, je potřeba ho doplnit |
+| `OPENAI_API_KEY` | ano* | Pro modely `gpt-*` a embeddingy |
+| `NEXT_PUBLIC_KEYCLOAK_URL`, `_REALM`, `_CLIENT_ID`, `NEXT_API_URL` | ano | Frontend. Vkládají se při buildu image |
+| `SEAWEEDFS__MASTER_URL`, `__FILER_URL` | ne | Úložiště souborů. Výchozí hodnoty odpovídají Compose |
+| `WIKI__REPO_URL`, `__LOCAL_PATH`, `__SYNC_INTERVAL_HOURS` | ne | Synchronizace GitHub wiki pro AI mentora |
+| `AI_DAILY_TOKEN_LIMIT` | ne | Denní limit AI tokenů pro roli `user`. `0` = bez limitu, spotřeba se jen zaznamenává. Po překročení vrací API 429 |
+| `LOG_LEVEL` | ne | Úroveň logování, výchozí `INFO` |
+
+\* Nastav aspoň ten klíč, jehož modely používáš. Model se vybírá podle prefixu (`claude-*` nebo `gpt-*`), viz [`agents/base/llm.py`](backend/agents/base/llm.py).
+
+Prompty a modely jednotlivých agentů jsou v DB tabulce `system_setting`. Superadmin je mění v administraci, výchozí hodnoty jsou v [`backend/api/seed.py`](backend/api/seed.py).
 
 ---
 
-## Autorizace — role (RBAC)
+## Vývoj
 
-| Role | Oprávnění |
+### Backend bez frontendu
+
+```bash
+make backend-dev      # api + db + keycloak + seaweedfs, se sestavením image
+make db               # jen databáze
+```
+
+Složka `backend/` je do kontejneru připojená jako volume.
+
+### Frontend lokálně
+
+```bash
+cd frontend
+npm install
+npm run dev                 # http://localhost:3000
+npm run generate:openapi    # TS klient do src/api, potřebuje běžící API
+```
+
+Klient v `frontend/src/api/` je generovaný. Needituj ho ručně, po každé změně API ho vygeneruj znovu.
+
+### Migrace DB
+
+Nové tabulky vytváří `init_db` sám. Změny existujících tabulek a převody dat dělají SQL skripty v [`migrations/`](migrations/). Spouští se ručně a popořadě. Každý skript má v hlavičce popis a přesný příkaz:
+
+```bash
+docker exec -i praktik-ai-db-1 sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction' \
+  < migrations/0026_legacy_practice_and_task_to_assessments.sql
+```
+
+### Aktualizace promptů ze seed.py
+
+```bash
+make update-settings                       # všechny klíče
+make update-settings KEYS=course_planner   # jen vybrané
+```
+
+### Testy a lint
+
+```bash
+cd backend
+uv sync
+uv run pytest tests        # rychlé testy, bez DB a bez API klíčů
+uv run ruff check .        # stejný lint jako v CI
+```
+
+Testy proti skutečné DB a se skutečným LLM popisuje [backend/tests/README.md](backend/tests/README.md).
+
+### CI
+
+| Workflow | Kdy běží | Co dělá |
+| --- | --- | --- |
+| `check_backend_lint.yml` | push do `dev` | `ruff` nad `backend/` |
+| `check_frotend_audit.yml` | push do `dev`, PR do `dev`/`main` | `npm audit` frontendu |
+| `refresh-course-manual.yml` | ručně (workflow_dispatch) | Obnoví screenshoty manuálu a otevře PR do `dev` |
+
+---
+
+## Architektura
+
+```text
+                 Uživatel
+                    │ HTTPS
+                    ▼
+        ┌───────────────────────┐   OIDC   ┌──────────────────┐
+        │ Frontend (Next.js 15) │─────────►│ Keycloak 26.4    │
+        │ :3000                 │          │ :8080            │
+        └───────────┬───────────┘          └────────┬─────────┘
+                    │ REST /api/v1                  │ JWT
+                    ▼                               │
+        ┌───────────────────────┐◄──────────────────┘
+        │ Backend (FastAPI)     │
+        │ :8000                 │──────────► SeaweedFS (soubory, obrázky)
+        │  routery, assessments │
+        │  AuditLog, AI usage   │
+        └─────┬───────────┬─────┘
+              │           │
+              ▼           ▼
+   ┌──────────────┐  ┌──────────────────────┐     ┌────────────────────┐
+   │ PostgreSQL 18│◄─│ AI agenti (LangGraph)│────►│ Anthropic / OpenAI │
+   │ + pgvector   │  │ backend/agents/      │     └────────────────────┘
+   │ :5433        │  └──────────────────────┘
+   └──────────────┘
+```
+
+- **Frontend** volá API přes klienta generovaného z OpenAPI. Přihlášení řeší Keycloak.
+- **Backend** ověřuje JWT z Keycloaku a role synchronizuje do DB při přihlášení. Každou změnu dat zapisuje do `audit_log`. Spotřebu tokenů zapisuje do `ai_usage`.
+- **AI agenti** jsou grafy v LangGraph. Volají se z backendu, vektory ukládají do pgvectoru.
+
+---
+
+## Učební model a testy
+
+Kurz se skládá z modulů. Modul obsahuje studijní obsah (LearnBlocky s AI mentorem) a testy. Testy řídí assessment systém v [`backend/api/src/assessments/`](backend/api/src/assessments/).
+
+```text
+Modul 1:  pretest → practice → assessment ┐
+Modul 2:  pretest → practice → assessment ├──► course_final ──► kurz hotový
+Modul N:  pretest → practice → assessment ┘
+```
+
+| Kontext | K čemu slouží | Odemyká se po |
+| --- | --- | --- |
+| `pretest` | Vstupní ověření znalostí modulu | hned |
+| `practice` | Procvičování | splnění pretestu |
+| `assessment` | Závěrečný test modulu | splnění practice |
+| `course_final` | Závěr celého kurzu | splnění assessmentů všech modulů |
+
+Postup hlídá gate. Počítají se jen povinné konfigurace (`is_required`). Když student krok přeskočí, API vrátí 403.
+
+### Typy testů
+
+Lektor ke každému kontextu přiřadí jeden nebo víc typů:
+
+| Formát | Popis |
 | --- | --- |
-| `user` | Procházení katalogu, zápis do kurzu, absolvování |
-| `lector` | + Tvorba a správa vlastních kurzů |
-| `guarantor` | + Review kurzů, schvalování, feedback |
-| `superadmin` | + Správa systémových nastavení, uživatelů, číselníků |
+| [`pretest`](backend/api/src/assessments/pretest/README.md) | Uzavřené otázky + otevřená otázka na začátku modulu |
+| [`closed_questions`](backend/api/src/assessments/closed_questions/README.md) | Uzavřené otázky od lektora |
+| [`closed_questions_ai`](backend/api/src/assessments/closed_questions_ai/README.md) | Uzavřené otázky generuje AI |
+| [`open_question_ai`](backend/api/src/assessments/open_question_ai/README.md) | Otevřená otázka, hodnotí ji AI |
+| [`socratic_dialog_ai`](backend/api/src/assessments/socratic_dialog_ai/README.md) | Sokratovský dialog s AI, skóre podle ELO |
 
-Role jsou spravovány v Keycloaku (realm roles), do DB se synchronizují při přihlášení.
+**Nový formát:** založ složku se stejným rozhraním jako [`closed_questions/__init__.py`](backend/api/src/assessments/closed_questions/__init__.py) a přidej řádek do `FORMATS` v [`assessments/utils.py`](backend/api/src/assessments/utils.py).
+
+---
+
+## AI agenti
+
+Agenti jsou v [`backend/agents/`](backend/agents/).
+
+| Agent | Co dělá |
+| --- | --- |
+| `course_generator` | Ze zdrojových materiálů udělá souhrn, plán kurzu a moduly zařazené do číselníků |
+| `embedding_generator` | Vytváří vektory LearnBlocků do pgvectoru |
+| `mentor` | RAG chatbot nad obsahem modulu nebo celého kurzu |
+| `wiki` | Synchronizuje GitHub wiki a odpovídá z ní (plánovač běží v `lifespan`) |
+| `image_generator` | Generuje obrázky ke kurzům a modulům |
+| `assessment_generator`, `assessment_evaluator` | Zadání a hodnocení závěrečného úkolu |
+| `practice_question_generator`, `practice_answer_evaluator` | Procvičovací otázky a hodnocení odpovědí |
+| `base/` | Sdílené části: výběr LLM, loadery, vector store |
+
+Formáty s AI (`*_ai`) mají vlastní agenty ve své složce v `assessments/`.
+
+---
+
+## Role
+
+Role se spravují v Keycloaku jako realm roles. Do DB se synchronizují při přihlášení.
+
+| Role | Co smí |
+| --- | --- |
+| `user` | Procházet katalog, zapsat se do kurzu, absolvovat ho |
+| `lector` | Navíc tvořit a spravovat vlastní kurzy |
+| `guarantor` | Navíc kontrolovat a schvalovat kurzy, psát k nim feedback |
+| `superadmin` | Navíc spravovat systémová nastavení, uživatele a číselníky |
+
+Kontroly vlastnictví jsou v [`backend/api/authorization.py`](backend/api/authorization.py).
 
 ---
 
@@ -124,127 +236,56 @@ Role jsou spravovány v Keycloaku (realm roles), do DB se synchronizují při p�
 ```text
 ├── backend/
 │   ├── api/
-│   │   ├── src/
-│   │   │   ├── auth/             # /auth — přihlášení, token, sync uživatele
-│   │   │   ├── courses/          # /courses — CRUD kurzů, soubory, odkazy, stavy
-│   │   │   ├── modules/          # /modules — CRUD modulů, progress, assessment
-│   │   │   ├── activities/       # /activities — LearnBlocky, otázky, klíčová slova
-│   │   │   ├── enrollments/      # /enrollments — zápis do kurzu
-│   │   │   ├── feedbacks/        # /feedbacks — komentáře garanta ke kurzu
-│   │   │   ├── module_tickets/   # /module-tickets — reklamace AI hodnocení
-│   │   │   ├── users/            # /users — profil, AI nastavení
-│   │   │   ├── superadmin/       # /superadmin — systémová nastavení, číselníky
-│   │   │   ├── catalogs/         # /catalogs — bloky, cíle, obory
-│   │   │   ├── agents/           # /agents — volání AI agentů
-│   │   │   └── common/           # sdílené utility (get_or_404, ...)
-│   │   ├── main.py               # FastAPI app, middleware, lifespan
-│   │   ├── models.py             # SQLAlchemy ORM modely
-│   │   ├── audit.py              # AuditLog listener (before_flush)
-│   │   ├── authorization.py      # owner / role checks
-│   │   ├── dependencies.py       # CurrentUser, Keycloak auth
-│   │   ├── database.py           # SessionLocal, init_db
-│   │   ├── enums.py              # StrEnum hodnoty
-│   │   └── config.py             # Pydantic settings
-│   └── agents/
-│       ├── course_generator/
-│       ├── embedding_generator/
-│       ├── assessment_generator/
-│       ├── assessment_evaluator/
-│       ├── practice_question_generator/
-│       ├── practice_answer_evaluator/
-│       ├── mentor/
-│       ├── base/                 # sdílené loadery, vector store
-│       └── vector_store.py
-├── frontend/
-│   └── src/
-│       ├── app/
-│       │   ├── (main)/           # veřejné stránky (layout s navbar)
-│       │   │   ├── courses/      # katalog kurzů
-│       │   │   ├── modules/      # detail modulu (learn, practice, assess)
-│       │   │   ├── moje-kurzy/   # moje zapsané kurzy
-│       │   │   ├── tutor/        # AI tutor
-│       │   │   ├── profil/
-│       │   │   └── odmeny/
-│       │   ├── admin/            # správa (lector/guarantor/superadmin)
-│       │   │   ├── categories/
-│       │   │   ├── review/       # schvalování kurzů
-│       │   │   ├── stats/
-│       │   │   └── ai-mentor/
-│       │   └── auth/             # OAuth callback
-│       ├── components/
-│       ├── api/                  # generovaný OpenAPI klient
-│       └── hooks/
+│   │   ├── main.py            # FastAPI app, middleware, lifespan
+│   │   ├── models.py          # SQLAlchemy modely
+│   │   ├── seed.py            # číselníky, prompty a modely agentů
+│   │   ├── config.py          # nastavení z .env
+│   │   ├── dependencies.py    # CurrentUser, Keycloak, AI limit
+│   │   ├── authorization.py   # kontroly vlastníka a rolí
+│   │   ├── audit.py           # AuditLog listener
+│   │   └── src/               # jedna složka = jeden router
+│   │       ├── assessments/   # testy: formáty, gate, sessions
+│   │       ├── courses/  modules/  activities/  enrollments/
+│   │       ├── feedbacks/  module_tickets/  users/  superadmin/
+│   │       ├── catalogs/  editor_images/  publicDB/  agents/  auth/
+│   │       └── common/        # sdílené utility
+│   ├── agents/                # LangGraph agenti
+│   ├── scripts/               # update_system_settings
+│   └── tests/
+├── frontend/src/
+│   ├── app/(main)/            # veřejná část a studium
+│   ├── app/admin/             # administrace
+│   ├── api/                   # generovaný OpenAPI klient
+│   └── components/
+├── migrations/                # ruční SQL migrace, číslované
 ├── infra/
-│   ├── docker/                   # Dockerfile pro jednotlivé služby
-│   └── scripts/
+│   ├── docker/                # Dockerfily, init-db.sql
+│   └── keycloak/              # dev realm a téma
+├── docs/manuals/              # uživatelské manuály
 ├── compose.yml
 └── Makefile
 ```
 
 ---
 
-## Technologie
+## Další dokumentace
 
-| Vrstva | Technologie |
-| --- | --- |
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
-| Backend | FastAPI, SQLAlchemy 2, Python 3.13, uv |
-| AI | LangGraph, LangChain, Anthropic / OpenAI |
-| Databáze | PostgreSQL 18 + pgvector |
-| Auth | Keycloak 26.4 (OpenID Connect / OAuth 2.0) |
-| Úložiště | SeaweedFS (master + volume + filer) |
-| Kontejnery | Docker, Docker Compose |
+- [backend/tests/README.md](backend/tests/README.md): jak spouštět testy
+- [Typy testů](#typy-testů): README každého typu
+- [docs/manuals/jak-vytvorit-kurz](docs/manuals/jak-vytvorit-kurz/README.md): manuál pro lektory
+- [GitHub wiki](https://github.com/markuss23/praktik-ai/wiki)
 
 ---
 
-## Rychlý start
+## Přispívání
 
-### 1. Konfigurace prostředí
+1. Větev založ z `dev`. Do `main` jde jen přes PR.
+2. Před pushem pusť `uv run ruff check .` a `uv run pytest tests`.
+3. Když měníš schéma existující tabulky, přidej další číslovaný skript do `migrations/`.
+4. Když měníš API, vygeneruj znovu frontendového klienta.
 
-```bash
-cp env_example .env
-```
+---
 
-Minimálně vyplnit v `.env`:
+## Licence
 
-```env
-OPENAI_API_KEY=sk-...
-
-POSTGRES__HOST=db
-POSTGRES__PORT=5432
-POSTGRES__USER=...
-POSTGRES__PASSWORD=...
-POSTGRES__DB=...
-
-KEYCLOAK__SERVER_URL=http://keycloak:8080/
-KEYCLOAK__REALM_NAME=...
-KEYCLOAK__CLIENT_ID=...
-KEYCLOAK__CLIENT_SECRET=...
-
-KC_BOOTSTRAP_ADMIN_USERNAME=...
-KC_BOOTSTRAP_ADMIN_PASSWORD=...
-
-SEAWEEDFS__MASTER_URL=http://seaweedfs-master:9333
-SEAWEEDFS__FILER_URL=http://seaweedfs-filer:8888
-```
-
-### 2. Spuštění
-
-```bash
-docker compose up -d
-```
-
-| Služba | URL |
-| --- | --- |
-| API | <http://localhost:8000> |
-| API docs (Swagger) | <http://localhost:8000/docs> |
-| Frontend | <http://localhost:3000> |
-| Keycloak | <http://localhost:8080> |
-| SeaweedFS Filer | <http://localhost:8888> |
-
-### 3. Generování TypeScript klienta
-
-```bash
-cd frontend
-npm run generate:openapi
-```
+[MIT](LICENSE)

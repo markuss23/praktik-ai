@@ -30,17 +30,17 @@ export function StatCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay, type: 'spring', damping: 18, stiffness: 180 }}
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className="relative overflow-hidden bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-lg transition-shadow"
+      className="relative overflow-hidden bg-card rounded-2xl border border-border p-5 shadow-sm hover:shadow-lg transition-shadow"
     >
-      <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full opacity-10 ${gradient}`} />
+      <div className={`absolute -right-6 -top-6 size-28 rounded-full opacity-10 ${gradient}`} />
       <div className="relative flex items-start justify-between">
         <div>
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-          <p className="text-3xl font-bold text-gray-900 tabular-nums">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+          <p className="text-3xl font-bold text-foreground tabular-nums">
             <AnimatedNumber value={value} suffix={suffix} />
           </p>
         </div>
-        <div className={`p-2.5 rounded-xl ${gradient} text-white shadow-sm`}>
+        <div className={`p-2.5 rounded-xl ${gradient} text-primary-foreground shadow-sm`}>
           <Icon size={20} />
         </div>
       </div>
@@ -63,15 +63,15 @@ export function ChartTile({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      className={`bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}
+      className={`bg-card rounded-2xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}
     >
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-            {Icon && <Icon size={15} className="text-purple-600" />}
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            {Icon && <Icon size={15} className="text-gradient-r" />}
             {title}
           </h3>
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -81,7 +81,7 @@ export function ChartTile({
 
 export function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-56 text-gray-400 text-sm">
+    <div className="flex flex-col items-center justify-center h-56 text-muted-foreground text-sm">
       <BarChart3 size={32} className="mb-2 opacity-50" />
       {message}
     </div>
@@ -98,11 +98,11 @@ interface CustomTooltipProps {
 export function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 text-xs">
-      {label !== undefined && <p className="font-semibold text-gray-900 mb-1.5">{label}</p>}
+    <div className="bg-card border border-border rounded-lg shadow-lg p-2.5 text-xs">
+      {label !== undefined && <p className="font-semibold text-foreground mb-1.5">{label}</p>}
       {payload.map((entry, i) => (
-        <div key={i} className="flex items-center gap-2 text-gray-700">
-          <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
+        <div key={i} className="flex items-center gap-2 text-foreground">
+          <span className="size-2 rounded-full" style={{ background: entry.color }} />
           <span>{entry.name}:</span>
           <strong className="ml-auto tabular-nums">{entry.value}</strong>
         </div>
@@ -113,9 +113,9 @@ export function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 
 export function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-gray-50 rounded-lg py-1.5 text-center">
-      <div className="text-sm font-bold text-gray-900 tabular-nums">{value}</div>
-      <div className="text-[9px] text-gray-500 uppercase tracking-wider">{label}</div>
+    <div className="bg-muted/50 rounded-lg py-1.5 text-center">
+      <div className="text-sm font-bold text-foreground tabular-nums">{value}</div>
+      <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</div>
     </div>
   );
 }

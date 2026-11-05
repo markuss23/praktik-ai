@@ -3,31 +3,50 @@
 import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui-kit/accordion";
 import { Button } from "@/components/ui-kit/button";
 import { cn } from "@/lib/utils";
 
 /**
  * Building blocks for the UI kit page. Keep new component demos wrapped in
  * <Section> / <Row> so everything stays visually consistent as the kit grows.
+ *
+ * <Section> je položka accordionu — musí být uvnitř <Accordion> a její `value`
+ * patří i do seznamu sekcí, ze kterého se skládá obsah v levém sloupci.
  */
 
 export function Section({
+  value,
   title,
   description,
   children,
 }: {
+  value: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border border-t py-10 first:border-t-0 first:pt-0">
-      <h2 className="text-foreground text-lg font-semibold">{title}</h2>
-      {description && (
-        <p className="text-muted-foreground mt-1 text-sm">{description}</p>
-      )}
-      <div className="mt-6 flex flex-col gap-6">{children}</div>
-    </section>
+    // scroll-mt drží nadpis pod přilepenou lištou, když se sem skočí z obsahu.
+    <AccordionItem value={value} id={value} className="scroll-mt-32">
+      <AccordionTrigger className="items-center gap-4 py-5 hover:no-underline">
+        <span className="flex flex-col gap-1">
+          <span className="text-foreground text-lg font-semibold">{title}</span>
+          {description && (
+            <span className="text-muted-foreground text-sm font-normal">
+              {description}
+            </span>
+          )}
+        </span>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="flex flex-col gap-6 pt-1 pb-8">{children}</div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 

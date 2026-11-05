@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
 import { AccountSettingsCard } from './AccountSettingsCard';
-import { motion, AnimatePresence } from 'motion/react';
 import { updateProfileName } from '@/lib/api-client';
-import { useModalDismiss } from '@/hooks';
+import { Alert, AlertDescription, Modal } from '@/components/ui';
 
 interface ProfileEditModalProps {
   isOpen: boolean;
@@ -20,8 +18,6 @@ interface ProfileEditModalProps {
 export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, initialFirstName, initialLastName, onNameSaved }: ProfileEditModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useModalDismiss(isOpen, onClose);
 
   const handleSave = async (values: { firstName: string; lastName: string }) => {
     const displayName = `${values.firstName} ${values.lastName}`.trim();
@@ -43,68 +39,33 @@ export function ProfileEditModal({ isOpen, onClose, avatarSrc, onAvatarChange, i
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[2000] flex items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-edit-modal-title"
-        >
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!saving) onClose();
+      }}
+      title="Upravit profil"
+      maxWidth="max-w-lg"
+    >
+      <div className="flex flex-col gap-3">
+        {error && (
+          <Alert variant="error">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          {/* Modal content */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-2">
-              <h2 id="profile-edit-modal-title" className="text-xl font-bold text-gray-900">Upravit profil</h2>
-              <button
-                onClick={onClose}
-                aria-label="Zavřít"
-                type="button"
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500" />
-              </button>
-            </div>
-
-            {error && (
-              <div className="mx-6 mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Body */}
-            <div className="px-2 pb-2">
-              <AccountSettingsCard
-                initialFirstName={initialFirstName}
-                initialLastName={initialLastName}
-                avatarSrc={avatarSrc}
-                onAvatarChange={onAvatarChange}
-                saving={saving}
-                onSave={handleSave}
-                onChangePassword={() => {
-                  // Keycloak manages passwords
-                }}
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+        <AccountSettingsCard
+          initialFirstName={initialFirstName}
+          initialLastName={initialLastName}
+          avatarSrc={avatarSrc}
+          onAvatarChange={onAvatarChange}
+          saving={saving}
+          onSave={handleSave}
+          onChangePassword={() => {
+            // Keycloak manages passwords
+          }}
+        />
+      </div>
+    </Modal>
   );
 }

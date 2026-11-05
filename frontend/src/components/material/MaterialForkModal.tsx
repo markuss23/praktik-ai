@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useModalDismiss } from "@/hooks/useModalDismiss";
+
+import { Button, Input, Label, Modal, Textarea } from "@/components/ui";
 import { createResourceFork } from "@/components/material/api";
 import { apiErrorDetail } from "@/lib/api-client";
 
@@ -14,6 +15,8 @@ interface MaterialForkModalProps {
   /** Zavolá se po úspěšném vytvoření kopie (předá ID nového draftu). */
   onForked?: (newResourceId: number) => void;
 }
+
+const FORM_ID = "material-fork-form";
 
 /**
  * Modal pro vytvoření kopie (forku) veřejného materiálu do vlastní sbírky.
@@ -32,10 +35,6 @@ export function MaterialForkModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useModalDismiss(isOpen, () => {
-    if (!submitting) onClose();
-  });
-
   useEffect(() => {
     if (isOpen) {
       setTitle(defaultTitle);
@@ -44,8 +43,6 @@ export function MaterialForkModal({
       setSubmitting(false);
     }
   }, [isOpen, defaultTitle, defaultDescription]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,61 +72,56 @@ export function MaterialForkModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl border border-gray-200"
-      >
-        <h3 className="text-lg font-semibold text-black mb-1">Vytvořit kopii materiálu</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          Vznikne nový materiál ve tvé sbírce (jako koncept), který můžeš upravit. Soubory
-          a hodnocení se nekopírují.
-        </p>
-
-        <label className="block text-xs font-medium text-gray-600 mb-1">Název kopie</label>
-        <input
-          type="text"
-          autoFocus
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Název materiálu"
-          maxLength={255}
-          disabled={submitting}
-          className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
-        />
-
-        <label className="block text-xs font-medium text-gray-600 mt-3 mb-1">
-          Popis (nepovinný)
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Popis"
-          rows={3}
-          disabled={submitting}
-          className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 resize-y focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-400 disabled:opacity-60"
-        />
-
-        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
-
-        <div className="flex justify-between items-center gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 rounded-md border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-          >
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
+      title="Vytvořit kopii materiálu"
+      description="Vznikne nový materiál ve tvé sbírce (jako koncept), který můžeš upravit. Soubory a hodnocení se nekopírují."
+      maxWidth="max-w-md"
+      footer={
+        <>
+          <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={onClose}>
             Zrušit
-          </button>
-          <button
-            type="submit"
-            disabled={submitting || title.trim().length < 1}
-            className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="submit" form={FORM_ID} size="lg" disabled={submitting || title.trim().length < 1}>
             {submitting ? "Vytvářím…" : "Vytvořit kopii"}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      <form id={FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="fork-title">Název kopie</Label>
+          <Input
+            id="fork-title"
+            type="text"
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Název materiálu"
+            maxLength={255}
+            disabled={submitting}
+            aria-invalid={error ? true : undefined}
+          />
         </div>
+
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="fork-description">Popis (nepovinný)</Label>
+          <Textarea
+            id="fork-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Popis"
+            rows={3}
+            disabled={submitting}
+            className="resize-y"
+          />
+        </div>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </form>
-    </div>
+    </Modal>
   );
 }

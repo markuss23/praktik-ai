@@ -25,10 +25,20 @@ class SeaweedFSSettings(BaseModel):
     filer_url: str = "http://seaweedfs-filer:8888"
 
 
+class WikiSettings(BaseModel):
+    sync_interval_hours: float = 12
+    repo_url: str = "https://github.com/markuss23/praktik-ai.wiki.git"
+    local_path: str = "../wiki_data"
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
     seaweedfs: SeaweedFSSettings = SeaweedFSSettings()
+    wiki: WikiSettings = WikiSettings()
+    log_level: str = "INFO"
+    # Denní limit AI tokenů (input + output) pro roli user; 0 = vypnuto (jen se sbírá)
+    ai_daily_token_limit: int = 0
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",

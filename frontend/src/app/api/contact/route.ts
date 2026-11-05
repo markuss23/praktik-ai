@@ -27,6 +27,13 @@ function isEmail(value: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  // Vypnuto, dokud není `ContactSection` na webu — route nemá přihlášení ani rate
+  // limit, takže by šla zneužít k rozesílání přes projektový SMTP účet. Před
+  // zapnutím (CONTACT_FORM_ENABLED=true) doplnit rate limit / captchu.
+  if (process.env.CONTACT_FORM_ENABLED !== 'true') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   let body: ContactPayload;
   try {
     body = await request.json();

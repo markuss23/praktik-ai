@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,13 +7,31 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 
+from agents.wiki.agent.scheduler import (
+    start_wiki_sync_scheduler,
+    stop_wiki_sync_scheduler,
+)
+from api.config import settings
 from api.database import SessionSqlSessionDependency, init_db
 from api.seed import seed_db
 from api.src.routers import router as api_router
 
+# uvicorn i gunicorn konfigurují jen své loggery; root (= naše logger.info) by jinak padal na WARNING bez formátu
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="%(asctime)s %(levelname)s [%(process)d] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(docs_url="/")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_wiki_sync_scheduler()
+    yield
+    stop_wiki_sync_scheduler()
+
+
+app = FastAPI(docs_url="/", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(

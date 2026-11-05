@@ -15,18 +15,18 @@ interface ProfileProgressCardProps {
 
 function getBarColor(percentage: number, customColor?: string): string {
   if (customColor) return customColor;
-  if (percentage >= 50) return 'bg-green-500';
-  if (percentage >= 25) return 'bg-orange-400';
-  return 'bg-red-400';
+  if (percentage >= 50) return 'bg-primary';
+  if (percentage >= 25) return 'bg-brand-accent';
+  return 'bg-destructive';
 }
 
 export function ProfileProgressCard({ items }: ProfileProgressCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
+    <div className="bg-card rounded-xl shadow-sm p-6">
       {/* Header */}
       <div className="flex items-center gap-2 mb-5">
-        <BarChart2 className="w-5 h-5 text-gray-700" />
-        <h3 className="text-base font-bold text-gray-900">Můj progress</h3>
+        <BarChart2 className="size-5 text-foreground" />
+        <h3 className="text-base font-bold text-foreground">Můj progress</h3>
       </div>
 
       {/* Progress rows */}
@@ -36,10 +36,10 @@ export function ProfileProgressCard({ items }: ProfileProgressCardProps) {
           return (
             <div key={idx}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm font-semibold text-gray-800">{item.label}</span>
-                <span className="text-sm font-semibold text-gray-800">{item.percentage}%</span>
+                <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                <span className="text-sm font-semibold text-foreground">{item.percentage}%</span>
               </div>
-              <div className="h-2.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${item.percentage}%` }}
