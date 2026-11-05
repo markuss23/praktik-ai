@@ -52,10 +52,10 @@ def endp_update_system_setting(
     return update_system_setting(db, setting_id, payload)
 
 
-# ---------- TaskSession ----------
+# ---------- TaskSession (deprecated — starý AI úkol, nahrazuje assessment_session) ----------
 
 
-@router.get("/task-sessions", operation_id="list_task_sessions")
+@router.get("/task-sessions", operation_id="list_task_sessions", deprecated=True)
 def endp_list_task_sessions(
     db: SessionSqlSessionDependency,
     user_id: int | None = None,
@@ -65,7 +65,7 @@ def endp_list_task_sessions(
     return list_task_sessions(db, user_id=user_id, module_id=module_id)
 
 
-@router.patch("/task-sessions/{session_id}/status", operation_id="update_task_session_status")
+@router.patch("/task-sessions/{session_id}/status", operation_id="update_task_session_status", deprecated=True)
 def endp_update_task_session_status(
     session_id: int,
     payload: TaskSessionStatusUpdate,
@@ -75,7 +75,7 @@ def endp_update_task_session_status(
     return update_task_session_status(db, session_id, payload)
 
 
-@router.delete("/task-sessions/{session_id}", operation_id="delete_task_session")
+@router.delete("/task-sessions/{session_id}", operation_id="delete_task_session", deprecated=True)
 def endp_delete_task_session(
     session_id: int,
     db: SessionSqlSessionDependency,
