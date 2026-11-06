@@ -24,7 +24,7 @@ FROM node:24-alpine AS client-gen
 WORKDIR /app
 RUN apk add --no-cache openjdk17-jre-headless
 COPY --from=node-deps /app/node_modules ./node_modules
-COPY openapitools.json /openapitools.json
+COPY frontend/openapitools.json /openapitools.json
 COPY --from=api-spec /code/openapi.json ./openapi.json
 RUN npx @openapitools/openapi-generator-cli generate \
         -i ./openapi.json \

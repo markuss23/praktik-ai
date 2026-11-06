@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "audit": "npm audit --omit=dev",
-    "generate:openapi": "npx @openapitools/openapi-generator-cli generate -i http://localhost:8000/openapi.json -g typescript-fetch -o src/api -c ../openapitools.json --skip-validate-spec",
+    "generate:openapi": "npx @openapitools/openapi-generator-cli generate -i http://localhost:8000/openapi.json -g typescript-fetch -o src/api -c openapitools.json --skip-validate-spec",
     "watch:openapi": "npx chokidar-cli \"../api/**/*\" -c \"npm run generate:openapi\""
   },
   "dependencies": {
