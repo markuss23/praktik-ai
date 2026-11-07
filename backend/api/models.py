@@ -1119,6 +1119,8 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="learn_block",
     )
 
+    _soft_delete_cascade: list[str] = ["mentor_logs"]
+
     def get_owner_id(self) -> int:
         return self.module.course.owner_id
 

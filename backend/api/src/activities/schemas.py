@@ -8,9 +8,8 @@ class LearnBlockBase(ORMModel):
     content: str
 
 
-class LearnBlockUpdate(ORMModel):
-    title: str = Field(min_length=1, max_length=200)
-    content: str
+class LearnBlockUpdate(LearnBlockBase):
+    pass
 
 
 class LearnBlockCreate(ORMModel):

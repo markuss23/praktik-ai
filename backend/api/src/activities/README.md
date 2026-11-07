@@ -28,7 +28,7 @@ Celý router vyžaduje roli aspoň `lector`. Pak platí `validate_owner_or_super
 - Modul musí být aktivní, jinak 404.
 - Všechny zápisy jen v editovatelném stavu kurzu (`assert_course_editable`), jinak 400.
 - Při vytvoření je `content` nepovinný (default `""`). Při úpravě jsou `title` i `content` povinné a oba se přepíšou.
-- Smazání je soft delete. Pak jde modulu založit nový learn blok.
+- Smazání je soft delete. Kaskádově deaktivuje záznamy mentora (`MentorInteractionLog`) s tímto `learn_id`, i ty se `scope=course`. Pak jde modulu založit nový learn blok.
 - AI generátor kurzu zakládá learn blok ke každému modulu sám, s názvem modulu (`agents/course_generator/nodes/save_to_db.py`).
 - `content` čtou AI formáty testů, mentor, embeddingy a generátor obrázků modulu.
 
@@ -40,10 +40,3 @@ Celý router vyžaduje roli aspoň `lector`. Pak platí `validate_owner_or_super
 | `controllers.py` | Vytvoření, úprava, soft delete. |
 | `schemas.py` | `LearnBlockCreate`, `LearnBlockUpdate`, `LearnBlock`. |
 | `../../models.py` | `LearnBlock`. |
-
-## Pozor na
-
-- Název složky je širší než obsah. Jiné aktivity tu nejsou.
-- Kontrola unikátnosti `title` v modulu při úpravě je prakticky mrtvá. Aktivní learn blok je v modulu jen jeden. DB index `uq_learnblock_module_title_active` existuje taky.
-- Úprava jde přes hromadný `UPDATE` (`db.execute(update(...))`), ne přes ORM objekt.
-- Mazání nemá kaskádu. Záznamy mentora (`MentorInteractionLog`) na smazaný learn blok zůstávají.

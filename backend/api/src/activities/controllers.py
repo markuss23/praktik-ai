@@ -1,5 +1,6 @@
 from fastapi import HTTPException
-from sqlalchemy import select, update, and_
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api import models
@@ -39,7 +40,12 @@ def create_learn_block(
         content=learn_data.content,
     )
     db.add(new_lb)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # souběžný create prošel kontrolou výše, chytí ho až uq_learnblock_module_active
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Modul již má aktivní LearnBlock.") from None
     db.refresh(new_lb)
 
     return LearnBlock.model_validate(new_lb)
@@ -54,26 +60,8 @@ def update_learn_block(
     validate_owner_or_superadmin(learn_block, user, "learn block")
     assert_course_editable(learn_block.module.course)
 
-    # Kontrola unikátnosti title (pokud se mění)
-    if learn_data.title != learn_block.title:
-        conflict = db.execute(
-            select(models.LearnBlock).where(
-                and_(
-                    models.LearnBlock.module_id == learn_block.module_id,
-                    models.LearnBlock.title == learn_data.title,
-                    models.LearnBlock.is_active.is_(True),
-                    models.LearnBlock.learn_id != learn_id,
-                )
-            )
-        ).first()
-        if conflict is not None:
-            raise HTTPException(status_code=400, detail="LearnBlock s tímto názvem pro daný modul již existuje.")
-
-    db.execute(
-        update(models.LearnBlock)
-        .where(models.LearnBlock.learn_id == learn_id)
-        .values(**learn_data.model_dump())
-    )
+    learn_block.title = learn_data.title
+    learn_block.content = learn_data.content
     db.commit()
     db.refresh(learn_block)
 
