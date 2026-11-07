@@ -28,8 +28,9 @@ interface CourseRowProps {
  * `divide-y`, každý řádek v `<li>`), proto řádek sám nemá rámeček ani stín.
  *
  * Sloupce přibývají se šířkou: mobil = náhled + název + meta pod ním
- * a šipka, od `sm` tlačítko, od `lg` samostatný sloupec s meta, od `xl`
- * průběh.
+ * a šipka, od `sm` popis a tlačítko, od `xl` samostatný sloupec s průběhem.
+ * Meta (délka, obtížnost) jede vždy pod popisem — jako vlastní sloupec se
+ * mačkala a název s popisem neměly kde dýchat.
  */
 export function CourseRow({
   id,
@@ -46,40 +47,32 @@ export function CourseRow({
   const hasProgress = totalModules > 0;
   const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
   const difficultyLabel = difficulty ? DIFFICULTY_LABELS[difficulty] : "Začátečník";
-
-  const meta = (
-    <>
-      <span className="inline-flex items-center gap-1 whitespace-nowrap">
-        <Clock className="size-4" />
-        {duration} minut
-      </span>
-      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium whitespace-nowrap text-foreground">
-        {difficultyLabel}
-      </span>
-    </>
-  );
+  const startedOrDone = isEnrolled || isCompleted;
+  const modulesLabel = startedOrDone
+    ? `${completedModules}/${totalModules} ${czechPlural(totalModules, "modul", "moduly", "modulů")}`
+    : `${totalModules} ${czechPlural(totalModules, "modul", "moduly", "modulů")}`;
 
   const row = (
     <div
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 transition-colors sm:px-5",
+        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-5 transition-colors sm:gap-6 sm:px-6 sm:py-6",
         // Pevné šířky drží sloupce zarovnané napříč řádky, i když se liší
         // tlačítko („Pokračovat" × „Zobrazit" × „Dokončeno").
-        "lg:grid-cols-[auto_minmax(0,1fr)_220px_132px] xl:grid-cols-[auto_minmax(0,1fr)_220px_190px_132px]",
+        "xl:grid-cols-[auto_minmax(0,1fr)_220px_150px] xl:gap-8",
         isCompleted ? "bg-success/5" : "group-hover:bg-muted/50",
       )}
     >
-      <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md sm:h-16 sm:w-28">
+      <div className="relative h-16 w-24 shrink-0 self-start overflow-hidden rounded-lg sm:h-24 sm:w-36 sm:self-center">
         <Image
           src={imageUrl}
           alt=""
           fill
-          sizes="112px"
+          sizes="(min-width: 640px) 144px, 96px"
           className={cn("object-cover transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
         />
         {isCompleted && (
           <div className="absolute inset-0 flex items-center justify-center bg-success/30">
-            <CheckCircle className="size-6 text-white drop-shadow" />
+            <CheckCircle className="size-7 text-white drop-shadow" />
           </div>
         )}
       </div>
@@ -87,49 +80,67 @@ export function CourseRow({
       <div className="min-w-0">
         <h3
           className={cn(
-            "line-clamp-2 text-base font-semibold sm:line-clamp-1 sm:text-lg",
+            "line-clamp-2 text-lg leading-snug font-semibold sm:text-xl",
             isCompleted ? "text-success" : "text-foreground transition-colors group-hover:text-gradient-r",
           )}
         >
           {title}
         </h3>
-        <p className="mt-0.5 hidden truncate text-sm text-muted-foreground sm:block">{description}</p>
-        {/* Pod lg nemá meta vlastní sloupec, jede pod názvem. */}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground lg:hidden">
-          {meta}
+        <p className="mt-1.5 hidden max-w-[65ch] text-[15px] leading-relaxed text-muted-foreground sm:line-clamp-2">
+          {description}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <Clock className="size-4" />
+            {duration} minut
+          </span>
+          <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium whitespace-nowrap text-foreground">
+            {difficultyLabel}
+          </span>
+          {/* Pod xl nemá průběh vlastní sloupec — aspoň počet modulů jede sem. */}
+          {hasProgress && (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap xl:hidden">
+              <FileText className="size-4" />
+              {modulesLabel}
+              {isEnrolled && !isCompleted && (
+                <span className="font-medium text-primary">· {progressPercent}%</span>
+              )}
+            </span>
+          )}
         </div>
       </div>
-
-      <div className="hidden items-center gap-3 text-sm text-muted-foreground lg:flex">{meta}</div>
 
       <div className="hidden xl:block">
         {hasProgress && (
           <>
-            <div className="mb-1.5 flex items-center justify-between gap-2 text-sm">
+            <div className="flex items-center justify-between gap-3 text-sm">
               <span className="flex items-center gap-1.5 whitespace-nowrap text-foreground">
                 <FileText className="size-4 text-muted-foreground" />
-                {completedModules}/{totalModules} {czechPlural(totalModules, "modul", "moduly", "modulů")}
+                {modulesLabel}
               </span>
               <span
                 className={cn(
-                  "font-medium",
-                  isCompleted ? "text-success" : isEnrolled ? "text-primary" : "text-muted-foreground",
+                  "font-semibold",
+                  isCompleted ? "text-success" : isEnrolled ? "text-primary" : "text-muted-foreground font-medium",
                 )}
               >
-                {isCompleted ? "Hotovo" : isEnrolled ? `${progressPercent}%` : "Nezapsán"}
+                {startedOrDone ? `${progressPercent}%` : "Nezapsán"}
               </span>
             </div>
-            <Progress
-              value={isEnrolled || isCompleted ? progressPercent : 0}
-              className="w-full [&_[data-slot=progress-track]]:h-1.5"
-            />
+            {/* Prázdný pruh u nezapsaných kurzů jen přidával šum. */}
+            {startedOrDone && (
+              <Progress
+                value={progressPercent}
+                className="mt-2.5 w-full [&_[data-slot=progress-track]]:h-2"
+              />
+            )}
           </>
         )}
       </div>
 
       {isCompleted ? (
-        <span className="inline-flex items-center gap-1.5 justify-self-end text-sm font-semibold whitespace-nowrap text-success">
-          <CheckCircle className="size-4.5" />
+        <span className="inline-flex items-center gap-1.5 justify-self-end text-[15px] font-semibold whitespace-nowrap text-success xl:justify-self-center">
+          <CheckCircle className="size-5" />
           <span className="hidden sm:inline">Dokončeno</span>
         </span>
       ) : (
@@ -138,7 +149,7 @@ export function CourseRow({
           <span
             className={cn(
               buttonVariants({ variant: isEnrolled ? "brand" : "default", size: "lg" }),
-              "hidden justify-self-end px-4 font-semibold sm:inline-flex",
+              "hidden justify-self-end px-5 font-semibold sm:inline-flex xl:w-full xl:justify-self-stretch",
             )}
           >
             {isEnrolled ? "Pokračovat" : "Zobrazit"}

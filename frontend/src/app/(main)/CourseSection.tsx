@@ -79,13 +79,14 @@ function CourseCardSkeleton() {
 
 function CourseRowSkeleton() {
   return (
-    <li className="flex animate-pulse items-center gap-4 px-4 py-4 sm:px-5">
-      <div className="h-14 w-20 shrink-0 rounded-md bg-muted sm:h-16 sm:w-28" />
-      <div className="flex-1 space-y-2">
-        <div className="h-5 w-1/2 rounded bg-muted" />
-        <div className="h-4 w-3/4 rounded bg-muted" />
+    <li className="flex animate-pulse items-center gap-4 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6">
+      <div className="h-16 w-24 shrink-0 rounded-lg bg-muted sm:h-24 sm:w-36" />
+      <div className="flex-1 space-y-2.5">
+        <div className="h-6 w-1/2 rounded bg-muted" />
+        <div className="hidden h-4 w-5/6 rounded bg-muted sm:block" />
+        <div className="h-5 w-40 rounded bg-muted" />
       </div>
-      <div className="hidden h-9 w-28 rounded-md bg-muted sm:block" />
+      <div className="hidden h-10 w-36 rounded-md bg-muted sm:block" />
     </li>
   );
 }

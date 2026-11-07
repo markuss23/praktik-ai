@@ -274,25 +274,30 @@ export function ProjectAboutSection() {
             {GOALS.map((g, i) => (
               <li
                 key={g.n}
-                className={`relative pl-20 lg:pl-[150px] ${g.indent} ${
+                className={`pl-28 lg:pl-[180px] ${g.indent} ${
                   i === 0 ? 'pb-10 lg:pb-[46px]' : 'py-10 lg:py-[46px]'
                 } ${i > 0 ? 'border-t border-[#D1E7D9]/20' : ''} ${
                   i === GOALS.length - 1 ? 'pb-0 lg:pb-0' : ''
                 }`}
               >
-                {/* Číslo je dekorace — obsah nese <ol>. */}
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute top-2 left-0 text-[72px] leading-none font-extrabold tracking-[-0.05em] text-transparent [-webkit-text-stroke:1.5px_rgba(154,214,178,0.42)] lg:text-[112px]"
-                >
-                  {g.n}
-                </span>
-                <h3 className="relative mb-3 text-[22px] leading-[1.15] font-bold tracking-[-0.02em] lg:text-[26px]">
-                  {g.title}
-                </h3>
-                <p className="relative max-w-[430px] text-base leading-[1.62] text-white/60">
-                  {g.desc}
-                </p>
+                <div className="relative">
+                  {/* Číslo je dekorace — obsah nese <ol>. Pravou hranou se
+                      drží textu s pevnou mezerou, takže úzká „1" i široká
+                      „4" mají od nadpisu stejný odstup. Padding <li> musí
+                      pobrat nejširší číslo + mezeru. */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute top-2 right-full mr-5 text-[72px] leading-none font-extrabold tracking-[-0.05em] text-transparent [-webkit-text-stroke:1.5px_rgba(154,214,178,0.42)] lg:mr-8 lg:text-[112px]"
+                  >
+                    {g.n}
+                  </span>
+                  <h3 className="relative mb-3 text-[22px] leading-[1.15] font-bold tracking-[-0.02em] lg:text-[26px]">
+                    {g.title}
+                  </h3>
+                  <p className="relative max-w-[430px] text-base leading-[1.62] text-white/60">
+                    {g.desc}
+                  </p>
+                </div>
               </li>
             ))}
           </ol>

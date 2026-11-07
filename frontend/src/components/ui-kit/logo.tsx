@@ -141,16 +141,18 @@ const LOGO_SIZES = {
 
 /**
  * Značka + wordmark „PRAKTIK-AI". Wordmark bere `currentColor`, takže na
- * tmavém podkladu stačí `text-white`.
+ * tmavém podkladu stačí `text-white`. S `mark={false}` zůstane jen wordmark.
  */
 function Logo({
   size = "default",
   tile = false,
+  mark = true,
   className,
   ...props
 }: React.ComponentProps<"span"> & {
   size?: keyof typeof LOGO_SIZES
   tile?: boolean
+  mark?: boolean
 }) {
   const s = LOGO_SIZES[size]
   return (
@@ -159,7 +161,7 @@ function Logo({
       className={cn("inline-flex items-center gap-2.5", className)}
       {...props}
     >
-      <LogoMark tile={tile} className={s.mark} />
+      {mark && <LogoMark tile={tile} className={s.mark} />}
       <span className={cn("font-bold tracking-[-0.01em] whitespace-nowrap", s.text)}>
         PRAKTIK-AI
       </span>

@@ -84,7 +84,7 @@ const ACTIVE_ROW = "bg-[#5AAC78]/12 text-[var(--nav-fg)]";
  * Oproti kitu je štíhlejší (64 px místo 80/96) a ladí s hero úvodní stránky:
  * - na úvodní stránce je úplně nahoře průhledná (hero pod ni podjíždí);
  *   jakmile se začne scrollovat, dostane plné světlé pozadí celá lišta;
- * - vodorovné logo z kitu (`Logo`) a hned vedle něj navigace — bez pilulek,
+ * - wordmark z kitu (`Logo` bez značky) a hned vedle něj navigace — bez pilulek,
  *   aktivní položka má pod sebou značkovou linku;
  * - v plném stavu spodní hrana ve značkovém přechodu, do stran mizí;
  * - přihlašovací CTA je plná petrolejová pilulka z palety hero.
@@ -145,7 +145,7 @@ export function Header() {
         {/* Logo a navigace vlevo u sebe, akce vpravo. */}
         <div className="flex min-w-0 items-center gap-6 xl:gap-10">
           <NavbarBrand render={<Link href={ROUTES.HOME} />} aria-label="PRAKTIK-AI — úvodní stránka">
-            <Logo />
+            <Logo mark={false} />
           </NavbarBrand>
 
           <NavbarNav className="gap-0.5 md:hidden lg:flex">

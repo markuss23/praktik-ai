@@ -165,6 +165,7 @@ const NAV_ITEMS = [
 const SECTIONS = [
   { value: "logo", label: "Logo" },
   { value: "barvy", label: "Barvy" },
+  { value: "fonty", label: "Fonty" },
   { value: "button", label: "Button" },
   { value: "alert", label: "Alert" },
   { value: "toast", label: "Toast" },
@@ -271,56 +272,116 @@ function TableOfContents({
 /**
  * Paleta tokenů z `globals.css`. Vzorky sahají na stejné proměnné jako
  * komponenty, takže se po přepnutí do tmavého režimu přebarví samy.
+ * Položka je [token, utilita, k čemu barva slouží].
  */
-const PALETTE: { group: string; swatches: [string, string][] }[] = [
+const PALETTE: { group: string; swatches: [string, string, string][] }[] = [
   {
     group: "brand",
     swatches: [
-      ["--primary", "bg-primary"],
-      ["--brand-accent", "bg-brand-accent"],
-      ["--gradient-l", "bg-gradient-l"],
-      ["--gradient-r", "bg-gradient-r"],
-      ["--ring", "bg-ring"],
+      ["--primary", "bg-primary", "Primary / Success"],
+      ["--brand-accent", "bg-brand-accent", "Brand accent (oranžová)"],
+      ["--gradient-l", "bg-gradient-l", "Gradient vlevo"],
+      ["--gradient-r", "bg-gradient-r", "Gradient vpravo"],
+      ["--ring", "bg-ring", "Focus ring"],
     ],
   },
   {
     group: "stavy",
     swatches: [
-      ["--success", "bg-success"],
-      ["--warning", "bg-warning"],
-      ["--destructive", "bg-destructive"],
-      ["--tip", "bg-tip"],
+      ["--success", "bg-success", "Success"],
+      ["--warning", "bg-warning", "Warning"],
+      ["--destructive", "bg-destructive", "Destructive / Error"],
+      ["--tip", "bg-tip", "Tip"],
     ],
   },
   {
     group: "povrchy",
     swatches: [
-      ["--background", "bg-background"],
-      ["--card", "bg-card"],
-      ["--popover", "bg-popover"],
-      ["--muted", "bg-muted"],
-      ["--secondary", "bg-secondary"],
-      ["--accent", "bg-accent"],
+      ["--background", "bg-background", "Pozadí stránky"],
+      ["--card", "bg-card", "Karty"],
+      ["--popover", "bg-popover", "Popovery"],
+      ["--muted", "bg-muted", "Muted plocha"],
+      ["--secondary", "bg-secondary", "Secondary plocha"],
+      ["--accent", "bg-accent", "Accent plocha (hover)"],
     ],
   },
   {
     group: "text a obrysy",
     swatches: [
-      ["--foreground", "bg-foreground"],
-      ["--muted-foreground", "bg-muted-foreground"],
-      ["--border", "bg-border"],
-      ["--input", "bg-input"],
+      ["--foreground", "bg-foreground", "Hlavní text"],
+      ["--secondary-foreground", "bg-secondary-foreground", "Text na secondary"],
+      ["--accent-foreground", "bg-accent-foreground", "Text na accent"],
+      ["--muted-foreground", "bg-muted-foreground", "Tlumený text"],
+      ["--border", "bg-border", "Rámečky"],
+      ["--input", "bg-input", "Rámečky inputů"],
     ],
   },
   {
     group: "grafy",
     swatches: [
-      ["--chart-1", "bg-chart-1"],
-      ["--chart-2", "bg-chart-2"],
-      ["--chart-3", "bg-chart-3"],
-      ["--chart-4", "bg-chart-4"],
-      ["--chart-5", "bg-chart-5"],
+      ["--chart-1", "bg-chart-1", "Graf 1"],
+      ["--chart-2", "bg-chart-2", "Graf 2"],
+      ["--chart-3", "bg-chart-3", "Graf 3"],
+      ["--chart-4", "bg-chart-4", "Graf 4"],
+      ["--chart-5", "bg-chart-5", "Graf 5"],
     ],
+  },
+];
+
+/** Tailwind utility pro řezy — musí být celé řetězce, jinak je build nenajde. */
+const WEIGHT_CLASS: Record<number, string> = {
+  400: "font-normal",
+  500: "font-medium",
+  600: "font-semibold",
+  700: "font-bold",
+  800: "font-extrabold",
+};
+
+/** Písma z `layout.tsx` / `globals.css` a k čemu které slouží. */
+const FONTS: {
+  name: string;
+  utility: string;
+  variable: string;
+  role: string;
+  sample: string;
+  sampleClass: string;
+  weights: number[];
+}[] = [
+  {
+    name: "Geist",
+    utility: "font-sans",
+    variable: "--font-geist-sans",
+    role: "Text a UI — výchozí písmo celé aplikace (body).",
+    sample: "Příliš žluťoučký kůň úpěl ďábelské ódy.",
+    sampleClass: "font-sans text-base",
+    weights: [400, 500, 600, 700],
+  },
+  {
+    name: "Geist",
+    utility: "font-heading",
+    variable: "--font-heading → --font-sans",
+    role: "Nadpisy komponent (karta, dialog, drawer, onboarding). Alias na Geist.",
+    sample: "Úvod do práce s umělou inteligencí",
+    sampleClass: "font-heading text-xl font-semibold",
+    weights: [500, 600],
+  },
+  {
+    name: "Geist Mono",
+    utility: "font-mono",
+    variable: "--font-geist-mono",
+    role: "Kód, tokeny a technické popisky.",
+    sample: 'const kurz = await getCourse("ai-ve-vyuce");',
+    sampleClass: "font-mono text-sm",
+    weights: [400, 500],
+  },
+  {
+    name: "Bricolage Grotesque",
+    utility: "font-display",
+    variable: "--font-bricolage",
+    role: "Velké nadpisy na landing page. Načtené jsou jen řezy 600, 700 a 800 — jiný řez prohlížeč jen dopočítá.",
+    sample: "Praktická AI pro učitele",
+    sampleClass: "font-display text-4xl font-bold tracking-tight",
+    weights: [600, 700, 800],
   },
 ];
 
@@ -383,10 +444,12 @@ function useTokenHexes() {
 function Swatch({
   token,
   utility,
+  role,
   hex,
 }: {
   token: string;
   utility: string;
+  role: string;
   hex?: string;
 }) {
   return (
@@ -395,6 +458,9 @@ function Swatch({
         className={cn("border-border h-14 rounded-lg border shadow-sm", utility)}
       />
       <div className="min-w-0 leading-snug">
+        <p className="text-foreground truncate text-xs font-medium" title={role}>
+          {role}
+        </p>
         <p className="text-foreground truncate font-mono text-[11px]">{token}</p>
         <p className="text-muted-foreground truncate font-mono text-[10px]">
           {utility}
@@ -734,11 +800,12 @@ function UiKitContent() {
           {PALETTE.map(({ group, swatches }) => (
             <Row key={group} label={group} className="block">
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-                {swatches.map(([token, utility]) => (
+                {swatches.map(([token, utility, role]) => (
                   <Swatch
                     key={token}
                     token={token}
                     utility={utility}
+                    role={role}
                     hex={hexes[token]}
                   />
                 ))}
@@ -754,6 +821,56 @@ function UiKitContent() {
               </p>
             </div>
           </Row>
+        </Section>
+
+        <Section
+          value="fonty"
+          title="Fonty"
+          description="Písma z next/font (layout.tsx), namapovaná v globals.css na Tailwind utility. Geist a Geist Mono jsou variabilní a mají latin-ext, takže česká diakritika sedí."
+        >
+          {FONTS.map((font) => (
+            <Row key={font.utility} label={font.utility} className="block">
+              <div className="border-border flex min-w-0 flex-col gap-4 rounded-xl border p-5">
+                <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <p className="text-foreground text-sm font-semibold">
+                      {font.name}
+                    </p>
+                    <p className="text-muted-foreground font-mono text-[11px]">
+                      {font.variable}
+                    </p>
+                  </div>
+                  <p className="text-muted-foreground text-sm">{font.role}</p>
+                </div>
+
+                <p className={cn("text-foreground break-words", font.sampleClass)}>
+                  {font.sample}
+                </p>
+
+                <div className="border-border flex flex-col gap-2 border-t pt-4">
+                  {font.weights.map((weight) => (
+                    <div
+                      key={weight}
+                      className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5"
+                    >
+                      <span className="text-muted-foreground w-32 shrink-0 font-mono text-[11px]">
+                        {weight} · {WEIGHT_CLASS[weight]}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-foreground min-w-0 text-lg",
+                          font.utility,
+                          WEIGHT_CLASS[weight]
+                        )}
+                      >
+                        Aa Čč Řř Žž 0123456789
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Row>
+          ))}
         </Section>
 
         <Section
