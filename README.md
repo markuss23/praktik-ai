@@ -52,6 +52,17 @@ docker compose up -d --build
 
 It works when <http://localhost:8000/health> returns `{"message": "ok"}` and you can log in at <http://localhost:3000>.
 
+The dev realm ships with test accounts (password = username):
+
+| Account | Role | Try out |
+| --- | --- | --- |
+| `student` | `user` | enrolling and studying |
+| `lektor` | `lector` | creating a course with AI |
+| `garant` | `guarantor` | approving courses |
+| `admin` | `superadmin` | agent settings, users, catalogs |
+
+The realm is imported only on Keycloak's first start. If it ran before, the accounts are missing: drop the `keycloak` schema in the DB, or assign the role by hand in the [Keycloak admin](http://localhost:8080) (realm `praktikai-dev` → Users → Role mapping).
+
 All environment variables: [docs/configuration.md](docs/configuration.md).
 
 ## How it works

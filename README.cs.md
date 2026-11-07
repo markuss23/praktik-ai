@@ -50,6 +50,17 @@ docker compose up -d --build
 
 Funguje to, když <http://localhost:8000/health> vrátí `{"message": "ok"}` a na <http://localhost:3000> se dá přihlásit.
 
+Dev realm obsahuje testovací účty (heslo = jméno):
+
+| Účet | Role | Co si vyzkoušíš |
+| --- | --- | --- |
+| `student` | `user` | zápis do kurzu a studium |
+| `lektor` | `lector` | tvorba kurzu s AI |
+| `garant` | `guarantor` | schvalování kurzů |
+| `admin` | `superadmin` | nastavení agentů, uživatelé, číselníky |
+
+Realm se importuje jen při prvním startu Keycloaku. Pokud už běžel, účty chybí: smaž schéma `keycloak` v DB, nebo roli přiděl ručně v [Keycloak adminu](http://localhost:8080) (realm `praktikai-dev` → Users → Role mapping).
+
 Všechny proměnné prostředí: [docs/configuration.md](docs/configuration.md).
 
 ## Jak to funguje
