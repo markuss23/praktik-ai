@@ -84,6 +84,7 @@ neimplementuj vlastní.
 
   Submit tlačítko ve `footer`u se k formuláři váže přes `form="my-form"`.
   Obsáhlejší obsah → `padding="lg"` (p-6 místo p-4, footer i zavírací křížek se posunou s ním).
+
 - Potvrzení akce → `ConfirmModal` (`variant`: `primary` | `danger` | `warning`).
 - Boční panel / mobilní menu → kitový `Drawer` se `swipeDirection` (`left` | `right` | `up` | `down`).
 - Volný `Dialog` (`DialogContent`, `DialogTitle`, …) jen když potřebuješ jinou geometrii než `Modal`
