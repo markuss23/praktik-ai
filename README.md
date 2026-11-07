@@ -95,6 +95,7 @@ Details in [docs/architecture.md](docs/architecture.md).
 | Developers | [CONTRIBUTING.md](CONTRIBUTING.md): dev setup, migrations, lint, CI |
 | Architecture | [docs/architecture.md](docs/architecture.md): services, roles, layout |
 | Modules | README next to the code, index in [CONTRIBUTING.md](CONTRIBUTING.md#dokumentace-modulů) |
+| UI kit, palette & fonts | [frontend/UI-KIT.md](frontend/UI-KIT.md#paleta): components, color tokens, fonts, styling rules |
 
 ## Contributing
 
