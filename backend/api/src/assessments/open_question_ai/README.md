@@ -13,7 +13,7 @@ Interakční formát s jednou otevřenou otázkou. AI ji vygeneruje z učebního
 ## Settings (`course_assessment.settings`)
 
 | Pole | Default | Význam |
-|---|---|---|
+| --- | --- | --- |
 | `max_attempts` | 3 | Počet pokusů. |
 | `pass_threshold` | 0.75 | Minimální `score / 100` pro úspěch (0–1). |
 
@@ -29,18 +29,22 @@ Interakční formát s jednou otevřenou otázkou. AI ji vygeneruje z učebního
 ## Průběh
 
 **`initial_state`**: spustí generátor (`agents/generator/`):
-1. `load_context` načte modul podle `module_id` a vezme obsah jeho **prvního** aktivního learn blocku.
+
+1. `load_context` načte modul podle `module_id` a vezme obsah jeho **prvního** aktivního learn blocku. Relace `Module.learn_blocks` nemá `order_by`, takže „první“ určuje DB.
 2. `generate_question` zavolá LLM. Celá textová odpověď je otázka.
 
 **`view`**: vrátí `question`.
 
 **`evaluate_answer`**: spustí evaluátor (`agents/evaluator/`):
+
 1. `load_context` načte stejný učební text.
 2. `evaluate_answer` pošle LLM text, otázku a odpověď. LLM vrátí:
-   ```
+
+   ```text
    SCORE: <0-100>
    FEEDBACK: <text>
    ```
+
    Když se `SCORE` nedá přečíst, je skóre 0. Když chybí `FEEDBACK`, celá odpověď LLM jde do feedbacku.
 3. `is_correct = score / 100 >= pass_threshold`.
 4. Špatně a zbývají pokusy: `finished = False` a feedback pro studenta.
@@ -59,7 +63,7 @@ Pozor: generátor i evaluátor potřebují `module_id`. U `course_final` je `mod
 ## Prompty
 
 | Klíč `system_setting` | Soubor | Účel |
-|---|---|---|
+| --- | --- | --- |
 | `open_question_ai` | `agents/generator/prompt.md` | Generování otázky. |
 | `open_question_ai_evaluator` | `agents/evaluator/prompt.md` | Hodnocení odpovědi. |
 
@@ -67,4 +71,4 @@ Texty promptů jsou v souborech. Z DB se čte jen model, přes `get_llm_config`.
 
 ## Testy
 
-`tests/test_submit_answer_typing.py` (typing guard).
+Vlastní test zatím nemá. Self-check `_parse_evaluation` je v `agents/evaluator/nodes/evaluate_answer.py` (`__main__`).

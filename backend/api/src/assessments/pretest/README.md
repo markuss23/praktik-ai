@@ -5,7 +5,7 @@ Krátký test na začátku modulu, který odemyká practice. Struktura je pevná
 ## Metodika
 
 1. Otázky vygeneruje AI spolu s kurzem (generátor kurzu, uzel `enrich`). Uloží se do `course_assessment.settings`.
-2. Lektor může měnit jen znění otázek, přes `GET/PUT /assessments/{id}/pretest`. Pravidla měnit nemůže.
+2. Lektor může měnit obsah otázek (texty, možnosti, správnou odpověď, klíčové body) přes `GET/PUT /assessments/{id}/pretest`. Strukturu 2 + 1 ani pravidla měnit nemůže.
 3. Student odpoví na dvě uzavřené otázky (kliká) a jednu otevřenou (píše).
 4. Na každou otázku má 3 pokusy.
 5. Projde jen se všemi třemi otázkami správně.
@@ -33,7 +33,7 @@ Krátký test na začátku modulu, který odemyká practice. Struktura je pevná
 Pravidla nejsou v settings, ale jako konstanty v `service.py`:
 
 | Konstanta | Hodnota | Význam |
-|---|---|---|
+| --- | --- | --- |
 | `MAX_ATTEMPTS` | 3 | Pokusy na otázku. |
 | `PASS_THRESHOLD` | 1.0 | Pro úspěch musí být správně 3 ze 3. |
 
@@ -52,6 +52,7 @@ Pravidla nejsou v settings, ale jako konstanty v `service.py`:
 **`view`**: u uzavřené otázky `question` a `options`. U otevřené jen `question` (`options = null`).
 
 **`evaluate_answer`**
+
 - **Uzavřená otázka**: odpověď je **index možnosti** (`"0"`, `"1"`, ...), ne text jako u `closed_questions`. Neplatný index vrátí 422 a nepočítá se jako pokus.
 - **Otevřená otázka**: hodnotí ji sdílený `agents/open_question_evaluator.py` s vlastním, mírnějším promptem `evaluator_prompt.md`. Dostane vzorovou odpověď a klíčové body. Vrátí `is_correct` a `feedback`.
 - Špatně a zbývají pokusy: stejná otázka, `finished = False`.
@@ -76,7 +77,7 @@ Jen `pretest`.
 ## Prompty
 
 | Klíč `system_setting` | Soubor | Účel |
-|---|---|---|
+| --- | --- | --- |
 | `pretest` | `prompt.md` | Generování otázek. |
 | `open_question_evaluator` | `evaluator_prompt.md` | Hodnocení otevřené otázky. Model se bere ze sdíleného klíče, prompt z této složky. |
 

@@ -4,22 +4,24 @@ AI vede se studentem rozhovor o tématu, které si sama vymyslí z učebního te
 
 ## Metodika
 
-1. Garant formát připojí ke kurzu a nastaví délku a elo.
+1. Lektor formát připojí ke kurzu a nastaví délku a elo.
 2. AI z učebního textu vymyslí téma a první otázku. Každý student může dostat jiné téma.
 3. Student odpoví, AI navazuje další otázkou. Odpověď neprozradí ani neřekne, jestli je dobře.
-4. Rozhovor má 2–6 kroků. Krok = jedna odpověď studenta.
+4. Rozhovor má `min_turns`–`max_turns` kroků (default 2–4). Krok = jedna odpověď studenta.
 5. Na konci AI shrne, co student promyslel a kde váhal. Bez známky.
 
 ## Settings (`course_assessment.settings`)
 
 | Pole | Default | Význam |
-|---|---|---|
-| `min_turns` | 2 | Nejmenší počet kroků (2–6). Dřív AI nesmí ukončit. |
-| `max_turns` | 6 | Největší počet kroků (2–6). Po něm rozhovor končí vždy. |
+| --- | --- | --- |
+| `min_turns` | 2 | Nejmenší počet kroků (1–10). Dřív AI nesmí ukončit. |
+| `max_turns` | 4 | Největší počet kroků (2–10). Po něm rozhovor končí vždy. |
 | `start_elo` | 1000 | Počáteční elo. |
 | `min_elo` / `max_elo` | 800 / 1200 | Rozsah, na který se elo ořízne. |
-| `max_step` | 50 | Největší posun elo za jeden krok. |
-| `pass_elo` | 1000 | Hranice pro `is_passed`. |
+| `max_step` | 50 | Největší posun elo za jeden krok (1–100). |
+| `pass_elo` | 1200 | Hranice pro `is_passed`. |
+
+Validace navíc vyžaduje `min_turns <= max_turns`, `min_elo <= start_elo <= max_elo`, `min_elo < max_elo` a `pass_elo` mezi `min_elo` a `max_elo`.
 
 Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISettings` v unionu `AssessmentSettings` až na konci.
 
@@ -66,7 +68,7 @@ Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISet
 ## Prompty
 
 | Klíč `system_setting` | Soubor | Účel |
-|---|---|---|
+| --- | --- | --- |
 | `socratic_dialog_ai_topic` | `agents/topic/prompt.md` | Téma a první otázka. |
 | `socratic_dialog_ai` | `agents/dialog/prompt.md` | Další otázka, nebo KONEC. |
 | `socratic_dialog_ai_summary` | `agents/summary/prompt.md` | Shrnutí v 3–5 větách. |
@@ -75,4 +77,4 @@ Z DB se čte jen model (`get_llm_config`).
 
 ## Testy
 
-`tests/test_socratic_dialog_ai.py` (mockované LLM).
+Vlastní test zatím nemá. Self-checky parserů jsou v `agents/dialog/nodes/ask.py` a `agents/topic/nodes/generate_topic.py` (`__main__`).
