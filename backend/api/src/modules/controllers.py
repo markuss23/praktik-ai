@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from fastapi import HTTPException
-from sqlalchemy import Select, and_, select
+from sqlalchemy import Select, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.src.common.utils import get_or_404, assert_course_editable, course_visible_to
@@ -13,6 +14,9 @@ from api.src.catalogs.controllers import (
     validate_krauu_competence_ids,
 )
 from api.authorization import validate_owner_or_superadmin
+from api.dependencies import is_staff
+
+TITLE_TAKEN = "Modul s tímto názvem pro daný kurz již existuje."
 
 
 def _validate_neuro_principle_ids(db: Session, principle_ids: list[int]) -> None:
@@ -54,6 +58,27 @@ def _sync_neuro_principles(db: Session, module: models.Module, principle_ids: li
                 principle_id=principle_id,
             )
         )
+
+
+def _assert_title_free(db: Session, course_id: int, title: str, exclude_module_id: int | None = None) -> None:
+    stm = select(models.Module.module_id).where(
+        models.Module.course_id == course_id,
+        models.Module.title == title,
+        models.Module.is_active.is_(True),
+    )
+    if exclude_module_id is not None:
+        stm = stm.where(models.Module.module_id != exclude_module_id)
+    if db.execute(stm).first() is not None:
+        raise HTTPException(status_code=400, detail=TITLE_TAKEN)
+
+
+def _commit_or_title_taken(db: Session) -> None:
+    """Souběžný zápis projde kontrolou výše, chytí ho až uq_module_course_title_active."""
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=TITLE_TAKEN) from None
 
 
 def get_modules(
@@ -102,6 +127,7 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
     validate_owner_or_superadmin(course, user, "modul")
     # Nový modul je změna obsahu — jen v editovatelném stavu, jinak by obešel schvalování
     assert_course_editable(course)
+    _assert_title_free(db, course.course_id, data.title)
 
     _validate_neuro_principle_ids(db, data.neuro_principle_ids)
     validate_krauu_competence_ids(db, data.krauu_competence_ids)
@@ -132,7 +158,7 @@ def create_module(db: Session, data: ModuleCreate, user: models.User) -> Module:
         data.bloom_level_ids,
     )
 
-    db.commit()
+    _commit_or_title_taken(db)
     db.refresh(obj)
     return Module.model_validate(obj)
 
@@ -141,7 +167,8 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
     """
     Vrátí konkrétní modul podle module_id
     """
-    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen", check_active=False)
+    # Smazaný modul vidí jen lektor a výš (stejně jako include_inactive v seznamu)
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen", check_active=not is_staff(user))
     # Obsah (vč. správných odpovědí) nepublikovaného kurzu jen lektorům+ a zapsaným studentům
     if not course_visible_to(db, module.course, user):
         raise HTTPException(status_code=404, detail="Modul nenalezen")
@@ -151,7 +178,6 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
 def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: models.User) -> Module:
     """
     Upraví data modulu s module_id podle dat v module_data.
-    Pokud se mění pozice, automaticky přehodní pozice ostatních modulů.
     """
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
@@ -161,21 +187,7 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
     # kontrola, zda je kurz v editovatelném stavu
     assert_course_editable(module.course)
 
-    # kontrola unikátnosti názvu (pokud se mění)
-    if module_data.title != module.title:
-        title_exists_stm: Select[tuple[models.Module]] = select(models.Module).where(
-            and_(
-                models.Module.course_id == module.course_id,
-                models.Module.title == module_data.title,
-                models.Module.is_active.is_(True),
-                models.Module.module_id != module_id,
-            )
-        )
-        if db.execute(title_exists_stm).first() is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="Modul s tímto názvem pro daný kurz již existuje.",
-            )
+    _assert_title_free(db, module.course_id, module_data.title, exclude_module_id=module_id)
 
     _validate_neuro_principle_ids(db, module_data.neuro_principle_ids)
     validate_krauu_competence_ids(db, module_data.krauu_competence_ids)
@@ -183,7 +195,6 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
 
     module.title = module_data.title
     module.perex = module_data.perex
-    module.max_task_attempts = module_data.max_task_attempts
     db.add(module)
 
     _sync_neuro_principles(db, module, module_data.neuro_principle_ids)
@@ -202,18 +213,18 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
         module_data.bloom_level_ids,
     )
 
-    db.commit()
+    _commit_or_title_taken(db)
     db.refresh(module)
 
     return Module.model_validate(module)
 
 
-def delete_module(db: Session, module_id: int) -> None:
-    """
-    Smaže modul podle module_id (soft delete - nastaví is_active=False)
-    """
-    module = get_or_404(db, models.Module, module_id, detail="Module not found", check_active=False)
+def delete_module(db: Session, module_id: int, user: models.User) -> None:
+    """Soft delete modulu s kaskádou (learn blok, vazby, testy modulu)."""
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
 
-    # Soft delete - nastavíme is_active na False
-    module.is_active = False
+    validate_owner_or_superadmin(module, user, "modul")
+    assert_course_editable(module.course)
+
+    module.soft_delete()
     db.commit()

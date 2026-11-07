@@ -889,8 +889,6 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     perex: Mapped[str] = mapped_column(
         String(255), nullable=False, default="", server_default=""
     )
-    max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-    passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 
@@ -910,12 +908,17 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleBloomLevel.module_id, ModuleBloomLevel.is_active==True)",
     )
+    assessments: Mapped[list[CourseAssessment]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==CourseAssessment.module_id, CourseAssessment.is_active==True)",
+    )
 
     _soft_delete_cascade = [
         "learn_blocks",
         "neuro_principles",
         "krauu_competences",
         "bloom_levels",
+        "assessments",
     ]
 
     @property
@@ -1809,7 +1812,7 @@ class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     course: Mapped[Course] = relationship(back_populates="assessments")
-    module: Mapped[Module | None] = relationship()
+    module: Mapped[Module | None] = relationship(back_populates="assessments")
     assessment_type: Mapped[AssessmentType] = relationship()
     sessions: Mapped[list[AssessmentSession]] = relationship(
         back_populates="course_assessment"

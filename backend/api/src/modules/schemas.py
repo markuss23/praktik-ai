@@ -8,7 +8,6 @@ from api.src.catalogs.schemas import BloomLevel, KrauuCompetence, NeuroPrinciple
 class ModuleBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     perex: str = Field(default="", max_length=255)
-    max_task_attempts: int = Field(default=3, ge=1, le=20, description="Maximální počet pokusů pro splnění modulu")
     neuro_principle_ids: list[int] = Field(
         min_length=1,
         description="ID neurovědních principů navázaných na modul (lze vybrat více, alespoň jeden)",
