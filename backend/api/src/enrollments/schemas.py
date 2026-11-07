@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+from pydantic import Field
+
 from api.src.common.schemas import ORMModel
 from api.enums import UserRole
 
@@ -27,6 +29,9 @@ class Enrollment(ORMModel):
     course_id: int
     completed_at: datetime | None
     left_at: datetime | None
+    removed_by_id: int | None = Field(
+        default=None, description="Kdo studenta vyřadil (remove). NULL u leave nebo aktivního zápisu."
+    )
     created_at: datetime
     updated_at: datetime
     user: EnrollmentUser

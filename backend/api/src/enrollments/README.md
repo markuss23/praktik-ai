@@ -9,8 +9,9 @@ Zápis uživatele do kurzu a jeho průběh. Postup v kurzu se neukládá. Počí
 | zápis | Řádek `Enrollment` (`user_id`, `course_id`). |
 | aktivní zápis | `is_active = True` a `left_at IS NULL`. Jen ten pouští k testům (`check_enrollment`). |
 | `left_at` | Čas odepsání. Nastaví ho student sám (leave) nebo vlastník kurzu (remove). |
+| `removed_by_id` | Kdo studenta vyřadil (remove). U leave `NULL`. Vrací ho seznam zápisů, takže jde odlišit leave od remove. |
 | `is_active = False` | Soft delete zápisu. Jen superadmin. |
-| `completed_at` | Kdy student dokončil kurz. Nastaví ho assessments, ne tento modul. |
+| `completed_at` | Kdy student dokončil kurz. Nastaví ho assessments při `passed` session, u kurzu bez povinných testů `my_enrollments`. |
 | hotový modul | Modul, kde má student `passed` session na všech povinných (`is_required`) zapnutých konfiguracích. |
 | hotový kurz | Všechny aktivní moduly hotové + hotový povinný `course_final`, pokud existuje. |
 | `last_visited_module_id` / `last_activity_at` | Kde student naposledy byl. Pro „Pokračuj, kde jsi skončil“. |
@@ -27,11 +28,12 @@ stateDiagram-v2
         rozpracovany --> dokonceny: passed session dokončí kurz (completed_at)
     }
     aktivni --> odepsany: leave / remove (left_at)
+    odepsany --> aktivni: create_enrollment (obnova)
     aktivni --> deaktivovany: soft delete (is_active = False)
     odepsany --> deaktivovany: soft delete
 ```
 
-Z `odepsany` ani `deaktivovany` se nejde vrátit. Nový zápis do stejného kurzu skončí 409.
+Odepsaný zápis jde obnovit přes `create_enrollment` (vynuluje `left_at` a `removed_by_id`). Postup se počítá ze sessions, takže se vrátí sám. Z `deaktivovany` se vrátit nejde (409).
 
 Vazba na assessments:
 
@@ -46,25 +48,30 @@ Vazba na assessments:
 | --- | --- | --- | --- | --- |
 | Zapsat sebe | ano | ano | ano | ano |
 | Zapsat jiného uživatele | ne | ne | ano | ano |
+| Obnovit zápis po leave | sám sebe | sám sebe | kohokoliv | kohokoliv |
+| Obnovit zápis po remove | ne | ne | kohokoliv | kohokoliv |
 | Odepsat se (leave) | vlastní zápis | vlastní zápis | vlastní zápis | vlastní zápis |
 | Moje zápisy, visit, aktivita | ano | ano | ano | ano |
-| Seznam všech zápisů | ne | ano, všechny kurzy | ano | ano |
+| Seznam všech zápisů | ne | ano, všechny kurzy (vlastnictví se nekontroluje) | ano | ano |
 | Seznam včetně neaktivních | ne | ne | ne | ano |
-| Vyřadit studenta (remove, `left_at`) | ne | jen z vlastního kurzu | jen z vlastního kurzu | ano |
+| Vyřadit studenta (remove, `left_at` + `removed_by_id`) | ne | jen z vlastního kurzu | jen z vlastního kurzu | ano |
 | Soft delete zápisu | ne | ne | ne | ano |
 
 ## Pravidla
 
 - Zapsat se jde jen do kurzu, který je aktivní, publikovaný a `approved`. Jinak 400 nebo 404.
-- Jeden uživatel má na kurz jeden zápis. Existující zápis (i odepsaný nebo deaktivovaný) = 409.
+- Jeden uživatel má na kurz jeden zápis. Aktivní nebo deaktivovaný zápis = 409, odepsaný se obnoví (stejný řádek, původní `created_at`).
 - DB hlídá unikátnost jen mezi aktivními zápisy (`uq_enrollment_user_course_active`).
-- Leave i remove nastaví `left_at`. Opakované odepsání = 400.
+- Leave i remove nastaví `left_at`. Opakované odepsání = 400. Leave soft-smazaného zápisu = 404.
 - Soft delete už deaktivovaného zápisu = 400.
-- `completed_at` se nastaví jen jednou. Pozdější průchody ho nemění.
+- `completed_at` se nastaví jen jednou a nemaže se. Je to historický fakt: když lektor později přidá povinný test nebo modul, kurz má `completed_at` a zároveň `next_module`.
+- Kurz bez povinných testů je hotový hned. `completed_at` mu doplní `my_enrollments` (čas zobrazení).
 - `mark_module_visited` je tichý no-op, když modul neexistuje nebo uživatel nemá aktivní zápis. Slouží k trackingu, ne k autorizaci.
 - `my_enrollments` vrací jen aktivní zápisy v aktivních kurzech. Řadí podle `last_activity_at`, fallback `created_at` zápisu.
 - `last_activity_at` bez visitu spadne na poslední `updated_at` assessment session v kurzu.
-- Aktivita (heat mapa) sčítá za den: `passed` sessions, zápisy a dokončené kurzy. Max 400 dní, default 180. U každého dne max 3 popisky.
+- Aktivita (heat mapa) sčítá za den: `passed` sessions, zápisy a dokončené kurzy. Soft-smazané zápisy se nepočítají, odepsané ano. Max 400 dní, default 180. U každého dne max 3 popisky.
+- Aktivita: `from_date` a `to_date` se zadávají spolu, jen jeden = 422. Prohozený rozsah se otočí, delší než 400 dní se ořízne od `to_date`.
+- `my_enrollments` volá `course_completion` pro každý kurz (N+1, označeno `ponytail:`).
 
 ## Soubory
 
@@ -77,15 +84,3 @@ Vazba na assessments:
 | `../common/utils.py` | `check_enrollment`, `get_or_404`. |
 | `../assessments/utils.py` | `course_completion`, `assert_prerequisites_passed`. |
 | `../assessments/controllers.py` | `PREREQUISITES`, `mark_course_completed`. |
-
-## Pozor na
-
-- Po odepsání se student do kurzu znovu nezapíše. Controller hledá jakýkoli zápis, nejen aktivní, i když DB index nový řádek dovolí.
-- Garant nesmí vyřadit studenta z cizího kurzu (`validate_owner_or_superadmin`). Docstring routeru tvrdí opak.
-- Seznam zápisů vidí každý lektor pro všechny kurzy. Vlastnictví kurzu se nekontroluje.
-- Modul bez povinných testů je hotový hned. Kurz bez povinných testů je podle `course_completion` hotový, ale `completed_at` se nenastaví, protože se volá jen při `passed` session.
-- `completed_at` se nemaže. Když lektor později přidá povinný test nebo modul, kurz má `completed_at` a zároveň `next_module`.
-- Leave nekontroluje `is_active`. Odepsat jde i soft-smazaný zápis.
-- Aktivita počítá zápisy a dokončení bez ohledu na `is_active` a `left_at`.
-- Aktivita: když chybí `from_date` nebo `to_date`, ignorují se obě a platí `days`. Prohozený rozsah se otočí.
-- `my_enrollments` volá `course_completion` pro každý kurz (N+1, označeno `ponytail:`).

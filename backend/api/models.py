@@ -143,6 +143,7 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     )
     enrollments: Mapped[list[Enrollment]] = relationship(
         back_populates="user",
+        foreign_keys="Enrollment.user_id",
     )
     mentor_logs: Mapped[list[MentorInteractionLog]] = relationship(
         back_populates="user",
@@ -1163,6 +1164,10 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
     left_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Kdo studenta vyřadil (remove). NULL u leave — jen ten se smí znovu zapsat sám.
+    removed_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id"), nullable=True
+    )
 
     last_visited_module_id: Mapped[int | None] = mapped_column(
         ForeignKey("module.module_id"), nullable=True
@@ -1171,7 +1176,7 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
-    user: Mapped[User] = relationship(back_populates="enrollments")
+    user: Mapped[User] = relationship(back_populates="enrollments", foreign_keys=[user_id])
     course: Mapped[Course] = relationship(back_populates="enrollments")
     last_visited_module: Mapped[Module | None] = relationship(
         "Module", foreign_keys=[last_visited_module_id]
