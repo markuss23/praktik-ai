@@ -19,7 +19,9 @@
 
 ---
 
-Praktik-AI builds AI skills of academic staff at faculties of education. A lecturer uploads source materials and AI drafts a course from them. Students go through it with an AI mentor, and AI also grades their work.
+Praktik-AI prepares future teachers for working with AI. It brings courses, an AI tutor and a public library of teaching materials together in one place, for student teachers and the faculty who teach them. A teacher uploads source materials and AI drafts a course from them; students go through it with an AI mentor that also gives them feedback.
+
+![Praktik-AI home page](docs/images/home.jpg)
 
 > The app UI and the developer docs are in Czech.
 
@@ -32,6 +34,10 @@ Praktik-AI builds AI skills of academic staff at faculties of education. A lectu
 - **Public resource library:** share teaching materials with reviews, ratings, forks and collections. [Library docs](backend/api/src/publicDB/README.md)
 - **Tickets:** students report issues or ask questions about a module, course or material, and the author or guarantor replies. [Ticket docs](backend/api/src/tickets/README.md)
 - **Under control:** a superadmin edits agent prompts and models in the admin UI and token usage is tracked and can be capped.
+
+| ![Editing an AI-generated course](docs/images/editor.jpg) | ![Chatting with the AI mentor](docs/images/mentor.jpg) |
+| --- | --- |
+| The lecturer edits a course AI drafted from uploaded materials | A student asks the AI mentor, which answers from the module content |
 
 ## Quick start
 
@@ -93,6 +99,10 @@ Details in [docs/architecture.md](docs/architecture.md).
 ## Contributing
 
 Branch off `dev`, open a PR to `dev`. See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately, see [SECURITY.md](SECURITY.md).
+
+## Contact
+
+Questions and feedback: [praktikai@ujep.cz](mailto:praktikai@ujep.cz). Bugs and feature requests: [GitHub issues](https://github.com/markuss23/praktik-ai/issues).
 
 ## Partners
 

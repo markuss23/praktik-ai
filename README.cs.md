@@ -19,7 +19,9 @@
 
 ---
 
-Praktik-AI rozvíjí AI kompetence akademických pracovníků pedagogických fakult. Lektor nahraje podklady a AI z nich navrhne kurz. Student ho prochází s AI mentorem a AI ho i hodnotí.
+Praktik-AI připravuje budoucí učitele na práci s AI. Na jednom místě spojuje kurzy, AI tutora a veřejnou databázi materiálů pro studenty učitelství i jejich vyučující. Vyučující nahraje podklady a AI z nich navrhne kurz, student ho prochází s AI mentorem a AI mu dává zpětnou vazbu.
+
+![Úvodní stránka Praktik-AI](docs/images/home.jpg)
 
 ## Co umí
 
@@ -30,6 +32,10 @@ Praktik-AI rozvíjí AI kompetence akademických pracovníků pedagogických fak
 - **Veřejná databáze materiálů:** sdílení výukových materiálů s recenzí, hodnocením, forky a sbírkami. [Dokumentace knihovny](backend/api/src/publicDB/README.md)
 - **Tickety:** student nahlásí problém nebo dotaz k modulu, kurzu či materiálu a odpoví mu autor nebo garant. [Dokumentace ticketů](backend/api/src/tickets/README.md)
 - **Pod kontrolou:** prompty a modely agentů mění superadmin v administraci a spotřeba tokenů se počítá a dá se omezit.
+
+| ![Editor kurzu vygenerovaného AI](docs/images/editor.jpg) | ![Chat s AI mentorem](docs/images/mentor.jpg) |
+| --- | --- |
+| Lektor upraví kurz, který AI vygenerovala z podkladů | Student se ptá AI mentora, který odpovídá z obsahu modulu |
 
 ## Rychlý start
 
@@ -91,6 +97,10 @@ Podrobně v [docs/architecture.md](docs/architecture.md).
 ## Přispívání
 
 Větev z `dev`, PR do `dev`. Postup v [CONTRIBUTING.md](CONTRIBUTING.md). Bezpečnostní chyby hlas soukromě, viz [SECURITY.md](SECURITY.md).
+
+## Kontakt
+
+Dotazy a připomínky: [praktikai@ujep.cz](mailto:praktikai@ujep.cz). Chyby a návrhy: [GitHub issues](https://github.com/markuss23/praktik-ai/issues).
 
 ## Partneři
 
