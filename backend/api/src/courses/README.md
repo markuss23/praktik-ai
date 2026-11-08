@@ -41,6 +41,10 @@ stateDiagram-v2
 ```
 
 - Přechody na `in_review`, `approved`, `edited`, `archived` jdou přes `PUT /courses/{id}/status`. Mapa povolených přechodů je v `update_course_status`.
+- `failed` nemá v mapě žádný přechod a není editovatelný. Opustí se jen novým AI generováním. Smazat ho smí jen superadmin.
+- AI generování jde jen z `draft`/`failed`. Po prvním uložení (`edited`) už ne.
+- Garant „vrací“ kurz přechodem `in_review` → `edited`. Stav `rejected` neexistuje.
+- `archived` je konečný. Archivace nemění `is_published`: archivovaný kurz může zůstat v katalogu (záměr, odpublikovat jde ručně). Mezi doporučenými není.
 - `generated` a `failed` nastavuje jen AI generování (`agents/routers.py`, `agents/course_generator/nodes/save_to_db.py`).
 - `draft`/`generated` → `edited` se děje automaticky při každém `PUT /courses/{id}`.
 - `is_published` jde přepnout jen ve stavu `approved` nebo `archived`.
@@ -72,15 +76,18 @@ Všechny zápisy vyžadují roli aspoň `lector` (`require_role`). Pak platí:
 ## Pravidla
 
 - Název kurzu je unikátní mezi aktivními kurzy (index `uq_course_title_active`).
+- Do `in_review` jde jen kurz s aspoň jedním aktivním modulem (400). Obsah modulů se nekontroluje.
 - Schvalovatel nesmí být vlastník. Hlídá to controller (400) i DB (`ck_course_owner_not_approver`).
 - Při schválení se na pozadí spustí generování embeddingů (`_generate_embeddings` v `routers.py`). Chyba se jen zaloguje.
 - Vrácení `approved` → `edited` zároveň nastaví `is_published = False` a smaže `approved_by_id`.
 - Doporučené kurzy (`/courses/recommended`) jsou jen `is_active`, `is_published` a `status = approved`, bez kurzů, kam už je uživatel zapsaný. Boost +1000 za stejný obor jako zapsané kurzy, pak počet zápisů. `limit` je oříznutý na 1–24.
+- Detail kurzu (`GET /courses/{id}`, `get_course`) je jen na `public_router` s volitelným přihlášením. `/recommended` musí být v routeru nad `/{course_id}`, jinak by ho chytil detail.
 - Katalog se řadí podle počtu aktivních zápisů sestupně, pak podle `course_id`.
 - Mazání:
   - `draft`: **hard delete** (smaže soubory ze SeaweedFS, `CourseFile`, `CourseLink`, kurz).
   - ostatní stavy: soft delete s kaskádou na moduly → learn bloky, soubory, odkazy a vazby na číselníky.
   - Vlastník smí mazat v `draft`, `generated`, `edited`, `in_review` a v `approved`, pokud není publikovaný. Jinak jen superadmin.
+- Obrázek se servíruje veřejně (`GET /courses/{id}/image/{filename}`) bez kontroly publikace, `<img>` neposílá auth. Název souboru obsahuje hash, takže se nedá uhodnout.
 - Obrázek (upload i AI): JPG/PNG/WebP, max. 10 MB, ořez na střed do 16:9, průhlednost na bílé pozadí. Každá verze má nový název souboru, starý se smaže.
 - Podkladový soubor: přípona z `SUPPORTED_EXTENSIONS`, max. `MAX_FILE_SIZE` (25 MB). Odkaz musí začínat `http://` nebo `https://` a být v kurzu unikátní.
 - Feedback garanta (`feedbacks/`) jde přidat jen ke kurzu ve stavu `in_review` nebo `edited`.
@@ -97,18 +104,6 @@ Všechny zápisy vyžadují roli aspoň `lector` (`require_role`). Pak platí:
 | `controllers/delete.py` | Mazání kurzu, souboru, odkazu. |
 | `controllers/image.py` | Normalizace a uložení obrázku. `normalize_course_image` a `store_course_image` používá i AI generátor obrázků. |
 | `controllers/recommended.py` | Doporučené kurzy. |
-| `../../authorization.py` | `validate_owner_or_superadmin`, `validate_guarantor_or_superadmin`, `validate_superadmin`. |
+| `../../authorization.py` | `validate_owner_or_superadmin`, `validate_guarantor_or_superadmin`, `validate_superadmin`. `validate_ownership` pouští i garanta, kurzy ho nepoužívají (jen `assessments` pro čtení při schvalování). |
 | `../common/utils.py` | `assert_course_editable`, `course_visible_to`, `ensure_course_visible`. |
 | `../agents/routers.py` | Spuštění a průběh AI generování kurzu, AI obrázek. |
-
-## Pozor na
-
-- `failed` nemá v `update_course_status` žádný přechod a není editovatelný. Jediná cesta ven je nové AI generování. Lektor ho nesmaže, jen superadmin.
-- Generovat jde jen z `draft`/`failed`. Po prvním uložení (`edited`) už AI generování nejde.
-- `archived` je konečný stav, zpět nejde. Archivace neruší `is_published`, takže archivovaný kurz může zůstat v katalogu. V doporučených ale není (filtr na `approved`).
-- `draft` → `in_review` jde i bez modulů. Obsah se nekontroluje.
-- Garant v kódu „vrací“ kurz přechodem na `edited`, žádný stav `rejected` neexistuje.
-- `validate_ownership` v `authorization.py` pouští garanta ke všemu. Kurzy ho nepoužívají, používají `validate_owner_or_superadmin`.
-- Obrázek se servíruje veřejně bez kontroly publikace. Stačí znát `course_id` a aktivní kurz.
-- `GET /courses/{id}` existuje na obou routerech. `public_router` je includovaný dřív, proto `/recommended` musí být v něm nad `/{course_id}`.
-- Chybové hlášky u souborů/odkazů říkají „publikovaných kurzů“, ale podmínka je `status != draft`.

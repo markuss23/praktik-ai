@@ -3,7 +3,7 @@ Controllery pro editaci zdrojů kurzu.
 """
 
 from fastapi import HTTPException
-from sqlalchemy import update
+from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session
 
 from api import models
@@ -98,6 +98,16 @@ def update_course_status(db: Session, course_id: int, status: Status, user: mode
     if status == Status.in_review:
         # Submit for review: only owner or superadmin
         validate_owner_or_superadmin(course, user, "kurz")
+        has_module = db.scalar(
+            select(
+                exists().where(
+                    models.Module.course_id == course_id,
+                    models.Module.is_active.is_(True),
+                )
+            )
+        )
+        if not has_module:
+            raise HTTPException(status_code=400, detail="Kurz musí mít aspoň jeden modul")
     elif course.status == Status.in_review and status in (Status.approved, Status.edited):
         # Approve or reject: only guarantor or superadmin
         validate_guarantor_or_superadmin(course, user, "kurz")

@@ -94,7 +94,7 @@ async def upload_course_file(
 
     if course.status != enums.Status.draft:
         raise HTTPException(
-            status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
+            status_code=400, detail="Soubory lze přidávat jen u kurzu ve stavu koncept"
         )
 
     if Path(file.filename or "").suffix.lower() not in SUPPORTED_EXTENSIONS:
@@ -142,7 +142,7 @@ def create_course_link(
 
     if course.status != enums.Status.draft:
         raise HTTPException(
-            status_code=400, detail="Nelze přidávat odkazy do publikovaných kurzů"
+            status_code=400, detail="Odkazy lze přidávat jen u kurzu ve stavu koncept"
         )
 
     if not (url.startswith("http://") or url.startswith("https://")):

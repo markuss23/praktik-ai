@@ -121,7 +121,8 @@ async def list_courses(
     )
 
 
-@public_router.get("/{course_id}", operation_id="get_course_public")
+# Jediný GET detailu. Přihlášení je volitelné, lektor+ a zapsaný student vidí i nepublikovaný kurz.
+@public_router.get("/{course_id}", operation_id="get_course")
 async def endp_get_course_public(
     course_id: int, db: SessionSqlSessionDependency, user: OptionalUser
 ) -> CourseDetail:
@@ -152,12 +153,6 @@ async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> CourseCreated:
     return create_course(db, course, user)
-
-
-@router.get("/{course_id}", operation_id="get_course")
-async def endp_get_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> CourseDetail:
-    ensure_course_visible(db, course_id, user)
-    return get_course(db, course_id)
 
 
 @router.put("/{course_id}", operation_id="update_course", dependencies=[require_role("lector")])
