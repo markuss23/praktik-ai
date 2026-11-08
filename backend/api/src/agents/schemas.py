@@ -66,6 +66,26 @@ class ImageGenerationProgressResponse(BaseModel):
     )
 
 
+class GeneratePodcastResponse(BaseModel):
+    """Výsledek generování podcastu modulu."""
+
+    lines_count: int = Field(..., description="Počet replik ve scénáři")
+    file_path: str = Field(..., description="Cesta k MP3 v SeaweedFS")
+
+
+class PodcastGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování podcastu modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GeneratePodcastResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
 class ActiveImageGeneration(BaseModel):
     """Právě běžící generování obrázku (pro obnovení sledování po refreshi stránky)."""
 

@@ -1,11 +1,12 @@
-"""Tracker průběhu AI generování (kurz, cover kurzu, obrázek modulu), uložený v DB
+"""Tracker průběhu AI generování (kurz, cover kurzu, obrázek modulu, podcast), uložený v DB
 (tabulka generation_progress).
 
 Stav musí být sdílený mezi workery gunicornu: generování běží v jednom
 procesu, ale polling průběhu může trefit kterýkoliv jiný.
 
 Záznamy jsou klíčované řetězcem ``course:<id>`` (generování kurzu),
-``course-image:<id>`` (cover kurzu) a ``module-image:<id>`` (obrázek modulu).
+``course-image:<id>`` (cover kurzu), ``module-image:<id>`` (obrázek modulu)
+a ``module-podcast:<id>`` (podcast modulu).
 
 Běžící task každých ``HEARTBEAT`` obnoví ``updated_at`` (viz ``run_tracked``).
 Když proces s generováním spadne, řádek zůstane ``running``. Po ``STALE_AFTER``
@@ -51,6 +52,10 @@ def course_key(course_id: int) -> str:
 def image_key(kind: str, entity_id: int) -> str:
     """Klíč pro obrázek; kind je "course" nebo "module"."""
     return f"{kind}-image:{entity_id}"
+
+
+def podcast_key(module_id: int) -> str:
+    return f"module-podcast:{module_id}"
 
 
 def _alive_cond():

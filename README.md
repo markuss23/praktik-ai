@@ -27,7 +27,7 @@ Praktik-AI prepares future teachers for working with AI. It brings courses, an A
 
 ## Features
 
-- **AI course authoring:** uploaded materials turn into a course plan, modules and cover images. The lecturer then edits them.
+- **AI course authoring:** uploaded materials turn into a course plan, modules and cover images. The lecturer then edits them and can add a two-voice AI podcast to any module. [AI agents](backend/agents/README.md)
 - **AI mentor:** a chatbot that answers from the content of a module or a whole course (RAG on pgvector).
 - **AI-graded tests:** five formats, from multiple choice to a Socratic dialogue. AI grades open answers. [Test formats](backend/api/src/assessments/README.md)
 - **Review workflow:** a guarantor reviews and approves every course before it goes public. [Course workflow](backend/api/src/courses/README.md)

@@ -831,6 +831,21 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "prompt": "",
         "description": "LLM pro generování obrázků z textového popisu.",
     },
+    {
+        "key": "module_podcast_script",
+        "name": "Podcast modulu – scénář",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/podcast_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu napíše scénář podcastu (dialog moderátora a experta).",
+    },
+    {
+        "key": "module_podcast_tts_model",
+        "name": "Podcast modulu – hlasový model",
+        "model": "gpt-4o-mini-tts",
+        "prompt": "",
+        "description": "OpenAI TTS model, který převede scénář podcastu na řeč.",
+    },
 ]
 
 ASSESSMENT_TYPES: list[dict] = [

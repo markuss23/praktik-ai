@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from api.src.modules.controllers import (
     create_module,
@@ -6,6 +6,7 @@ from api.src.modules.controllers import (
     get_module,
     update_module,
     delete_module,
+    get_module_podcast,
 )
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api.src.common.annotations import (
@@ -61,6 +62,14 @@ async def endp_get_module(
     user: CurrentUser,
 ) -> Module:
     return get_module(db, module_id, user)
+
+
+@router.get("/{module_id}/podcast", operation_id="get_module_podcast")
+async def endp_get_module_podcast(
+    module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> Response:
+    """MP3 podcastu modulu ke stažení (`<název modulu>.mp3`). 404, když modul podcast nemá."""
+    return get_module_podcast(db, module_id, user)
 
 
 @router.put("/{module_id}", operation_id="update_module", dependencies=[require_role("lector")])

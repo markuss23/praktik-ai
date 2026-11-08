@@ -1,12 +1,18 @@
 from collections.abc import Sequence
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from api.src.common.utils import get_or_404, assert_course_editable, course_visible_to
+from api.src.common.utils import (
+    assert_course_editable,
+    attachment_response,
+    course_visible_to,
+    get_or_404,
+)
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api import models
+from api.storage import seaweedfs
 from api.src.catalogs.controllers import (
     sync_bloom_levels,
     sync_krauu_competences,
@@ -38,13 +44,19 @@ def _validate_neuro_principle_ids(db: Session, principle_ids: list[int]) -> None
         )
 
 
-def _sync_neuro_principles(db: Session, module: models.Module, principle_ids: list[int]) -> None:
+def _sync_neuro_principles(
+    db: Session, module: models.Module, principle_ids: list[int]
+) -> None:
     wanted = set(principle_ids)
-    existing_links: Sequence[models.ModuleNeuroPrinciple] = db.execute(
-        select(models.ModuleNeuroPrinciple).where(
-            models.ModuleNeuroPrinciple.module_id == module.module_id,
+    existing_links: Sequence[models.ModuleNeuroPrinciple] = (
+        db.execute(
+            select(models.ModuleNeuroPrinciple).where(
+                models.ModuleNeuroPrinciple.module_id == module.module_id,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     existing_by_principle = {link.principle_id: link for link in existing_links}
 
@@ -60,7 +72,9 @@ def _sync_neuro_principles(db: Session, module: models.Module, principle_ids: li
         )
 
 
-def _assert_title_free(db: Session, course_id: int, title: str, exclude_module_id: int | None = None) -> None:
+def _assert_title_free(
+    db: Session, course_id: int, title: str, exclude_module_id: int | None = None
+) -> None:
     stm = select(models.Module.module_id).where(
         models.Module.course_id == course_id,
         models.Module.title == title,
@@ -101,9 +115,9 @@ def get_modules(
         stm = stm.where(models.Module.is_active.is_(True))
 
     if published_only:
-        stm = stm.join(models.Course, models.Course.course_id == models.Module.course_id).where(
-            models.Course.is_published.is_(True), models.Course.is_active.is_(True)
-        )
+        stm = stm.join(
+            models.Course, models.Course.course_id == models.Module.course_id
+        ).where(models.Course.is_published.is_(True), models.Course.is_active.is_(True))
 
     if course_id is not None:
         stm = stm.where(models.Module.course_id == course_id)
@@ -168,14 +182,34 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
     Vrátí konkrétní modul podle module_id
     """
     # Smazaný modul vidí jen lektor a výš (stejně jako include_inactive v seznamu)
-    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen", check_active=not is_staff(user))
+    module = get_or_404(
+        db,
+        models.Module,
+        module_id,
+        detail="Modul nenalezen",
+        check_active=not is_staff(user),
+    )
     # Obsah (vč. správných odpovědí) nepublikovaného kurzu jen lektorům+ a zapsaným studentům
     if not course_visible_to(db, module.course, user):
         raise HTTPException(status_code=404, detail="Modul nenalezen")
     return Module.model_validate(module)
 
 
-def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: models.User) -> Module:
+def get_module_podcast(db: Session, module_id: int, user: models.User) -> Response:
+    """Vrátí MP3 podcastu modulu jako přílohu `<název modulu>.mp3`. Vidí ho ten, kdo vidí modul (stejně jako get_module)."""
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    if not course_visible_to(db, module.course, user):
+        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    if not module.podcast_path:
+        raise HTTPException(status_code=404, detail="Modul nemá podcast")
+    return attachment_response(
+        seaweedfs.download_file(module.podcast_path), f"{module.title}.mp3"
+    )
+
+
+def update_module(
+    db: Session, module_id: int, module_data: ModuleUpdate, user: models.User
+) -> Module:
     """
     Upraví data modulu s module_id podle dat v module_data.
     """
@@ -187,7 +221,9 @@ def update_module(db: Session, module_id: int, module_data: ModuleUpdate, user: 
     # kontrola, zda je kurz v editovatelném stavu
     assert_course_editable(module.course)
 
-    _assert_title_free(db, module.course_id, module_data.title, exclude_module_id=module_id)
+    _assert_title_free(
+        db, module.course_id, module_data.title, exclude_module_id=module_id
+    )
 
     _validate_neuro_principle_ids(db, module_data.neuro_principle_ids)
     validate_krauu_competence_ids(db, module_data.krauu_competence_ids)

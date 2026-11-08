@@ -45,6 +45,10 @@ class Module(ModuleBase):
     updated_at: datetime
 
     learn_blocks: list[LearnBlock] = []
+    podcast_transcript: list[dict] | None = Field(
+        default=None,
+        description="Přepis podcastu [{speaker, text}]; None = modul podcast nemá. Audio: GET /modules/{id}/podcast",
+    )
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"

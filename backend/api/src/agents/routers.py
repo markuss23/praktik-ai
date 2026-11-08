@@ -14,7 +14,9 @@ from api.src.agents.schemas import (
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
     GenerateImageResponse,
+    GeneratePodcastResponse,
     ImageGenerationProgressResponse,
+    PodcastGenerationProgressResponse,
     LearnBlocksChatRequest,
     LearnBlocksChatResponse,
     WikiChatRequest,
@@ -28,6 +30,7 @@ from api.src.agents.progress import (
     list_running_keys,
     mark_completed,
     mark_failed,
+    podcast_key,
     register_task,
     run_tracked,
     set_progress,
@@ -42,6 +45,7 @@ from agents.embedding_generator.service import EmbeddingGeneratorService
 from agents.image_generator.course.service import CourseImageGeneratorService
 from agents.image_generator.module.service import ModuleImageGeneratorService
 from agents.image_generator.service import ImageGenerationResult
+from agents.podcast_generator.service import ModulePodcastGeneratorService
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
 from agents.wiki.agent.service import sync_wiki
@@ -51,6 +55,8 @@ from api.enums import MentorScope
 
 # Kroky obrázku: 1 kontext z DB, 2 prompt (LLM), 3 image model, 4 uložení do SeaweedFS.
 IMAGE_GENERATION_TOTAL_STEPS = 4
+# Kroky podcastu: 1 kontext z DB, 2 scénář (LLM), 3 TTS, 4 uložení do SeaweedFS.
+PODCAST_GENERATION_TOTAL_STEPS = 4
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
@@ -434,6 +440,95 @@ async def get_module_image_generation_progress(
     validate_owner_or_superadmin(module, user, "modul")
 
     return _image_progress_response(image_key("module", module_id))
+
+
+async def _run_podcast_generation(module_id: int) -> None:
+    """Background task: scénář (LLM) -> TTS -> MP3 do SeaweedFS -> cesta a přepis k modulu."""
+    key = podcast_key(module_id)
+    db = SessionLocal()
+    try:
+        set_progress(key, step=1, label="Načítání kontextu z databáze")
+        service = ModulePodcastGeneratorService(db=db, module_id=module_id, progress_key=key)
+        script, audio = await run_tracked(key, service.generate())
+
+        set_progress(key, step=4, label="Ukládání podcastu do SeaweedFS")
+        module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+        # Kurz mohl být během generování odeslán ke schválení — pak nic neměnit
+        assert_course_editable(module.course)
+        file_path = f"module-podcasts/{module_id}/podcast.mp3"
+        seaweedfs.upload_file(file_path, audio, "podcast.mp3", "audio/mpeg")
+        module.podcast_path = file_path
+        module.podcast_transcript = [line.model_dump() for line in script.lines]
+        db.commit()
+
+        mark_completed(
+            key,
+            GeneratePodcastResponse(
+                lines_count=len(script.lines), file_path=file_path
+            ).model_dump(),
+        )
+    except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
+        db.rollback()
+        mark_failed(key, str(e))
+    finally:
+        db.close()
+        unregister_task(key)
+
+
+def _podcast_progress_response(module_id: int) -> PodcastGenerationProgressResponse:
+    progress = get_progress(podcast_key(module_id))
+    if progress is None:
+        return PodcastGenerationProgressResponse(
+            step=0, total=PODCAST_GENERATION_TOTAL_STEPS, label="Čekání", status="pending"
+        )
+    return PodcastGenerationProgressResponse(
+        step=progress.step,
+        total=progress.total,
+        label=progress.label,
+        status=progress.status,
+        error=progress.error,
+        result=progress.result,
+    )
+
+
+@router.post(
+    "/generate-module-podcast",
+    operation_id="generate_module_podcast",
+    dependencies=[require_role("lector")],
+)
+async def generate_module_podcast(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> PodcastGenerationProgressResponse:
+    """Spustí generování podcastu modulu (dialog dvou hlasů) jako background task.
+
+    Scénář píše LLM z obsahu modulu, hlasy dělá OpenAI TTS. MP3 se uloží do SeaweedFS
+    a cesta s přepisem k modulu. Opakované generování podcast přepíše. Průběh:
+    ``/agents/module-podcast-progress/{module_id}``.
+    """
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    validate_owner_or_superadmin(module, user, "modul")
+    assert_course_editable(module.course)
+
+    key = podcast_key(module_id)
+    if try_start(key, total=PODCAST_GENERATION_TOTAL_STEPS):
+        register_task(key, asyncio.create_task(_run_podcast_generation(module_id)))
+    return _podcast_progress_response(module_id)
+
+
+@router.get(
+    "/module-podcast-progress/{module_id}",
+    operation_id="get_module_podcast_generation_progress",
+    dependencies=[require_role("lector")],
+)
+async def get_module_podcast_generation_progress(
+    module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> PodcastGenerationProgressResponse:
+    """Vrátí průběh generování podcastu modulu; po dokončení i výsledek."""
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    validate_owner_or_superadmin(module, user, "modul")
+    return _podcast_progress_response(module_id)
 
 
 @router.get(
