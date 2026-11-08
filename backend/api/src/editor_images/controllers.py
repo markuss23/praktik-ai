@@ -5,7 +5,6 @@ Controllery pro obrázky vkládané v rich-text editoru.
 import mimetypes
 import uuid
 
-import httpx
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import Response
 
@@ -48,10 +47,7 @@ def get_editor_image(filename: str) -> Response:
         raise HTTPException(status_code=400, detail="Neplatný název souboru")
 
     remote_path = f"{_REMOTE_PREFIX}/{filename}"
-    try:
-        content = seaweedfs.download_file(remote_path)
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=404, detail="Obrázek nenalezen") from e
+    content = seaweedfs.download_file(remote_path)
 
     media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     # Pojistka i pro dřív nahraná SVG: při přímém otevření se nespustí skript

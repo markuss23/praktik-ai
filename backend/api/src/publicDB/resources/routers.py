@@ -1,6 +1,5 @@
 from typing import Literal
 
-import httpx
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from fastapi.responses import Response
@@ -227,16 +226,7 @@ async def endp_download_resource_file(
     if resource_file.resource_id != resource_id:
         raise HTTPException(status_code=404, detail="Soubor nenalezen")
 
-    try:
-        content = seaweedfs.download_file(resource_file.file_path)
-    except httpx.HTTPError as e:
-        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404, detail="Soubor už není v úložišti"
-            ) from e
-        raise HTTPException(
-            status_code=502, detail="Úložiště souborů je nedostupné"
-        ) from e
+    content = seaweedfs.download_file(resource_file.file_path)
 
     return attachment_response(content, resource_file.filename)
 

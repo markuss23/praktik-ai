@@ -75,4 +75,5 @@ def delete_file(remote_path: str) -> None:
     url = _filer_url(remote_path)
     with httpx.Client() as client:
         response = client.delete(url)
-        response.raise_for_status()
+        if response.status_code != 404:  # chybějící soubor = už smazaný
+            response.raise_for_status()
