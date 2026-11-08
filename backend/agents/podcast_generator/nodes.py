@@ -56,7 +56,10 @@ def write_script_node(state: PodcastGeneratorState) -> PodcastGeneratorState:
     set_progress(state.get("progress_key"), step=2, label="Psaní scénáře (AI)")
 
     cfg = get_llm_config(state["db"], SETTING_KEY)
-    llm = create_chat_llm(cfg.model).with_structured_output(PodcastScript)
+    # json_schema: přes tool calling vracel Claude vnořený seznam jako string
+    llm = create_chat_llm(cfg.model).with_structured_output(
+        PodcastScript, method="json_schema"
+    )
     script: PodcastScript = llm.invoke(
         [
             SystemMessage(content=PROMPT),
