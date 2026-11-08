@@ -169,6 +169,20 @@ async def submit_answer(
     return await controllers.submit_answer(db, user, session_id, answer)
 
 
+# Runtime — student vzdá rozjetou session, pak může spustit novou
+@router.post(
+    "/assessments/sessions/{session_id}/abandon",
+    operation_id="abandon_assessment_session",
+    status_code=204,
+)
+def abandon_session(
+    session_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> None:
+    controllers.abandon_session(db, user, session_id)
+
+
 # Runtime — historie odevzdaných sessions studenta v rámci kurzu
 @router.get(
     "/courses/{course_id}/assessments/history",

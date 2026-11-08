@@ -1,7 +1,9 @@
+import logging
 from datetime import datetime, UTC
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api import models
@@ -25,6 +27,7 @@ from api.src.assessments.schemas import (
     SessionStartResponse,
 )
 from api.src.assessments.utils import (
+    abandon_active_sessions,
     assert_course_editable,
     assert_prerequisites_passed,
     course_completion,
@@ -38,6 +41,7 @@ from api.src.assessments.utils import (
 
 CA = models.CourseAssessment
 AS = models.AssessmentSession
+logger = logging.getLogger(__name__)
 
 # Kontext -> stupně, které musí být splněné (jen is_required konfigurace).
 # Assessment hlídá i pretest, aby se nedal přeskočit modulem bez practice.
@@ -156,6 +160,7 @@ def detach_course_assessment(
     course_assessment = get_editable_course_assessment(db, user, course_assessment_id)
     assert_not_pretest(course_assessment)
     course_assessment.soft_delete()
+    abandon_active_sessions(db, course_assessment_id)
     db.commit()
 
 
@@ -173,6 +178,8 @@ def update_course_assessment(
         course_assessment.assessment_type_code,
         body.settings.model_dump(exclude_unset=True),
     )
+    if cfg.model_dump() != course_assessment.settings:
+        abandon_active_sessions(db, course_assessment_id)
     course_assessment.settings = cfg.model_dump()
     course_assessment.is_enabled = body.is_enabled
     course_assessment.is_required = body.is_required
@@ -219,15 +226,67 @@ async def start_session(
     # initial_state otázky nevrací — jen ověří, že nějaké jsou, a založí
     # počáteční stav běhu {"current": 0, "attempts_used": 0, "correct_count": 0}.
     # Do session se ukládá jen tento stav, otázky se nekopírují.
+    try:
+        state = await fmt.initial_state(db, user, course_assessment, cfg)
+    except ValueError as e:
+        raise _ai_failed(e) from e
     session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,
-        state=(await fmt.initial_state(db, user, course_assessment, cfg)).model_dump(),
+        state=state.model_dump(),
     )
     db.add(session)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Souběžný start: druhý request narazí na uq_assessment_session_user_in_progress.
+        # Vrátí session, která vyhrála.
+        db.rollback()
+        existing = find_active_session(db, user, course_assessment.course_assessment_id)
+        if existing is None:
+            raise
+        return current_view(existing)
     db.refresh(session)
     return current_view(session)
+
+
+def _ai_failed(e: Exception) -> HTTPException:
+    """ValueError z formátu = AI vrátila nepoužitelný výstup. Nic se neuložilo."""
+    logger.warning("AI formátu selhala: %s", e)
+    return HTTPException(
+        status_code=502, detail="AI teď neodpověděla, zkus to prosím znovu."
+    )
+
+
+def _get_own_session(
+    db: Session, user: models.User, session_id: int
+) -> models.AssessmentSession:
+    """Aktivní session přihlášeného studenta v rozběhnutém stavu, jinak 404/409."""
+    session = db.scalar(
+        select(AS).where(
+            AS.session_id == session_id,
+            AS.user_id == user.user_id,
+            AS.is_active.is_(True),
+        )
+    )
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session nenalezena")
+    check_enrollment(db, user, session.course_assessment.course)
+
+    if session.status != AssessmentSessionStatus.in_progress:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Session není rozběhnutá (aktuální stav: {session.status.value})",
+        )
+    return session
+
+
+def abandon_session(db: Session, user: models.User, session_id: int) -> None:
+    """Student vzdá rozjetou session. Pak může spustit novou."""
+    session = _get_own_session(db, user, session_id)
+    session.status = AssessmentSessionStatus.abandoned
+    session.finished_at = datetime.now(UTC)
+    db.commit()
 
 
 def get_current_session(
@@ -254,22 +313,7 @@ async def submit_answer(
     session_id: int,
     answer: str,
 ) -> SessionAnswerResponse:
-    session = db.scalar(
-        select(AS).where(
-            AS.session_id == session_id,
-            AS.user_id == user.user_id,
-            AS.is_active.is_(True),
-        )
-    )
-    if session is None:
-        raise HTTPException(status_code=404, detail="Session nenalezena")
-    check_enrollment(db, user, session.course_assessment.course)
-
-    if session.status != AssessmentSessionStatus.in_progress:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Session není rozběhnutá (aktuální stav: {session.status.value})",
-        )
+    session = _get_own_session(db, user, session_id)
 
     fmt = get_format(session.course_assessment.assessment_type_code)
 
@@ -298,13 +342,16 @@ async def submit_answer(
     )
     # evaluate_answer posune stav: špatně a zbývají pokusy -> stejné `current`,
     # jen attempts_used + 1; správně nebo došly pokusy -> current + 1.
-    outcome = await fmt.evaluate_answer(
-        db,
-        session.course_assessment,
-        cfg,
-        fmt.State.model_validate(session.state),
-        answer,
-    )
+    try:
+        outcome = await fmt.evaluate_answer(
+            db,
+            session.course_assessment,
+            cfg,
+            fmt.State.model_validate(session.state),
+            answer,
+        )
+    except ValueError as e:
+        raise _ai_failed(e) from e
     # Nový stav zpět do DB — příští request si `current` načte odsud
     session.state = outcome.state.model_dump()
 
@@ -439,6 +486,8 @@ def update_pretest_content(
     course_assessment = _get_pretest(
         get_editable_course_assessment(db, user, course_assessment_id)
     )
+    if body.model_dump() != course_assessment.settings:
+        abandon_active_sessions(db, course_assessment_id)
     course_assessment.settings = body.model_dump()
     db.commit()
     return body

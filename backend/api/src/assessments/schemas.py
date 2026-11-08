@@ -20,10 +20,10 @@ from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISetti
 # by prošlo i jako Closed (doplnilo by questions=[]). Proto Open první — closed
 # nastavení vždy nese `questions`, které Open odmítne (extra="forbid"), a spadne do Closed.
 # ClosedAI mezi nimi: `question_count` Open odmítne, `questions` odmítne ClosedAI.
-# Pretest úplně první: jeho settings jsou vždy `{}`, které by jinak prošlo jako Open
-# (samé defaulty). Ostatní formáty ukládají model_dump s defaulty — nikdy prázdné.
+# Pretest úplně první: má povinné otázky (closed, open), takže cizí settings nespolkne.
 # SocraticDialogAI úplně poslední: má samé defaulty, takže by spolkl i `{}`;
 # jeho pole (min_turns, elo...) ostatní formáty odmítnou (extra="forbid").
+# Pořadí hlídá test_settings_union.py.
 AssessmentSettings = Annotated[
     PretestSettings
     | OpenQuestionAISettings

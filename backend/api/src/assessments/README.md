@@ -35,8 +35,10 @@ stateDiagram-v2
     in_progress --> in_progress: submit_answer, finished = False
     in_progress --> passed: finished, is_passed
     in_progress --> failed: finished, not is_passed
+    in_progress --> abandoned: student vzdá / lektor změní nebo odpojí konfiguraci
     passed --> [*]
     failed --> [*]
+    abandoned --> [*]
 ```
 
 `start_session` (`controllers.py`) kontroluje v tomto pořadí:
@@ -48,6 +50,8 @@ stateDiagram-v2
 5. `is_enabled`, jinak 403.
 6. Gate (`assert_prerequisites_passed`), jinak 403.
 7. `fmt.initial_state` a uložení nové session.
+
+Dva souběžné starty: druhý narazí na unikátní index, udělá rollback a vrátí session, která vyhrála.
 
 `submit_answer` zavolá `fmt.evaluate_answer` a uloží nový `state`. Při `finished` zapíše `score`, `is_passed`, `status` a `finished_at`. Při `is_passed` zkusí dokončit kurz (`mark_course_completed`).
 
@@ -67,7 +71,13 @@ stateDiagram-v2
 - Konfigurace jde měnit jen u kurzu ve stavu draft / generated / edited (`assert_course_editable`).
 - Odpojení je soft delete. Sessions studentů zůstávají a historie je ukazuje dál.
 - Pretest nejde přes obecné PUT ani DELETE (`assert_not_pretest`, 400). Jeho otázky se mění vlastním endpointem.
-- `settings` se čte živě z konfigurace. Session nemá snapshot, kopíruje si jen to, co formát dá do `state`.
+- `settings` se čte živě z konfigurace. Session nemá snapshot, kopíruje si jen to, co formát dá do `state`. Proto změna `settings` (PUT konfigurace nebo pretestu) i odpojení přepne rozjeté sessions na `abandoned` (`abandon_active_sessions`). Změna jen `is_enabled`/`is_required` je nechá běžet.
+- Student může rozjetou session vzdát (`POST /assessments/sessions/{id}/abandon`, 204). Pak může spustit novou. Jiný než `in_progress` stav = 409.
+- `ValueError` z formátu (AI vrátila nepoužitelný výstup) v `initial_state` nebo `evaluate_answer` = 502. Session se nezaloží, pokus se nezapočítá.
+- Typing guard (`typed_too_fast`) měří čas od `session.updated_at`, tedy od startu nebo od posledního pokusu.
+- `seed.py` vkládá jen chybějící kódy formátů. Změna defaultů v `Settings` se do existující DB nepropíše, je potřeba migrace.
+- U `socratic_dialog_ai` je `is_correct` v průběhu vždy `True`. Hodnotí se až na konci.
+- `awaiting_review` a `completed` zatím nic nenastavuje. Tabulka `assessment_turn` se nepoužívá. Obojí je rezervované pro formáty s hodnocením člověkem.
 - Před každým zápisem `settings` projde `parse_settings` (`utils.py`). Chyba = 422.
 
 ## Formáty
@@ -93,7 +103,7 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 4. V `__init__.py` exportuj `Settings`, `State`, `initial_state`, `view`, `evaluate_answer`. Vzor je `closed_questions/__init__.py`.
 5. Píše-li student volný text, přidej `TYPED_ANSWER = True` a ukládej `last_answer` do `State`.
 6. Přidej řádek do `FORMATS` v `utils.py`.
-7. Přidej `Settings` do unionu `AssessmentSettings` v `schemas.py`. Pořadí rozhoduje, viz komentář nad unionem.
+7. Přidej `Settings` do unionu `AssessmentSettings` v `schemas.py`. Pořadí rozhoduje, viz komentář nad unionem. Ověř `uv run pytest api/src/assessments`.
 8. Přidej formát do `ASSESSMENT_TYPES` v `seed.py` a SQL migraci do `migrations/` (vzor `0022_assessment_type_socratic_dialog_ai.sql`).
 9. Používá-li formát LLM, přidej klíč do `SYSTEM_SETTINGS` v `seed.py` a do stejné migrace. Prompt patří do `.md` ve složce formátu.
 10. Napiš `README.md` formátu podle `closed_questions/README.md` a doplň řádek do tabulky výše.
@@ -103,8 +113,9 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 | Soubor | Co dělá |
 | --- | --- |
 | `routers.py` | HTTP vrstva. Lektorské endpointy mají `require_role("lector")`. |
-| `controllers.py` | Připojení a úprava konfigurací, start session, odevzdání odpovědi, historie, progress. `PREREQUISITES`. |
-| `utils.py` | `FORMATS`, `get_format`, `parse_settings`, hledání konfigurace a session, gate, `course_completion`. |
+| `controllers.py` | Připojení a úprava konfigurací, start session, odevzdání odpovědi, vzdání session, historie, progress. `PREREQUISITES`. |
+| `utils.py` | `FORMATS`, `get_format`, `parse_settings`, hledání konfigurace a session, `abandon_active_sessions`, gate, `course_completion`. |
+| `test_settings_union.py` | Hlídá pořadí unionu `AssessmentSettings`. |
 | `schemas.py` | Request/response modely a union `AssessmentSettings`. |
 | `outcome.py` | `AnswerOutcome`, společný výstup `evaluate_answer`. |
 | `<format>/` | Implementace formátu, viz tabulka Formáty. |
@@ -113,13 +124,5 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 
 ## Pozor na
 
-- `seed.py` vkládá jen chybějící kódy formátů. Změna defaultů v `Settings` se do existující DB nepropíše, je potřeba migrace.
-- Union `AssessmentSettings` validuje zleva doprava a vyhraje první shoda. Nový formát se samými defaulty může „spolknout“ cizí `settings`.
-- `settings` bez snapshotu: když lektor změní otázky (kurz vrácený do editace), rozjeté sessions čtou nové `settings` se starým `state`.
-- Chyba AI generátoru (`ValueError`) skončí jako 500 z globálního handleru v `main.py`. Session se nezaloží.
-- Dva souběžné starty narazí na unikátní index. Druhý dostane 400 z `IntegrityError` handleru.
-- Typing guard (`typed_too_fast`) měří čas od `session.updated_at`, tedy od startu nebo od posledního pokusu.
-- U `socratic_dialog_ai` je `is_correct` v průběhu vždy `True` a nic neznamená.
-- `awaiting_review`, `completed` a `abandoned` v `AssessmentSessionStatus` zatím nic nenastavuje. Tabulka `assessment_turn` se nepoužívá.
-- Rozjetou session nejde zrušit. Student ji musí dohrát.
+- Union `AssessmentSettings` validuje zleva doprava a vyhraje první shoda. Nový formát se samými defaulty může „spolknout“ cizí `settings`. Hlídá to `test_settings_union.py`, ale jen pro defaulty.
 - `attempts_used` v historii se čte ze `state`. U `closed_questions` se po každé otázce nuluje, `socratic_dialog_ai` ho nemá, takže tam je 0.
