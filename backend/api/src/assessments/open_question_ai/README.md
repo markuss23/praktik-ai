@@ -20,11 +20,12 @@ Interakční formát s jednou otevřenou otázkou. AI ji vygeneruje z učebního
 ## State (`session.state`)
 
 ```json
-{"question": "Vysvětli, proč ...", "attempts_used": 1, "last_answer": "..."}
+{"question": "Vysvětli, proč ...", "attempts_used": 1, "last_answer": "...", "ai_style": ""}
 ```
 
 - `question` je vygenerovaná otázka (max. 255 znaků).
 - `last_answer` je předchozí odpověď. Typing guard ji porovnává s novou, viz `TYPED_ANSWER`.
+- `ai_style` je blok stylu z profilu pro prompt evaluátoru. Plní ho `start_session`, když student pošle `use_profile_style=true` a kontext je `practice`. Délku bere z osy `dens` jako mentor. `""` = bez stylu.
 
 ## Průběh
 

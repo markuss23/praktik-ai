@@ -53,6 +53,7 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
         max_step=cfg.max_step,
         can_end=student_turns >= cfg.min_turns,
         must_end=must_end,
+        ai_style=state.ai_style,
     )
 
     # AI navrhuje, meze hlídá kód
@@ -71,7 +72,9 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
         # Bez verdiktu v průběhu — is_correct nic neznamená
         return AnswerOutcome(state=new_state, is_correct=True, finished=False)
 
-    summary = await summarize(db, state.topic, [t.model_dump() for t in turns])
+    summary = await summarize(
+        db, state.topic, [t.model_dump() for t in turns], state.ai_style
+    )
     new_state.summary = summary
     is_passed = elo >= cfg.pass_elo
     return AnswerOutcome(

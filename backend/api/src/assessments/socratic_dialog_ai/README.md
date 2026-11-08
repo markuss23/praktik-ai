@@ -36,12 +36,14 @@ Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISet
   ],
   "elo": 1020,
   "summary": "",
-  "last_answer": "..."
+  "last_answer": "...",
+  "ai_style": ""
 }
 ```
 
 - `turns` je celá paměť konverzace. Tabulka `assessment_turn` se nepoužívá.
 - `delta` je změna elo za odpověď studenta.
+- `ai_style` je blok stylu z profilu pro prompt tazatele i shrnutí. Plní ho `start_session`, když student pošle `use_profile_style=true` a kontext je `practice`. Délku bere z osy `dens` jako mentor. `""` = bez stylu.
 
 ## Průběh
 

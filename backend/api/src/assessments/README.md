@@ -49,7 +49,7 @@ stateDiagram-v2
 4. Kurz je aktivní, publikovaný a schválený (`assert_course_open_for_students`), jinak 400.
 5. `is_enabled`, jinak 403.
 6. Gate (`assert_prerequisites_passed`), jinak 403.
-7. `fmt.initial_state` a uložení nové session.
+7. `fmt.initial_state` a uložení nové session. S `use_profile_style=true` se do `state.ai_style` doplní AI styl z profilu (jen formáty s tímto polem, jen `practice`).
 
 Dva souběžné starty: druhý narazí na unikátní index, udělá rollback a vrátí session, která vyhrála.
 
@@ -117,6 +117,7 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 | `utils.py` | `FORMATS`, `get_format`, `parse_settings`, hledání konfigurace a session, `abandon_active_sessions`, gate, `course_completion`. |
 | `schemas.py` | Request/response modely. `AssessmentSettings` je za běhu `dict`, v OpenAPI union všech `Settings`. |
 | `outcome.py` | `AnswerOutcome`, společný výstup `evaluate_answer`. |
+| `ai_style.py` | `profile_ai_style`: AI styl z profilu studenta do promptu. Jen v `practice` a jen když si ho student zvolí při startu session (`use_profile_style`). |
 | `<format>/` | Implementace formátu, viz tabulka Formáty. |
 | `api/models.py` | `AssessmentType`, `CourseAssessment`, `AssessmentSession`, `AssessmentTurn`. |
 | `api/seed.py` | Katalog formátů a modely LLM pro prompty. |

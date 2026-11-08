@@ -15,6 +15,7 @@ from api.src.common.utils import (
     check_enrollment,
     get_or_404,
 )
+from api.src.assessments.ai_style import profile_ai_style
 from api.src.assessments.pretest.schemas import PretestSettings
 from api.src.assessments.schemas import (
     AssessmentTypeResponse,
@@ -190,6 +191,7 @@ async def start_session(
     context: AssessmentContext,
     module_id: int | None,
     assessment_type_code: str | None,
+    use_profile_style: bool = False,
 ) -> SessionStartResponse:
     course_assessment = find_course_assessment(
         db, course_id, context, module_id, assessment_type_code
@@ -225,6 +227,9 @@ async def start_session(
         state = await fmt.initial_state(db, user, course_assessment, cfg)
     except ValueError as e:
         raise _ai_failed(e) from e
+    # Student si zvolil AI styl z profilu — jen formáty s polem ai_style, jen practice
+    if use_profile_style and "ai_style" in type(state).model_fields:
+        state.ai_style = profile_ai_style(db, user, course_assessment)
     session = AS(
         user_id=user.user_id,
         course_assessment_id=course_assessment.course_assessment_id,

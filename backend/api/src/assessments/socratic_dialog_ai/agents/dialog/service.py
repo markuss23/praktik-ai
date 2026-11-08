@@ -28,6 +28,7 @@ class SocraticDialogAsker:
         max_step: int,
         can_end: bool,
         must_end: bool,
+        ai_style: str = "",
     ) -> DialogStep:
         result = await create_graph().ainvoke(
             {
@@ -39,6 +40,7 @@ class SocraticDialogAsker:
                 "max_step": max_step,
                 "can_end": can_end,
                 "must_end": must_end,
+                "ai_style": ai_style,
             }
         )
 

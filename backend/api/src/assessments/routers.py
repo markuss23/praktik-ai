@@ -131,9 +131,11 @@ async def start_session(
     user: CurrentUser,
     module_id: int | None = None,
     assessment_type_code: str | None = None,
+    # Student chce, aby AI psala ve stylu z jeho profilu (jen practice, jen AI formáty)
+    use_profile_style: bool = False,
 ) -> SessionStartResponse:
     return await controllers.start_session(
-        db, user, course_id, context, module_id, assessment_type_code
+        db, user, course_id, context, module_id, assessment_type_code, use_profile_style
     )
 
 
