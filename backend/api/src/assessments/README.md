@@ -78,7 +78,7 @@ Dva souběžné starty: druhý narazí na unikátní index, udělá rollback a v
 - `seed.py` vkládá jen chybějící kódy formátů. Změna defaultů v `Settings` se do existující DB nepropíše, je potřeba migrace.
 - U `socratic_dialog_ai` je `is_correct` v průběhu vždy `True`. Hodnotí se až na konci.
 - `awaiting_review` a `completed` zatím nic nenastavuje. Tabulka `assessment_turn` se nepoužívá. Obojí je rezervované pro formáty s hodnocením člověkem.
-- Před každým zápisem `settings` projde `parse_settings` (`utils.py`). Chyba = 422.
+- Před každým zápisem `settings` projde `parse_settings` (`utils.py`) proti `Settings` formátu podle `assessment_type_code`. Chyba = 422. API samo `settings` nevaliduje, jen ověří, že je to objekt.
 
 ## Formáty
 
@@ -103,7 +103,7 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 4. V `__init__.py` exportuj `Settings`, `State`, `initial_state`, `view`, `evaluate_answer`. Vzor je `closed_questions/__init__.py`.
 5. Píše-li student volný text, přidej `TYPED_ANSWER = True` a ukládej `last_answer` do `State`.
 6. Přidej řádek do `FORMATS` v `utils.py`.
-7. Přidej `Settings` do unionu `AssessmentSettings` v `schemas.py`. Pořadí rozhoduje, viz komentář nad unionem. Ověř `uv run pytest api/src/assessments`.
+7. Přidej `Settings` do `_SettingsDoc` v `schemas.py` (jen kvůli OpenAPI, pořadí je jedno).
 8. Přidej formát do `ASSESSMENT_TYPES` v `seed.py` a SQL migraci do `migrations/` (vzor `0022_assessment_type_socratic_dialog_ai.sql`).
 9. Používá-li formát LLM, přidej klíč do `SYSTEM_SETTINGS` v `seed.py` a do stejné migrace. Prompt patří do `.md` ve složce formátu.
 10. Napiš `README.md` formátu podle `closed_questions/README.md` a doplň řádek do tabulky výše.
@@ -115,8 +115,7 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 | `routers.py` | HTTP vrstva. Lektorské endpointy mají `require_role("lector")`. |
 | `controllers.py` | Připojení a úprava konfigurací, start session, odevzdání odpovědi, vzdání session, historie, progress. `PREREQUISITES`. |
 | `utils.py` | `FORMATS`, `get_format`, `parse_settings`, hledání konfigurace a session, `abandon_active_sessions`, gate, `course_completion`. |
-| `test_settings_union.py` | Hlídá pořadí unionu `AssessmentSettings`. |
-| `schemas.py` | Request/response modely a union `AssessmentSettings`. |
+| `schemas.py` | Request/response modely. `AssessmentSettings` je za běhu `dict`, v OpenAPI union všech `Settings`. |
 | `outcome.py` | `AnswerOutcome`, společný výstup `evaluate_answer`. |
 | `<format>/` | Implementace formátu, viz tabulka Formáty. |
 | `api/models.py` | `AssessmentType`, `CourseAssessment`, `AssessmentSession`, `AssessmentTurn`. |
@@ -124,5 +123,4 @@ Pretest zakládá generátor kurzu ke každému modulu, vždy jako povinný (`ag
 
 ## Pozor na
 
-- Union `AssessmentSettings` validuje zleva doprava a vyhraje první shoda. Nový formát se samými defaulty může „spolknout“ cizí `settings`. Hlídá to `test_settings_union.py`, ale jen pro defaulty.
 - `attempts_used` v historii se čte ze `state`. U `closed_questions` se po každé otázce nuluje, `socratic_dialog_ai` ho nemá, takže tam je 0.
