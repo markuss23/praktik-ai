@@ -892,7 +892,7 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     perex: Mapped[str] = mapped_column(
         String(255), nullable=False, default="", server_default=""
     )
-    # Vygenerovaný podcast (MP3 v SeaweedFS) a jeho přepis [{speaker, text}]; None = není.
+    # Vygenerovaný podcast (WAV v SeaweedFS) a jeho přepis [{speaker, text}]; None = není.
     podcast_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     podcast_transcript: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 

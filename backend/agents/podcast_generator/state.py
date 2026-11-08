@@ -41,5 +41,5 @@ class PodcastGeneratorState(TypedDict):
     progress_key: NotRequired[str | None]
     context: NotRequired[PodcastContext]
     script: NotRequired[PodcastScript]
-    # Výsledné MP3 (repliky slepené za sebou)
+    # Výsledný WAV (repliky za sebou)
     audio: NotRequired[bytes]

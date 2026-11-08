@@ -68,7 +68,7 @@ async def endp_get_module(
 async def endp_get_module_podcast(
     module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Response:
-    """MP3 podcastu modulu ke stažení (`<název modulu>.mp3`). 404, když modul podcast nemá."""
+    """Podcast modulu ke stažení (`<název modulu>.wav`). 404, když modul podcast nemá."""
     return get_module_podcast(db, module_id, user)
 
 

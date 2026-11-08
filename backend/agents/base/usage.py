@@ -1,5 +1,6 @@
 """
 Počítání AI tokenů. Každé LLM volání z create_chat_llm zapíše spotřebu do ai_usage.
+Volání mimo LangChain zapisují přes record_usage.
 
 Komu se tokeny připíšou, určuje ContextVar nastavený dependency ai_budget
 na začátku requestu. Background tasky (asyncio.create_task) ho zdědí.
@@ -37,22 +38,30 @@ class UsageCallback(BaseCallbackHandler):
                 usage = getattr(message, "usage_metadata", None) or {}
                 input_tokens += usage.get("input_tokens", 0)
                 output_tokens += usage.get("output_tokens", 0)
-        if not input_tokens and not output_tokens:
-            return
+        record_usage(self.model, input_tokens, output_tokens)
 
-        # Lazy import — modul se načítá i tam, kde DB není (testy agentů)
-        from api.database import SessionLocal
-        from api.models import AiUsage
 
-        ctx = usage_context.get() or UsageContext(user_id=None, endpoint=None)
-        with SessionLocal() as db:
-            db.add(
-                AiUsage(
-                    user_id=ctx.user_id,
-                    endpoint=ctx.endpoint,
-                    model=self.model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                )
+def record_usage(model: str, input_tokens: int, output_tokens: int) -> None:
+    """Zapíše spotřebu do ai_usage pro uživatele z usage_context. Nuly nezapisuje.
+
+    Pro volání mimo LangChain (např. TTS podcastu přes OpenAI SDK).
+    """
+    if not input_tokens and not output_tokens:
+        return
+
+    # Lazy import — modul se načítá i tam, kde DB není (testy agentů)
+    from api.database import SessionLocal
+    from api.models import AiUsage
+
+    ctx = usage_context.get() or UsageContext(user_id=None, endpoint=None)
+    with SessionLocal() as db:
+        db.add(
+            AiUsage(
+                user_id=ctx.user_id,
+                endpoint=ctx.endpoint,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
             )
-            db.commit()
+        )
+        db.commit()

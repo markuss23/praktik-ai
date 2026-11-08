@@ -11,7 +11,7 @@ LangGraph agenti pro generování kurzů, obrázků, podcastů, embeddingů a pr
 | `embedding_generator` | Rozseká learn blocky na chunky a uloží embeddingy. | `course_id` → řádky v kolekci `course_embeddings` | `POST /agents/generate-course-embeddings` |
 | `image_generator/course` | Vygeneruje cover kurzu. | `course_id` → 1280×720 WebP v SeaweedFS, nastaví se kurzu | `POST /agents/generate-course-images` (background task) |
 | `image_generator/module` | Vygeneruje obrázek modulu. | `module_id` → `module-images/<id>/image.<ext>` v SeaweedFS | `POST /agents/generate-module-images` (background task) |
-| `podcast_generator` | Podcast k modulu: dialog dvou hlasů (host, expert). | `module_id` → scénář (LLM) → OpenAI TTS → `module-podcasts/<id>/podcast.mp3`, `module.podcast_path` + `podcast_transcript` | `POST /agents/generate-module-podcast` (background task) |
+| `podcast_generator` | Podcast k modulu: dialog dvou hlasů (host, expert). | `module_id` → scénář (LLM) → hlas (OpenAI Realtime) → `module-podcasts/<id>/podcast.wav`, `module.podcast_path` + `podcast_transcript` | `POST /agents/generate-module-podcast` (background task) |
 | `wiki/agent` | Stáhne GitHub wiki a zaindexuje ji. | repo z `settings.wiki` → kolekce `wiki_embeddings` | APScheduler (`wiki/agent/scheduler.py`), `POST /agents/wiki-sync` (superadmin) |
 | `wiki/mentor` | RAG chat nad wiki. | otázka → odpověď | `POST /agents/wiki-chat` (bez přihlášení) |
 | `open_question_evaluator` | Vyhodnotí odpověď na otevřenou otázku. Není to graf, jen jedno LLM volání. | otázka + odpověď → `is_correct`, `feedback` | `api/src/assessments/pretest/service.py` |
@@ -40,7 +40,7 @@ Kde jsou prompty:
 | `image_generator_prompt`, `module_image_generator_prompt` | `system_setting.prompt`, ale v seedu nejsou | `claude-sonnet-5` + `render_system_prompt(...)` |
 | `image_generator_model` | jen sloupec `model` (OpenAI image model) | `gpt-image-2` |
 | `module_podcast_script` | soubor `podcast_generator/prompt.md`, z DB se čte jen model | ne (model musí být v DB) |
-| `module_podcast_tts_model` | jen sloupec `model` (OpenAI TTS model) | ne (model musí být v DB) |
+| `module_podcast_tts_model` | jen sloupec `model` (OpenAI Realtime model, např. `gpt-realtime-2.1-mini`) | ne (model musí být v DB) |
 | `wiki_mentor_answer` | `system_setting.prompt`, v seedu není | `gpt-4o-mini` + `DEFAULT_PROMPT` |
 
 Výchozí hodnoty jsou v `SYSTEM_SETTINGS` v `api/seed.py`. `seed_db()` je vloží jen do prázdné tabulky. Změny v seedu se do existující DB propíšou skriptem:
@@ -97,7 +97,7 @@ flowchart TD
 
 ## Spotřeba a limity
 
-- Každé volání LLM z `create_chat_llm` zapíše řádek do `ai_usage` (`user_id`, `endpoint`, `model`, `input_tokens`, `output_tokens`). Dělá to `UsageCallback` v `base/usage.py`.
+- Každé volání LLM z `create_chat_llm` zapíše řádek do `ai_usage` (`user_id`, `endpoint`, `model`, `input_tokens`, `output_tokens`). Dělá to `UsageCallback` v `base/usage.py`. Volání mimo LangChain (hlas podcastu) zapisují přes `record_usage`.
 - Komu se tokeny připíšou, určuje `ContextVar` `usage_context`. Nastavuje ho dependency `ai_budget` v `api/dependencies.py`. Background tasky z `asyncio.create_task` ho zdědí.
 - `ai_budget` je na routerech `agents` a `assessments` (`api/src/routers.py`). Veřejný `wiki-chat` a scheduler ho nemají, zapisují s `user_id = NULL`.
 - Limit: env `AI_DAILY_TOKEN_LIMIT` (`settings.ai_daily_token_limit`), default `0` = vypnuto, jen se sbírá.
@@ -134,7 +134,8 @@ flowchart TD
 
 - Prompty mentora jsou v `.md` souborech. Úprava `prompt` u `mentor_*` v adminu nic nezmění, mění se jen model.
 - `get_llm_config` bez defaultů spadne, když klíč v DB chybí (`course_*`, `mentor_*`, `open_question_evaluator`, `module_podcast_*`).
-- Generování obrázku volá OpenAI Images API přímo (`clients/openai_client.py`). Image model musí začínat `gpt-image` nebo být `chatgpt-image-latest`. Tyto tokeny se do `ai_usage` nezapisují, stejně jako TTS podcastu (`podcast_generator`), embeddingy a `file_to_text`.
+- Generování obrázku volá OpenAI Images API přímo (`clients/openai_client.py`). Image model musí začínat `gpt-image` nebo být `chatgpt-image-latest`. Tyto tokeny se do `ai_usage` nezapisují, stejně jako embeddingy a `file_to_text`.
+- Hlas podcastu jde přes Realtime API (WebSocket, balík `websockets`), ne přes Speech API: `gpt-4o-mini-tts` a `tts-1*` končí 6. 1. 2027. Každá replika = jedno spojení (hlas nejde v session měnit), PCM16 24 kHz se složí do WAV. Tokeny zapíše `record_usage` (`base/usage.py`). Realtime model je konverzační, prompt ho drží u doslovného čtení, ale přepis v `podcast_transcript` je scénář, ne to, co opravdu řekl.
 - `enrich_modules` volá LLM v `ThreadPoolExecutor`. Ten `ContextVar` nepřenáší, takže tyto tokeny se zapíšou s `user_id = NULL`.
 - `embedding_generator` jde jen pro kurz ve stavu `approved`. Nejdřív smaže staré chunky kurzu, pak vkládá nové. Není to jedna transakce.
 - Wiki indexace staré chunky nemaže. ID je `<název stránky>_<index>`, takže zkrácená nebo smazaná stránka nechá v indexu staré chunky.

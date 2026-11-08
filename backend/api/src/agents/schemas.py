@@ -70,7 +70,7 @@ class GeneratePodcastResponse(BaseModel):
     """Výsledek generování podcastu modulu."""
 
     lines_count: int = Field(..., description="Počet replik ve scénáři")
-    file_path: str = Field(..., description="Cesta k MP3 v SeaweedFS")
+    file_path: str = Field(..., description="Cesta k WAV v SeaweedFS")
 
 
 class PodcastGenerationProgressResponse(BaseModel):

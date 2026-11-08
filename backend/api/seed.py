@@ -842,9 +842,9 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     {
         "key": "module_podcast_tts_model",
         "name": "Podcast modulu – hlasový model",
-        "model": "gpt-4o-mini-tts",
+        "model": "gpt-realtime-2.1-mini",
         "prompt": "",
-        "description": "OpenAI TTS model, který převede scénář podcastu na řeč.",
+        "description": "OpenAI Realtime model, který předčítá repliky scénáře podcastu (Speech API modely končí 6. 1. 2027).",
     },
 ]
 

@@ -14,7 +14,7 @@ Kurz, jeho stavy a editovatelnost popisuje [`courses`](../courses/README.md). Le
 | KRAUU kompetence | M2M `ModuleKrauuCompetence`. Aspoň jedna. Jen kompetence (řádek s `parent_id`), oblasti ne. |
 | Bloomovy úrovně | M2M `ModuleBloomLevel`. Aspoň jedna, jen aktivní. |
 | `learn_blocks` | Aktivní learn bloky modulu (relace filtruje `is_active`). V praxi max. jeden. |
-| Podcast | `podcast_path` (MP3 v SeaweedFS) a `podcast_transcript` (`[{speaker, text}]`). Generuje ho AI na vyžádání lektora, viz [`agents`](../agents/README.md). `null` = modul podcast nemá. |
+| Podcast | `podcast_path` (WAV v SeaweedFS) a `podcast_transcript` (`[{speaker, text}]`). Generuje ho AI na vyžádání lektora, viz [`agents`](../agents/README.md). `null` = modul podcast nemá. |
 | `is_active` | Soft delete. |
 
 ## Oprávnění
@@ -46,7 +46,7 @@ Všechny endpointy vyžadují přihlášení. Zápisy vyžadují roli aspoň `le
 - Seznam je řazený podle `course_id`, pak `module_id`. Žádné pole pro pořadí neexistuje.
 - `text_search` hledá v `title` (`ILIKE`).
 - Modul jde smazat přímo (`DELETE /modules/{id}`) nebo kaskádou se smazáním kurzu (`Course._soft_delete_cascade`). `Module.soft_delete` deaktivuje learn blok (i jeho záznamy mentora), vazby na číselníky a testy modulu (`CourseAssessment`). Sessions studentů zůstávají jako historie, feedbacky taky.
-- `GET /modules/{id}/podcast` vrátí MP3 jako přílohu `<název modulu>.mp3` (`attachment_response`). Viditelnost stejná jako u detailu, jen smazaný modul nevrátí nikomu. Bez podcastu 404. Přepis je v detailu modulu (`podcast_transcript`), API ho nemění, přepíše ho jen nové generování.
+- `GET /modules/{id}/podcast` vrátí WAV jako přílohu `<název modulu>.wav` (`attachment_response`). Viditelnost stejná jako u detailu, jen smazaný modul nevrátí nikomu. Bez podcastu 404. Přepis je v detailu modulu (`podcast_transcript`), API ho nemění, přepíše ho jen nové generování.
 - Detail modulu vrací learn blok celý. Kontrola viditelnosti kurzu je proto nutná i pro studenty.
 - AI generátor kurzu zakládá moduly sám (`agents/course_generator/nodes/save_to_db.py`), včetně learn bloku a pretestu. Bez platných KRAUU/Bloom kódů převezme vazby kurzu.
 

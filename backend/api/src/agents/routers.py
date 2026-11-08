@@ -55,7 +55,7 @@ from api.enums import MentorScope
 
 # Kroky obrázku: 1 kontext z DB, 2 prompt (LLM), 3 image model, 4 uložení do SeaweedFS.
 IMAGE_GENERATION_TOTAL_STEPS = 4
-# Kroky podcastu: 1 kontext z DB, 2 scénář (LLM), 3 TTS, 4 uložení do SeaweedFS.
+# Kroky podcastu: 1 kontext z DB, 2 scénář (LLM), 3 hlas (Realtime), 4 uložení do SeaweedFS.
 PODCAST_GENERATION_TOTAL_STEPS = 4
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -443,7 +443,7 @@ async def get_module_image_generation_progress(
 
 
 async def _run_podcast_generation(module_id: int) -> None:
-    """Background task: scénář (LLM) -> TTS -> MP3 do SeaweedFS -> cesta a přepis k modulu."""
+    """Background task: scénář (LLM) -> hlas (Realtime) -> WAV do SeaweedFS -> cesta a přepis k modulu."""
     key = podcast_key(module_id)
     db = SessionLocal()
     try:
@@ -455,8 +455,8 @@ async def _run_podcast_generation(module_id: int) -> None:
         module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
         # Kurz mohl být během generování odeslán ke schválení — pak nic neměnit
         assert_course_editable(module.course)
-        file_path = f"module-podcasts/{module_id}/podcast.mp3"
-        seaweedfs.upload_file(file_path, audio, "podcast.mp3", "audio/mpeg")
+        file_path = f"module-podcasts/{module_id}/podcast.wav"
+        seaweedfs.upload_file(file_path, audio, "podcast.wav", "audio/wav")
         module.podcast_path = file_path
         module.podcast_transcript = [line.model_dump() for line in script.lines]
         db.commit()
@@ -503,7 +503,7 @@ async def generate_module_podcast(
 ) -> PodcastGenerationProgressResponse:
     """Spustí generování podcastu modulu (dialog dvou hlasů) jako background task.
 
-    Scénář píše LLM z obsahu modulu, hlasy dělá OpenAI TTS. MP3 se uloží do SeaweedFS
+    Scénář píše LLM z obsahu modulu, hlasy dělá OpenAI Realtime model. WAV se uloží do SeaweedFS
     a cesta s přepisem k modulu. Opakované generování podcast přepíše. Průběh:
     ``/agents/module-podcast-progress/{module_id}``.
     """

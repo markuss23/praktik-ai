@@ -196,14 +196,14 @@ def get_module(db: Session, module_id: int, user: models.User) -> Module:
 
 
 def get_module_podcast(db: Session, module_id: int, user: models.User) -> Response:
-    """Vrátí MP3 podcastu modulu jako přílohu `<název modulu>.mp3`. Vidí ho ten, kdo vidí modul (stejně jako get_module)."""
+    """Vrátí podcast modulu jako přílohu `<název modulu>.wav`. Vidí ho ten, kdo vidí modul (stejně jako get_module)."""
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
     if not course_visible_to(db, module.course, user):
         raise HTTPException(status_code=404, detail="Modul nenalezen")
     if not module.podcast_path:
         raise HTTPException(status_code=404, detail="Modul nemá podcast")
     return attachment_response(
-        seaweedfs.download_file(module.podcast_path), f"{module.title}.mp3"
+        seaweedfs.download_file(module.podcast_path), f"{module.title}.wav"
     )
 
 

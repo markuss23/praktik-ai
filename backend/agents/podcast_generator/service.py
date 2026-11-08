@@ -10,7 +10,7 @@ from agents.podcast_generator.state import PodcastGeneratorState, PodcastScript
 
 
 def create_graph():
-    """Graf: kontext modulu -> scénář (LLM) -> převod na řeč (TTS)."""
+    """Graf: kontext modulu -> scénář (LLM) -> převod na řeč (Realtime)."""
     workflow = StateGraph(PodcastGeneratorState)
     workflow.add_node("load_context", load_context_node)
     workflow.add_node("write_script", write_script_node)
@@ -23,7 +23,7 @@ def create_graph():
 
 
 class ModulePodcastGeneratorService:
-    """Vygeneruje podcast (dialog dvou hlasů) k modulu. Vrací scénář a MP3."""
+    """Vygeneruje podcast (dialog dvou hlasů) k modulu. Vrací scénář a WAV."""
 
     def __init__(self, db: Session, module_id: int, progress_key: str | None = None):
         self.db = db

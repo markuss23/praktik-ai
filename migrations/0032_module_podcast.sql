@@ -1,5 +1,5 @@
 -- Migration: 0032 - Podcast modulu
--- Description: Cesta k vygenerovanému MP3 v SeaweedFS a přepis podcastu [{speaker, text}].
+-- Description: Cesta k vygenerovanému audiu (WAV) v SeaweedFS a přepis podcastu [{speaker, text}].
 -- Requires existing tables: module
 -- Idempotentní — lze spustit opakovaně.
 --

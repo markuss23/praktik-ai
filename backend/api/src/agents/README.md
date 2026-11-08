@@ -68,7 +68,7 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 - Druhé spuštění, když generování běží, nic nespustí. Kurz vrátí stejnou odpověď (jen `title`), obrázek aktuální průběh. Platí napříč workery (`try_start`), pro kurz i obrázky.
 - Cover kurzu: `assert_course_editable` před spuštěním i znovu před uložením. Kurz mezitím odeslaný ke schválení obrázek nepřepíše. Obrázek projde `normalize_course_image` (1280×720 WebP) a nastaví se kurzu.
 - Obrázek modulu se uloží do `module-images/<id>/image.<ext>` a opakované generování ho přepíše.
-- Podcast modulu: `assert_course_editable` před spuštěním i před uložením. MP3 jde do `module-podcasts/<id>/podcast.mp3` (přepíše se), cesta a přepis do `module.podcast_path` / `podcast_transcript`. Stažení jako soubor `<název modulu>.mp3` přes `GET /modules/{id}/podcast` (viz [`modules`](../modules/README.md)). Modul bez obsahu learn blocku = `failed`.
+- Podcast modulu: `assert_course_editable` před spuštěním i před uložením. WAV jde do `module-podcasts/<id>/podcast.wav` (přepíše se), cesta a přepis do `module.podcast_path` / `podcast_transcript`. Stažení jako soubor `<název modulu>.wav` přes `GET /modules/{id}/podcast` (viz [`modules`](../modules/README.md)). Modul bez obsahu learn blocku = `failed`.
 - Embeddingy jen pro kurz ve stavu `approved`.
 - Mentor chat jen v aktivním kurzu ve stavu `approved` nebo `archived`. `scope=module` potřebuje `learn_block_id`, `scope=course` stačí `course_id`. Learn block z jiného kurzu = 400.
 - `ai_budget` nastaví `usage_context` (komu se připíšou tokeny). Limit `settings.ai_daily_token_limit` za posledních 24 h platí jen pro roli `user` a ne pro `GET`. `0` = vypnuto. Překročení = 429.
@@ -88,5 +88,5 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 - Background task žije v procesu. Když worker spadne, řádek zůstane `running` až 3 minuty a kurz zůstane v `draft`. Pak jde spustit znovu.
 - Obrázek modulu nemá kontrolu editovatelnosti kurzu a cesta se nikam do DB neukládá. V API ho nic neservíruje.
 - Wiki chat je veřejný a bez `ai_budget`. Tokeny se zapíšou s `user_id = NULL` a žádný limit neplatí.
-- Podcast se po úpravě obsahu modulu sám nepřegeneruje a TTS se nezapisuje do `ai_usage`. `/agents/active-*-generations` podcast nevrací.
+- Podcast se po úpravě obsahu modulu sám nepřegeneruje. Hlas se do `ai_usage` zapíše jedním řádkem za celý podcast, jen když se povedou všechny repliky. Spálené tokeny nepovedeného běhu se nezapíšou. `/agents/active-*-generations` podcast nevrací.
 - Embeddingy a wiki sync běží v requestu. U velkého kurzu může request trvat dlouho.

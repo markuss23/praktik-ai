@@ -22,7 +22,7 @@ flowchart TD
 | **AI agenti** | Grafy v LangGraph, běží uvnitř backendu. Vektory ukládají do pgvectoru. Viz [backend/agents/](../backend/agents/README.md) |
 | **PostgreSQL** | Data aplikace, embeddingy (pgvector) a nastavení agentů (`system_setting`) |
 | **Keycloak** | Uživatelé, přihlášení a role. Dev realm se importuje z `infra/keycloak/` |
-| **SeaweedFS** | Nahrané soubory, obrázky a MP3 podcastů |
+| **SeaweedFS** | Nahrané soubory, obrázky a audio podcastů |
 
 Při startu API vytvoří chybějící tabulky (`init_db`) a naplní číselníky a nastavení (`seed_db`). Změny existujících tabulek dělají ruční SQL migrace, viz [CONTRIBUTING](../CONTRIBUTING.md#migrace-db).
 
