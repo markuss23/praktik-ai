@@ -5,6 +5,7 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 
@@ -77,8 +78,30 @@ seed_db()
 
 
 @app.get("/health")
-async def root(db: SessionSqlSessionDependency):
-    return {"message": "ok"}
+async def health():
+    """Liveness: proces běží. Závislosti se tu schválně nekontrolují."""
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def health_ready(db: SessionSqlSessionDependency) -> JSONResponse:
+    """Readiness: DB a úložiště odpovídají. Při výpadku 503."""
+    checks = {}
+    try:
+        db.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception:
+        logger.exception("Health check: DB nedostupná")
+        checks["db"] = "error"
+    try:
+        # jakákoli odpověď < 500 = filer žije
+        r = httpx.get(settings.seaweedfs.filer_url, timeout=2)
+        checks["storage"] = "ok" if r.status_code < 500 else "error"
+    except httpx.HTTPError:
+        logger.exception("Health check: úložiště nedostupné")
+        checks["storage"] = "error"
+    ok = all(v == "ok" for v in checks.values())
+    return JSONResponse(status_code=200 if ok else 503, content=checks)
 
 
 app.include_router(api_router, prefix="/api/v1")
