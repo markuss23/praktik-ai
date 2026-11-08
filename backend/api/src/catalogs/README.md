@@ -28,9 +28,13 @@ Router je includovaný bez autentizace. Číst může kdokoliv. Zápis přes API
 ## Pravidla
 
 - API vrací jen `is_active = true`.
+- Seed (`seed_db`) plní číselník jen do prázdné tabulky. Změny číselníků v existující DB dělá SQL migrace v `migrations/`, `seed.py` je jen pro novou DB. Při změně upravit obojí.
 - KRAUU: oblast je řádek bez `parent_id`, kompetence má `parent_id` na oblast. Vybírat jde jen kompetence (`validate_krauu_competence_ids`), oblast vrátí 400.
 - Obor jde zadat jen u kurzu Bloku C (`validate_subject_for_block`), jinak 400.
-- Průřezové obory (`resolve_cross_subject_ids`): u Bloku A a B aspoň jeden, nejvýše 3. U ostatních volitelné.
+- Průřezové obory (`resolve_cross_subject_ids`): u Bloku A a B aspoň jeden, u Bloku C zakázané (400). Bez bloku volitelné. Nejvýše 3.
+- FK číselníků kurzu (blok, cílovka, obor, povinnost, EQF, level, typ) ověřuje `validate_course_catalog_ids`. Neexistující nebo neaktivní ID = 400. Volají ho `courses/controllers/create.py` a `update.py`.
+- Řazení: podle `code` (blok, obor, EQF, level, neuro principy, KRAUU, Bloom, průřezové obory), podle ID (cílovka, povinnost, typ, AI osy). U těch druhých kód abecedně nedává smysl, ID drží pořadí ze seedu.
+- Neurovědní principy: na modul jde přes API zadat víc (aspoň jeden). AI enricher navrhuje vždy jeden.
 - `sync_m2m_links` vazby nemaže. Nechtěné nastaví `is_active = False`, chtěné reaktivuje, chybějící přidá. Commit dělá volající.
 - Neplatné ID v M2M seznamu (KRAUU, Bloom, průřezové obory) vrátí 400 se seznamem chybějících ID.
 - AI styl: na ose je nejvýš jedno aktivní `is_default` (index `uq_ai_style_option_default`).
@@ -40,17 +44,8 @@ Router je includovaný bez autentizace. Číst může kdokoliv. Zápis přes API
 | Soubor | Co dělá |
 | --- | --- |
 | `routers.py` | GET seznamy všech číselníků. |
-| `controllers.py` | Čtení, validace KRAUU / Bloom / oboru / průřezových oborů, `sync_m2m_links` a jeho obaly. Používají ho `courses`, `modules`, `publicDB/resources`. |
+| `controllers.py` | Čtení, validace FK číselníků kurzu, KRAUU / Bloom / oboru / průřezových oborů, `sync_m2m_links` a jeho obaly. Používají ho `courses`, `modules`, `publicDB/resources`. |
 | `schemas.py` | Pydantic modely. `AiStyleAxis` vnořuje `options`. |
 | `../../models.py` | Tabulky číselníků a M2M vazeb. |
 | `../../seed.py` | Data číselníků (`COURSE_BLOCKS`, `KRAUU_COMPETENCES`, …). |
 | `../modules/controllers.py` | Validace a sync neurovědních principů (není tady). |
-
-## Pozor na
-
-- Seed plní číselník jen když je tabulka prázdná (`seed_db`). Změna v `seed.py` se do existující DB nepropíše, je potřeba SQL migrace v `migrations/`.
-- Řazení: KRAUU, Bloom, Level, průřezové obory a AI osy jsou řazené. Ostatní ne, pořadí určuje DB.
-- Validace FK číselníků (blok, cílovka, EQF, …) je ručně v `courses/controllers/create.py` a `update.py`, ne tady.
-- Neurovědní principy na modulu jde přes API zadat víc, ale enricher prompt chce „PŘESNĚ JEDNOHO“.
-- Docstring `CrossSubject` říká „Pro Blok C se nezadává“, kód ho u Bloku C povolí.
-- Docstring `KrauuCompetence` říká „studentovi se nezobrazuje“, endpoint je ale veřejný.

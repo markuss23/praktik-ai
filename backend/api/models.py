@@ -493,7 +493,7 @@ class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
     Kompetenční rámec absolventa učitelství, 18 kompetencí v 6 oblastech.
     Oblast (kód x.0) je řádek bez rodiče, kompetence (x.y) odkazují na oblast
     přes parent_id. Vybírají se pouze kompetence, ne oblasti (M2M na Course
-    i Module). Interní mapování — studentovi se nezobrazuje.
+    i Module). Student je vidí na stránce kurzu a modulu.
     """
 
     __tablename__ = "krauu_competence"
@@ -552,7 +552,7 @@ class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
 class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Průřezové obory pro Bloky A a B (O01–O20):
-    třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
+    třetí klasifikační osa nepředmětových kurzů. U Bloku C je zakázaný (400).
     M2M na Course.
     """
 
