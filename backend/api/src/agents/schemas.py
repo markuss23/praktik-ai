@@ -1,6 +1,8 @@
 
 from pydantic import BaseModel, Field
 
+from agents.mindmap_generator.schemas import MindMap
+
 
 class GenerateCourseRequest(BaseModel):
     """Request pro generování kurzu"""
@@ -84,6 +86,13 @@ class PodcastGenerationProgressResponse(BaseModel):
     result: GeneratePodcastResponse | None = Field(
         default=None, description="Výsledek po dokončení (pokud completed)"
     )
+
+
+class GenerateMindmapResponse(BaseModel):
+    """Vygenerovaná myšlenková mapa modulu (už uložená k modulu)."""
+
+    mindmap: MindMap = Field(..., description="Strom myšlenkové mapy")
+    mindmap_mermaid: str = Field(..., description="Text pro mermaid `mindmap`")
 
 
 class ActiveImageGeneration(BaseModel):

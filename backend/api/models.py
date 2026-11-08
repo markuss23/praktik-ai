@@ -895,6 +895,8 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     # Vygenerovaný podcast (WAV v SeaweedFS) a jeho přepis [{speaker, text}]; None = není.
     podcast_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     podcast_transcript: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Myšlenková mapa {root, branches: [{label, children}]} generovaná AI; None = není.
+    mindmap: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 

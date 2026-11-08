@@ -21,6 +21,7 @@ HTTP vrstva, která spouští LangGraph agenty z `backend/agents`. Řeší oprá
 | Generování kurzu | `course_generator` | background task | `GET /agents/course-progress/{id}` (DB) |
 | Cover kurzu, obrázek modulu | `image_generator/course`, `image_generator/module` | background task | `GET /agents/course-image-progress/{id}`, `module-image-progress/{id}` (DB) |
 | Podcast modulu | `podcast_generator` | background task | `GET /agents/module-podcast-progress/{id}` (DB) |
+| Myšlenková mapa modulu | `mindmap_generator` | synchronně v requestu | – |
 | Embeddingy kurzu | `embedding_generator` | synchronně v requestu | – |
 | Mentor chat | `mentor` | synchronně, po odpovědi zápis do `mentor_interaction_log` | – |
 | Wiki chat, wiki sync | `wiki/mentor`, `wiki/agent` | synchronně | – |
@@ -57,7 +58,7 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 
 | Akce | Role | Další kontrola |
 | --- | --- | --- |
-| Generování kurzu, embeddingy, obrázky, podcast, jejich progress | `lector` | `validate_owner_or_superadmin`. Garant k cizímu kurzu nesmí. |
+| Generování kurzu, embeddingy, obrázky, podcast, myšlenková mapa, jejich progress | `lector` | `validate_owner_or_superadmin`. Garant k cizímu kurzu nesmí. |
 | Mentor chat | přihlášený | `check_enrollment(bypass_for_owner=True)`. Vlastník a superadmin bez zápisu, ostatní musí být zapsaní. |
 | Wiki chat | kdokoliv | – |
 | Wiki sync | `superadmin` | – |
@@ -69,6 +70,7 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 - Cover kurzu: `assert_course_editable` před spuštěním i znovu před uložením. Kurz mezitím odeslaný ke schválení obrázek nepřepíše. Obrázek projde `normalize_course_image` (1280×720 WebP) a nastaví se kurzu.
 - Obrázek modulu se uloží do `module-images/<id>/image.<ext>` a opakované generování ho přepíše.
 - Podcast modulu: `assert_course_editable` před spuštěním i před uložením. WAV jde do `module-podcasts/<id>/podcast.wav` (přepíše se), cesta a přepis do `module.podcast_path` / `podcast_transcript`. Stažení jako soubor `<název modulu>.wav` přes `GET /modules/{id}/podcast` (viz [`modules`](../modules/README.md)). Modul bez obsahu learn blocku = `failed`.
+- Myšlenková mapa: `assert_course_editable`, modul bez obsahu learn blocku = 400. Nepoužitelný výstup AI (`ValueError`) = 502, nic se neuloží. Strom se uloží do `module.mindmap` a přepíše starý. Odpověď vrací strom i `mindmap_mermaid`.
 - Embeddingy jen pro kurz ve stavu `approved`.
 - Mentor chat jen v aktivním kurzu ve stavu `approved` nebo `archived`. `scope=module` potřebuje `learn_block_id`, `scope=course` stačí `course_id`. Learn block z jiného kurzu = 400.
 - `ai_budget` nastaví `usage_context` (komu se připíšou tokeny). Limit `settings.ai_daily_token_limit` za posledních 24 h platí jen pro roli `user` a ne pro `GET`. `0` = vypnuto. Překročení = 429.

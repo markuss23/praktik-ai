@@ -15,6 +15,7 @@ Kurz, jeho stavy a editovatelnost popisuje [`courses`](../courses/README.md). Le
 | Bloomovy úrovně | M2M `ModuleBloomLevel`. Aspoň jedna, jen aktivní. |
 | `learn_blocks` | Aktivní learn bloky modulu (relace filtruje `is_active`). V praxi max. jeden. |
 | Podcast | `podcast_path` (WAV v SeaweedFS) a `podcast_transcript` (`[{speaker, text}]`). Generuje ho AI na vyžádání lektora, viz [`agents`](../agents/README.md). `null` = modul podcast nemá. |
+| Myšlenková mapa | `mindmap` (JSONB strom `{root, branches: [{label, children}]}`) a odvozené `mindmap_mermaid` (text pro mermaid `mindmap`, skládá `to_mermaid` při odpovědi). Generuje ji AI na vyžádání lektora, viz [`agents`](../agents/README.md). Přes API ji nejde upravit, jen přegenerovat. `null` = modul ji nemá. |
 | `is_active` | Soft delete. |
 
 ## Oprávnění
@@ -56,5 +57,5 @@ Všechny endpointy vyžadují přihlášení. Zápisy vyžadují roli aspoň `le
 | --- | --- |
 | `routers.py` | Endpointy. Řeší viditelnost pro studenty (`is_staff`, `ensure_course_visible`). |
 | `controllers.py` | CRUD (smazání je soft delete), stažení podcastu, validace a sync neurovědních principů. KRAUU a Bloom sync je v `catalogs/controllers.py`. |
-| `schemas.py` | `ModuleCreate`, `ModuleUpdate`, `Module` (vrací i learn bloky, rozbalené číselníky a `podcast_transcript`). |
+| `schemas.py` | `ModuleCreate`, `ModuleUpdate`, `Module` (vrací i learn bloky, rozbalené číselníky, `podcast_transcript`, `mindmap` a `mindmap_mermaid`). |
 | `../../models.py` | `Module`, `ModuleNeuroPrinciple`, `ModuleKrauuCompetence`, `ModuleBloomLevel`. |

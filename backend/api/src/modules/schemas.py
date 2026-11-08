@@ -1,5 +1,7 @@
 from datetime import datetime
-from pydantic import Field
+from pydantic import Field, computed_field
+
+from agents.mindmap_generator.schemas import MindMap, to_mermaid
 from api.src.common.schemas import ORMModel
 from api.src.activities.schemas import LearnBlock
 from api.src.catalogs.schemas import BloomLevel, KrauuCompetence, NeuroPrinciple
@@ -49,6 +51,14 @@ class Module(ModuleBase):
         default=None,
         description="Přepis podcastu [{speaker, text}]; None = modul podcast nemá. Audio: GET /modules/{id}/podcast",
     )
+    mindmap: MindMap | None = Field(
+        default=None, description="Myšlenková mapa (strom); None = modul ji nemá."
+    )
+
+    @computed_field(description="Myšlenková mapa jako mermaid `mindmap`; None = není.")
+    @property
+    def mindmap_mermaid(self) -> str | None:
+        return to_mermaid(self.mindmap) if self.mindmap else None
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import update
@@ -14,6 +15,7 @@ from api.src.agents.schemas import (
     GenerateCourseResponse,
     GenerateEmbeddingsResponse,
     GenerateImageResponse,
+    GenerateMindmapResponse,
     GeneratePodcastResponse,
     ImageGenerationProgressResponse,
     PodcastGenerationProgressResponse,
@@ -46,6 +48,8 @@ from agents.image_generator.course.service import CourseImageGeneratorService
 from agents.image_generator.module.service import ModuleImageGeneratorService
 from agents.image_generator.service import ImageGenerationResult
 from agents.podcast_generator.service import ModulePodcastGeneratorService
+from agents.mindmap_generator.schemas import to_mermaid
+from agents.mindmap_generator.service import generate_module_mindmap
 from agents.mentor.service import MentorService
 from agents.wiki.mentor.service import WikiChatService
 from agents.wiki.agent.service import sync_wiki
@@ -57,6 +61,8 @@ from api.enums import MentorScope
 IMAGE_GENERATION_TOTAL_STEPS = 4
 # Kroky podcastu: 1 kontext z DB, 2 scénář (LLM), 3 hlas (Realtime), 4 uložení do SeaweedFS.
 PODCAST_GENERATION_TOTAL_STEPS = 4
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
@@ -529,6 +535,42 @@ async def get_module_podcast_generation_progress(
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
     validate_owner_or_superadmin(module, user, "modul")
     return _podcast_progress_response(module_id)
+
+
+@router.post(
+    "/generate-module-mindmap",
+    operation_id="generate_module_mindmap",
+    dependencies=[require_role("lector")],
+)
+async def generate_module_mindmap_endpoint(
+    module_id: int,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
+) -> GenerateMindmapResponse:
+    """Vygeneruje myšlenkovou mapu modulu (synchronně, jedno LLM volání) a uloží ji.
+
+    Opakované volání mapu přepíše. Strom i mermaid text vrací i detail modulu.
+    """
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    validate_owner_or_superadmin(module, user, "modul")
+    assert_course_editable(module.course)
+    learn_block = next(iter(module.learn_blocks), None)
+    if learn_block is None or not learn_block.content:
+        raise HTTPException(
+            status_code=400, detail="Modul nemá obsah, myšlenkovou mapu není z čeho vytvořit."
+        )
+
+    try:
+        mindmap = await generate_module_mindmap(db, module, learn_block.content)
+    except ValueError as e:
+        logger.warning("Myšlenková mapa selhala: %s", e)
+        raise HTTPException(
+            status_code=502, detail="AI teď neodpověděla, zkus to prosím znovu."
+        ) from e
+
+    module.mindmap = mindmap.model_dump()
+    db.commit()
+    return GenerateMindmapResponse(mindmap=mindmap, mindmap_mermaid=to_mermaid(mindmap))
 
 
 @router.get(

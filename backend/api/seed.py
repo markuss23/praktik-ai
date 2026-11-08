@@ -846,6 +846,14 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "prompt": "",
         "description": "OpenAI Realtime model, který předčítá repliky scénáře podcastu (Speech API modely končí 6. 1. 2027).",
     },
+    {
+        "key": "module_mindmap",
+        "name": "Myšlenková mapa modulu",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/mindmap_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu vytvoří strom myšlenkové mapy (vykresluje se jako mermaid mindmap).",
+    },
 ]
 
 ASSESSMENT_TYPES: list[dict] = [
