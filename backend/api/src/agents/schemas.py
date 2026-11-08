@@ -9,10 +9,9 @@ class GenerateCourseRequest(BaseModel):
 
 
 class GenerateCourseResponse(BaseModel):
-    """Response s vygenerovaným kurzem"""
+    """Response po spuštění generování. Výsledek se čte z DB po dokončení."""
 
     title: str
-    modules: list[dict]
 
 
 class CourseGenerationProgressResponse(BaseModel):

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
 from api import models
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
 from agents.course_generator.state import AgentState, CourseInput
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def load_data_from_db_node(state: AgentState) -> AgentState:
 
     db: Session = state.get("db")
     course_id: int = state["course_id"]
-    set_progress(course_id, step=1, label="Načítání kurzu z databáze")
+    set_progress(course_key(course_id), step=1, label="Načítání kurzu z databáze")
 
     if db is None:
         raise ValueError("Database session is not available in state")

@@ -22,25 +22,17 @@ from api.src.agents.schemas import (
     WikiSyncResponse,
 )
 from api.src.agents.progress import (
+    course_key,
     get_progress,
-    list_running_course_ids,
+    image_key,
+    list_running_keys,
     mark_completed,
     mark_failed,
     register_task,
+    run_tracked,
+    set_progress,
     try_start,
     unregister_task,
-)
-from api.src.agents.image_progress import (
-    IMAGE_GENERATION_TOTAL_STEPS,
-    get_image_progress,
-    is_image_running,
-    list_running_image_ids,
-    mark_image_completed,
-    mark_image_failed,
-    progress_key,
-    register_image_task,
-    set_image_progress,
-    unregister_image_task,
 )
 from api.database import SessionLocal
 from api.src.courses.controllers.image import normalize_course_image, store_course_image
@@ -57,6 +49,9 @@ from api.database import SessionSqlSessionDependency
 from api import models
 from api.enums import MentorScope
 
+# Kroky obrázku: 1 kontext z DB, 2 prompt (LLM), 3 image model, 4 uložení do SeaweedFS.
+IMAGE_GENERATION_TOTAL_STEPS = 4
+
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
 public_router = APIRouter(prefix="/agents", tags=["agents"])
@@ -69,13 +64,14 @@ async def _run_course_generation(course_id: int) -> None:
     klienta generování nepřeruší. Stav je dostupný přes
     ``/agents/course-progress/{course_id}``.
     """
+    key = course_key(course_id)
     db = SessionLocal()
     try:
         service = CourseGeneratorService(db=db, course_id=course_id)
         try:
-            await service.generate()
+            await run_tracked(key, service.generate())
         except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
-            mark_failed(course_id, str(e))
+            mark_failed(key, str(e))
             try:
                 db.rollback()
                 db.execute(
@@ -87,10 +83,10 @@ async def _run_course_generation(course_id: int) -> None:
             except Exception:  # noqa: BLE001
                 db.rollback()
             return
-        mark_completed(course_id)
+        mark_completed(key)
     finally:
         db.close()
-        unregister_task(course_id)
+        unregister_task(key)
 
 
 @router.post(
@@ -114,18 +110,17 @@ async def generate_course(
 
     if course.status != models.Status.draft and course.status != models.Status.failed:
         raise HTTPException(
-            status_code=400, detail="Lze generovat pouze pokud kurz je ve stavu draft"
+            status_code=400,
+            detail="Lze generovat pouze pokud kurz je ve stavu draft nebo failed",
         )
 
     # Idempotence: pokud už pro tento kurz generování běží (v jakémkoliv workeru),
-    # vrať se s prázdným výsledkem (klient se připojí přes progress endpoint).
-    if not try_start(course_id):
-        return GenerateCourseResponse(title=course.title, modules=[])
+    # nic nespouštěj (klient se připojí přes progress endpoint).
+    if try_start(course_key(course_id), total=5):
+        task = asyncio.create_task(_run_course_generation(course_id))
+        register_task(course_key(course_id), task)
 
-    task = asyncio.create_task(_run_course_generation(course_id))
-    register_task(course_id, task)
-
-    return GenerateCourseResponse(title=course.title, modules=[])
+    return GenerateCourseResponse(title=course.title)
 
 
 @router.get(
@@ -141,7 +136,7 @@ async def get_course_generation_progress(
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
     validate_owner_or_superadmin(course, user, "kurz")
 
-    progress = get_progress(course_id)
+    progress = get_progress(course_key(course_id))
     if progress is None:
         return CourseGenerationProgressResponse(
             step=0, total=5, label="Čekání", status="pending", error=None
@@ -170,13 +165,14 @@ async def list_active_course_generations(
     Slouží frontendu k obnovení sledování průběhu po refreshi stránky.
     Superadmin vidí i cizí běžící generace, ostatní jen svoje vlastní.
     """
-    candidates = list_running_course_ids()
+    candidates = list_running_keys("course:")
     if not candidates:
         return []
 
     is_super = user.role == "superadmin"
     visible: list[int] = []
-    for course_id in candidates:
+    for key in candidates:
+        course_id = int(key.partition(":")[2])
         course = db.get(models.Course, course_id)
         if course is None:
             continue
@@ -283,13 +279,13 @@ async def _run_image_generation(key: str, kind: str, entity_id: int) -> None:
     průběh a výsledek jsou dostupné přes progress endpointy.
 
     Args:
-        key: Klíč trackeru průběhu (``progress_key(kind, entity_id)``).
+        key: Klíč trackeru průběhu (``image_key(kind, entity_id)``).
         kind: "course" nebo "module".
         entity_id: course_id, resp. module_id.
     """
     db = SessionLocal()
     try:
-        set_image_progress(key, step=1, label="Načítání kontextu z databáze")
+        set_progress(key, step=1, label="Načítání kontextu z databáze")
         if kind == "course":
             service = CourseImageGeneratorService(
                 db=db, course_id=entity_id, progress_key=key
@@ -299,21 +295,21 @@ async def _run_image_generation(key: str, kind: str, entity_id: int) -> None:
                 db=db, module_id=entity_id, progress_key=key
             )
 
-        result = await service.generate()
+        result = await run_tracked(key, service.generate())
 
-        set_image_progress(key, step=4, label="Ukládání obrázku do SeaweedFS")
+        set_progress(key, step=4, label="Ukládání obrázku do SeaweedFS")
         if kind == "course":
             response = await _save_generated_course_image(db, entity_id, result)
         else:
             response = _upload_image_to_seaweedfs(
                 result, remote_dir=f"module-images/{entity_id}", basename="image"
             )
-        mark_image_completed(key, response.model_dump())
+        mark_completed(key, response.model_dump())
     except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
-        mark_image_failed(key, str(e))
+        mark_failed(key, str(e))
     finally:
         db.close()
-        unregister_image_task(key)
+        unregister_task(key)
 
 
 def _start_image_generation(
@@ -328,12 +324,11 @@ def _start_image_generation(
         kind: "course" nebo "module".
         entity_id: course_id, resp. module_id.
     """
-    key = progress_key(kind, entity_id)
+    key = image_key(kind, entity_id)
 
-    if not is_image_running(key):
-        set_image_progress(key, step=0, label="Spouštění generování")
+    if try_start(key, total=IMAGE_GENERATION_TOTAL_STEPS):
         task = asyncio.create_task(_run_image_generation(key, kind, entity_id))
-        register_image_task(key, task)
+        register_task(key, task)
 
     return _image_progress_response(key)
 
@@ -344,7 +339,7 @@ def _image_progress_response(key: str) -> ImageGenerationProgressResponse:
     Args:
         key: Klíč trackeru průběhu.
     """
-    progress = get_image_progress(key)
+    progress = get_progress(key)
     if progress is None:
         return ImageGenerationProgressResponse(
             step=0,
@@ -400,7 +395,7 @@ async def get_course_image_generation_progress(
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
     validate_owner_or_superadmin(course, user, "kurz")
 
-    return _image_progress_response(progress_key("course", course_id))
+    return _image_progress_response(image_key("course", course_id))
 
 
 @router.post(
@@ -438,7 +433,7 @@ async def get_module_image_generation_progress(
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
     validate_owner_or_superadmin(module, user, "modul")
 
-    return _image_progress_response(progress_key("module", module_id))
+    return _image_progress_response(image_key("module", module_id))
 
 
 @router.get(
@@ -454,14 +449,15 @@ async def list_active_image_generations(
 
     Superadmin vidí i cizí běžící generace, ostatní jen u svých kurzů.
     """
-    candidates = list_running_image_ids()
+    candidates = list_running_keys("course-image:", "module-image:")
     if not candidates:
         return []
 
     is_super = user.role == "superadmin"
     visible: list[ActiveImageGeneration] = []
     for key in candidates:
-        kind, _, raw_id = key.partition(":")
+        prefix, _, raw_id = key.partition(":")
+        kind = prefix.removesuffix("-image")
         entity_id = int(raw_id)
         model = models.Course if kind == "course" else models.Module
         entity = db.get(model, entity_id)

@@ -79,7 +79,7 @@ class ImageGeneratorState(TypedDict):
     """
 
     db: Session
-    # Klíč trackeru průběhu (api.src.agents.image_progress.progress_key); None mimo background task
+    # Klíč trackeru průběhu (api.src.agents.progress.image_key); None mimo background task
     progress_key: NotRequired[str | None]
     # Vstupní data z DB (CourseContext / ModuleContext)
     context: NotRequired[ImageContext]

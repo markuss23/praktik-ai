@@ -2,7 +2,7 @@ import logging
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ def plan_content_node(state: AgentState) -> AgentState:
 
     course_id = state.get("course_id")
     if course_id is not None:
-        set_progress(course_id, step=4, label="Plánování modulů (AI)")
+        set_progress(course_key(course_id), step=4, label="Plánování modulů (AI)")
 
     course_input: CourseInput | None = state.get("course_input")
     summarize_content: str = state.get("summarize_content", "")

@@ -18,7 +18,7 @@ from api.src.assessments.pretest.generator import (
     create_pretest_llm,
     generate_pretest,
 )
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def enrich_modules_node(state: AgentState) -> AgentState:
     course_id = state.get("course_id")
     if course_id is not None:
         # ponytail: sdílí krok 4 s plánováním, frontend má pevný seznam 5 kroků
-        set_progress(course_id, step=4, label="Číselníky a otázky modulů (AI)")
+        set_progress(course_key(course_id), step=4, label="Číselníky a otázky modulů (AI)")
 
     course: CourseGenerated | None = state.get("course")
     course_input: CourseInput | None = state.get("course_input")

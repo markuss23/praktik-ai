@@ -85,7 +85,7 @@ flowchart TD
     F --> G((END))
 ```
 
-- Běží jako `asyncio` task s vlastní DB session. Průběh je v tabulce `course_generation_progress` (`api/src/agents/progress.py`), 5 kroků, frontend ho polluje přes `GET /agents/course-progress/{course_id}`. `plan_content` i `enrich_modules` hlásí krok 4.
+- Běží jako `asyncio` task s vlastní DB session. Průběh je v tabulce `generation_progress` (klíč `course:<id>`) (`api/src/agents/progress.py`), 5 kroků, frontend ho polluje přes `GET /agents/course-progress/{course_id}`. `plan_content` i `enrich_modules` hlásí krok 4.
 - Spustit jde jen kurz ve stavu `draft` nebo `failed`. Při chybě se kurz přepne na `failed`.
 - `load_data` převádí soubory přes `file_to_text`. Soubor, který selže, se přeskočí. Selžou-li všechny, generování spadne.
 - `plan_content` vrací pro každý modul `title`, `perex`, `content` (HTML). Jiný počet modulů než `modules_count_ai_generated` je jen warning.
@@ -124,7 +124,7 @@ flowchart TD
 | `wiki/agent/` | `clone_or_pull_wiki` → `load_pages` → `generate_embeddings`, scheduler |
 | `wiki/mentor/` | `query_vector_store` → `generate_answer` |
 | `open_question_evaluator.py` | bezstavové vyhodnocení otevřené otázky |
-| `../api/src/agents/` | router, schémata, trackery průběhu (`progress.py` v DB, `image_progress.py` v paměti) |
+| `../api/src/agents/` | router, schémata, tracker průběhu (`progress.py`, v DB) |
 
 ## Pozor na
 
@@ -134,5 +134,4 @@ flowchart TD
 - `enrich_modules` volá LLM v `ThreadPoolExecutor`. Ten `ContextVar` nepřenáší, takže tyto tokeny se zapíšou s `user_id = NULL`.
 - `embedding_generator` jde jen pro kurz ve stavu `approved`. Nejdřív smaže staré chunky kurzu, pak vkládá nové. Není to jedna transakce.
 - Wiki indexace staré chunky nemaže. ID je `<název stránky>_<index>`, takže zkrácená nebo smazaná stránka nechá v indexu staré chunky.
-- `image_progress.py` drží stav v paměti procesu. Po restartu nebo na jiném workeru průběh není vidět.
 - `course_generator/__main__.py` je nefunkční pozůstatek. Volá graf bez `course_id` a `db`.

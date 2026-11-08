@@ -5,7 +5,7 @@ from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState
 from agents.course_generator.state import CourseInput
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def summarize_content_node(state: AgentState) -> AgentState:
     db = state["db"]
 
     if course_id is not None:
-        set_progress(course_id, step=3, label="Zpracování podkladů (AI)")
+        set_progress(course_key(course_id), step=3, label="Zpracování podkladů (AI)")
 
     if course_input is None:
         raise ValueError("course_input is not available in state")
