@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     func,
@@ -1327,12 +1329,43 @@ class AiUsage(Base):
     )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("user.user_id"))
     endpoint: Mapped[str | None] = mapped_column(String(255))
+    # Klíč system_setting, se kterým se LLM vytvořilo (např. course_module_enricher)
+    agent: Mapped[str | None] = mapped_column(String(100))
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Cena v USD podle ai_model_price v okamžiku volání; NULL = model není v ceníku
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class AiModelPrice(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Ceník AI modelů v USD za 1M tokenů. Podle něj UsageCallback spočítá
+    ai_usage.cost při zápisu — změna ceny proto nepřepíše historii.
+    model musí přesně odpovídat názvu v system_setting.model.
+    """
+
+    __tablename__ = "ai_model_price"
+    __table_args__ = (
+        Index(
+            "uq_ai_model_price_model",
+            "model",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    price_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_price: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    output_price: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    # Cena tokenů z prompt cache; NULL = účtují se plnou cenou inputu
+    cache_read_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
 
 
 # ---------- Veřejná databáze (pub_*) ----------

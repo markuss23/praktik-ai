@@ -56,7 +56,7 @@ def make_build_prompt_node(
             default_model=DEFAULT_MODEL,
             default_prompt=default_prompt,
         )
-        llm = create_chat_llm(cfg.model).with_structured_output(ImageSpec)
+        llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(ImageSpec)
 
         messages = [
             SystemMessage(content=cfg.prompt),

@@ -46,7 +46,7 @@ class PretestGenerated(BaseModel):
 def create_pretest_llm(db: Session):
     """LLM se structured outputem. Volat v hlavním vlákně (čte DB), generovat lze paralelně."""
     cfg = get_llm_config(db, PROMPT_KEY)
-    return create_chat_llm(cfg.model).with_structured_output(
+    return create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
         PretestGenerated, method="json_schema"
     )
 

@@ -13,7 +13,7 @@ PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 # Jedno volání LLM bez kontextu z DB — graf by nic nepřidal
 async def summarize(db: Session, topic: str, turns: list[dict]) -> str:
     cfg = get_llm_config(db, PROMPT_KEY)
-    llm = create_chat_llm(cfg.model, temperature=None)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
     transcript = "\n".join(
         f"{'TAZATEL' if t['role'] == 'assistant' else 'STUDENT'}: {t['content']}"

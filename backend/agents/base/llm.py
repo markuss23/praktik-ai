@@ -21,6 +21,9 @@ class LLMConfig:
 
     model: str
     prompt: str
+    # Klíč system_setting, se kterým se konfigurace načetla — slouží jako
+    # identifikátor agenta v ai_usage.agent
+    key: str
 
 
 def get_llm_config(
@@ -43,11 +46,12 @@ def get_llm_config(
             raise ValueError(
                 f"SystemSetting '{key}' nebyl nalezen v databázi a není nastaven výchozí prompt/model."
             )
-        return LLMConfig(model=default_model, prompt=default_prompt)
+        return LLMConfig(model=default_model, prompt=default_prompt, key=key)
 
     return LLMConfig(
         model=row.model,
         prompt=row.prompt,
+        key=key,
     )
 
 
@@ -57,11 +61,14 @@ DEFAULT_ANTHROPIC_MAX_TOKENS = 16000
 def create_chat_llm(
     model: str,
     *,
+    agent: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
 ) -> BaseChatModel:
-    """Vytvoří ChatOpenAI nebo ChatAnthropic podle prefixu názvu modelu."""
-    kwargs: dict = {"callbacks": [UsageCallback(model)]}
+    """Vytvoří ChatOpenAI nebo ChatAnthropic podle prefixu názvu modelu.
+
+    """
+    kwargs: dict = {"callbacks": [UsageCallback(model, agent)]}
 
     if model.startswith("claude"):
         # Aktuální generace Claude modelů (Opus 5, Sonnet 5, Fable 5/5.1, ...)

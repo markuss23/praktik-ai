@@ -43,7 +43,7 @@ def view(cfg: PretestSettings, state: PretestState) -> PretestView:
     return PretestView(question=cfg.open.question)
 
 
-def TYPED_ANSWER(state: PretestState) -> bool:
+def TYPED_ANSWER(state: PretestState) -> bool:  # noqa: N802 - jméno je rozhraní formátu
     """Psaná je jen otevřená otázka — u uzavřených se kliká."""
     return state.current == CLOSED_COUNT
 

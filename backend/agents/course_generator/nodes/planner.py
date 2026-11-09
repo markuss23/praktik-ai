@@ -23,7 +23,7 @@ def plan_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     cfg = get_llm_config(db, "course_planner")
-    model = create_chat_llm(cfg.model, max_tokens=64000)
+    model = create_chat_llm(cfg.model, agent=cfg.key, max_tokens=64000)
     # method="json_schema" použije nativní strukturované výstupy Anthropic
     # (server-side vynucené schéma), místo pouhého tool-callingu – ten model
     # jen "navádí" a u zanořených schémat (kurz -> moduly) mohl vrátit

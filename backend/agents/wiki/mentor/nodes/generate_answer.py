@@ -49,7 +49,7 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
         default_model=DEFAULT_MODEL,
         default_prompt=DEFAULT_PROMPT,
     )
-    llm = create_chat_llm(cfg.model, temperature=0.3)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=0.3)
 
     messages: list[SystemMessage | HumanMessage] = [
         SystemMessage(content=cfg.prompt),

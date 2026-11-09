@@ -20,7 +20,7 @@ def generate_question(state: GeneratorState):
 
     prompt_key = PROMPT_KEY
     cfg = get_llm_config(db, prompt_key)
-    llm = create_chat_llm(cfg.model, temperature=None)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
     messages = [
         SystemMessage(content=PROMPT),

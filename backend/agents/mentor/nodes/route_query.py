@@ -34,7 +34,7 @@ async def route_query(state: AgentState) -> dict:
 
     try:
         cfg = get_llm_config(state["db"], "mentor_router")
-        llm = create_chat_llm(cfg.model).with_structured_output(
+        llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
             RouteDecision, method="json_schema"
         )
         decision: RouteDecision = await llm.ainvoke(

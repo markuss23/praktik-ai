@@ -27,7 +27,7 @@ async def rerank_documents(state: AgentState) -> dict:
         return {}  # Necháme původní pořadí
 
     cfg = get_llm_config(db, "mentor_reranker")
-    llm = create_chat_llm(cfg.model, temperature=0)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=0)
 
     # Vytvoř prompt s dokumenty
     docs_text = "\n\n".join(

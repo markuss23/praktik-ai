@@ -26,7 +26,7 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     db = state["db"]
 
     cfg = get_llm_config(db, PROMPT_KEY)
-    llm = create_chat_llm(cfg.model, temperature=None)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
     messages = [
         SystemMessage(content=PROMPT),

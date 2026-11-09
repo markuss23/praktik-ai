@@ -15,7 +15,7 @@ def generate_topic(state: TopicState):
         return {}
 
     cfg = get_llm_config(state["db"], PROMPT_KEY)
-    llm = create_chat_llm(cfg.model, temperature=None)
+    llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
     messages = [
         SystemMessage(content=PROMPT),

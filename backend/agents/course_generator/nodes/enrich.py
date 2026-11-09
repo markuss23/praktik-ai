@@ -1,3 +1,4 @@
+import contextvars
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -85,7 +86,7 @@ def enrich_modules_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     cfg = get_llm_config(db, "course_module_enricher")
-    llm = create_chat_llm(cfg.model).with_structured_output(
+    llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
         ModuleEnrichment, method="json_schema"
     )
 
@@ -93,18 +94,31 @@ def enrich_modules_node(state: AgentState) -> AgentState:
 
     shared = f"{cfg.prompt}\n\n{build_input_block(course_input)}\n\n{build_catalogs(db)}"
 
-    # Moduly i volání jsou nezávislé, zpracují se paralelně
+    # Moduly i volání jsou nezávislé, zpracují se paralelně.
+    # Vlákna ThreadPoolExecutoru nedědí ContextVars, takže každé úloze předáme
+    # vlastní kopii kontextu — jinak by se tokeny v ai_usage uložily bez
+    # user_id a endpointu (usage_context).
     with ThreadPoolExecutor() as pool:
-        enrichments = pool.map(
-            lambda m: llm.invoke(f"{shared}\n\nMODUL:\n{build_module_block(m)}"),
-            course.modules,
-        )
-        pretests = pool.map(
-            lambda m: generate_pretest(pretest_llm, build_module_block(m), m.title),
-            course.modules,
-        )
-        state["enrichments"] = list(enrichments)
-        state["pretests"] = list(pretests)
+        enrichments = [
+            pool.submit(
+                contextvars.copy_context().run,
+                llm.invoke,
+                f"{shared}\n\nMODUL:\n{build_module_block(m)}",
+            )
+            for m in course.modules
+        ]
+        pretests = [
+            pool.submit(
+                contextvars.copy_context().run,
+                generate_pretest,
+                pretest_llm,
+                build_module_block(m),
+                m.title,
+            )
+            for m in course.modules
+        ]
+        state["enrichments"] = [f.result() for f in enrichments]
+        state["pretests"] = [f.result() for f in pretests]
 
     for module, e in zip(course.modules, state["enrichments"], strict=True):
         logger.info(

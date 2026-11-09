@@ -27,7 +27,7 @@ async def evaluate_open_question(
 ) -> OpenQuestionEvaluation:
     """`prompt` přepíše systémový prompt z DB (formát s vlastním .md, např. pretest)."""
     cfg = get_llm_config(db, "open_question_evaluator")
-    llm = create_chat_llm(cfg.model).with_structured_output(
+    llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
         OpenQuestionEvaluation, method="json_schema"
     )
 

@@ -69,7 +69,7 @@ def generate_questions(state: GeneratorState) -> dict:
 
     count = state["count"]
     cfg = get_llm_config(state["db"], PROMPT_KEY)
-    llm = create_chat_llm(cfg.model).with_structured_output(
+    llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
         GeneratedQuestions, method="json_schema"
     )
 

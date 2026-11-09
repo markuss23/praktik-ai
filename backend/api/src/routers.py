@@ -33,6 +33,10 @@ from api.src.publicDB.collections.routers import router as collections_router
 from api.src.publicDB.collections.routers import (
     public_router as collections_public_router,
 )
+from api.src.ai_usage.routers import (
+    router as ai_usage_router,
+    admin_router as ai_usage_admin_router,
+)
 from api.dependencies import ai_budget, auth
 
 router = APIRouter()
@@ -55,6 +59,10 @@ router.include_router(users_router, dependencies=[Depends(auth.get_current_user)
 router.include_router(enrollments_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(feedbacks_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(superadmin_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(
+    ai_usage_admin_router, dependencies=[Depends(auth.get_current_user)]
+)
+router.include_router(ai_usage_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(
     assessments_router,
     dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],

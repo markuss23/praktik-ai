@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from sqlalchemy.orm import Session
 from sqlalchemy import select, text
 
@@ -19,6 +21,7 @@ from api.models import (
     KrauuCompetence,
     NeuroPrinciple,
     SystemSetting,
+    AiModelPrice,
 )
 from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISettings
@@ -907,6 +910,28 @@ COURSE_SUBJECTS: list[dict[str, str]] = [
 ]
 
 
+# Ceník AI modelů v USD za 1M tokenů (input, output, cache_read).
+# Stejné výchozí hodnoty vkládá migrace 0030_ai_model_price.sql.
+AI_MODEL_PRICES: list[dict] = [
+    {"model": m, "input_price": Decimal(i), "output_price": Decimal(o),
+     "cache_read_price": Decimal(c) if c is not None else None}
+    for m, i, o, c in [
+        ("claude-fable-5-1", "10", "50", "0.25"),
+        ("claude-fable-5", "10", "50", None),
+        ("claude-opus-5-5", "4", "20", "0.20"),
+        ("claude-opus-5", "5", "25", None),
+        ("claude-sonnet-5-5", "2", "10", "0.20"),
+        ("claude-sonnet-5", "2", "10", None),
+        ("claude-haiku-5-5", "0.10", "0.50", None),
+        ("gpt-4o-mini", "0.15", "0.60", "0.075"),
+        ("gpt-5-mini", "0.25", "2", "0.025"),
+        ("gpt-5.2", "1.75", "14", "0.175"),
+        ("gpt-5.4", "2.50", "15", "0.25"),
+        ("gpt-image-2", "5", "30", "1.25"),
+    ]
+]
+
+
 def seed_db() -> None:
     db: Session = SessionLocal()
     try:
@@ -967,6 +992,9 @@ def seed_db() -> None:
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
+
+        if db.query(AiModelPrice).count() == 0:
+            db.add_all([AiModelPrice(**row) for row in AI_MODEL_PRICES])
 
         # Doplní chybějící formáty podle kódu — nový formát se přidá i do neprázdné tabulky
         existing_codes = set(db.scalars(select(AssessmentType.code)))
