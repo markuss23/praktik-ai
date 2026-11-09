@@ -34,7 +34,7 @@ def view(cfg, state) -> OpenQuestionAIView:
 
 async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOutcome:
     service = OpenQuestionAIEvaluator(
-        db, course_assessment.module_id, answer, state.question
+        db, course_assessment.module_id, answer, state.question, state.ai_style
     )
 
     result = await service.evaluate()

@@ -834,6 +834,29 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "prompt": "",
         "description": "LLM pro generování obrázků z textového popisu.",
     },
+    {
+        "key": "module_podcast_script",
+        "name": "Podcast modulu – scénář",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/podcast_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu napíše scénář podcastu (dialog moderátora a experta).",
+    },
+    {
+        "key": "module_podcast_tts_model",
+        "name": "Podcast modulu – hlasový model",
+        "model": "gpt-realtime-2.1-mini",
+        "prompt": "",
+        "description": "OpenAI Realtime model, který předčítá repliky scénáře podcastu (Speech API modely končí 6. 1. 2027).",
+    },
+    {
+        "key": "module_mindmap",
+        "name": "Myšlenková mapa modulu",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/mindmap_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu vytvoří strom myšlenkové mapy (vykresluje se jako mermaid mindmap).",
+    },
 ]
 
 ASSESSMENT_TYPES: list[dict] = [

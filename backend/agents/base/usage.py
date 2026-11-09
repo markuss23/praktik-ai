@@ -1,5 +1,6 @@
 """
 Počítání AI tokenů. Každé LLM volání z create_chat_llm zapíše spotřebu do ai_usage.
+Volání mimo LangChain zapisují přes record_usage.
 
 Komu se tokeny připíšou, určuje ContextVar nastavený dependency ai_budget
 na začátku requestu. Background tasky (asyncio.create_task) ho zdědí.
@@ -64,4 +65,5 @@ class UsageCallback(BaseCallbackHandler):
                     cost=cost,
                 )
             )
-            db.commit()
+        
+        db.commit()

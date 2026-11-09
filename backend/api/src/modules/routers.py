@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from api.src.modules.controllers import (
     create_module,
     get_modules,
     get_module,
     update_module,
-    # delete_module,
+    delete_module,
+    get_module_podcast,
 )
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api.src.common.annotations import (
@@ -63,6 +64,14 @@ async def endp_get_module(
     return get_module(db, module_id, user)
 
 
+@router.get("/{module_id}/podcast", operation_id="get_module_podcast")
+async def endp_get_module_podcast(
+    module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> Response:
+    """Podcast modulu ke stažení (`<název modulu>.wav`). 404, když modul podcast nemá."""
+    return get_module_podcast(db, module_id, user)
+
+
 @router.put("/{module_id}", operation_id="update_module", dependencies=[require_role("lector")])
 async def endp_update_module(
     module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency, user: CurrentUser
@@ -70,6 +79,8 @@ async def endp_update_module(
     return update_module(db, module_id, module, user)
 
 
-# @router.delete("/{module_id}", operation_id="delete_module", status_code=204)
-# async def endp_delete_module(module_id: int, db: SessionSqlSessionDependency) -> None:
-#     delete_module(db, module_id)
+@router.delete(
+    "/{module_id}", operation_id="delete_module", status_code=204, dependencies=[require_role("lector")]
+)
+async def endp_delete_module(module_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
+    delete_module(db, module_id, user)

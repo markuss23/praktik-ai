@@ -145,6 +145,7 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     )
     enrollments: Mapped[list[Enrollment]] = relationship(
         back_populates="user",
+        foreign_keys="Enrollment.user_id",
     )
     mentor_logs: Mapped[list[MentorInteractionLog]] = relationship(
         back_populates="user",
@@ -267,19 +268,21 @@ class AuditLog(Base):
     diff: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
-class CourseGenerationProgress(Base):
-    """Průběh AI generování kurzu — v DB, aby ho viděly všechny workery gunicornu."""
+class GenerationProgress(Base):
+    """Průběh AI generování (kurz, obrázky) — v DB, aby ho viděly všechny workery gunicornu.
 
-    __tablename__ = "course_generation_progress"
+    Klíč: ``course:<id>``, ``course-image:<id>``, ``module-image:<id>``.
+    """
 
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("course.course_id"), primary_key=True
-    )
+    __tablename__ = "generation_progress"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
     step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -492,7 +495,7 @@ class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
     Kompetenční rámec absolventa učitelství, 18 kompetencí v 6 oblastech.
     Oblast (kód x.0) je řádek bez rodiče, kompetence (x.y) odkazují na oblast
     přes parent_id. Vybírají se pouze kompetence, ne oblasti (M2M na Course
-    i Module). Interní mapování — studentovi se nezobrazuje.
+    i Module). Student je vidí na stránce kurzu a modulu.
     """
 
     __tablename__ = "krauu_competence"
@@ -551,7 +554,7 @@ class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
 class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Průřezové obory pro Bloky A a B (O01–O20):
-    třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
+    třetí klasifikační osa nepředmětových kurzů. U Bloku C je zakázaný (400).
     M2M na Course.
     """
 
@@ -891,8 +894,11 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     perex: Mapped[str] = mapped_column(
         String(255), nullable=False, default="", server_default=""
     )
-    max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-    passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
+    # Vygenerovaný podcast (WAV v SeaweedFS) a jeho přepis [{speaker, text}]; None = není.
+    podcast_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    podcast_transcript: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Myšlenková mapa {root, branches: [{label, children}]} generovaná AI; None = není.
+    mindmap: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 
@@ -912,12 +918,17 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleBloomLevel.module_id, ModuleBloomLevel.is_active==True)",
     )
+    assessments: Mapped[list[CourseAssessment]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==CourseAssessment.module_id, CourseAssessment.is_active==True)",
+    )
 
     _soft_delete_cascade = [
         "learn_blocks",
         "neuro_principles",
         "krauu_competences",
         "bloom_levels",
+        "assessments",
     ]
 
     @property
@@ -1121,6 +1132,8 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="learn_block",
     )
 
+    _soft_delete_cascade: list[str] = ["mentor_logs"]
+
     def get_owner_id(self) -> int:
         return self.module.course.owner_id
 
@@ -1160,6 +1173,10 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
     left_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Kdo studenta vyřadil (remove). NULL u leave — jen ten se smí znovu zapsat sám.
+    removed_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id"), nullable=True
+    )
 
     last_visited_module_id: Mapped[int | None] = mapped_column(
         ForeignKey("module.module_id"), nullable=True
@@ -1168,7 +1185,7 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
-    user: Mapped[User] = relationship(back_populates="enrollments")
+    user: Mapped[User] = relationship(back_populates="enrollments", foreign_keys=[user_id])
     course: Mapped[Course] = relationship(back_populates="enrollments")
     last_visited_module: Mapped[Module | None] = relationship(
         "Module", foreign_keys=[last_visited_module_id]
@@ -1840,7 +1857,7 @@ class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     course: Mapped[Course] = relationship(back_populates="assessments")
-    module: Mapped[Module | None] = relationship()
+    module: Mapped[Module | None] = relationship(back_populates="assessments")
     assessment_type: Mapped[AssessmentType] = relationship()
     sessions: Mapped[list[AssessmentSession]] = relationship(
         back_populates="course_assessment"

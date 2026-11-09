@@ -1,7 +1,6 @@
 import logging
 from typing import Literal
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from langgraph.graph.state import CompiledStateGraph
@@ -121,7 +120,8 @@ async def list_courses(
     )
 
 
-@public_router.get("/{course_id}", operation_id="get_course_public")
+# Jediný GET detailu. Přihlášení je volitelné, lektor+ a zapsaný student vidí i nepublikovaný kurz.
+@public_router.get("/{course_id}", operation_id="get_course")
 async def endp_get_course_public(
     course_id: int, db: SessionSqlSessionDependency, user: OptionalUser
 ) -> CourseDetail:
@@ -152,12 +152,6 @@ async def endp_create_course(
     course: CourseCreate, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> CourseCreated:
     return create_course(db, course, user)
-
-
-@router.get("/{course_id}", operation_id="get_course")
-async def endp_get_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> CourseDetail:
-    ensure_course_visible(db, course_id, user)
-    return get_course(db, course_id)
 
 
 @router.put("/{course_id}", operation_id="update_course", dependencies=[require_role("lector")])
@@ -251,16 +245,7 @@ async def endp_download_course_file(
     if course_file.course_id != course_id:
         raise HTTPException(status_code=404, detail="Soubor nenalezen")
 
-    try:
-        content = seaweedfs.download_file(course_file.file_path)
-    except httpx.HTTPError as e:
-        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404, detail="Soubor už není v úložišti"
-            ) from e
-        raise HTTPException(
-            status_code=502, detail="Úložiště souborů je nedostupné"
-        ) from e
+    content = seaweedfs.download_file(course_file.file_path)
 
     return attachment_response(content, course_file.filename)
 

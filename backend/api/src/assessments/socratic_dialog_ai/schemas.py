@@ -87,3 +87,5 @@ class SocraticDialogAIState(BaseModel):
     summary: str = ""
     # Předchozí odpověď — čte ji typing guard (typed_too_fast)
     last_answer: str = ""
+    # Blok AI stylu z profilu do promptu ("" = nepoužívá se). Plní ho start_session, viz ai_style.py
+    ai_style: str = ""

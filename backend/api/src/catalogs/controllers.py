@@ -30,28 +30,29 @@ def get_ai_style_axes(db: Session) -> list[AiStyleAxis]:
     )
 
 
+def _active(db: Session, model, order_by) -> list:
+    return db.query(model).filter(model.is_active.is_(True)).order_by(order_by).all()
+
+
 def get_course_blocks(db: Session) -> list[CourseBlock]:
-    return db.query(CourseBlock).filter(CourseBlock.is_active.is_(True)).all()
+    return _active(db, CourseBlock, CourseBlock.code)
 
 
+# Cílovka, povinnost a typ: kódy nejsou abecedně smysluplné, pořadí ze seedu = ID.
 def get_course_targets(db: Session) -> list[CourseTarget]:
-    return db.query(CourseTarget).filter(CourseTarget.is_active.is_(True)).all()
+    return _active(db, CourseTarget, CourseTarget.target_id)
 
 
 def get_course_subjects(db: Session) -> list[CourseSubject]:
-    return db.query(CourseSubject).filter(CourseSubject.is_active.is_(True)).all()
+    return _active(db, CourseSubject, CourseSubject.code)
 
 
 def get_course_requirements(db: Session) -> list[CourseRequirement]:
-    return (
-        db.query(CourseRequirement)
-        .filter(CourseRequirement.is_active.is_(True))
-        .all()
-    )
+    return _active(db, CourseRequirement, CourseRequirement.requirement_id)
 
 
 def get_course_eqf_levels(db: Session) -> list[CourseEqfLevel]:
-    return db.query(CourseEqfLevel).filter(CourseEqfLevel.is_active.is_(True)).all()
+    return _active(db, CourseEqfLevel, CourseEqfLevel.code)
 
 
 def get_course_levels(db: Session) -> list[CourseLevel]:
@@ -64,11 +65,34 @@ def get_course_levels(db: Session) -> list[CourseLevel]:
 
 
 def get_course_types(db: Session) -> list[CourseType]:
-    return db.query(CourseType).filter(CourseType.is_active.is_(True)).all()
+    return _active(db, CourseType, CourseType.type_id)
 
 
 def get_neuro_principles(db: Session) -> list[NeuroPrinciple]:
-    return db.query(NeuroPrinciple).filter(NeuroPrinciple.is_active.is_(True)).all()
+    return _active(db, NeuroPrinciple, NeuroPrinciple.code)
+
+
+# (atribut v CourseCreate/CourseUpdate, model, hláška). None = nezadáno, povinnost hlídá schéma.
+_COURSE_CATALOG_FKS = (
+    ("course_block_id", CourseBlock, "Tematický blok s tímto ID neexistuje"),
+    ("course_target_id", CourseTarget, "Cílová skupina s tímto ID neexistuje"),
+    ("course_subject_id", CourseSubject, "Obor s tímto ID neexistuje"),
+    ("course_requirement_id", CourseRequirement, "Povinnost kurzu s tímto ID neexistuje"),
+    ("course_eqf_level_id", CourseEqfLevel, "EQF úroveň s tímto ID neexistuje"),
+    ("course_level_id", CourseLevel, "Level s tímto ID neexistuje"),
+    ("course_type_id", CourseType, "Typ kurzu s tímto ID neexistuje"),
+)
+
+
+def validate_course_catalog_ids(db: Session, data) -> None:
+    """Ověří, že FK číselníků kurzu ukazují na aktivní řádek. Jinak 400."""
+    for attr, model, detail in _COURSE_CATALOG_FKS:
+        value = getattr(data, attr)
+        if value is None:
+            continue
+        row = db.get(model, value)
+        if row is None or not row.is_active:
+            raise HTTPException(status_code=400, detail=detail)
 
 
 def get_krauu_competences(db: Session) -> list[KrauuCompetence]:
@@ -163,7 +187,7 @@ def get_cross_subjects(db: Session) -> list[CrossSubject]:
 def resolve_cross_subject_ids(
     db: Session, course_block_id: int | None, cross_ids: list[int]
 ) -> list[int]:
-    """Blok A/B: průřezový obor je povinný. Jinak volitelný. Nejvýše 3."""
+    """Blok A/B: průřezový obor je povinný. Blok C: zakázaný. Bez bloku: volitelný. Nejvýše 3."""
     if len(cross_ids) > MAX_CROSS_SUBJECTS:
         raise HTTPException(
             status_code=400,
@@ -172,6 +196,11 @@ def resolve_cross_subject_ids(
     block_code = db.scalar(
         select(CourseBlock.code).where(CourseBlock.block_id == course_block_id)
     )
+    if block_code == BLOCK_WITH_SUBJECT and cross_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="U kurzů Bloku C se průřezové obory nezadávají",
+        )
     if block_code in BLOCKS_REQUIRING_CROSS_SUBJECTS and not cross_ids:
         raise HTTPException(
             status_code=400,

@@ -27,3 +27,5 @@ class OpenQuestionAIState(BaseModel):
     attempts_used: int = Field(0, ge=0)
     # Předchozí odpověď — při dalším pokusu ji student jen upravuje (typed_too_fast)
     last_answer: str = ""
+    # Blok AI stylu z profilu do promptu ("" = nepoužívá se). Plní ho start_session, viz ai_style.py
+    ai_style: str = ""

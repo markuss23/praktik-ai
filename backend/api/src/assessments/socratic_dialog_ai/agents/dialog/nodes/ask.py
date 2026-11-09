@@ -26,7 +26,10 @@ def ask(state: DialogState):
 
     # Kontext jako první zpráva studenta, pak historie: AI otázka / odpověď studenta...
     messages = [
-        SystemMessage(content=PROMPT.replace("{max_step}", str(state["max_step"]))),
+        SystemMessage(
+            content=PROMPT.replace("{max_step}", str(state["max_step"]))
+            + state.get("ai_style", "")
+        ),
         HumanMessage(
             content=(
                 f"TÉMA: {state['topic']}\n\nVÝUKOVÝ TEXT:\n{state['learn_content']}"

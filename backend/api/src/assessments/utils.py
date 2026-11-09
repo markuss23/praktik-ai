@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from types import ModuleType
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from api import models
@@ -125,6 +125,26 @@ def find_active_session(
             ),
             AS.is_active.is_(True),
         )
+    )
+
+
+def abandon_active_sessions(db: Session, course_assessment_id: int) -> None:
+    """Ukončí rozjeté sessions konfigurace (stav abandoned). Volá se při změně
+    nebo odpojení konfigurace: session nemá snapshot settings, se starým state
+    by četla nové zadání. Commit dělá volající."""
+    db.execute(
+        update(AS)
+        .where(
+            AS.course_assessment_id == course_assessment_id,
+            AS.status.in_(
+                [
+                    AssessmentSessionStatus.in_progress,
+                    AssessmentSessionStatus.awaiting_review,
+                ]
+            ),
+            AS.is_active.is_(True),
+        )
+        .values(status=AssessmentSessionStatus.abandoned, finished_at=func.now())
     )
 
 

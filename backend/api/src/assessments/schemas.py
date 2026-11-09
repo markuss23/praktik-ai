@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, PlainValidator, TypeAdapter
 
 from api.enums import AssessmentContext, AssessmentSessionStatus
 from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
@@ -11,26 +11,34 @@ from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
 from api.src.assessments.pretest.schemas import PretestSettings
 from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISettings
 
-# Nastavení kteréhokoliv formátu. Nový formát sem přidá svůj typ:
-#   AssessmentSettings = ClosedQuestionsSettings | OpenQuestionsSettings
-# Proti správnému schématu (podle assessment_type_code) se validuje v parse_settings.
-#
-# Union se zkouší zleva doprava a vyhraje první, které projde. Pořadí je důležité:
-# OpenQuestionAISettings nemá žádné vlastní pole, takže {max_attempts, pass_threshold}
-# by prošlo i jako Closed (doplnilo by questions=[]). Proto Open první — closed
-# nastavení vždy nese `questions`, které Open odmítne (extra="forbid"), a spadne do Closed.
-# ClosedAI mezi nimi: `question_count` Open odmítne, `questions` odmítne ClosedAI.
-# Pretest úplně první: jeho settings jsou vždy `{}`, které by jinak prošlo jako Open
-# (samé defaulty). Ostatní formáty ukládají model_dump s defaulty — nikdy prázdné.
-# SocraticDialogAI úplně poslední: má samé defaulty, takže by spolkl i `{}`;
-# jeho pole (min_turns, elo...) ostatní formáty odmítnou (extra="forbid").
-AssessmentSettings = Annotated[
+# Nastavení kteréhokoliv formátu. Za běhu je to obyčejný dict: formát určuje
+# assessment_type_code a validaci dělá parse_settings proti správné třídě.
+# Union níž slouží jen pro OpenAPI (typy ve FE klientovi), nic nevybírá, pořadí je jedno.
+# Nový formát sem přidá svůj Settings.
+_SettingsDoc = (
     PretestSettings
     | OpenQuestionAISettings
     | ClosedQuestionsAISettings
     | ClosedQuestionsSettings
-    | SocraticDialogAISettings,
-    Field(union_mode="left_to_right"),
+    | SocraticDialogAISettings
+)
+
+
+class _JsonSchemaAs:
+    """Do OpenAPI dá schéma `_SettingsDoc` místo obecného objektu."""
+
+    def __get_pydantic_json_schema__(self, core_schema, handler):
+        return handler(TypeAdapter(_SettingsDoc).core_schema)
+
+
+def _require_object(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("settings musí být objekt")
+    return value
+
+
+AssessmentSettings = Annotated[
+    dict[str, Any], PlainValidator(_require_object), _JsonSchemaAs()
 ]
 
 

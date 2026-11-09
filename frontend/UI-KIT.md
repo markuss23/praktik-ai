@@ -84,6 +84,7 @@ neimplementuj vlastní.
 
   Submit tlačítko ve `footer`u se k formuláři váže přes `form="my-form"`.
   Obsáhlejší obsah → `padding="lg"` (p-6 místo p-4, footer i zavírací křížek se posunou s ním).
+
 - Potvrzení akce → `ConfirmModal` (`variant`: `primary` | `danger` | `warning`).
 - Boční panel / mobilní menu → kitový `Drawer` se `swipeDirection` (`left` | `right` | `up` | `down`).
 - Volný `Dialog` (`DialogContent`, `DialogTitle`, …) jen když potřebuješ jinou geometrii než `Modal`
@@ -105,6 +106,56 @@ const items = [{ label: "Vyberte kurz…", value: null }, ...courses];
   </SelectContent>
 </Select>
 ```
+
+## Paleta
+
+Tokeny z `src/app/globals.css`, živé vzorky na `/ui-kit` (sekce Barvy). Hex platí pro světlý režim,
+v tmavém se tokeny přebarví samy.
+
+![Paleta](docs/palette.png)
+
+| skupina | token | utilita | role | hex |
+| --- | --- | --- | --- | --- |
+| brand | `--primary` | `bg-primary` | Primary / Success | `#59AC77` |
+| brand | `--brand-accent` | `bg-brand-accent` | Brand accent (oranžová) | `#F87B1B` |
+| brand | `--gradient-l` | `bg-gradient-l` | Gradient vlevo | `#B1475C` |
+| brand | `--gradient-r` | `bg-gradient-r` | Gradient vpravo | `#857AD2` |
+| brand | `--ring` | `bg-ring` | Focus ring (= `--gradient-r`) | `#857AD2` |
+| stavy | `--success` | `bg-success` | Success | `#59AC77` |
+| stavy | `--warning` | `bg-warning` | Warning | `#FFBD2E` |
+| stavy | `--destructive` | `bg-destructive` | Destructive / Error | `#D5002A` |
+| stavy | `--tip` | `bg-tip` | Tip | `#383BF5` |
+| povrchy | `--background` | `bg-background` | Pozadí stránky | `#FFFFFF` |
+| povrchy | `--card` | `bg-card` | Karty | `#FFFFFF` |
+| povrchy | `--popover` | `bg-popover` | Popovery | `#FFFFFF` |
+| povrchy | `--muted` | `bg-muted` | Muted plocha | `#F5F5F5` |
+| povrchy | `--secondary` | `bg-secondary` | Secondary plocha | `#F5F5F5` |
+| povrchy | `--accent` | `bg-accent` | Accent plocha (hover) | `#F5F5F5` |
+| text a obrysy | `--foreground` | `text-foreground` | Hlavní text | `#0A0A0A` |
+| text a obrysy | `--secondary-foreground` | `text-secondary-foreground` | Text na secondary | `#171717` |
+| text a obrysy | `--accent-foreground` | `text-accent-foreground` | Text na accent | `#171717` |
+| text a obrysy | `--muted-foreground` | `text-muted-foreground` | Tlumený text | `#737373` |
+| text a obrysy | `--border` | `border-border` | Rámečky | `#E5E5E5` |
+| text a obrysy | `--input` | `border-input` | Rámečky inputů | `#E5E5E5` |
+| grafy | `--chart-1` … `--chart-5` | `bg-chart-1` … `bg-chart-5` | Grafy 1–5 | `#D4D4D4`, `#737373`, `#525252`, `#404040`, `#262626` |
+
+Hex je jen pro orientaci (Figma) — v kódu vždy token.
+
+## Fonty
+
+Písma z `next/font` (`src/app/layout.tsx`), v `globals.css` namapovaná na Tailwind utility.
+
+![Fonty](docs/fonts.png)
+
+| utilita | písmo | použití |
+| --- | --- | --- |
+| `font-sans` | Geist | text a UI, výchozí (body) |
+| `font-heading` | Geist (alias) | nadpisy komponent |
+| `font-mono` | Geist Mono | kód, tokeny |
+| `font-display` | Bricolage Grotesque | velké nadpisy landing page, jen řezy 600/700/800 |
+
+Obrázky `docs/palette.png` a `docs/fonts.png` se generují z `docs/design-tokens.html` — po změně
+tokenů nebo písem tam uprav hodnoty a obrázky přefoť (postup je v hlavičce souboru).
 
 ## Styling
 

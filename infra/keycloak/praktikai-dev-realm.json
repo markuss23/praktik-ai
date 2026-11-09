@@ -81,6 +81,46 @@
       "clientRoles": {
         "realm-management": ["view-users", "view-realm"]
       }
+    },
+    {
+      "username": "student",
+      "enabled": true,
+      "email": "student@praktik-ai.local",
+      "emailVerified": true,
+      "firstName": "Testovací",
+      "lastName": "Student",
+      "credentials": [{ "type": "password", "value": "student", "temporary": false }],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "lektor",
+      "enabled": true,
+      "email": "lektor@praktik-ai.local",
+      "emailVerified": true,
+      "firstName": "Testovací",
+      "lastName": "Lektor",
+      "credentials": [{ "type": "password", "value": "lektor", "temporary": false }],
+      "realmRoles": ["user", "lector"]
+    },
+    {
+      "username": "garant",
+      "enabled": true,
+      "email": "garant@praktik-ai.local",
+      "emailVerified": true,
+      "firstName": "Testovací",
+      "lastName": "Garant",
+      "credentials": [{ "type": "password", "value": "garant", "temporary": false }],
+      "realmRoles": ["user", "guarantor"]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@praktik-ai.local",
+      "emailVerified": true,
+      "firstName": "Testovací",
+      "lastName": "Superadmin",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["user", "superadmin"]
     }
   ]
 }

@@ -73,12 +73,7 @@ def store_course_image(db: Session, course: models.Course, normalized: bytes) ->
     """
     filename = f"cover-{uuid.uuid4().hex[:12]}.webp"
     remote_path = f"{_REMOTE_PREFIX}/{course.course_id}/{filename}"
-    try:
-        seaweedfs.upload_file(remote_path, normalized, filename, "image/webp")
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=502, detail="Úložiště souborů je nedostupné"
-        ) from e
+    seaweedfs.upload_file(remote_path, normalized, filename, "image/webp")
 
     previous = course.image_path
     course.image_path = remote_path
@@ -141,16 +136,7 @@ def get_course_image(db: Session, course_id: int, filename: str) -> Response:
     if not course.image_path:
         raise HTTPException(status_code=404, detail="Kurz nemá náhledový obrázek")
 
-    try:
-        content = seaweedfs.download_file(course.image_path)
-    except httpx.HTTPError as e:
-        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404, detail="Obrázek už není v úložišti"
-            ) from e
-        raise HTTPException(
-            status_code=502, detail="Úložiště souborů je nedostupné"
-        ) from e
+    content = seaweedfs.download_file(course.image_path)
 
     is_current = course.image_path.rsplit("/", 1)[-1] == filename
     cache_control = "public, max-age=31536000, immutable" if is_current else "no-cache"

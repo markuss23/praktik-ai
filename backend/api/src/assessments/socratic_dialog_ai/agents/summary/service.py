@@ -11,7 +11,9 @@ PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 
 
 # Jedno volání LLM bez kontextu z DB — graf by nic nepřidal
-async def summarize(db: Session, topic: str, turns: list[dict]) -> str:
+async def summarize(
+    db: Session, topic: str, turns: list[dict], ai_style: str = ""
+) -> str:
     cfg = get_llm_config(db, PROMPT_KEY)
     llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
@@ -21,7 +23,7 @@ async def summarize(db: Session, topic: str, turns: list[dict]) -> str:
     )
     response = await llm.ainvoke(
         [
-            SystemMessage(content=PROMPT),
+            SystemMessage(content=PROMPT + ai_style),
             HumanMessage(content=f"TÉMA: {topic}\n\nROZHOVOR:\n{transcript}"),
         ]
     )

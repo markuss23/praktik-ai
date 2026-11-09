@@ -63,7 +63,7 @@ def endp_my_activity(
     days: Annotated[int, Query(ge=1, le=400)] = 180,
     from_date: Annotated[
         date | None,
-        Query(description="Začátek rozsahu (ISO yyyy-mm-dd). Když je uveden spolu s to_date, `days` se ignoruje."),
+        Query(description="Začátek rozsahu (ISO yyyy-mm-dd). Zadává se spolu s to_date, pak se `days` ignoruje."),
     ] = None,
     to_date: Annotated[
         date | None,
@@ -94,7 +94,9 @@ def endp_create_enrollment(
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
 ) -> Enrollment:
-    """Zapíše uživatele do kurzu. Běžný uživatel může zapsat pouze sebe."""
+    """Zapíše uživatele do kurzu, nebo obnoví odepsaný zápis. Běžný uživatel může zapsat
+    pouze sebe, garant a superadmin kohokoliv. Po vyřazení lektorem obnoví zápis jen
+    garant nebo superadmin."""
     return create_enrollment(db, user_id=data.user_id, course_id=data.course_id, actor=actor)
 
 
@@ -114,7 +116,7 @@ def endp_remove_from_course(
     db: SessionSqlSessionDependency,
     actor: CurrentUser,
 ) -> None:
-    """Odepíše uživatele z kurzu. Může pouze autor kurzu, guarantor nebo superadmin."""
+    """Vyřadí uživatele z kurzu. Může pouze vlastník kurzu nebo superadmin."""
     delete_enrollment(db, enrollment_id=enrollment_id, actor=actor)
 
 

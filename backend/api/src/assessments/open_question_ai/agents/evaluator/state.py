@@ -8,6 +8,8 @@ class EvaluatorState(TypedDict):
     answer: str
     module_id: int
     question: str
+    # Blok AI stylu z profilu ("" = bez stylu)
+    ai_style: str
     # Načteno z DB
     learn_content: NotRequired[str]
     # Výstup LLM

@@ -11,7 +11,7 @@ Interakční formát s uzavřenými otázkami, které vygeneruje AI z učebního
 ## Settings (`course_assessment.settings`)
 
 | Pole | Default | Význam |
-|---|---|---|
+| --- | --- | --- |
 | `question_count` | 5 | Kolik otázek AI vygeneruje (1–20). |
 | `max_attempts` | 3 | Počet pokusů na jednu otázku (≥ 1). |
 | `pass_threshold` | 0.75 | Podíl zvládnutých otázek pro `is_passed` (0–1). |
@@ -36,6 +36,7 @@ Vygenerované otázky i se správnou odpovědí jsou jen v `session.state`. Stud
 ## Průběh
 
 **`initial_state`**: spustí generátor (`agents/generator/`, LangGraph):
+
 1. `load_context` načte aktivní learn blocky. Při nastaveném `module_id` jen z modulu, u `course_final` ze všech modulů kurzu.
 2. `generate_questions` zavolá LLM se structured outputem (`GeneratedQuestions`).
    - Vezme nejvýš `question_count` otázek.
@@ -54,11 +55,11 @@ AI může vrátit méně otázek, než je `question_count`. Skóre se pak počí
 ## Prompty
 
 | Klíč `system_setting` | Soubor | Účel |
-|---|---|---|
+| --- | --- | --- |
 | `closed_questions_ai` | `agents/generator/prompt.md` | Generování otázek. |
 
 Text promptu je v souboru. Z DB se čte jen model, přes `get_llm_config`.
 
 ## Testy
 
-`tests/test_closed_questions_ai.py`, `tests/test_closed_questions_didactic.py`.
+Vlastní test zatím nemá. Self-check `_shuffled` je v `agents/generator/nodes.py` (`__main__`).

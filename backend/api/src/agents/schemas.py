@@ -1,6 +1,8 @@
 
 from pydantic import BaseModel, Field
 
+from agents.mindmap_generator.schemas import MindMap
+
 
 class GenerateCourseRequest(BaseModel):
     """Request pro generování kurzu"""
@@ -9,10 +11,9 @@ class GenerateCourseRequest(BaseModel):
 
 
 class GenerateCourseResponse(BaseModel):
-    """Response s vygenerovaným kurzem"""
+    """Response po spuštění generování. Výsledek se čte z DB po dokončení."""
 
     title: str
-    modules: list[dict]
 
 
 class CourseGenerationProgressResponse(BaseModel):
@@ -65,6 +66,33 @@ class ImageGenerationProgressResponse(BaseModel):
     result: GenerateImageResponse | None = Field(
         default=None, description="Výsledek po dokončení (pokud completed)"
     )
+
+
+class GeneratePodcastResponse(BaseModel):
+    """Výsledek generování podcastu modulu."""
+
+    lines_count: int = Field(..., description="Počet replik ve scénáři")
+    file_path: str = Field(..., description="Cesta k WAV v SeaweedFS")
+
+
+class PodcastGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování podcastu modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GeneratePodcastResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
+class GenerateMindmapResponse(BaseModel):
+    """Vygenerovaná myšlenková mapa modulu (už uložená k modulu)."""
+
+    mindmap: MindMap = Field(..., description="Strom myšlenkové mapy")
+    mindmap_mermaid: str = Field(..., description="Text pro mermaid `mindmap`")
 
 
 class ActiveImageGeneration(BaseModel):

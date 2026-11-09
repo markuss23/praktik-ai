@@ -62,12 +62,12 @@ def create_enrollment(
     actor: models.User,
 ) -> Enrollment:
     """
-    Zapíše uživatele do kurzu.
-    Běžný uživatel může zapsat pouze sebe.
-    Admin/superadmin může zapsat kohokoliv.
+    Zapíše uživatele do kurzu, nebo obnoví jeho odepsaný zápis.
+    Běžný uživatel může zapsat pouze sebe, garant a superadmin kohokoliv.
+    Vyřazeného studenta (remove) smí obnovit jen garant nebo superadmin.
     """
-    # Regular users can only enroll themselves; admin/superadmin can enroll anyone
-    if actor.role not in (UserRole.guarantor, UserRole.superadmin) and actor.user_id != user_id:
+    can_enroll_others = actor.role in (UserRole.guarantor, UserRole.superadmin)
+    if not can_enroll_others and actor.user_id != user_id:
         raise HTTPException(
             status_code=403,
             detail="Můžete zapsat pouze sami sebe",
@@ -84,16 +84,29 @@ def create_enrollment(
     get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     existing = db.scalar(
-        select(models.Enrollment).where(
+        select(models.Enrollment)
+        .where(
             models.Enrollment.user_id == user_id,
             models.Enrollment.course_id == course_id,
         )
+        .order_by(models.Enrollment.is_active.desc())
     )
-    if existing is not None:
+    if existing is None:
+        enrollment = models.Enrollment(user_id=user_id, course_id=course_id)
+        db.add(enrollment)
+    elif existing.is_active and existing.left_at is not None:
+        # Odepsaný zápis se obnoví — postup se počítá ze sessions, vrátí se sám
+        if existing.removed_by_id is not None and not can_enroll_others:
+            raise HTTPException(
+                status_code=403,
+                detail="Z kurzu vás vyřadil lektor, znovu vás může zapsat jen garant nebo superadmin",
+            )
+        enrollment = existing
+        enrollment.left_at = None
+        enrollment.removed_by_id = None
+    else:
         raise HTTPException(status_code=409, detail="Uživatel je již zapsán do tohoto kurzu")
 
-    enrollment = models.Enrollment(user_id=user_id, course_id=course_id)
-    db.add(enrollment)
     db.commit()
     db.refresh(enrollment)
     return Enrollment.model_validate(enrollment)
@@ -121,6 +134,7 @@ def delete_enrollment(
         )
 
     enrollment.left_at = func.now()
+    enrollment.removed_by_id = actor.user_id
     db.commit()
 
 
@@ -185,6 +199,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
     )
 
     result: list[MyEnrollment] = []
+    completed_changed = False
     for enrollment in enrollments:
         course = enrollment.course
         if not course or not course.is_active:
@@ -192,11 +207,13 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
         # ponytail: course_completion = pár dotazů na kurz (N+1 přes zápisy),
         # dávkovat až když to bude znát
-        done = {
-            m.module_id
-            for m in course_completion(db, user, course).modules
-            if m.completed
-        }
+        progress = course_completion(db, user, course)
+        done = {m.module_id for m in progress.modules if m.completed}
+        # Kurz bez povinných testů je hotový hned, mark_course_completed se ale volá
+        # jen při passed session — completed_at doplníme tady. Jednou nastavené se nemaže.
+        if progress.course_completed and enrollment.completed_at is None:
+            enrollment.completed_at = progress.course_completed_at or datetime.now(tz=UTC)
+            completed_changed = True
         active_modules = sorted(course.modules, key=lambda m: m.module_id)
         total_modules = len(active_modules)
 
@@ -237,6 +254,9 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
             last_activity_at=last_activity,
         ))
 
+    if completed_changed:
+        db.commit()
+
     # Seřaď podle reálné aktivity — frontend tak může vybrat resume kurz
     # bez vlastní heuristiky.
     result.sort(
@@ -248,7 +268,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
 def leave_enrollment(db: Session, enrollment_id: int, user: models.User) -> None:
     """Uživatel se sám odepíše z kurzu."""
-    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
+    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen")
 
     if enrollment.user_id != user.user_id:
         raise HTTPException(status_code=403, detail="Můžete opustit pouze vlastní zápis")
@@ -307,12 +327,16 @@ def get_my_activity(
     Vrátí denní aktivitu uživatele pro heat mapu.
 
     Pokud jsou předány `from_date` + `to_date`, použije se přímo ten rozsah
-    (např. konkrétní rok nebo měsíc). Jinak fallback na "posledních `days` dnů"
-    od dneška.
+    (např. konkrétní rok nebo měsíc). Jen jeden z nich = 422. Bez nich
+    "posledních `days` dnů" od dneška.
 
     Aktivita = splněné (passed) assessment sessions + zapsání do kurzu +
-    dokončení kurzu. Vše agregováno per den v UTC.
+    dokončení kurzu. Soft-smazané zápisy se nepočítají, odepsané ano.
+    Vše agregováno per den v UTC.
     """
+    if (from_date is None) != (to_date is None):
+        raise HTTPException(status_code=422, detail="from_date a to_date se zadávají spolu")
+
     if from_date is not None and to_date is not None:
         if from_date > to_date:
             from_date, to_date = to_date, from_date
@@ -367,6 +391,7 @@ def get_my_activity(
         .join(models.Course, models.Course.course_id == models.Enrollment.course_id)
         .where(
             models.Enrollment.user_id == user.user_id,
+            models.Enrollment.is_active.is_(True),
             models.Enrollment.created_at >= from_dt,
             models.Enrollment.created_at <= to_dt,
         )
@@ -388,6 +413,7 @@ def get_my_activity(
         .join(models.Course, models.Course.course_id == models.Enrollment.course_id)
         .where(
             models.Enrollment.user_id == user.user_id,
+            models.Enrollment.is_active.is_(True),
             models.Enrollment.completed_at.is_not(None),
             models.Enrollment.completed_at >= from_dt,
             models.Enrollment.completed_at <= to_dt,

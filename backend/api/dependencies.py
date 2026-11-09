@@ -109,12 +109,6 @@ class Auth:
                 detail="Neplatné přihlašovací údaje",
                 headers={"WWW-Authenticate": "Bearer"},
             ) from e
-        except Exception as e:
-            log.exception("Chyba při získávání tokenu z Keycloak")
-            raise HTTPException(
-                status_code=500,
-                detail="Chyba při získávání tokenu z Keycloak",
-            ) from e
 
     def get_current_user(
         self,

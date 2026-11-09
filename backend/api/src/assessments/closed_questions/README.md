@@ -15,7 +15,7 @@ Formát slouží i jako základ pro [`closed_questions_ai`](../closed_questions_
 ## Settings (`course_assessment.settings`)
 
 | Pole | Default | Význam |
-|---|---|---|
+| --- | --- | --- |
 | `questions` | `[]` | Seznam otázek, viz níže. Prázdný seznam projde validací, ale start session vrátí 422. |
 | `max_attempts` | 3 | Počet pokusů na jednu otázku (≥ 1). |
 | `pass_threshold` | 0.75 | Podíl zvládnutých otázek pro `is_passed` (0–1). |
@@ -47,6 +47,7 @@ Otázky se do state nekopírují. Čtou se ze `settings`.
 **`view`**: vrátí `question` a `options` aktuální otázky, bez `correct_index`.
 
 **`evaluate_answer`**
+
 - Odpověď je **text možnosti**, ne index. Porovnává se `answer.strip() == options[correct_index]`.
 - Špatně a zbývají pokusy: `is_correct = False`, `finished = False`, stejná otázka.
 - Jinak se jde na další otázku. Po poslední otázce:
@@ -62,4 +63,4 @@ Otázky se do state nekopírují. Čtou se ze `settings`.
 
 ## Testy
 
-Vlastní test zatím nemá. Logiku nepřímo pokrývá `tests/test_closed_questions_ai.py`.
+Vlastní test zatím nemá.

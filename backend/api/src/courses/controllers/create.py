@@ -17,6 +17,7 @@ from api.src.catalogs.controllers import (
     sync_cross_subjects,
     sync_krauu_competences,
     validate_bloom_level_ids,
+    validate_course_catalog_ids,
     validate_krauu_competence_ids,
 )
 from api.src.common.utils import get_or_404
@@ -30,95 +31,7 @@ def create_course(
     db: Session, course_data: CourseCreate, user: models.User
 ) -> CourseCreated:
     """Vytvoří nový kurz ve stavu draft"""
-    if (
-        course_data.course_block_id is not None
-        and db.execute(
-            select(models.CourseBlock).where(
-                models.CourseBlock.block_id == course_data.course_block_id,
-                models.CourseBlock.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(
-            status_code=400, detail="Tematický blok s tímto ID neexistuje"
-        )
-
-    if course_data.course_target_id is not None and (
-        db.execute(
-            select(models.CourseTarget).where(
-                models.CourseTarget.target_id == course_data.course_target_id,
-                models.CourseTarget.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(
-            status_code=400, detail="Cílová skupina s tímto ID neexistuje"
-        )
-
-    if (
-        course_data.course_subject_id is not None
-        and db.execute(
-            select(models.CourseSubject).where(
-                models.CourseSubject.subject_id == course_data.course_subject_id,
-                models.CourseSubject.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(status_code=400, detail="Obor s tímto ID neexistuje")
-
-    if (
-        course_data.course_requirement_id is not None
-        and db.execute(
-            select(models.CourseRequirement).where(
-                models.CourseRequirement.requirement_id
-                == course_data.course_requirement_id,
-                models.CourseRequirement.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(
-            status_code=400, detail="Povinnost kurzu s tímto ID neexistuje"
-        )
-
-    if (
-        db.execute(
-            select(models.CourseEqfLevel).where(
-                models.CourseEqfLevel.eqf_level_id == course_data.course_eqf_level_id,
-                models.CourseEqfLevel.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(
-            status_code=400, detail="EQF úroveň s tímto ID neexistuje"
-        )
-
-    if (
-        course_data.course_level_id is not None
-        and db.execute(
-            select(models.CourseLevel).where(
-                models.CourseLevel.level_id == course_data.course_level_id,
-                models.CourseLevel.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(status_code=400, detail="Level s tímto ID neexistuje")
-
-    if (
-        db.execute(
-            select(models.CourseType).where(
-                models.CourseType.type_id == course_data.course_type_id,
-                models.CourseType.is_active.is_(True),
-            )
-        ).first()
-        is None
-    ):
-        raise HTTPException(status_code=400, detail="Typ kurzu s tímto ID neexistuje")
+    validate_course_catalog_ids(db, course_data)
 
     if db.execute(
         select(models.Course).where(
@@ -181,7 +94,7 @@ async def upload_course_file(
 
     if course.status != enums.Status.draft:
         raise HTTPException(
-            status_code=400, detail="Nelze přidávat soubory do publikovaných kurzů"
+            status_code=400, detail="Soubory lze přidávat jen u kurzu ve stavu koncept"
         )
 
     if Path(file.filename or "").suffix.lower() not in SUPPORTED_EXTENSIONS:
@@ -229,7 +142,7 @@ def create_course_link(
 
     if course.status != enums.Status.draft:
         raise HTTPException(
-            status_code=400, detail="Nelze přidávat odkazy do publikovaných kurzů"
+            status_code=400, detail="Odkazy lze přidávat jen u kurzu ve stavu koncept"
         )
 
     if not (url.startswith("http://") or url.startswith("https://")):

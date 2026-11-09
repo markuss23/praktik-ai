@@ -14,6 +14,8 @@ class DialogState(TypedDict):
     # Smí AI rozhovor ukončit / musí ho ukončit
     can_end: bool
     must_end: bool
+    # Blok AI stylu z profilu ("" = bez stylu)
+    ai_style: str
     # Načteno z DB
     learn_content: NotRequired[str]
 

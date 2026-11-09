@@ -14,11 +14,12 @@ class EvaluationResult:
 class OpenQuestionAIEvaluator:
     """Service pro vyhodnocení otevřené procvičovací odpovědi pomocí LangGraph."""
 
-    def __init__(self, db: Session, module_id: int, answer: str, question: str):
+    def __init__(self, db: Session, module_id: int, answer: str, question: str, ai_style: str = ""):
         self.db = db
         self.module_id = module_id
         self.answer = answer
         self.question = question
+        self.ai_style = ai_style
 
     async def evaluate(self) -> EvaluationResult:
         app = create_graph()
@@ -29,6 +30,7 @@ class OpenQuestionAIEvaluator:
                 "module_id": self.module_id,
                 "answer": self.answer,
                 "question": self.question,
+                "ai_style": self.ai_style,
             }
         )
 

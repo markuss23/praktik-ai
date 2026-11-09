@@ -29,7 +29,7 @@ def evaluate_answer(state: EvaluatorState) -> dict:
     llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=None)
 
     messages = [
-        SystemMessage(content=PROMPT),
+        SystemMessage(content=PROMPT + state.get("ai_style", "")),
         HumanMessage(
             content=(
                 f"VÝUKOVÝ TEXT:\n{learn_content}\n\n"

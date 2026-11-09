@@ -11,7 +11,7 @@ from agents.course_generator.state import (
 from api import models
 from api.enums import AssessmentContext
 from api.src.assessments.pretest.schemas import PretestSettings
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
 
     course_id: int = state.get("course_id")
     if course_id is not None:
-        set_progress(course_id, step=5, label="Ukládání kurzu")
+        set_progress(course_key(course_id), step=5, label="Ukládání kurzu")
     db: Session = state.get("db")
     generated_course: CourseGenerated | None = state.get("course")
     enrichments: list[ModuleEnrichment] | None = state.get("enrichments")
