@@ -129,6 +129,7 @@ async def synthesize_node(state: PodcastGeneratorState) -> PodcastGeneratorState
         tts_model,
         sum(r[1] for r in results),
         sum(r[2] for r in results),
+        agent=TTS_SETTING_KEY,
     )
 
     buf = io.BytesIO()

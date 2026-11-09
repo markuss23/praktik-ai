@@ -41,29 +41,49 @@ class UsageCallback(BaseCallbackHandler):
                 output_tokens += usage.get("output_tokens", 0)
                 details = usage.get("input_token_details") or {}
                 cache_read_tokens += details.get("cache_read") or 0
-        if not input_tokens and not output_tokens:
-            return
+        record_usage(
+            self.model,
+            input_tokens,
+            output_tokens,
+            agent=self.agent,
+            cache_read_tokens=cache_read_tokens,
+        )
 
-        # Lazy import — modul se načítá i tam, kde DB není (testy agentů)
-        from agents.base.pricing import compute_cost
-        from api.database import SessionLocal
-        from api.models import AiUsage
 
-        ctx = usage_context.get() or UsageContext(user_id=None, endpoint=None)
-        with SessionLocal() as db:
-            cost = compute_cost(
-                db, self.model, input_tokens, output_tokens, cache_read_tokens
+def record_usage(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    agent: str | None = None,
+    cache_read_tokens: int = 0,
+) -> None:
+    """Zapíše jedno AI volání do ai_usage pro uživatele z usage_context. Nuly nezapisuje.
+
+    Používá ho UsageCallback a volání mimo LangChain (např. TTS podcastu přes
+    OpenAI SDK). Cenu spočítá podle ai_model_price.
+
+    """
+    if not input_tokens and not output_tokens:
+        return
+
+    # Lazy import — modul se načítá i tam, kde DB není (testy agentů)
+    from agents.base.pricing import compute_cost
+    from api.database import SessionLocal
+    from api.models import AiUsage
+
+    ctx = usage_context.get() or UsageContext(user_id=None, endpoint=None)
+    with SessionLocal() as db:
+        cost = compute_cost(db, model, input_tokens, output_tokens, cache_read_tokens)
+        db.add(
+            AiUsage(
+                user_id=ctx.user_id,
+                endpoint=ctx.endpoint,
+                agent=agent,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost=cost,
             )
-            db.add(
-                AiUsage(
-                    user_id=ctx.user_id,
-                    endpoint=ctx.endpoint,
-                    agent=self.agent,
-                    model=self.model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    cost=cost,
-                )
-            )
-        
+        )
         db.commit()
