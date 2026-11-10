@@ -34,6 +34,10 @@ BEGIN
   ELSE
     RAISE NOTICE '[0030] Index uq_ai_model_price_model už existuje — přeskočeno';
   END IF;
+
+  -- Tabulku mohl založit create_all z modelu: is_active má jen Python default,
+  -- INSERT níže by bez DB defaultu spadl na NOT NULL.
+  ALTER TABLE ai_model_price ALTER COLUMN is_active SET DEFAULT true;
 END $$;
 
 -- ─── VÝCHOZÍ CENY (USD za 1M tokenů: input, output, cache_read) ─────────
@@ -55,7 +59,9 @@ BEGIN
     ('gpt-5-mini',         0.25,  2,    0.025),
     ('gpt-5.2',            1.75, 14,    0.175),
     ('gpt-5.4',            2.50, 15,    0.25),
-    ('gpt-image-2',        5,    30,    1.25)
+    ('gpt-image-2',        5,    30,    1.25),
+    -- Hlas podcastu: vstup je text (0.60), výstup audio (20)
+    ('gpt-realtime-2.1-mini', 0.60, 20, 0.06)
   ON CONFLICT (model) WHERE is_active DO NOTHING;
   GET DIAGNOSTICS inserted = ROW_COUNT;
   RAISE NOTICE '[0030] Do ai_model_price vloženo % nových cen (existující ponechány)', inserted;
