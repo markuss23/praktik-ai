@@ -1,6 +1,6 @@
 -- Migration: 002 - Public database schema
 -- Description: Creates only public resource tables 
--- Requires existing tables: "user", course_subject, course_target
+-- Requires existing tables: "user", course_subject, course_targets
 
 -- ─── CREATE ENUM TYPES ────────────────────────────────────────
 
