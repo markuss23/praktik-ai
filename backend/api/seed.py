@@ -951,6 +951,8 @@ AI_MODEL_PRICES: list[dict] = [
         ("gpt-5.2", "1.75", "14", "0.175"),
         ("gpt-5.4", "2.50", "15", "0.25"),
         ("gpt-image-2", "5", "30", "1.25"),
+        # Hlas podcastu: vstup je text, výstup audio
+        ("gpt-realtime-2.1-mini", "0.60", "20", "0.06"),
     ]
 ]
 
