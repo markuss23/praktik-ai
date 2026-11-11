@@ -7,21 +7,21 @@ AI vede se studentem rozhovor o tématu, které si sama vymyslí z učebního te
 1. Lektor formát připojí ke kurzu a nastaví délku a elo.
 2. AI z učebního textu vymyslí téma a první otázku. Každý student může dostat jiné téma.
 3. Student odpoví, AI navazuje další otázkou. Odpověď neprozradí ani neřekne, jestli je dobře.
-4. Rozhovor má `min_turns`–`max_turns` kroků (default 2–4). Krok = jedna odpověď studenta.
+4. Rozhovor má `min_turns`–`max_turns` kroků (default 3–5). Krok = jedna odpověď studenta.
 5. Na konci AI shrne, co student promyslel a kde váhal. Bez známky.
 
 ## Settings (`course_assessment.settings`)
 
 | Pole | Default | Význam |
 | --- | --- | --- |
-| `min_turns` | 2 | Nejmenší počet kroků (1–10). Dřív AI nesmí ukončit. |
-| `max_turns` | 4 | Největší počet kroků (2–10). Po něm rozhovor končí vždy. |
+| `min_turns` | 3 | Nejmenší počet kroků (1–10). Dřív AI nesmí ukončit. |
+| `max_turns` | 5 | Největší počet kroků (2–10). Po něm rozhovor končí vždy. |
 | `start_elo` | 1000 | Počáteční elo. |
 | `min_elo` / `max_elo` | 800 / 1200 | Rozsah, na který se elo ořízne. |
 | `max_step` | 50 | Největší posun elo za jeden krok (1–100). |
-| `pass_elo` | 1200 | Hranice pro `is_passed`. |
+| `pass_elo` | 1100 | Hranice pro `is_passed`. |
 
-Validace navíc vyžaduje `min_turns <= max_turns`, `min_elo <= start_elo <= max_elo`, `min_elo < max_elo` a `pass_elo` mezi `min_elo` a `max_elo`.
+Validace navíc vyžaduje `min_turns <= max_turns`, `min_elo <= start_elo <= max_elo`, `min_elo < max_elo`, `pass_elo` mezi `min_elo` a `max_elo` a `pass_elo <= start_elo + max_turns * max_step` (musí jít dosáhnout).
 
 Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISettings` v unionu `AssessmentSettings` až na konci.
 
@@ -42,7 +42,7 @@ Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISet
 ```
 
 - `turns` je celá paměť konverzace. Tabulka `assessment_turn` se nepoužívá.
-- `delta` je změna elo za odpověď studenta.
+- `delta` je změna elo za odpověď studenta, spočítaná z úrovně odpovědi.
 - `ai_style` je blok stylu z profilu pro prompt tazatele i shrnutí. Plní ho `start_session`, když student pošle `use_profile_style=true` a kontext je `practice`. Délku bere z osy `dens` jako mentor. `""` = bez stylu.
 
 ## Průběh
@@ -53,13 +53,14 @@ Všechna pole mají default, takže projde i `{}`. Proto je `SocraticDialogAISet
 
 **`evaluate_answer`**
 
-1. Přidá tah studenta a zavolá AI s tématem, textem a celou historií. AI vrátí `DELTA:` a `OTÁZKA:` nebo `KONEC`.
-2. Nové elo: `clamp(elo + clamp(delta, ±max_step), min_elo, max_elo)`.
-3. Konec nastane při `kroky >= max_turns`, nebo při `KONEC` a `kroky >= min_turns`. Pak:
+1. Přidá tah studenta a zavolá AI s tématem, textem a celou historií. AI vrátí `ÚROVEŇ:` (0–3) a `OTÁZKA:` nebo `KONEC`.
+2. Úroveň se převede na deltu: 0 = `-max_step`, 1 = 0, 2 = `+max_step/2`, 3 = `+max_step`. Číslo počítá kód, protože volné číslo AI táhne ke středu škály.
+3. Nové elo: `clamp(elo + delta, min_elo, max_elo)`.
+4. Konec nastane při `kroky >= max_turns`, nebo při `KONEC`, `kroky >= min_turns` a `elo >= pass_elo` před odpovědí i po ní. Student pod hranicí tak dostane vždy všech `max_turns` kroků. Pak:
    - druhé volání AI napíše shrnutí do `summary` a `feedback`,
    - `score = (elo - min_elo) / (max_elo - min_elo) * 100`,
    - `is_passed = elo >= pass_elo`.
-4. Jinak přidá další otázku a vrátí `finished = False`, `is_correct = True`. Verdikt v průběhu není a student elo nevidí.
+5. Jinak přidá další otázku a vrátí `finished = False`, `is_correct = True`. Verdikt v průběhu není a student elo nevidí.
 
 `TYPED_ANSWER = True`: `submit_answer` odmítne příliš rychle vložený text (`typed_too_fast`).
 

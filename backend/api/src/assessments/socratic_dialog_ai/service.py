@@ -39,11 +39,13 @@ def view(cfg, state) -> SocraticDialogAIView:
 
 async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOutcome:
     """Přidá tah studenta, AI vrátí delta elo + další otázku nebo KONEC.
-    Konec (max_turns, nebo KONEC po min_turns) -> AI shrnutí do feedback,
+    Konec (max_turns, nebo KONEC po min_turns a s elo >= pass_elo) -> AI shrnutí do feedback,
     score z elo, is_passed = elo >= cfg.pass_elo. Bez verdiktu v průběhu."""
     turns = [*state.turns, SocraticDialogAITurn(role="student", content=answer)]
     student_turns = sum(t.role == "student" for t in turns)
     must_end = student_turns >= cfg.max_turns
+    # Kdo je pod pass_elo, dostane všech max_turns kroků — brzký KONEC by mu vzal šanci projít
+    can_end = student_turns >= cfg.min_turns and state.elo >= cfg.pass_elo
 
     step = await SocraticDialogAsker(
         db, course_assessment.course_id, course_assessment.module_id
@@ -51,7 +53,7 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
         topic=state.topic,
         turns=[t.model_dump() for t in turns],
         max_step=cfg.max_step,
-        can_end=student_turns >= cfg.min_turns,
+        can_end=can_end,
         must_end=must_end,
         ai_style=state.ai_style,
     )
@@ -64,9 +66,12 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
         update={"turns": turns, "elo": elo, "last_answer": answer}
     )
 
-    finished = must_end or (step.question is None and student_turns >= cfg.min_turns)
+    # elo se touto odpovědí mohlo propadnout pod pass_elo -> pokračuje se
+    finished = must_end or (
+        step.question is None and can_end and elo >= cfg.pass_elo
+    )
     if not finished:
-        # ponytail: KONEC před min_turns -> obecná otázka; lepší by byl retry AI
+        # shortcut: nepovolený KONEC -> obecná otázka; lepší by byl retry AI
         question = step.question or "Můžeš svou myšlenku rozvést víc?"
         new_state.turns.append(SocraticDialogAITurn(role="assistant", content=question))
         # Bez verdiktu v průběhu — is_correct nic neznamená

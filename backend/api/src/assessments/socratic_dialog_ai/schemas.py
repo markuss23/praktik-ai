@@ -11,13 +11,13 @@ class SocraticDialogAISettings(BaseModel):
         ge=1,
         le=10,
         description="Minimum number of turns in the Socratic dialog.",
-        default=2,
+        default=3,
     )
     max_turns: int = Field(
         ge=2,
         le=10,
         description="Maximum number of turns in the Socratic dialog.",
-        default=4,
+        default=5,
     )
 
     start_elo: int = Field(
@@ -52,7 +52,7 @@ class SocraticDialogAISettings(BaseModel):
         ge=500,
         le=3000,
         description="Elo rating required to pass the Socratic dialog.",
-        default=1200,
+        default=1100,
     )
 
     @model_validator(mode="after")
@@ -64,6 +64,11 @@ class SocraticDialogAISettings(BaseModel):
             raise ValueError("musí platit min_elo <= start_elo <= max_elo a min_elo < max_elo")
         if not self.min_elo <= self.pass_elo <= self.max_elo:
             raise ValueError("pass_elo musí být mezi min_elo a max_elo")
+        # Jinak by nešlo projít ani se samými nejlepšími odpověďmi
+        if self.pass_elo > self.start_elo + self.max_turns * self.max_step:
+            raise ValueError(
+                "pass_elo musí být dosažitelné: <= start_elo + max_turns * max_step"
+            )
         return self
 
 

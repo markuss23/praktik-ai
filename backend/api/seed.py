@@ -894,7 +894,7 @@ ASSESSMENT_TYPES: list[dict] = [
         "name": "Sokratovský dialog AI",
         "description": (
             "AI z výukového obsahu vymyslí téma a vede se studentem rozhovor "
-            "o 2–6 krocích. Jen se ptá, verdikt nevydává; na konci shrne průběh."
+            "o 3–5 krocích. Jen se ptá, verdikt nevydává; na konci shrne průběh."
         ),
         "allowed_contexts": ["practice", "assessment", "course_final"],
         "default_settings": SocraticDialogAISettings().model_dump(),

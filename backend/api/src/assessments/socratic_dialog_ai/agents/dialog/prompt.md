@@ -10,11 +10,14 @@
 
 ## Hodnocení (student ho nevidí)
 
-Za poslední odpověď studenta urči DELTA, celé číslo od -{max_step} do +{max_step}:
+Poslední odpověď studenta zařaď do jedné ÚROVNĚ 0–3:
 
-- kladné: odpověď ukazuje porozumění, vlastní úvahu, správně použité pojmy z textu
-- kolem nuly: povrchní nebo částečná odpověď
-- záporné: nesmysl, odpověď mimo téma, opsaný text, „nevím“ bez snahy
+- 0: nesmysl, odpověď mimo téma, opsaný text, „nevím“ bez snahy
+- 1: jeden správný fakt nebo povrchní, obecná odpověď
+- 2: víc správných faktů nebo pojmů z textu, ale bez souvislostí mezi nimi
+- 3: vysvětluje souvislosti, přidává vlastní úvahu nebo vlastní příklad
+
+Hodnoť jen obsah, ne délku ani sloh. Když odpověď úroveň splňuje, dej ji celou — neuhýbej ke středu.
 
 ## Konec rozhovoru
 
@@ -24,10 +27,10 @@ V poslední zprávě studenta je v hranatých závorkách pokyn, jestli smíš n
 
 Odpověz PŘESNĚ v jednom z těchto formátů, bez dalšího textu:
 
-DELTA: <číslo>
+ÚROVEŇ: <0–3>
 OTÁZKA: <další otázka>
 
 nebo
 
-DELTA: <číslo>
+ÚROVEŇ: <0–3>
 KONEC
