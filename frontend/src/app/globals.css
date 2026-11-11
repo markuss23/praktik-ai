@@ -31,6 +31,10 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+  /* Pozadí stránky pod kartami. Ve světlém je to `muted` (šedá pod bílými
+     kartami); v tmavém by `muted` byl světlejší než `card` a karty by
+     vypadaly propadlé, proto má vlastní hodnotu — viz `.dark`. */
+  --page: var(--muted);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   /* Figma alert palette (697:1823) */
@@ -100,6 +104,7 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-page: var(--page);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -467,6 +472,9 @@ body.module-fullscreen footer {
   --muted: oklch(0.269 0 0);
 
   --muted-foreground: oklch(0.708 0 0);
+
+  /* Stránka nejtmavší, karty (`card`) nad ní o stupeň světlejší. */
+  --page: var(--background);
 
   --accent: oklch(0.269 0 0);
 

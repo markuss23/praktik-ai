@@ -180,7 +180,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Zavřít upozornění"
-        className={cn(BTN_KEEP_BOX, "p-1 -m-1 rounded hover:bg-black/5 transition-colors shrink-0")}
+        className={cn(BTN_KEEP_BOX, "p-1 -m-1 rounded hover:bg-foreground/5 transition-colors shrink-0")}
       >
         <X className="size-4 opacity-60" />
       </Button>

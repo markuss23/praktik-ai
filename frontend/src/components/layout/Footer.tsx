@@ -18,7 +18,8 @@ export function Footer() {
                 alt="PRAKTIK-AI Logo"
                 width={81}
                 height={83}
-                className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px]"
+                // Černé SVG v <img> — tokeny ho nepřebarví, v tmavém režimu ho invertujeme.
+                className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px] dark:invert"
               />
               <span className="text-lg sm:text-xl font-bold text-foreground">PRAKTIK-AI</span>
             </div>
@@ -58,7 +59,8 @@ export function Footer() {
             </div>
           </div>
 
-          {/* University Logos */}
+          {/* University Logos — v tmavém režimu jednobarevně bílá (`brightness-0
+              invert`); prostá inverze by u barevného loga UJEP rozhodila barvy. */}
           <div className="flex flex-col gap-4 sm:gap-[18px]">
             <div className="flex flex-col gap-4 sm:gap-[18px]">
               <Image 
@@ -66,21 +68,21 @@ export function Footer() {
                 alt="UJEP Logo" 
                 width={150} 
                 height={73}
-                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px]"
+                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px] dark:brightness-0 dark:invert"
               />
               <Image 
                 src="/ostravskalogo.svg" 
                 alt="Ostravská univerzita Logo" 
                 width={150} 
                 height={73}
-                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px]"
+                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px] dark:brightness-0 dark:invert"
               />
               <Image 
                 src="/tacrlogowide.svg" 
                 alt="TAČR Logo" 
                 width={150} 
                 height={73}
-                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px]"
+                className="w-auto h-auto max-w-[100px] sm:max-w-[120px] lg:max-w-[150px] dark:brightness-0 dark:invert"
               />
             </div>
           </div>

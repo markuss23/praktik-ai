@@ -48,17 +48,19 @@ export function ProfileCard({ name, role, avatarSrc, level, onEditClick }: Profi
               className="object-cover w-full h-full"
             />
           ) : (
+            // Logo je černé SVG v <img> — tokeny ho nepřebarví, v tmavém
+            // režimu ho proto invertujeme, jinak by na tmavé ploše zmizelo.
             <Image
               src="/logo.svg"
-              alt="avatar"
-              width={80}
-              height={80}
-              className="object-contain"
+              alt={name}
+              width={112}
+              height={112}
+              className="object-cover w-full h-full dark:invert"
             />
           )}
         </div>
         {level !== undefined && (
-          <span className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full size-8 flex items-center justify-center border-2 border-white shadow-sm">
+          <span className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full size-8 flex items-center justify-center border-2 border-card shadow-sm">
             {level}
           </span>
         )}

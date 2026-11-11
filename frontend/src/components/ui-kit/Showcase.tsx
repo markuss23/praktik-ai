@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 
 import {
   AccordionContent,
@@ -70,16 +70,11 @@ export function Row({
 }
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-  }
+  // Sdílený stav s přepínačem v profilu — volba se pamatuje v localStorage.
+  const { isDark: dark, toggleTheme } = useTheme();
 
   return (
-    <Button variant="outline" size="sm" onClick={toggle}>
+    <Button variant="outline" size="sm" onClick={toggleTheme}>
       {dark ? <Sun /> : <Moon />}
       {dark ? "Světlý režim" : "Tmavý režim"}
     </Button>
