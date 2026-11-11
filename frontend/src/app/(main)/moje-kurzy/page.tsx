@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, GraduationCap, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getMyEnrollments, type MyEnrollmentExtended } from '@/lib/api-client';
+import { CourseCatalog } from '@/components/courses';
+import { CourseCardSkeleton } from '@/components/ui';
 import { ContinueHeroCard } from './ContinueHeroCard';
-import { EnrollmentCardWithNext } from './EnrollmentCardWithNext';
-import { MyCoursesFilters, type SortKey, type StatusFilter } from './MyCoursesFilters';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { QuickStats } from './QuickStats';
 import { RecommendedCourses } from './RecommendedCourses';
@@ -20,7 +20,7 @@ function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {Array.from({ length: 3 }, (_, i) => (
-        <div key={i} className="bg-card rounded-xl border border-border h-[450px] animate-pulse" />
+        <CourseCardSkeleton key={i} />
       ))}
     </div>
   );
@@ -68,10 +68,6 @@ export default function MojeKurzyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [sort, setSort] = useState<SortKey>('recent');
-
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
@@ -95,52 +91,6 @@ export default function MojeKurzyPage() {
     () => enrollments.find((e) => !e.completedAt) ?? null,
     [enrollments],
   );
-
-  const counts = useMemo(() => {
-    const inProgress = enrollments.filter(
-      (e) => !e.completedAt && (e.completedModules ?? 0) > 0,
-    ).length;
-    const notStarted = enrollments.filter(
-      (e) => !e.completedAt && (e.completedModules ?? 0) === 0,
-    ).length;
-    const completed = enrollments.filter((e) => !!e.completedAt).length;
-    return { all: enrollments.length, inProgress, notStarted, completed };
-  }, [enrollments]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = enrollments.filter((e) => {
-      const done = e.completedModules ?? 0;
-      const isCompleted = !!e.completedAt;
-      const isInProgress = !isCompleted && done > 0;
-      const isNotStarted = !isCompleted && done === 0;
-      if (status === 'in-progress' && !isInProgress) return false;
-      if (status === 'completed' && !isCompleted) return false;
-      if (status === 'not-started' && !isNotStarted) return false;
-
-      if (q) {
-        const hay = `${e.course.title} ${e.course.description ?? ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-
-    list = [...list].sort((a, b) => {
-      if (sort === 'title') return a.course.title.localeCompare(b.course.title, 'cs');
-      const aTotal = a.totalModules ?? 1;
-      const bTotal = b.totalModules ?? 1;
-      const aPct = ((a.completedModules ?? 0) / aTotal) * 100;
-      const bPct = ((b.completedModules ?? 0) / bTotal) * 100;
-      if (sort === 'progress-desc') return bPct - aPct;
-      if (sort === 'progress-asc') return aPct - bPct;
-      // 'recent' = preferuj last_activity_at, jinak enrolledAt
-      const aTime = (a.lastActivityAt ?? a.enrolledAt).getTime();
-      const bTime = (b.lastActivityAt ?? b.enrolledAt).getTime();
-      return bTime - aTime;
-    });
-
-    return list;
-  }, [enrollments, query, status, sort]);
 
   const isInitialLoading = authLoading || (isAuthenticated && loading);
 
@@ -179,30 +129,13 @@ export default function MojeKurzyPage() {
 
             <QuickStats enrollments={enrollments} />
 
-            <MyCoursesFilters
-              query={query}
-              onQueryChange={setQuery}
-              status={status}
-              onStatusChange={setStatus}
-              sort={sort}
-              onSortChange={setSort}
-              counts={counts}
+            {/* Stejný katalog jako na úvodní stránce, jen nad zápisy uživatele. */}
+            <CourseCatalog
+              scope="enrolled"
+              title="Všechny moje kurzy"
+              enrollments={enrollments}
+              className="pt-2"
             />
-
-            <section>
-              {filtered.length === 0 ? (
-                <div className="bg-card rounded-xl border border-border p-10 text-center">
-                  <p className="text-foreground font-medium">Žádný kurz neodpovídá filtru</p>
-                  <p className="text-sm text-muted-foreground mt-1">Zkuste upravit hledání nebo vybrat jiný stav.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {filtered.map((e) => (
-                    <EnrollmentCardWithNext key={e.enrollmentId} enrollment={e} />
-                  ))}
-                </div>
-              )}
-            </section>
 
             <ActivityHeatmap />
 

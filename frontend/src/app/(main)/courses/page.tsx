@@ -1,17 +1,14 @@
 import Link from "next/link";
-import CoursesContent from "./CoursesContent";
+import { CourseCatalog } from "@/components/courses";
 
 export default function CoursesPage() {
   return (
-    <div style={{ backgroundColor: 'var(--muted)' }} className="min-h-screen">
-      <div className="mx-auto px-4 sm:px-6 lg:px-[100px] py-8" style={{ maxWidth: '1440px' }}>
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            <Link href="/" className="hover:text-foreground">Home</Link>
-          </p>
-          <h1 className="text-3xl font-bold text-foreground">Přehled kurzů</h1>
-        </div>
-        <CoursesContent />
+    <div className="min-h-screen bg-muted">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-[100px]">
+        <p className="mb-4 text-sm text-muted-foreground">
+          <Link href="/" className="hover:text-foreground">Home</Link>
+        </p>
+        <CourseCatalog title="Přehled kurzů" headingAs="h1" />
       </div>
     </div>
   );

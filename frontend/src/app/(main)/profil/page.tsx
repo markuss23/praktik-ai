@@ -10,6 +10,7 @@ import { ProfileModulesSection } from '@/components/profile/ProfileModulesSectio
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
 import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
+import { NotificationCenter } from '@/components/notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -291,6 +292,8 @@ export default function ProfilPage() {
               <ProfileModulesSection enrollments={enrollments} />
             </motion.div>
           )}
+
+          <NotificationCenter audience="user" />
         </div>
       </div>
 

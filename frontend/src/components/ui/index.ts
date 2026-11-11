@@ -69,6 +69,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants } from "../u
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../ui-kit/tooltip";
 export { Checkbox } from "../ui-kit/checkbox";
 export { Switch } from "../ui-kit/switch";
+export { SegmentedControl, SegmentedControlItem } from "../ui-kit/segmented-control";
 export {
   Progress,
   ProgressTrack,
@@ -113,8 +114,9 @@ export { FilterMultiSelect } from "./FilterMultiSelect";
 export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
 export { CategoryGroup, CourseCategories, ModuleCategories } from "./CategoryTags";
-export { CourseCard } from "./CourseCard";
-export { CourseRow } from "./CourseRow";
+export { CourseCard, CourseCardSkeleton } from "./CourseCard";
+export { CourseRow, CourseRowSkeleton } from "./CourseRow";
+export type { CourseItemProps, CourseStatus } from "./CourseItemParts";
 export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";

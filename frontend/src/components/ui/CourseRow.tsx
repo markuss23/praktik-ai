@@ -1,36 +1,27 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, CheckCircle, ChevronRight, Clock, FileText } from "lucide-react";
-import { type Difficulty } from "@/api";
-import { DIFFICULTY_LABELS } from "@/lib/difficulty";
-import { cn, czechPlural } from "@/lib/utils";
+import { CheckCircle, ChevronRight, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import { buttonVariants } from "../ui-kit/button";
-import { Progress } from "../ui-kit/progress";
-
-interface CourseRowProps {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  difficulty?: Difficulty | null;
-  completedModules?: number;
-  totalModules?: number;
-  imageUrl?: string;
-  isEnrolled?: boolean;
-  isCompleted?: boolean;
-}
+import {
+  CourseCta,
+  CourseMeta,
+  CourseProgressBlock,
+  getCourseStatus,
+  modulesWord,
+  type CourseItemProps,
+} from "./CourseItemParts";
 
 /**
- * Řádková podoba `CourseCard` pro výpis „Řádky" v katalogu — stejná data
- * i stavy (nezapsán / rozpracováno / dokončeno), jen naležato a bez velkého
- * obrázku. Řádky se skládají pod sebe do jedné bílé plochy (`<ul>` s
- * `divide-y`, každý řádek v `<li>`), proto řádek sám nemá rámeček ani stín.
+ * Řádková podoba `CourseCard` pro výpis „Řádky" — stejná data, stejné stavy
+ * i stejné kusy (meta, segmentovaný průběh, CTA). Řádky se skládají pod sebe
+ * do jedné bílé plochy (`<ul>` s `divide-y`), proto řádek sám nemá rámeček.
  *
- * Sloupce přibývají se šířkou: mobil = náhled + název + meta pod ním
- * a šipka, od `sm` popis a tlačítko, od `xl` samostatný sloupec s průběhem.
- * Meta (délka, obtížnost) jede vždy pod popisem — jako vlastní sloupec se
- * mačkala a název s popisem neměly kde dýchat.
+ * Sloupce přibývají se šířkou:
+ * - mobil: náhled + název + meta, vpravo šipka (celý řádek je odkaz),
+ * - `sm`: přibude popis a tlačítko,
+ * - `xl`: průběh dostane vlastní sloupec. Má ho každý řádek (i nezapsaný
+ *   ukazuje počet modulů), takže tlačítka i průběhy lícují pod sebou.
  */
 export function CourseRow({
   id,
@@ -43,132 +34,113 @@ export function CourseRow({
   imageUrl = "/courseai2.png",
   isEnrolled = false,
   isCompleted = false,
-}: CourseRowProps) {
+  href,
+}: CourseItemProps) {
+  const status = getCourseStatus(isEnrolled, isCompleted);
+  const done = status === "done";
   const hasProgress = totalModules > 0;
-  const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
-  const difficultyLabel = difficulty ? DIFFICULTY_LABELS[difficulty] : "Začátečník";
-  const startedOrDone = isEnrolled || isCompleted;
-  const modulesLabel = startedOrDone
-    ? `${completedModules}/${totalModules} ${czechPlural(totalModules, "modul", "moduly", "modulů")}`
-    : `${totalModules} ${czechPlural(totalModules, "modul", "moduly", "modulů")}`;
+  const percent = hasProgress ? Math.round((completedModules / totalModules) * 100) : 0;
 
   const row = (
     <div
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-5 transition-colors sm:gap-6 sm:px-6 sm:py-6",
-        // Pevné šířky drží sloupce zarovnané napříč řádky, i když se liší
-        // tlačítko („Pokračovat" × „Zobrazit" × „Dokončeno").
-        "xl:grid-cols-[auto_minmax(0,1fr)_220px_150px] xl:gap-8",
-        isCompleted ? "bg-success/5" : "group-hover:bg-muted/50",
+        "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5",
+        "xl:grid-cols-[auto_minmax(0,1fr)_200px_168px] xl:gap-8",
+        done ? "bg-success/[0.04]" : "transition-colors duration-200 group-hover:bg-muted/70 group-focus-visible:bg-muted/70",
       )}
     >
-      <div className="relative h-16 w-24 shrink-0 self-start overflow-hidden rounded-lg sm:h-24 sm:w-36 sm:self-center">
+      {/* Akcent vlevo — tichá značka, že kurz je rozpracovaný. */}
+      {status === "active" && (
+        <span aria-hidden className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-primary sm:inset-y-5" />
+      )}
+
+      <div className="relative aspect-[16/10] w-20 shrink-0 self-start overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/[0.06] sm:w-40 sm:self-center">
         <Image
           src={imageUrl}
           alt=""
           fill
-          sizes="(min-width: 640px) 144px, 96px"
-          className={cn("object-cover transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
+          sizes="(min-width: 640px) 160px, 80px"
+          className={cn("object-cover transition-transform duration-500", done ? "opacity-80" : "group-hover:scale-[1.06]")}
         />
-        {isCompleted && (
+        {done && (
           <div className="absolute inset-0 flex items-center justify-center bg-success/30">
-            <CheckCircle className="size-7 text-white drop-shadow" />
+            <CheckCircle className="size-7 text-white drop-shadow" aria-hidden />
           </div>
         )}
       </div>
 
       <div className="min-w-0">
-        <h3
-          className={cn(
-            "line-clamp-2 text-lg leading-snug font-semibold sm:text-xl",
-            isCompleted ? "text-success" : "text-foreground transition-colors group-hover:text-gradient-r",
-          )}
-        >
-          {title}
-        </h3>
-        <p className="mt-1.5 hidden max-w-[65ch] text-[15px] leading-relaxed text-muted-foreground sm:line-clamp-2">
+        <h3 className="line-clamp-2 text-base leading-snug font-semibold text-foreground sm:text-lg">{title}</h3>
+        <p className="mt-1 hidden max-w-[68ch] text-sm leading-6 text-muted-foreground sm:line-clamp-2">
           {description}
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <Clock className="size-4" />
-            {duration} minut
-          </span>
-          <span className="rounded-full bg-muted px-3 py-1 text-[13px] font-medium whitespace-nowrap text-foreground">
-            {difficultyLabel}
-          </span>
-          {/* Pod xl nemá průběh vlastní sloupec — aspoň počet modulů jede sem. */}
+        <CourseMeta
+          duration={duration}
+          difficulty={difficulty}
+          className="mt-2 gap-x-3 text-[13px] sm:mt-3 sm:gap-x-4 sm:text-sm"
+        >
+          {/* Pod xl nemá průběh vlastní sloupec — počet modulů a procenta jedou sem. */}
           {hasProgress && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap xl:hidden">
-              <FileText className="size-4" />
-              {modulesLabel}
-              {isEnrolled && !isCompleted && (
-                <span className="font-medium text-primary">· {progressPercent}%</span>
+              <FileText className="size-4" aria-hidden />
+              {status === "idle"
+                ? `${totalModules} ${modulesWord(totalModules)}`
+                : `${done ? totalModules : completedModules}/${totalModules} ${modulesWord(totalModules)}`}
+              {status !== "idle" && (
+                <span className="font-semibold text-primary tabular-nums">· {done ? 100 : percent}%</span>
               )}
             </span>
           )}
-        </div>
+        </CourseMeta>
       </div>
 
       <div className="hidden xl:block">
         {hasProgress && (
-          <>
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="flex items-center gap-1.5 whitespace-nowrap text-foreground">
-                <FileText className="size-4 text-muted-foreground" />
-                {modulesLabel}
-              </span>
-              <span
-                className={cn(
-                  "font-semibold",
-                  isCompleted ? "text-success" : isEnrolled ? "text-primary" : "text-muted-foreground font-medium",
-                )}
-              >
-                {startedOrDone ? `${progressPercent}%` : "Nezapsán"}
-              </span>
-            </div>
-            {/* Prázdný pruh u nezapsaných kurzů jen přidával šum. */}
-            {startedOrDone && (
-              <Progress
-                value={progressPercent}
-                className="mt-2.5 w-full [&_[data-slot=progress-track]]:h-2"
-              />
-            )}
-          </>
+          <CourseProgressBlock status={status} completedModules={completedModules} totalModules={totalModules} />
         )}
       </div>
 
-      {isCompleted ? (
-        <span className="inline-flex items-center gap-1.5 justify-self-end text-[15px] font-semibold whitespace-nowrap text-success xl:justify-self-center">
-          <CheckCircle className="size-5" />
-          <span className="hidden sm:inline">Dokončeno</span>
-        </span>
-      ) : (
-        <>
-          {/* Celý řádek je odkaz — tlačítko je jen vizuál, proto <span>. */}
-          <span
-            className={cn(
-              buttonVariants({ variant: isEnrolled ? "brand" : "default", size: "lg" }),
-              "hidden justify-self-end px-5 font-semibold sm:inline-flex xl:w-full xl:justify-self-stretch",
-            )}
-          >
-            {isEnrolled ? "Pokračovat" : "Zobrazit"}
-            <ArrowRight data-icon="inline-end" className="size-4" />
-          </span>
+      <div className="justify-self-end xl:justify-self-stretch">
+        <CourseCta status={status} size="sm" compact className="hidden w-full sm:inline-flex" />
+        {done ? (
+          <CheckCircle aria-label="Dokončeno" className="size-5 text-success sm:hidden" />
+        ) : (
           <ChevronRight aria-hidden className="size-5 text-muted-foreground sm:hidden" />
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 
-  // Completed courses are not clickable
-  if (isCompleted) {
+  // Dokončený kurz už nikam nevede — detail kurzu ho přesměruje pryč.
+  if (done) {
     return row;
   }
 
   return (
-    <Link href={`/courses/${id}`} className="group block outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset">
+    <Link
+      href={href ?? `/courses/${id}`}
+      className="group block outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+    >
       {row}
     </Link>
+  );
+}
+
+/** Zástupný řádek při načítání — stejná mřížka jako `CourseRow`. */
+export function CourseRowSkeleton() {
+  return (
+    <div className="grid animate-pulse grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5 xl:grid-cols-[auto_minmax(0,1fr)_200px_168px] xl:gap-8">
+      <div className="aspect-[16/10] w-20 rounded-lg bg-muted sm:w-40" />
+      <div className="space-y-2.5">
+        <div className="h-5 w-1/2 rounded bg-muted" />
+        <div className="hidden h-3.5 w-5/6 rounded bg-muted sm:block" />
+        <div className="h-5 w-48 rounded bg-muted" />
+      </div>
+      <div className="hidden space-y-2.5 xl:block">
+        <div className="h-4 w-24 rounded bg-muted" />
+        <div className="h-1.5 w-full rounded-full bg-muted" />
+      </div>
+      <div className="hidden h-10 w-28 rounded-lg bg-muted sm:block xl:w-full" />
+    </div>
   );
 }

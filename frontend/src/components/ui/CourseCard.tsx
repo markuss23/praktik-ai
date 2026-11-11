@@ -1,28 +1,24 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, CheckCircle, Clock, FileText } from "lucide-react";
-import { type Difficulty } from "@/api";
-import { DIFFICULTY_LABELS } from "@/lib/difficulty";
-import { cn, czechPlural } from "@/lib/utils";
+import { CheckCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-import { Button } from "../ui-kit/button";
-import { Card, CardContent, CardFooter } from "../ui-kit/card";
-import { Progress } from "../ui-kit/progress";
+import {
+  CourseCta,
+  CourseMeta,
+  CourseProgressBlock,
+  getCourseStatus,
+  type CourseItemProps,
+} from "./CourseItemParts";
 
-interface CourseCardProps {
-  id: string;
-  title: string;
-  description: string;
-  duration: number;
-  /** Doporučená obtížnost. Pokud není uvedena, fallback na „Začátečník". */
-  difficulty?: Difficulty | null;
-  completedModules?: number;
-  totalModules?: number;
-  imageUrl?: string;
-  isEnrolled?: boolean;
-  isCompleted?: boolean;
-}
-
+/**
+ * Karta kurzu pro výpis „Karty". Výška se řídí obsahem a v mřížce se karty
+ * natáhnou na nejvyšší v řádku (`h-full`); spodní blok (meta, průběh, CTA)
+ * drží `mt-auto`, takže tlačítka sedí v řádku na jedné lince bez ohledu na
+ * délku popisu.
+ *
+ * CTA je odsazené uvnitř karty — ne pruh přes celou šířku spodní hrany.
+ */
 export function CourseCard({
   id,
   title,
@@ -34,115 +30,99 @@ export function CourseCard({
   imageUrl = "/courseai2.png",
   isEnrolled = false,
   isCompleted = false,
-}: CourseCardProps) {
-  const hasProgress = totalModules > 0;
-  const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+  href,
+}: CourseItemProps) {
+  const status = getCourseStatus(isEnrolled, isCompleted);
+  const done = status === "done";
 
-  const cardContent = (
-    <Card
+  const card = (
+    <article
       className={cn(
-        "h-[530px] w-full max-w-[590px] gap-0 py-0 transition-all duration-300",
-        isCompleted ? "border-success opacity-75" : "hover:shadow-xl",
+        "flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-[box-shadow,transform,border-color] duration-300",
+        done
+          ? "border-success/40"
+          : "border-border group-hover:-translate-y-1 group-hover:border-foreground/15 group-hover:shadow-lg group-focus-visible:-translate-y-1 group-focus-visible:shadow-lg",
       )}
     >
-      {/* Course Image */}
-      <div className="relative h-[226px] w-full shrink-0 overflow-hidden">
+      <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-muted">
+        {/* Dekorativní — název kurzu je hned pod obrázkem. */}
         <Image
           src={imageUrl}
-          alt={title}
+          alt=""
           fill
-          className={cn("object-cover transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
+          sizes="(min-width: 1024px) 400px, (min-width: 768px) 50vw, 100vw"
+          className={cn(
+            "object-cover transition-transform duration-500",
+            done ? "opacity-80" : "group-hover:scale-[1.04]",
+          )}
         />
-        {isCompleted && (
-          <div className="absolute inset-0 flex items-center justify-center bg-success/30">
-            <div className="rounded-full bg-card p-3 shadow-lg">
-              <CheckCircle className="size-8 text-success" />
-            </div>
+        {done && (
+          <div className="absolute inset-0 flex items-center justify-center bg-success/25">
+            <span className="rounded-full bg-card p-3 shadow-lg">
+              <CheckCircle className="size-7 text-success" aria-hidden />
+            </span>
           </div>
         )}
       </div>
 
-      <CardContent className="flex min-h-0 grow flex-col px-6 pt-6 pb-4">
-        <div>
-          <h3
-            className={cn(
-              "mb-3 line-clamp-2 min-h-[3.5rem] text-xl font-semibold",
-              isCompleted ? "text-success" : "text-gradient-r",
-            )}
-          >
-            {title}
-          </h3>
+      <div className="flex grow flex-col p-5 sm:p-6">
+        <h3 className="line-clamp-2 text-lg leading-6 font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{description}</p>
 
-          <p className="mb-3 line-clamp-3 min-h-[3.75rem] text-sm text-muted-foreground">
-            {description}
-          </p>
-        </div>
+        <div className="mt-auto pt-5">
+          <CourseMeta duration={duration} difficulty={difficulty} />
 
-        <div className="mt-auto">
-          <div className="mb-3 flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Clock className="size-4" />
-              <span>{duration} minut</span>
-            </div>
-            <div className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
-              {difficulty ? DIFFICULTY_LABELS[difficulty] : 'Začátečník'}
-            </div>
-          </div>
-
-          {hasProgress && (
-            <div>
-              <div className="mb-1.5 flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <FileText className="size-5 text-muted-foreground" />
-                  <span className="text-foreground">
-                    {completedModules}/{totalModules} {czechPlural(totalModules, 'modul', 'moduly', 'modulů')}
-                  </span>
-                </div>
-                <span
-                  className={cn(
-                    "text-sm font-medium",
-                    isCompleted ? "text-success" : isEnrolled ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  {isCompleted ? 'Dokončeno' : isEnrolled ? `${progressPercent}%` : 'Nezapsán'}
-                </span>
-              </div>
-              <Progress
-                value={isEnrolled ? progressPercent : 0}
-                className="w-full [&_[data-slot=progress-track]]:h-2"
-              />
-            </div>
+          {totalModules > 0 && (
+            <CourseProgressBlock
+              status={status}
+              completedModules={completedModules}
+              totalModules={totalModules}
+              className="mt-4 border-t border-border pt-4"
+            />
           )}
-        </div>
-      </CardContent>
 
-      <CardFooter className="p-0">
-        {isCompleted ? (
-          <div className="flex w-full items-center justify-center gap-2 rounded-b-md border-t border-success/30 bg-success/10 px-6 py-3.5 font-semibold text-success transition-colors group-hover:bg-success/20">
-            <CheckCircle className="size-4.5" />
-            <span>Kurz dokončen</span>
-          </div>
-        ) : (
-          <Button
-            variant={isEnrolled ? "brand" : "default"}
-            className="h-auto w-full rounded-none rounded-b-md py-3.5 font-semibold"
-          >
-            <ArrowRight data-icon="inline-start" className="size-5" />
-            <span>{isEnrolled ? 'Pokračovat' : 'Zobrazit kurz'}</span>
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+          <CourseCta status={status} className="mt-5 w-full" />
+        </div>
+      </div>
+    </article>
   );
 
-  // Completed courses are not clickable
-  if (isCompleted) {
-    return <div className="block">{cardContent}</div>;
+  // Dokončený kurz už nikam nevede — detail kurzu ho přesměruje pryč.
+  if (done) {
+    return <div className="h-full">{card}</div>;
   }
 
   return (
-    <Link href={`/courses/${id}`} className="group block">
-      {cardContent}
+    <Link
+      href={href ?? `/courses/${id}`}
+      className="group block h-full rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      {card}
     </Link>
+  );
+}
+
+/** Zástupná karta při načítání — stejná kostra jako `CourseCard`. */
+export function CourseCardSkeleton() {
+  return (
+    <div className="flex h-full animate-pulse flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="aspect-[16/9] w-full bg-muted" />
+      <div className="flex grow flex-col p-5 sm:p-6">
+        <div className="h-5 w-3/4 rounded bg-muted" />
+        <div className="mt-4 h-3.5 w-full rounded bg-muted" />
+        <div className="mt-2.5 h-3.5 w-5/6 rounded bg-muted" />
+        <div className="mt-auto pt-6">
+          <div className="flex gap-3">
+            <div className="h-5 w-20 rounded bg-muted" />
+            <div className="h-5 w-24 rounded-full bg-muted" />
+          </div>
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="h-4 w-28 rounded bg-muted" />
+            <div className="mt-2.5 h-1.5 w-full rounded-full bg-muted" />
+          </div>
+          <div className="mt-5 h-11 w-full rounded-lg bg-muted" />
+        </div>
+      </div>
+    </div>
   );
 }

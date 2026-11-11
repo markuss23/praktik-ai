@@ -7,7 +7,7 @@ Next.js 15 (App Router) + Tailwind v4 + shadcn/ui na Base UI.
 | Cesta | Co to je |
 | --- | --- |
 | `src/components/ui-kit/` | shadcn primitiva. Sem píše `shadcn` CLI (viz `components.json` → alias `ui`). Needitovat ručně bez důvodu. |
-| `src/components/ui/` | Projektové komponenty (`Modal`, `ConfirmModal`, `Dropdown`, `CourseCard`, `Badge`, `Skeletons`, `Toast`, `RichTextEditor`) + `index.ts` barrel. |
+| `src/components/ui/` | Projektové komponenty (`Modal`, `ConfirmModal`, `Dropdown`, `CourseCard`, `CourseRow`, `Badge`, `Skeletons`, `Toast`, `RichTextEditor`) + `index.ts` barrel. |
 | `src/app/globals.css` | Design tokeny (Figma paleta → shadcn sémantické proměnné). Jediné místo pro CSS proměnné. |
 | `/ui-kit` (`src/app/ui-kit/page.tsx`) | Živý showcase kitu — všechny varianty a velikosti. |
 
@@ -47,7 +47,7 @@ neimplementuj vlastní.
 
 - `variant`: `default` | `outline` | `secondary` | `ghost` | `destructive` | `warning` | `brand` | `link`
   - `warning` — vratné, ale pozor-vyžadující akce (odpublikovat, vrátit k přepracování).
-  - `brand` — značkové CTA v gradientu `gradient-l → gradient-r` (přihlášení, „Pokračovat" na kurzu).
+  - `brand` — značkové CTA v gradientu `gradient-l → gradient-r` (přihlášení). Na kartách / řádcích kurzů se nepoužívá — „Pokračovat" je zelené, „Zobrazit" tmavé s hoverem do zelené (`CourseCta` v `ui/CourseItemParts.tsx`).
 - `size`: `default` | `xs` | `sm` | `lg` | `xl` | `icon` | `icon-xs` | `icon-sm` | `icon-lg`
 - Ikona vedle textu se značí `data-icon`, bez sizing tříd — velikost řeší komponenta:
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import type { Course } from '@/api';
 import { getRecommendedCourses } from '@/lib/api-client';
-import { CourseCard } from '@/components/ui';
+import { CourseCard, CourseCardSkeleton } from '@/components/ui';
 
 const LIMIT = 3;
 
@@ -57,10 +57,7 @@ export function RecommendedCourses() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {Array.from({ length: LIMIT }, (_, i) => (
-            <div
-              key={i}
-              className="bg-card rounded-lg border border-border h-[530px] animate-pulse"
-            />
+            <CourseCardSkeleton key={i} />
           ))}
         </div>
       ) : (
