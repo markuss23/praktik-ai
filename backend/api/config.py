@@ -36,7 +36,8 @@ class SMTPSettings(BaseModel):
     port: int = 1025
     username: str | None = None
     password: str | None = None
-    use_tls: bool = False
+    use_tls: bool = False  # STARTTLS (typicky port 587)
+    use_ssl: bool = False  # přímé SSL spojení (typicky port 465)
     sender: str = "noreply@praktik-ai.cz"
     enabled: bool = True
     frontend_url: str = "http://localhost:3000"

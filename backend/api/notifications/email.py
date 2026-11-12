@@ -63,9 +63,10 @@ def send_email(to: str, subject: str, body_text: str, body_html: str | None = No
     if body_html:
         msg.add_alternative(body_html, subtype="html")
 
+    smtp_class = smtplib.SMTP_SSL if cfg.use_ssl else smtplib.SMTP
     try:
-        with smtplib.SMTP(cfg.host, cfg.port, timeout=10) as smtp:
-            if cfg.use_tls:
+        with smtp_class(cfg.host, cfg.port, timeout=10) as smtp:
+            if cfg.use_tls and not cfg.use_ssl:
                 smtp.starttls()
             if cfg.username:
                 smtp.login(cfg.username, cfg.password or "")
