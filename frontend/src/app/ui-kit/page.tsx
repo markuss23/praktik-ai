@@ -54,6 +54,8 @@ import {
   AiCover,
   GitCover,
   MathCover,
+  PromptCover,
+  StatsCover,
   type CoverTone,
 } from "@/components/ui-kit/module-covers";
 import {
@@ -224,7 +226,20 @@ const COVER_TONE_ITEMS: { tone: CoverTone; token: string }[] = [
 ];
 
 /** Motivy se v ukázce tónů střídají, ať je vidět kresba na každém podkladu. */
-const COVER_MOTIFS = [MathCover, AiCover, GitCover];
+const COVER_MOTIFS = [MathCover, StatsCover, AiCover, GitCover, PromptCover];
+
+/** Všechny motivy coverů s tónem oboru, ve kterém se mají používat. */
+const COVER_MOTIF_ITEMS: {
+  name: string;
+  Cover: typeof MathCover;
+  tone: CoverTone;
+}[] = [
+  { name: "MathCover", Cover: MathCover, tone: "purple" },
+  { name: "StatsCover", Cover: StatsCover, tone: "purple" },
+  { name: "AiCover", Cover: AiCover, tone: "green" },
+  { name: "PromptCover", Cover: PromptCover, tone: "green" },
+  { name: "GitCover", Cover: GitCover, tone: "blue" },
+];
 
 /** Přilepený obsah stránky. Zvýrazňuje sekce, které jsou zrovna rozbalené. */
 function TableOfContents({
@@ -1539,7 +1554,7 @@ function UiKitContent() {
         <Section
           value="card-cover"
           title="Card — SVG covery modulů"
-          description="Cover jako komponenta, ne bitmapa. Plochá kresba v SVG na plné značkové barvě z tokenů (--gradient-r, --primary, --tip, …) — škáluje se, váží pár kB, v tmavém režimu se přebarví sama a do karty jde místo <Image>. Podklad se přepíná přes `tone`: příbuzná témata sdílí barvu, jiný obor dostane jinou."
+          description="Cover jako komponenta, ne bitmapa. Stejný jazyk jako plocha onboardingu — světlý nádech tónu, dva kruhy a blob v plné barvě z tokenů (--gradient-r, --primary, --tip, …). V blobu místo ikony malé schéma, podle kterého se modul pozná: graf funkce, sloupce, síť, větve. Celé je to jedno SVG — škáluje se, váží pár kB, v tmavém režimu se přebarví samo a do karty jde místo <Image>. Barva se přepíná přes `tone`: příbuzná témata sdílí barvu, jiný obor dostane jinou."
         >
           <Row label="karty modulů" className="block">
             <div className="grid max-w-xl gap-8">
@@ -1623,11 +1638,16 @@ function UiKitContent() {
             </div>
           </Row>
 
-          <Row label="samotný cover" className="block">
-            <div className="grid max-w-xl gap-4">
-              <MathCover className="rounded-md" />
-              <AiCover tone="green" className="rounded-md" />
-              <GitCover tone="blue" className="rounded-md" />
+          <Row label="motivy" className="block">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {COVER_MOTIF_ITEMS.map(({ name, Cover, tone }) => (
+                <figure key={name} className="m-0 flex flex-col gap-1.5">
+                  <Cover tone={tone} className="rounded-md" />
+                  <figcaption className="text-muted-foreground font-mono text-[11px]">
+                    {`<${name} tone="${tone}" />`}
+                  </figcaption>
+                </figure>
+              ))}
             </div>
           </Row>
 

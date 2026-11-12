@@ -3,404 +3,393 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Ručně kreslené covery pro karty modulů.
+ * Covery pro karty modulů.
  *
- * Proč SVG a ne bitmapa: váží pár kB, jsou ostré v jakékoli šířce a barvy
- * berou přímo z tokenů v `globals.css`, takže se v tmavém režimu přebarví
- * samy a cover nikdy nevypadá jako cizí obrázek nalepený na kartu.
+ * Stejný jazyk jako horní plocha onboardingu: světle tónovaná plocha, dva
+ * dekorativní kruhy a uprostřed blob v plné barvě tónu. V blobu ale místo
+ * ikony sedí malé schéma — graf funkce, sloupce, síť, větve — podle kterého
+ * se modul pozná na první pohled.
  *
- * Recept série je plochý, ne gradientový: jedna plná značková barva, bílá
- * linková kresba a jeden teplý akcent. Nový motiv kresli dovnitř
- * <CoverFrame> stejnými tahy, ať to zůstane jedna rodina.
+ * Proč SVG a ne bitmapa: váží pár kB, škáluje se celé najednou (blob roste
+ * s kartou) a barvy berou přímo z tokenů v `globals.css`, takže se v tmavém
+ * režimu přebarví samy.
  *
- * Tón nese téma: příbuzné kurzy sdílí podklad, jiný obor dostane jiný.
+ * Tón nese téma: příbuzné kurzy sdílí barvu, jiný obor dostane jinou.
  * Zavedeno — matematika a exaktní obory `purple`, AI a data `green`,
  * vývoj a nástroje `blue`. `rose` a `orange` zbývají na další rodiny.
+ *
+ * Nový motiv kresli do <CoverFrame> jako schéma v mřížce ±32 kolem středu
+ * blobu, stejnými tahy — návod je v `module-covers.md`.
  */
 
 /** Poměr sedí s <CardImage> (590×226 z Figmy), takže cover nikde neuskočí. */
-const VIEW_BOX = "0 0 590 226"
-
-const STROKE = "rgba(255,255,255,0.92)"
-const STROKE_SOFT = "rgba(255,255,255,0.5)"
-
-/** Síla tahů. Kresba je záměrně tučná, aby držela i v šířce karty. */
-const W_MAIN = 3.5
-const W_SOFT = 2.25
-const W_ACCENT = 4.5
+const WIDTH = 590
+const HEIGHT = 226
 
 /**
- * Barevné tóny coverů. Podklad i akcent jdou přes Tailwind třídy nad tokeny
- * (`--gradient-r`, `--primary`, …) — žádné natvrdo zapsané hexy. Akcent se
- * v kresbě bere jako `currentColor`, proto je to `text-*`.
+ * Tóny coverů. Každý jen nastaví `--cover-tone`, ze kterého berou barvu
+ * plocha, kruhy i blob — stejné tokeny jako tóny onboardingu.
  */
 const COVER_TONES = {
-  purple: { bg: "fill-gradient-r", accent: "text-brand-accent" },
-  rose: { bg: "fill-gradient-l", accent: "text-warning" },
-  green: { bg: "fill-primary", accent: "text-warning" },
-  blue: { bg: "fill-tip", accent: "text-brand-accent" },
-  orange: { bg: "fill-brand-accent", accent: "text-tip" },
+  purple: "[--cover-tone:var(--gradient-r)]",
+  rose: "[--cover-tone:var(--gradient-l)]",
+  green: "[--cover-tone:var(--primary)]",
+  blue: "[--cover-tone:var(--tip)]",
+  orange: "[--cover-tone:var(--brand-accent)]",
 } as const
 
 type CoverTone = keyof typeof COVER_TONES
 
 const DEFAULT_TONE: CoverTone = "purple"
 
+/** Hrana čtverce, do kterého je blob vepsaný — ~76 % výšky plátna. */
+const BLOB_SIZE = 172
+
 /**
- * Třídy tónu. Motivy si sahají po `bg` i mimo podklad — uzly a commity se jím
- * vyplňují, aby byly neprůhledné a linka pod nimi neprosvítala.
+ * Poloměry rohů blobu v podílech hrany, [vodorovný, svislý] v pořadí
+ * TL, TR, BR, BL. Přepis `rounded-[62%_38%_51%_49%/44%_58%_42%_56%]`
+ * z OnboardingIcon, ať má cover stejný tvar jako dlaždice v onboardingu.
  */
-function coverTone(tone: CoverTone = DEFAULT_TONE) {
-  return COVER_TONES[tone]
+const BLOB_RADII = {
+  tl: [0.62, 0.44],
+  tr: [0.38, 0.58],
+  br: [0.51, 0.42],
+  bl: [0.49, 0.56],
+} as const
+
+/** Obrys blobu se středem v počátku — čtyři eliptické oblouky po směru hodin. */
+function blobPath(size: number) {
+  const h = size / 2
+  const n = (v: number) => Math.round(v * 100) / 100
+  const { tl, tr, br, bl } = BLOB_RADII
+  const arc = (rx: number, ry: number, x: number, y: number) =>
+    `A${n(rx * size)} ${n(ry * size)} 0 0 1 ${n(x)} ${n(y)}`
+
+  return [
+    `M${n(tl[0] * size - h)} ${-h}`,
+    arc(tr[0], tr[1], h, tr[1] * size - h),
+    arc(br[0], br[1], bl[0] * size - h, h),
+    arc(bl[0], bl[1], -h, tl[1] * size - h),
+    arc(tl[0], tl[1], tl[0] * size - h, -h),
+    "Z",
+  ].join("")
 }
+
+const BLOB_PATH = blobPath(BLOB_SIZE)
+
+const STROKE = "#fff"
+const STROKE_SOFT = "rgba(255,255,255,0.55)"
+
+/**
+ * Síla tahů schématu v blobu. Kresba je drobná, takže tahy jsou tučné jako
+ * u ikon — při šířce karty ~350 px musí pořád držet.
+ */
+const W_MAIN = 5
+const W_SOFT = 3.5
+
+/** Poloměr uzlu / commitu. */
+const NODE_R = 6
+
+/**
+ * Schéma se kreslí v mřížce ±32 kolem středu blobu (jako ikona 64×64)
+ * a do blobu se jen zvětší, aby zabralo ~54 % jeho hrany — tahy rostou
+ * s ním, takže změna BLOB_SIZE nic nerozbije.
+ */
+const GLYPH_SCALE = (BLOB_SIZE * 0.54) / 64
 
 type CoverProps = Omit<React.ComponentProps<"svg">, "viewBox" | "children"> & {
   tone?: CoverTone
 }
 
-/** Plochý podklad série. Akcent visí na `color`, kresba si ho bere přes currentColor. */
+/**
+ * Plocha série: podklad karty + 12 % tónu, měkký kruh vlevo dole, obrys
+ * vpravo nahoře a blob se stínem. `children` je schéma v souřadnicích
+ * kolem středu blobu (počátek = střed, y roste dolů).
+ */
 function CoverFrame({
-  tone,
+  tone = DEFAULT_TONE,
   className,
   children,
   ...props
 }: CoverProps & { children: React.ReactNode }) {
-  const { bg, accent } = coverTone(tone)
+  // useId vrací i znaky, které v `url(#…)` nefungují — nechat jen bezpečné.
+  const shadowId = `cover-shadow-${React.useId().replace(/[^\w-]/g, "")}`
 
   return (
     <svg
-      viewBox={VIEW_BOX}
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="xMidYMid slice"
       role="presentation"
       aria-hidden
-      className={cn("block h-full w-full", accent, className)}
+      className={cn("block h-full w-full", COVER_TONES[tone], className)}
       {...props}
     >
-      <rect width="590" height="226" className={bg} />
-      {children}
+      <defs>
+        {/* shadow-md z OnboardingIcon, přepočítaný na velikost blobu */}
+        <filter id={shadowId} x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="8" stdDeviation="8" floodOpacity="0.14" />
+        </filter>
+      </defs>
+
+      {/* plocha — 12 % tónu přes podklad karty, ať neprosvítá bg-muted */}
+      <rect width={WIDTH} height={HEIGHT} className="fill-card" />
+      <rect
+        width={WIDTH}
+        height={HEIGHT}
+        className="fill-(--cover-tone)"
+        fillOpacity={0.12}
+      />
+
+      {/* dekorativní kruhy, rozmístěné jako v OnboardingMedia */}
+      <circle
+        cx="81"
+        cy="194"
+        r="145"
+        className="fill-(--cover-tone)"
+        fillOpacity={0.12}
+      />
+      <circle
+        cx="509"
+        cy="65"
+        r="161"
+        fill="none"
+        className="stroke-(--cover-tone)"
+        strokeOpacity={0.25}
+        strokeWidth={3}
+      />
+
+      <g transform={`translate(${WIDTH / 2} ${HEIGHT / 2})`}>
+        <path
+          d={BLOB_PATH}
+          className="fill-(--cover-tone)"
+          filter={`url(#${shadowId})`}
+        />
+        <g
+          transform={`scale(${GLYPH_SCALE})`}
+          fill="none"
+          stroke={STROKE}
+          strokeWidth={W_MAIN}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {children}
+        </g>
+      </g>
     </svg>
   )
 }
 
-/** Drobné odlesky, které vyplní prázdná místa kompozice. */
-function CoverDust({ points }: { points: [number, number, number][] }) {
-  return (
-    <g fill="#fff" fillOpacity="0.35">
-      {points.map(([x, y, r]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r={r} />
-      ))}
-    </g>
+/**
+ * Uzel / commit. Běžný má výplň v barvě blobu, aby pod ním neprosvítala
+ * linka; zvýrazněný (`lit`) je plně bílý.
+ */
+function CoverNode({
+  x,
+  y,
+  r = NODE_R,
+  lit = false,
+}: {
+  x: number
+  y: number
+  r?: number
+  lit?: boolean
+}) {
+  return lit ? (
+    <circle cx={x} cy={y} r={r} fill={STROKE} />
+  ) : (
+    <circle cx={x} cy={y} r={r} className="fill-(--cover-tone)" />
   )
 }
 
 /**
- * Matematika — kruh s vepsaným trojúhelníkem, symboly a graf funkce
- * s odečtem na osách.
+ * Matematika — graf funkce v soustavě souřadnic s odečtem jednoho bodu.
  */
 function MathCover(props: CoverProps) {
   return (
     <CoverFrame {...props}>
-      <g
-        fill="none"
-        stroke={STROKE}
-        strokeWidth={W_MAIN}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* geometrie */}
-        <circle cx="132" cy="112" r="52" />
-        <path d="M132 60 176 138H88Z" />
-        <path
-          d="M132 112h52"
-          stroke={STROKE_SOFT}
-          strokeWidth={W_SOFT}
-          strokeDasharray="6 8"
-        />
-
-        {/* soustava souřadnic */}
-        <path d="M330 40v148h216" />
-        <path d="M323 53l7-13 7 13M533 181l13 7-13 7" />
-        <g stroke={STROKE_SOFT} strokeWidth={W_SOFT}>
-          <path d="M368 183v10M406 183v10M444 183v10M482 183v10M520 183v10" />
-          <path d="M325 152h10M325 116h10M325 80h10" />
-        </g>
-
-        {/* graf funkce s vyznačeným bodem */}
-        <path
-          d="M344 176c34 0 58-14 76-40s34-64 76-84"
-          stroke="currentColor"
-          strokeWidth={W_ACCENT}
-        />
-        <path
-          d="M420 136v52M420 136h-90"
-          stroke={STROKE_SOFT}
-          strokeWidth={W_SOFT}
-          strokeDasharray="5 7"
-        />
-      </g>
-
-      {/* body na křivce */}
-      <g fill="currentColor" stroke={STROKE} strokeWidth={W_MAIN}>
-        <circle cx="420" cy="136" r="7" />
-        <circle cx="496" cy="52" r="7" />
-      </g>
-
-      {/* symboly */}
-      <g
-        fill="rgba(255,255,255,0.7)"
-        fontFamily="Georgia, 'Times New Roman', serif"
-        fontStyle="italic"
-      >
-        <text x="206" y="96" fontSize="46">
-          π
-        </text>
-        <text x="196" y="168" fontSize="30">
-          √x
-        </text>
-        <text x="248" y="172" fontSize="34">
-          ∑
-        </text>
-      </g>
-
-      <CoverDust
-        points={[
-          [58, 52, 3],
-          [286, 60, 2.5],
-          [180, 198, 2.5],
-          [566, 128, 3],
-          [64, 180, 2],
-        ]}
+      {/* osy */}
+      <path d="M-30 -32V28H34" stroke={STROKE_SOFT} strokeWidth={W_SOFT} />
+      {/* odečet bodu na osy */}
+      <path
+        d="M4 -6V28M4 -6H-30"
+        stroke={STROKE_SOFT}
+        strokeWidth={W_SOFT}
+        strokeDasharray="1 7"
       />
+      {/* křivka */}
+      <path d="M-22 20C-8 20-2 8 4-6S18-28 32-30" />
+      <CoverNode x={4} y={-6} lit />
+    </CoverFrame>
+  )
+}
+
+/** Sloupce grafu — střed na ose x a výška vršku nad základnou. */
+const STATS_BASE_Y = 28
+const STATS_BARS = [
+  { x: -24, top: 6 },
+  { x: -8, top: -10 },
+  { x: 8, top: 0 },
+  { x: 24, top: -28 },
+]
+const STATS_BAR_W = 11
+
+/**
+ * Statistika a data — sloupcový graf, nejvyšší sloupec zvýrazněný.
+ */
+function StatsCover(props: CoverProps) {
+  const peak = Math.min(...STATS_BARS.map((bar) => bar.top))
+
+  return (
+    <CoverFrame {...props}>
+      <g stroke="none">
+        {STATS_BARS.map((bar) => (
+          <rect
+            key={bar.x}
+            x={bar.x - STATS_BAR_W / 2}
+            y={bar.top}
+            width={STATS_BAR_W}
+            height={STATS_BASE_Y - bar.top}
+            rx="3"
+            fill={bar.top === peak ? STROKE : STROKE_SOFT}
+          />
+        ))}
+      </g>
+      {/* základna */}
+      <path d={`M-34 ${STATS_BASE_Y + 5}H34`} />
     </CoverFrame>
   )
 }
 
 /** Vrstvy neuronové sítě — souřadnice, ze kterých se poskládají hrany i uzly. */
 const NET_LAYERS: { x: number; ys: number[] }[] = [
-  { x: 322, ys: [70, 118, 166] },
-  { x: 424, ys: [48, 96, 144, 192] },
-  { x: 526, ys: [82, 130] },
+  { x: -28, ys: [-16, 16] },
+  { x: 0, ys: [-26, 0, 26] },
+  { x: 28, ys: [-13, 13] },
 ]
 
-/** Index uzlu v každé vrstvě, kterým vede rozsvícená (akcentová) aktivace. */
-const NET_PATH = [1, 2, 1]
+/** Index uzlu v každé vrstvě, kterým vede rozsvícená aktivace. */
+const NET_PATH = [0, 1, 1]
 
 /**
- * AI / strojové učení — čip, prompt jako tři řádky a neuronová síť
- * s jednou prosvícenou cestou.
+ * AI / strojové učení — neuronová síť s jednou prosvícenou cestou.
  */
 function AiCover(props: CoverProps) {
-  const { bg } = coverTone(props.tone)
   const edges = NET_LAYERS.slice(0, -1).flatMap((layer, i) =>
-    layer.ys.flatMap((y1) =>
-      NET_LAYERS[i + 1].ys.map((y2) => ({
+    layer.ys.flatMap((y1, j) =>
+      NET_LAYERS[i + 1].ys.map((y2, k) => ({
         key: `${i}-${y1}-${y2}`,
         x1: layer.x,
         y1,
         x2: NET_LAYERS[i + 1].x,
         y2,
-        lit:
-          y1 === layer.ys[NET_PATH[i]] &&
-          y2 === NET_LAYERS[i + 1].ys[NET_PATH[i + 1]],
+        lit: j === NET_PATH[i] && k === NET_PATH[i + 1],
       }))
     )
   )
 
   return (
     <CoverFrame {...props}>
-      <g
-        fill="none"
-        stroke={STROKE}
-        strokeWidth={W_MAIN}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* čip */}
-        <rect x="62" y="64" width="108" height="108" rx="20" />
-        <rect
-          x="88"
-          y="90"
-          width="56"
-          height="56"
-          rx="12"
-          stroke={STROKE_SOFT}
-          strokeWidth={W_SOFT}
-        />
-        <g stroke={STROKE_SOFT} strokeWidth={W_SOFT}>
-          <path d="M88 64V48M116 64V48M144 64V48M88 172v16M116 172v16M144 172v16" />
-          <path d="M62 90H46M62 118H46M62 146H46M170 90h16M170 118h16M170 146h16" />
-        </g>
-        {/* mini-síť uvnitř čipu, echo velké sítě vpravo */}
-        <path d="M104 106h24M104 106l12 24M128 106l-12 24" strokeWidth={W_SOFT} />
-        <g fill={STROKE} stroke="none">
-          <circle cx="104" cy="106" r="4" />
-          <circle cx="128" cy="106" r="4" />
-          <circle cx="116" cy="130" r="4" />
-        </g>
-
-        {/* prompt → síť */}
-        <g stroke={STROKE_SOFT} strokeWidth={W_SOFT}>
-          <rect x="206" y="76" width="76" height="15" rx="7.5" />
-          <rect x="206" y="104" width="56" height="15" rx="7.5" />
-          <rect x="206" y="132" width="68" height="15" rx="7.5" />
-        </g>
-        <path
-          d="M288 111h20M301 104l8 7-8 7"
-          stroke="currentColor"
-          strokeWidth={W_MAIN}
-        />
-      </g>
-
-      {/* hrany sítě */}
-      <g strokeLinecap="round">
-        {edges.map((edge) => (
+      {/* tlumené hrany vespod, prosvícená cesta navrch */}
+      {[...edges]
+        .sort((a, b) => Number(a.lit) - Number(b.lit))
+        .map((edge) => (
           <line
             key={edge.key}
             x1={edge.x1}
             y1={edge.y1}
             x2={edge.x2}
             y2={edge.y2}
-            stroke={edge.lit ? "currentColor" : STROKE_SOFT}
-            strokeWidth={edge.lit ? W_ACCENT : 1.75}
+            stroke={edge.lit ? STROKE : STROKE_SOFT}
+            strokeWidth={edge.lit ? W_MAIN : W_SOFT - 1}
           />
         ))}
-      </g>
-
-      {/* uzly */}
-      <g stroke={STROKE} strokeWidth={W_MAIN}>
+      <g strokeWidth={W_SOFT}>
         {NET_LAYERS.map((layer, i) =>
-          layer.ys.map((y, j) =>
-            j === NET_PATH[i] ? (
-              <circle
-                key={`${layer.x}-${y}`}
-                cx={layer.x}
-                cy={y}
-                r="10"
-                fill="currentColor"
-              />
-            ) : (
-              <circle
-                key={`${layer.x}-${y}`}
-                cx={layer.x}
-                cy={y}
-                r="10"
-                className={bg}
-              />
-            )
-          )
+          layer.ys.map((y, j) => (
+            <CoverNode
+              key={`${layer.x}-${y}`}
+              x={layer.x}
+              y={y}
+              lit={j === NET_PATH[i]}
+            />
+          ))
         )}
       </g>
-
-      {/* jiskra */}
-      <path
-        d="M188 42l6 14.5L208 63l-14 6.5L188 84l-6-14.5L168 63l14-6.5z"
-        fill="currentColor"
-      />
-
-      <CoverDust
-        points={[
-          [44, 40, 3],
-          [232, 188, 2.5],
-          [300, 44, 2.5],
-          [560, 186, 3],
-          [566, 44, 2],
-        ]}
-      />
     </CoverFrame>
   )
 }
 
-/** Commity na hlavní větvi — pozice na ose x, y drží GIT_MAIN_Y. */
-const GIT_MAIN_Y = 158
-const GIT_MAIN_COMMITS = [84, 176, 300, 428, 520]
-/** Commit, do kterého se odbočka merguje — musí sedět s koncem cesty níž. */
-const GIT_MERGE_X = 428
-/** Commity na odbočené větvi. */
-const GIT_BRANCH_Y = 74
-const GIT_BRANCH_COMMITS = [286, 358]
+/** Dvě dráhy grafu větví — hlavní dole, odbočka nahoře. */
+const GIT_MAIN_Y = 16
+const GIT_BRANCH_Y = -14
+/** Commit, ze kterého odbočka vychází, a commit, do kterého se merguje. */
+const GIT_FORK_X = -30
+const GIT_MERGE_X = 30
 
 /**
- * Git a verzování — graf větví: hlavní linka s commity, odbočka, která se
- * merguje zpátky (akcentem), a jedna nedotažená větev.
+ * Git a verzování — graf větví: odbočka odejde esíčkem z hlavní větve,
+ * má vlastní commit a vrátí se mergem (zvýrazněný). Pod ní běží commit
+ * na hlavní větvi, ať je vidět souběžná práce.
  */
 function GitCover(props: CoverProps) {
-  const { bg } = coverTone(props.tone)
+  const [main, branch] = [GIT_MAIN_Y, GIT_BRANCH_Y]
 
   return (
     <CoverFrame {...props}>
-      <g
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={W_MAIN}
-      >
-        {/* hlavní větev */}
-        <path d="M50 158h496" stroke={STROKE} />
-
-        {/* nedotažená větev dolů */}
-        <path
-          d="M300 158q40 0 40 40h72"
-          stroke={STROKE_SOFT}
-          strokeWidth={W_SOFT}
-          strokeDasharray="10 9"
-        />
-
-        {/* odbočka a merge zpět do hlavní větve (končí v GIT_MERGE_X) */}
-        <path
-          d="M176 158q40 0 40-42t40-42h132q40 0 40 42v42"
-          stroke="currentColor"
-          strokeWidth={W_ACCENT}
-        />
+      <path d={`M-38 ${main}H38`} stroke={STROKE_SOFT} />
+      {/* odbočka a merge zpět — esíčka s vodorovnými tečnami */}
+      <path
+        d={`M${GIT_FORK_X} ${main}C-18 ${main} -22 ${branch} -10 ${branch}H10C22 ${branch} 18 ${main} ${GIT_MERGE_X} ${main}`}
+      />
+      <g strokeWidth={W_SOFT}>
+        <CoverNode x={GIT_FORK_X} y={main} />
+        <CoverNode x={0} y={main} />
+        <CoverNode x={0} y={branch} />
+        <CoverNode x={GIT_MERGE_X} y={main} lit />
       </g>
+    </CoverFrame>
+  )
+}
 
-      {/* commity */}
-      <g stroke={STROKE} strokeWidth={W_MAIN}>
-        {GIT_MAIN_COMMITS.map((x) =>
-          x === GIT_MERGE_X ? (
-            <circle key={x} cx={x} cy={GIT_MAIN_Y} r="11" fill="currentColor" />
-          ) : (
-            <circle key={x} cx={x} cy={GIT_MAIN_Y} r="11" className={bg} />
-          )
-        )}
-        {GIT_BRANCH_COMMITS.map((x) => (
-          <circle key={x} cx={x} cy={GIT_BRANCH_Y} r="11" fill="currentColor" />
-        ))}
-        <circle
-          cx="412"
-          cy="198"
-          r="8"
-          className={bg}
-          stroke={STROKE_SOFT}
-          strokeWidth={W_SOFT}
-        />
-      </g>
+/**
+ * Jiskra — čtyřcípá hvězda se středem `(cx, cy)`, poloměrem `r` a pasem
+ * `0.29 × r`.
+ */
+function sparklePath(cx: number, cy: number, r: number) {
+  const k = Math.round(r * 0.29 * 100) / 100
+  return (
+    `M${cx} ${cy - r}L${cx + k} ${cy - k}L${cx + r} ${cy}L${cx + k} ${cy + k}` +
+    `L${cx} ${cy + r}L${cx - k} ${cy + k}L${cx - r} ${cy}L${cx - k} ${cy - k}Z`
+  )
+}
 
-      {/* štítek nad odbočkou */}
-      <g
-        fill="none"
-        stroke={STROKE_SOFT}
-        strokeWidth={W_SOFT}
-        strokeLinejoin="round"
-      >
-        <path d="M262 22h68l18 18-18 18h-68z" />
-      </g>
-      <g fill="rgba(255,255,255,0.7)">
-        <circle cx="282" cy="40" r="4" />
-        <circle cx="300" cy="40" r="4" />
-        <circle cx="318" cy="40" r="4" />
-      </g>
-
-      <CoverDust
-        points={[
-          [60, 60, 3],
-          [140, 96, 2.5],
-          [500, 96, 2.5],
-          [548, 40, 3],
-          [88, 204, 2],
-        ]}
+/**
+ * Prompt engineering / práce s AI — bublina s promptem a jiskra odpovědi.
+ */
+function PromptCover(props: CoverProps) {
+  return (
+    <CoverFrame {...props}>
+      {/* bublina s ocáskem vlevo dole */}
+      <path d="M-24 -20H14A10 10 0 0 1 24 -10V10A10 10 0 0 1 14 20H-6L-18 31V20H-24A10 10 0 0 1 -34 10V-10A10 10 0 0 1 -24 -20Z" />
+      {/* řádky promptu */}
+      <path d="M-22 -4H12" stroke={STROKE_SOFT} strokeWidth={W_SOFT} />
+      <path d="M-22 7H0" stroke={STROKE_SOFT} strokeWidth={W_SOFT} />
+      {/* odpověď */}
+      <path
+        d={sparklePath(30, -26, 12)}
+        fill={STROKE}
+        strokeWidth={W_SOFT - 1.5}
       />
     </CoverFrame>
   )
 }
 
-export { AiCover, GitCover, MathCover, COVER_TONES, type CoverTone }
+export {
+  AiCover,
+  GitCover,
+  MathCover,
+  PromptCover,
+  StatsCover,
+  COVER_TONES,
+  type CoverTone,
+}
