@@ -11,13 +11,14 @@ import {
   type CreationTab, type CourseStep, type ModuleFormData,
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
-import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
+import { CourseImageField } from '@/components/admin/CourseImageField';
+import { CatalogSelect, Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useCourseAssessments } from '@/hooks/useCourseAssessments';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
-  courseCategoryValues, courseToUpdate, crossSubjectsRule, validateCourseCategories,
+  courseCategoryValues, courseToUpdate, crossSubjectsRule, subjectAllowed, validateCourseCategories,
   moduleCategoryValues, moduleToUpdate, validateModuleCategories,
   type CourseCategoryValues,
 } from '@/lib/course-categories';
@@ -35,7 +36,10 @@ interface CourseSummaryViewProps {
   courseId: number;
 }
 
-// Souhrn kurzu s přehledem modulů
+// Stejný trigger jako u KRAUU / Bloom / průřezových oborů níž
+const CATALOG_TRIGGER_CLASS = 'w-full px-3 py-2 border border-border rounded-lg text-sm text-foreground bg-card data-[size=default]:h-auto';
+
+// Souhrn kurzu s přehledem modulů — od sloučení i popis, obrázek a zařazení kurzu (dřív krok Popis kurzu)
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const { goToCourseTests, goToCourses } = useAdminNavigation();
   const goToStep = useCourseStepNavigation(courseId);
@@ -60,9 +64,21 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     bloomLevelIds: [],
     crossSubjectIds: [],
   });
+  // Zařazení z bývalého kroku Popis kurzu; 0 = „Neurčeno"
+  const [editedCatalog, setEditedCatalog] = useState({
+    courseBlockId: 0,
+    courseTargetId: 0,
+    courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
+  });
   // Chyba uložení se ukazuje u formuláře — `error` přepíná celý pohled na ErrorState.
   const [saveError, setSaveError] = useState('');
-  const { blocks, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects, loading: catalogsLoading } = useCatalogData();
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading,
+  } = useCatalogData();
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   // Úprava modulu (název, perex, číselníky) — AI je naplní, autor je ale musí
   // umět opravit i tady, ne jen v editoru obsahu. `null` = modal zavřený.
@@ -91,6 +107,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         setEditedTitle(courseData.title || '');
         setEditedDescription(courseData.description || '');
         setEditedCategories(courseCategoryValues(courseData));
+        setEditedCatalog({
+          courseBlockId: courseData.courseBlockId ?? 0,
+          courseTargetId: courseData.courseTargetId ?? 0,
+          courseSubjectId: courseData.courseSubjectId ?? 0,
+          courseRequirementId: courseData.courseRequirementId ?? 0,
+          courseEqfLevelId: courseData.courseEqfLevelId ?? 0,
+          courseTypeId: courseData.courseTypeId ?? 0,
+        });
         // Rozbalit všechny moduly
         setExpandedOutlineItems(new Set((courseData.modules || []).map((_, i) => i)));
       } catch (err) {
@@ -230,7 +254,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [savingOnly, setSavingOnly] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
-  const crossRule = crossSubjectsRule(blocks, course?.courseBlockId);
+  const crossRule = crossSubjectsRule(blocks, editedCatalog.courseBlockId);
+  const subjectEnabled = subjectAllowed(blocks, editedCatalog.courseBlockId);
 
   const saveCourseChanges = async () => {
     if (!course) return;
@@ -243,6 +268,13 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     await updateCourse(courseId, courseToUpdate(course, {
       title: editedTitle,
       description: editedDescription,
+      // 0 = „Neurčeno", null hodnotu na backendu vymaže
+      courseBlockId: editedCatalog.courseBlockId || null,
+      courseTargetId: editedCatalog.courseTargetId || null,
+      courseSubjectId: subjectEnabled ? editedCatalog.courseSubjectId || null : null,
+      courseRequirementId: editedCatalog.courseRequirementId || null,
+      courseEqfLevelId: editedCatalog.courseEqfLevelId,
+      courseTypeId: editedCatalog.courseTypeId,
       ...editedCategories,
       crossSubjectIds: editedCategories.crossSubjectIds,
     }));
@@ -449,6 +481,87 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                   placeholder="Zadejte popis kurzu"
                 />
               </div>
+
+              <CourseImageField
+                // Ukládá se hned po vygenerování/odebrání, nezávisle na iložit
+                courseId={courseId}
+                imageUrl={course.imageUrl}
+                onChange={(imageUrl) => setCourse((prev) => (prev ? { ...prev, imageUrl } : prev))}
+                labelClassName="block text-sm font-medium text-foreground mb-1"
+                // Stejné stavy jako úpravy kurzu na backendu (koncept / vygenerovaný / editovaný)
+                locked={!([Status.Draft, Status.Generated, Status.Edited] as Status[]).includes(course.status as Status)}
+              />
+
+              {!catalogsLoading && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Blok</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseBlockId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseBlockId: next }))}
+                      options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Blok"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Cílová skupina</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseTargetId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseTargetId: next }))}
+                      options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Cílová skupina"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Předmět</label>
+                    <CatalogSelect
+                      value={subjectEnabled ? editedCatalog.courseSubjectId : 0}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseSubjectId: next }))}
+                      disabled={!subjectEnabled}
+                      options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Předmět"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň *</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseEqfLevelId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseEqfLevelId: next }))}
+                      options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                      aria-label="EQF úroveň"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu *</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseTypeId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseTypeId: next }))}
+                      options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                      aria-label="Typ kurzu"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Povinnost kurzu</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseRequirementId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseRequirementId: next }))}
+                      options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Povinnost kurzu"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                </div>
+              )}
+
               {!catalogsLoading && (
                 <CourseCategoryFields
                   values={editedCategories}

@@ -8,7 +8,7 @@ import {
   type CourseGenerationProgress,
 } from '@/lib/api-client';
 import { NewCourseImageField, type PendingCourseImage } from '@/components/admin/CourseImageField';
-import { CoursePageHeader, CourseCategoryFields, CourseStepsCard, courseStepLabel } from '@/components/admin';
+import { CoursePageHeader, CourseCategoryFields, CourseStepsCard } from '@/components/admin';
 import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
 import { BackgroundGenerationsBanner, GenerationProgressCard } from '@/components/admin/GenerationProgress';
 import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea, useToast } from '@/components/ui';
@@ -273,14 +273,14 @@ export function CourseAICreateView() {
       }
 
       // Náhledový obrázek — kurz už existuje, takže jeho chyba nesmí zastavit
-      // generování obsahu; obrázek jde nastavit později v Popisu kurzu.
+      // generování obsahu; obrázek jde nastavit později v Souhrnu kurzu.
       if (courseImage.kind === 'upload') {
         try {
           await uploadCourseImage(course.courseId, courseImage.image);
         } catch {
           toast.show({
             variant: 'warning',
-            message: 'Náhledový obrázek se nepodařilo nahrát. Nastavíte ho později v Popisu kurzu.',
+            message: 'Náhledový obrázek se nepodařilo nahrát. Nastavíte ho později v Souhrnu kurzu.',
           });
         }
       } else if (courseImage.kind === 'generate') {
@@ -288,7 +288,7 @@ export function CourseAICreateView() {
         generateCourseImage(course.courseId).catch(() => {
           toast.show({
             variant: 'warning',
-            message: 'Generování náhledového obrázku se nepodařilo spustit. Zkuste to později v Popisu kurzu.',
+            message: 'Generování náhledového obrázku se nepodařilo spustit. Zkuste to později v Souhrnu kurzu.',
           });
         });
       }
@@ -336,19 +336,17 @@ export function CourseAICreateView() {
     <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
       <div className="shrink-0">
         <CoursePageHeader
-          breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
-          title="Popis kurzu"
-          stepLabel={courseStepLabel('description')}
+          breadcrumb="Kurzy / Přehled kurzů / Nový kurz"
+          title="Nový kurz"
           onSave={handleSave}
           showButtons={false}
         />
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
-      {/* Karta „Tvorba kurzu“ — nový kurz zatím nemá ID, další kroky jsou
-          dostupné až po vygenerování (pak se otevřou Podklady) */}
       <CourseStepsCard
-        current="description"
+        // Nový kurz zatím nemá ID — kroky jsou dostupné až po vygenerování (pak se otevřou Podklady)
+        current={null}
         disabledSteps={['content', 'pretest', 'tests', 'summary']}
         className="lg:mt-8 lg:ml-8"
       />
@@ -649,7 +647,7 @@ export function CourseAICreateView() {
                   Přetáhněte soubory sem nebo klikněte pro výběr
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {COURSE_FILE_FORMATS_LABEL} — lze vybrat více souborů najednou
+                  {COURSE_FILE_FORMATS_LABEL}
                 </p>
                 <input
                   ref={fileInputRef}

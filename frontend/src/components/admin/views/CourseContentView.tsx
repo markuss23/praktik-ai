@@ -302,7 +302,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  // Komentáře k souhrnu kurzu patří do kroku „Popis kurzu", ne k modulu
+  // Komentáře k souhrnu kurzu patří do kroku Souhrn, ne k modulu
   const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
   const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isCourseSummaryFeedback(fb) && !fb.isResolved).length;
 
@@ -600,9 +600,9 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
 
   const stepHints = {
-    // Komentáře k popisu kurzu žijí v kroku 1 — upozornit, ať je autor nepřehlédne
+    // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
     ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
-      description: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
+      summary: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
     }),
     content: moduleCountHint(modules.length),
     ...(courseAssessments && {

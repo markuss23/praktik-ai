@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ImageOff, Loader2, Sparkles, Trash2, Upload } from 'lucide-react';
+import { ImageOff, Loader2, Sparkles, Trash2 } from 'lucide-react';
+// import { Upload } from 'lucide-react';
 
 import type { ImageGenerationProgressResponse } from '@/api';
 import { CourseImageCropModal } from '@/components/admin/CourseImageCropModal';
@@ -31,7 +32,8 @@ const GENERATION_TIMEOUT_MS = 5 * 60 * 1000;
 // Náhled je na mobilu přes celou šířku, od sm vedle akcí v šířce w-72.
 const PREVIEW_SIZES = '(min-width: 640px) 288px, 100vw';
 
-const HINT = `Zobrazuje se na kartě kurzu. Ukládá se v poměru 16:9 (${COURSE_IMAGE_WIDTH} × ${COURSE_IMAGE_HEIGHT} px), větší i menší obrázek se ořízne a přizpůsobí. JPG, PNG nebo WebP do 10 MB.`;
+const HINT = `${COURSE_IMAGE_WIDTH} × ${COURSE_IMAGE_HEIGHT} px (16:9)`;
+// S nahráváním z počítače vrátit i typy: `JPG, PNG, WebP · ${COURSE_IMAGE_WIDTH} × ${COURSE_IMAGE_HEIGHT} px (16:9) · max 10 MB`
 
 interface FieldLayoutProps {
   labelClassName?: string;
@@ -257,10 +259,13 @@ export function CourseImageField({ courseId, imageUrl, onChange, labelClassName,
         }
         actions={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={picker.open} disabled={disabled}>
-              <Upload data-icon="inline-start" />
-              Nahrát z počítače
-            </Button>
+            {
+              // Nahrávání vlastního obrázku je vypnuté
+              // <Button type="button" variant="outline" size="sm" onClick={picker.open} disabled={disabled}>
+              //   <Upload data-icon="inline-start" />
+              //   Nahrát z počítače
+              // </Button>
+            }
             <Button
               type="button"
               variant="outline"
@@ -362,10 +367,13 @@ export function NewCourseImageField({ value, onChange, disabled = false, labelCl
         }
         actions={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={picker.open} disabled={disabled}>
-              <Upload data-icon="inline-start" />
-              Nahrát z počítače
-            </Button>
+            {
+              // Nahrávání vlastního obrázku je vypnuté
+              // <Button type="button" variant="outline" size="sm" onClick={picker.open} disabled={disabled}>
+              //   <Upload data-icon="inline-start" />
+              //   Nahrát z počítače
+              // </Button>
+            }
             <Button
               type="button"
               variant={value.kind === 'generate' ? 'secondary' : 'outline'}

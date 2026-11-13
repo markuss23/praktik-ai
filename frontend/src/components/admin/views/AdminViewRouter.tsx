@@ -15,7 +15,6 @@ const CourseTestsView = lazy(() => import('./CourseTestsView'));
 const CourseSummaryView = lazy(() => import('./CourseSummaryView'));
 const CourseAICreateView = lazy(() => import('./CourseAICreateView'));
 const CourseUploadView = lazy(() => import('./CourseUploadView'));
-const CourseEditView = lazy(() => import('./CourseEditView'));
 const ModuleEditView = lazy(() => import('./ModuleEditView'));
 const CoursePreviewView = lazy(() => import('./CoursePreviewView'));
 
@@ -102,23 +101,15 @@ export function AdminViewRouter() {
           </CourseEditorGuard>
         );
 
+      // Popis kurzu je sloučený se Souhrnem
       case 'course-summary':
-        if (!courseId) {
-          return <CoursesListView />;
-        }
-        return (
-          <CourseEditorGuard courseId={courseId}>
-            <CourseSummaryView courseId={courseId} />
-          </CourseEditorGuard>
-        );
-
       case 'course-edit':
         if (!courseId) {
           return <CoursesListView />;
         }
         return (
           <CourseEditorGuard courseId={courseId}>
-            <CourseEditView courseId={courseId} />
+            <CourseSummaryView courseId={courseId} />
           </CourseEditorGuard>
         );
 

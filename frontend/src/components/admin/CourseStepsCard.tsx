@@ -8,17 +8,17 @@ import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { useAdminChrome } from './AdminChromeProvider';
 import { SideTooltip } from './SideTooltip';
 
-export type CourseStep = 'description' | 'content' | 'pretest' | 'tests' | 'summary';
+export type CourseStep = 'content' | 'pretest' | 'tests' | 'summary';
 
+// Popis kurzu je sloučený se Souhrnem
 export const COURSE_STEPS: { key: CourseStep; label: string; hint: string }[] = [
-  { key: 'description', label: 'Popis kurzu', hint: 'Název, zaměření, podklady' },
   { key: 'content', label: 'Podklady', hint: 'Moduly a jejich obsah' },
   { key: 'pretest', label: 'Pretest', hint: 'Vstupní test k modulům' },
   { key: 'tests', label: 'Testy', hint: 'Procvičování a testy k modulům' },
-  { key: 'summary', label: 'Souhrn', hint: 'Kontrola a dokončení' },
+  { key: 'summary', label: 'Souhrn', hint: 'Popis, obrázek a dokončení' },
 ];
 
-// "Krok 3 ze 5"
+// "Krok 3 ze 4"
 export function courseStepLabel(step: CourseStep): string {
   const index = COURSE_STEPS.findIndex((s) => s.key === step);
   return `Krok ${index + 1} ze ${COURSE_STEPS.length}`;
@@ -35,16 +35,15 @@ export function testCountHint(count: number): string {
 
 /** Přechod na krok tvorby kurzu (bez ukládání — to si řeší pohled před voláním). */
 export function useCourseStepNavigation(courseId: number) {
-  const { goToCourseEdit, goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary } = useAdminNavigation();
+  const { goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary } = useAdminNavigation();
   return useCallback(
     (step: CourseStep, moduleId?: number) => {
-      if (step === 'description') goToCourseEdit(courseId);
-      else if (step === 'content') goToCourseContent(courseId, moduleId);
+      if (step === 'content') goToCourseContent(courseId, moduleId);
       else if (step === 'pretest') goToCoursePretest(courseId, moduleId);
       else if (step === 'tests') goToCourseTests(courseId, moduleId);
       else goToCourseSummary(courseId);
     },
-    [courseId, goToCourseEdit, goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary],
+    [courseId, goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary],
   );
 }
 
@@ -66,7 +65,8 @@ function StepCircle({ number, state, pending }: { number: number; state: StepSta
 }
 
 interface CourseStepsCardProps {
-  current: CourseStep;
+  // null = kurz ještě nevznikl (formulář AI tvorby), všechny kroky jsou teprve před námi
+  current: CourseStep | null;
   /** Přechod na jiný krok (uloží a přesměruje). Bez něj kroky nejsou klikací. */
   onNavigate?: (step: CourseStep) => void | Promise<void>;
   /** Kroky, na které zatím nejde přejít (např. nový kurz bez uloženého ID). */
@@ -81,8 +81,8 @@ interface CourseStepsCardProps {
 }
 
 /**
- * Karta „Tvorba kurzu" — svislý krokový průvodce (Popis kurzu → Podklady →
- * Pretest → Testy → Souhrn). Nahrazuje dřívější lištu „Fáze tvorby" i kartu Osnova
+ * Karta „Tvorba kurzu" — svislý krokový průvodce (Podklady → Pretest → Testy →
+ * Souhrn). Nahrazuje dřívější lištu „Fáze tvorby" i kartu Osnova
  * kurzu: přepínání modulů žije pod aktivním krokem. Sbalit ji jde na úzký
  * pruh s čísly kroků (zelená = hotovo, fialová = aktuální, šedá = další).
  */
@@ -185,7 +185,7 @@ export function CourseStepsCard({
             className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
             role="progressbar"
             aria-label="Průběh tvorby kurzu"
-            aria-valuemin={1}
+            aria-valuemin={0}
             aria-valuemax={COURSE_STEPS.length}
             aria-valuenow={currentIndex + 1}
           >
