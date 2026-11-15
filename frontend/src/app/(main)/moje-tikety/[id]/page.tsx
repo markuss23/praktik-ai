@@ -3,18 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import type { TicketMessageItem } from "@/api";
 import { useAuth } from "@/hooks/useAuth";
 import { ROUTES } from "@/lib/constants";
 import {
+  addTicketMessage,
   buildTicketConversation,
   formatTicketCode,
-  listMyTickets,
+  getTicket,
+  listTicketMessages,
   Ticket,
-  TICKET_MESSAGING_UNAVAILABLE,
   TicketCard,
   TicketConversation,
   TicketDeleteModal,
   TicketReplyBox,
+  updateTicketStatus,
 } from "@/components/tickets";
 
 export default function TicketDetailPage() {
@@ -23,6 +26,8 @@ export default function TicketDetailPage() {
   const ticketId = Number(params.id);
   const { user, loading: authLoading, login, isAuthenticated } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [thread, setThread] = useState<TicketMessageItem[]>([]);
+  const [threadError, setThreadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
 
@@ -32,34 +37,66 @@ export default function TicketDetailPage() {
     }
   }, [authLoading, user, login]);
 
-  // Backend nemá GET /module-tickets/{id} — tiket dohledáme v seznamu.
   useEffect(() => {
     if (!isAuthenticated || !Number.isFinite(ticketId)) {
       if (!Number.isFinite(ticketId)) setLoading(false);
       return;
     }
     let cancelled = false;
-    listMyTickets()
-      .then((tickets) => {
-        if (!cancelled) {
-          setTicket(tickets.find((t) => t.ticketId === ticketId) ?? null);
+    // Tiket i vlákno paralelně; když selže jen vlákno, hlavička tiketu zůstane.
+    Promise.allSettled([getTicket(ticketId), listTicketMessages(ticketId)]).then(
+      ([ticketResult, threadResult]) => {
+        if (cancelled) return;
+        setTicket(ticketResult.status === "fulfilled" ? ticketResult.value : null);
+        if (threadResult.status === "fulfilled") {
+          setThread(threadResult.value);
+          setThreadError(null);
+        } else {
+          setThreadError(
+            threadResult.reason instanceof Error
+              ? threadResult.reason.message
+              : "Konverzaci se nepodařilo načíst.",
+          );
         }
-      })
-      .catch(() => {
-        if (!cancelled) setTicket(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        setLoading(false);
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, [isAuthenticated, ticketId]);
 
   const messages = useMemo(
-    () => (ticket ? buildTicketConversation(ticket) : []),
-    [ticket],
+    () => (ticket ? buildTicketConversation(ticket, thread) : []),
+    [ticket, thread],
   );
+
+  const handleSend = async (text: string) => {
+    if (!ticket) return;
+    const created = await addTicketMessage(ticket.ticketId, text);
+    setThread((prev) => [...prev, created]);
+    // Odpověď na vyřešený tiket ho backend vrátí do in_progress.
+    if (ticket.status === "resolved") {
+      setTicket((prev) => (prev ? { ...prev, status: "in_progress" } : prev));
+    }
+  };
+
+  // Uzavřít jde jen vyřešený tiket, tím zakladatel potvrdí, že je hotovo.
+  const handleCloseTicket = async () => {
+    if (!ticket) return;
+    const updated = await updateTicketStatus(ticket.ticketId, "closed");
+    setTicket((prev) => (prev ? { ...updated, courseTitle: prev.courseTitle } : updated));
+  };
+
+  // Do uzavřeného tiketu backend zprávu nepustí (409), vyřešený odpověď znovu otevře.
+  const replyDisabledNotice =
+    ticket?.status === "closed"
+      ? "Tiket je uzavřený, další zprávy do něj už nelze přidat."
+      : undefined;
+  const replyHint =
+    ticket?.status === "resolved"
+      ? "Tiket je vyřešený. Pokud je vše v pořádku, potvrďte uzavření. Když odpovíte, znovu se otevře."
+      : undefined;
 
   return (
     <div className="py-8">
@@ -104,12 +141,20 @@ export default function TicketDetailPage() {
             {/* Konverzace */}
             <h2 className="text-xl font-bold text-foreground mt-8 mb-4">Konverzace</h2>
             <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
-              <TicketConversation messages={messages} />
+              {threadError ? (
+                <p className="text-sm text-destructive">{threadError}</p>
+              ) : (
+                <TicketConversation messages={messages} />
+              )}
             </div>
 
-            {/* Odpověď — vlastník tiketu zatím přes backend komentovat ani
-                uzavírat nemůže, vstupy jsou deaktivované s vysvětlením. */}
-            <TicketReplyBox disabledNotice={TICKET_MESSAGING_UNAVAILABLE} hideResolve />
+            <TicketReplyBox
+              onSend={handleSend}
+              onResolve={ticket.status === "resolved" ? handleCloseTicket : undefined}
+              resolveLabel="Potvrdit vyřešení a uzavřít"
+              disabledNotice={replyDisabledNotice}
+              hint={replyHint}
+            />
           </>
         )}
       </div>

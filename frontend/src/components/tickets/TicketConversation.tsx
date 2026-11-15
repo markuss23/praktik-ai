@@ -2,6 +2,7 @@
 
 import { lazy, memo, Suspense } from "react";
 import { Bot, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { formatMessageTime, TicketMessage } from "./types";
 
 // react-markdown potřebují jen AI bubliny — do hlavního balíku tiketů ho
@@ -26,6 +27,24 @@ function Avatar({ author }: { author: TicketMessage["author"] }) {
   );
 }
 
+// Technické informace přiložené ke zprávě (prohlížeč, rozlišení apod.).
+function MessageDetails({ details }: { details?: string[] }) {
+  if (!details || details.length === 0) return null;
+  return (
+    <div className="mt-2 border-t border-border pt-2 text-[11px] leading-relaxed text-muted-foreground whitespace-normal [overflow-wrap:anywhere]">
+      <p className="font-medium">Technické informace</p>
+      <ul>
+        {details.map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Interní poznámka staffu má čárkovaný okraj, ať se nezamění se zprávou pro studenta.
+const INTERNAL_BUBBLE = "border border-dashed border-warning bg-warning/10";
+
 /**
  * Vlákno zpráv k tiketu. Zprávy uživatele vpravo (fialová bublina),
  * podpora a AI vlevo s avatarem — podle mockupu detailu tiketu.
@@ -44,14 +63,20 @@ export const TicketConversation = memo(function TicketConversation({
             <div key={message.id} className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span>
+                  {message.internal ? "Interní poznámka · " : ""}
                   Vy{message.timestamp ? ` ${formatMessageTime(message.timestamp)}` : ""}
                 </span>
                 <UserRound size={14} />
               </div>
               <div
-                className={`${bubbleMax} rounded-2xl rounded-tr-sm bg-gradient-r/10 px-4 py-2.5 text-sm text-foreground whitespace-pre-wrap break-words`}
+                className={cn(
+                  bubbleMax,
+                  "rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-foreground whitespace-pre-wrap break-words",
+                  message.internal ? INTERNAL_BUBBLE : "bg-gradient-r/10",
+                )}
               >
                 {message.text}
+                <MessageDetails details={message.details} />
               </div>
             </div>
           );
@@ -64,15 +89,17 @@ export const TicketConversation = memo(function TicketConversation({
               {message.authorName && (
                 <span className="text-[11px] text-muted-foreground">
                   {message.authorName}
+                  {message.internal ? " · interní poznámka" : ""}
                   {message.timestamp ? ` · ${formatMessageTime(message.timestamp)}` : ""}
                 </span>
               )}
               <div
-                className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-foreground break-words ${
+                className={cn(
+                  "rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm text-foreground break-words",
                   message.author === "ai"
                     ? "border border-border bg-card"
-                    : "whitespace-pre-wrap bg-muted"
-                }`}
+                    : cn("whitespace-pre-wrap", message.internal ? INTERNAL_BUBBLE : "bg-muted"),
+                )}
               >
                 {message.author === "ai" ? (
                   <Suspense
@@ -81,7 +108,10 @@ export const TicketConversation = memo(function TicketConversation({
                     <ChatMarkdown text={message.text} />
                   </Suspense>
                 ) : (
-                  message.text
+                  <>
+                    {message.text}
+                    <MessageDetails details={message.details} />
+                  </>
                 )}
               </div>
             </div>
