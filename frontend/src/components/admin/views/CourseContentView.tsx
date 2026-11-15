@@ -46,7 +46,6 @@ interface LocalModule {
   moduleId: number;
   title: string;
   perex: string;
-  maxTaskAttempts?: number;
   categories: ModuleCategoryValues;
   isActive?: boolean;
   courseId?: number;
@@ -338,7 +337,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       moduleId: m.moduleId,
       title: m.title,
       perex: m.perex ?? '',
-      maxTaskAttempts: m.maxTaskAttempts,
       // Chybějící KRAUU / Bloom modul zdědí z kurzu (uloží se až se změnou modulu).
       categories: moduleCategoryValues(m, courseData, neuroPrinciples),
       isActive: m.isActive,

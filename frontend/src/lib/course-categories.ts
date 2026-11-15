@@ -147,14 +147,14 @@ export function validateModuleCategories(values: ModuleCategoryValues): string |
 
 /** Kompletní payload pro PUT /modules/{id} — stejně jako u kurzu backend chce vždy všechny vazby. */
 export function moduleToUpdate(
-  module: Pick<Module, 'title' | 'perex' | 'maxTaskAttempts'>,
+  module: Pick<Module, 'title' | 'perex'>,
   categories: ModuleCategoryValues,
   overrides: Partial<ModuleUpdate> = {},
 ): ModuleUpdate {
+  // max_task_attempts backend odstranil (71fe6c8), do payloadu už nepatří.
   return {
     title: module.title,
     perex: module.perex ?? '',
-    maxTaskAttempts: module.maxTaskAttempts,
     ...categories,
     ...overrides,
   };
