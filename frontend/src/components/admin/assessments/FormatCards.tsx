@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import type { AssessmentContext } from '@/api';
 import type { AssessmentFormat, CourseAssessmentConfig } from '@/lib/api-client';
@@ -37,7 +37,26 @@ interface FormatCardsProps {
 
 // Karta pro každý formát kontextu; nepřidaný formát je prázdná karta s tlačítkem Přidat
 export function FormatCards({ formats, context, configs, drafts, errorsFor, open, onOpenChange, onChange, onRemove, onAdd }: FormatCardsProps) {
+  // Sdílené pro tlačítko v hlavičce i v obsahu karty
+  const [addingCode, setAddingCode] = useState<string | null>(null);
+  // Aktuální rozbalení i po await 
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
   const catalog = formats.filter((f) => f.code !== 'pretest' && f.allowedContexts.includes(context));
+
+  const handleAdd = async (code: string) => {
+    setAddingCode(code);
+    try {
+      const added = await onAdd(code);
+      // Po přidání kartu rozbalit, ať jde rovnou nastavovat
+      const current = openRef.current;
+      if (added && !current.includes(code)) onOpenChange([...current, code]);
+    } finally {
+      setAddingCode(null);
+    }
+  };
   // Připojený formát mimo katalog (např. vyřazený) musí jít aspoň odebrat
   const extraCodes = configs.map((c) => c.assessmentTypeCode).filter((code) => !catalog.some((f) => f.code === code));
   const codes = [...catalog.map((f) => f.code), ...extraCodes];
@@ -52,14 +71,16 @@ export function FormatCards({ formats, context, configs, drafts, errorsFor, open
         const config = configs.find((c) => c.assessmentTypeCode === code);
         const draft = config ? drafts[config.courseAssessmentId] : undefined;
         const errors = config ? errorsFor(config) : [];
-        // Nepřidaný formát nemá co přepínat — přepínače jsou vypnuté a disabled
         const setFlags = (patch: Partial<Pick<FormatDraft, 'isRequired' | 'isEnabled'>>) => {
           if (config && draft) onChange(config, { ...draft, ...patch });
         };
-        // Připojený formát bez draftu frontend nastavit neumí — přepínače nemá
-        const showFlags = !config || draft !== undefined;
         return (
-          <AccordionItem key={code} value={code} className="rounded-lg border border-border bg-card shadow-md shadow-black/5">
+          <AccordionItem
+            key={code}
+            value={code}
+            // Nepřidaný formát = prázdný slot
+            className={cn('rounded-lg border', config ? 'border-border bg-card shadow-md shadow-black/5' : 'border-dashed border-border bg-muted/40')}
+          >
             <div className="flex flex-col sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <AccordionTrigger className={TRIGGER_CLASS}>
@@ -69,20 +90,31 @@ export function FormatCards({ formats, context, configs, drafts, errorsFor, open
                   </span>
                 </AccordionTrigger>
               </div>
-              {showFlags && (
+              {/* Přepínače jen u připojeného formátu s draftem, nepřidaný má místo nich přidat */}
+              {config && draft ? (
                 <div className="flex shrink-0 items-center gap-4 pb-3 pl-10 pr-3 sm:py-0 sm:pl-0 sm:pr-4">
-                  <FlagSwitch label="Povinné" formatLabel={name} checked={draft?.isRequired ?? false} disabled={!draft} onChange={(isRequired) => setFlags({ isRequired })} />
-                  <FlagSwitch label="Zapnuté" formatLabel={name} checked={draft?.isEnabled ?? false} disabled={!draft} onChange={(isEnabled) => setFlags({ isEnabled })} />
+                  <FlagSwitch label="Povinné" formatLabel={name} checked={draft.isRequired} onChange={(isRequired) => setFlags({ isRequired })} />
+                  <FlagSwitch label="Zapnuté" formatLabel={name} checked={draft.isEnabled} onChange={(isEnabled) => setFlags({ isEnabled })} />
                 </div>
-              )}
+              ) : !config && !open.includes(code) ? (
+                <div className="shrink-0 pb-3 pl-10 pr-3 sm:py-0 sm:pl-0 sm:pr-4">
+                  <Button variant="outline" size="sm" onClick={() => handleAdd(code)} disabled={addingCode !== null}>
+                    {addingCode === code ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Plus data-icon="inline-start" />}
+                    Přidat
+                    <span className="sr-only"> — {name}</span>
+                  </Button>
+                </div>
+              ) : null}
             </div>
             <AccordionContent className="pb-0">
-              <div className="border-t border-border">
+              <div className={cn('border-t border-border', !config && 'border-dashed')}>
                 {!config ? (
                   <EmptyFormat
                     description={catalog.find((f) => f.code === code)?.description ?? null}
                     context={context}
-                    onAdd={() => onAdd(code)}
+                    adding={addingCode === code}
+                    disabled={addingCode !== null}
+                    onAdd={() => handleAdd(code)}
                   />
                 ) : draft ? (
                   <FormatConfigCard
@@ -109,16 +141,15 @@ export function FormatCards({ formats, context, configs, drafts, errorsFor, open
   );
 }
 
-function FlagSwitch({ label, formatLabel, checked, disabled, onChange }: {
+function FlagSwitch({ label, formatLabel, checked, onChange }: {
   label: string;
   formatLabel: string;
   checked: boolean;
-  disabled: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className={cn('inline-flex items-center gap-2 text-sm', disabled ? 'text-muted-foreground' : 'text-foreground')}>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    <label className="inline-flex items-center gap-2 text-sm text-foreground">
+      <Switch checked={checked} onCheckedChange={onChange} />
       {label}
       <span className="sr-only"> — {formatLabel}</span>
     </label>
@@ -144,26 +175,17 @@ function FormatBadges({ attached, draft, code, hasErrors }: {
   );
 }
 
-function EmptyFormat({ description, context, onAdd }: {
+function EmptyFormat({ description, context, adding, disabled, onAdd }: {
   description: string | null;
   context: AssessmentContext;
-  onAdd: () => Promise<boolean>;
+  adding: boolean;
+  disabled: boolean;
+  onAdd: () => void;
 }) {
-  const [adding, setAdding] = useState(false);
-
-  const handleAdd = async () => {
-    setAdding(true);
-    try {
-      await onAdd();
-    } finally {
-      setAdding(false);
-    }
-  };
-
   return (
-    <div className="p-3 sm:p-4 space-y-3">
+    <div className="flex flex-col items-start gap-3 p-3 sm:p-4">
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      <Button variant="brand-solid" onClick={handleAdd} disabled={adding}>
+      <Button variant="brand-solid" onClick={onAdd} disabled={disabled}>
         {adding ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Plus data-icon="inline-start" />}
         {ADD_LABELS[context]}
       </Button>

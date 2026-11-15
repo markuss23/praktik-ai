@@ -71,6 +71,11 @@ const MODULE_CONTEXTS = ['practice', 'assessment'] as const;
 type ModuleContext = typeof MODULE_CONTEXTS[number];
 const isModuleContext = (c: AssessmentContext): c is ModuleContext => (MODULE_CONTEXTS as readonly string[]).includes(c);
 
+const MODULE_CONTEXT_DESCRIPTIONS: Record<ModuleContext, string> = {
+  practice: 'Formáty, které student dostane po pretestu. Povinné musí splnit, aby postoupil dál.',
+  assessment: 'Test na konci modulu. Povinné formáty musí student splnit, aby postoupil dál.',
+};
+
 // Uzavřené otázky bez otázek začínají rovnou prázdnou otázkou k vyplnění
 const withStarterQuestion = (code: string, settings: AssessmentFormatSettings): AssessmentFormatSettings =>
   code === 'closed_questions' && (settings.questions ?? []).length === 0
@@ -86,12 +91,11 @@ const withoutBlankQuestions = (code: string, settings: AssessmentFormatSettings)
 // Klíč rozbalených karet — modul (null = závěrečný test) a kontext
 const openFormatsKey = (moduleId: number | null, context: AssessmentContext) => `${moduleId ?? 'final'}:${context}`;
 
-// Stejný vzhled jako záložky Příručka/Procvičování ve schvalování
+const FORMAT_TAB_LIST = 'grid w-full grid-cols-2 gap-1 border border-border p-1 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-fit';
 const FORMAT_TAB = [
-  'flex-none gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium',
-  'text-muted-foreground hover:bg-muted',
-  'group-data-[variant=line]/tabs-list:data-active:bg-gradient-r data-active:text-primary-foreground',
-  'group-data-[variant=line]/tabs-list:data-active:after:opacity-0',
+  'h-auto min-w-0 gap-1.5 rounded-md px-4 py-1.5 sm:min-w-60',
+  'text-muted-foreground hover:bg-card hover:text-foreground',
+  'data-active:bg-gradient-r data-active:text-primary-foreground data-active:shadow-sm',
 ].join(' ');
 
 // Editor kroků Pretest a Testy; společná data i autosave, section řídí render
@@ -555,10 +559,8 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     return (
       <section className="flex flex-col gap-3">
         <div>
-          <h3 className="font-semibold text-foreground">Procvičování a test modulu</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Formáty v procvičování dostane student po pretestu, test na konci modulu. Povinné musí splnit, aby postoupil dál.
-          </p>
+          <h3 className="font-semibold text-foreground">{CONTEXT_LABELS[formatTab]}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{MODULE_CONTEXT_DESCRIPTIONS[formatTab]}</p>
         </div>
         {renderFormatCards(formatTab, moduleFormatConfigs.filter((c) => c.context === formatTab), selectedModule.moduleId)}
       </section>
@@ -569,7 +571,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const showFormatTabs = section === 'tests' && !finalSelected && !!selectedModule && !assessmentsLoading && !assessmentsError;
   const renderFormatTabs = () => (
     <Tabs value={formatTab} onValueChange={(value) => setFormatTab(value as ModuleContext)} className="mt-3 gap-0">
-      <TabsList variant="line" className="gap-2 p-0 group-data-horizontal/tabs:h-auto">
+      <TabsList className={FORMAT_TAB_LIST}>
         {MODULE_CONTEXTS.map((context) => {
           const contextConfigs = moduleFormatConfigs.filter((c) => c.context === context);
           const hasErrors = contextConfigs.some((c) => formatErrors(c).length > 0);
