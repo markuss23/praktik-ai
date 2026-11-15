@@ -10,7 +10,7 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepsCard, StepModuleList,
-  courseStepLabel, moduleCountHint, testCountHint, useCourseStepNavigation, useAdminChrome,
+  COURSE_STEPS, courseStepLabel, moduleCountHint, testCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
@@ -37,7 +37,8 @@ import {
   ArrowUpCircle,
 } from 'lucide-react';
 
-type TestsSection = Extract<CourseStep, 'pretest' | 'tests'>;
+type TestsSection = Extract<CourseStep, 'pretest' | 'tests' | 'final'>;
+const TESTS_SECTIONS: CourseStep[] = ['pretest', 'tests', 'final'];
 
 interface ValidationError {
   /** -1 = závěrečný test kurzu */
@@ -52,7 +53,7 @@ interface ValidationError {
 }
 
 interface CourseTestsViewProps {
-  // 'pretest' = pretest modulů, 'tests' = formáty a závěrečný test
+  // 'pretest' = pretest modulů, 'tests' = formáty modulů, 'final' = závěrečný test kurzu
   section: TestsSection;
   courseId: number;
   initialModuleId?: number;
@@ -61,6 +62,10 @@ interface CourseTestsViewProps {
 // Klíče otisků uloženého stavu — pretest a formát se ukládají jinými endpointy
 const pretestKey = (id: number) => `p:${id}`;
 const formatKey = (id: number) => `f:${id}`;
+
+// Krok, ve kterém se část testů upravuje
+const sectionOf = (config: CourseAssessmentConfig): TestsSection =>
+  config.assessmentTypeCode === 'pretest' ? 'pretest' : config.context === 'course_final' ? 'final' : 'tests';
 
 const CONTEXT_ORDER: AssessmentContext[] = ['pretest', 'practice', 'assessment', 'course_final'];
 const byContext = (a: CourseAssessmentConfig, b: CourseAssessmentConfig) =>
@@ -98,7 +103,7 @@ const FORMAT_TAB = [
   'data-active:bg-gradient-r data-active:text-primary-foreground data-active:shadow-sm',
 ].join(' ');
 
-// Editor kroků Pretest a Testy; společná data i autosave, section řídí render
+// Editor kroků Pretest, Testy a Závěrečný test; společná data i autosave, section řídí render
 export function CourseTestsView({ section, courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
   const toast = useToast();
@@ -177,9 +182,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const [savedSnapshots, setSavedSnapshots] = useState<Record<string, string>>({});
   // Po pokusu o dokončení se chyby ukážou i u neupravených částí
   const [showAllErrors, setShowAllErrors] = useState(false);
-  // Vybraný závěrečný test místo modulu; v kroku Pretest se ignoruje
-  const [finalPicked, setFinalPicked] = useState(false);
-  const finalSelected = section === 'tests' && finalPicked;
+  const finalSelected = section === 'final';
   const [detachTarget, setDetachTarget] = useState<CourseAssessmentConfig | null>(null);
   const [detaching, setDetaching] = useState(false);
   // Záložka zůstává při přepnutí modulu
@@ -233,17 +236,21 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
 
   const isDirty = (key: string, value: unknown) => savedSnapshots[key] !== JSON.stringify(value);
 
-  // Uloží změněné platné části; vrací počet přeskočených neplatných (celkem a z toho pretestů)
-  const saveChanges = async (): Promise<{ skipped: number; skippedPretests: number }> => {
+  // Uloží změněné platné části; vrací počet přeskočených neplatných (celkem a po krocích)
+  const saveChanges = async (): Promise<{ skipped: number; skippedBy: Partial<Record<CourseStep, number>> }> => {
     let skipped = 0;
-    let skippedPretests = 0;
+    const skippedBy: Partial<Record<CourseStep, number>> = {};
+    const skip = (step: TestsSection) => {
+      skipped++;
+      skippedBy[step] = (skippedBy[step] ?? 0) + 1;
+    };
     const saved: Record<string, string> = {};
     try {
       for (const [idText, draft] of Object.entries(pretestDrafts)) {
         const id = Number(idText);
         const snapshot = JSON.stringify(draft);
         if (savedSnapshots[pretestKey(id)] === snapshot) continue;
-        if (pretestErrors(draft).length > 0) { skipped++; skippedPretests++; continue; }
+        if (pretestErrors(draft).length > 0) { skip('pretest'); continue; }
         await updatePretestContent(id, normalizePretest(draft));
         saved[pretestKey(id)] = snapshot;
       }
@@ -252,7 +259,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         if (!draft) continue;
         const snapshot = JSON.stringify(draft);
         if (savedSnapshots[formatKey(config.courseAssessmentId)] === snapshot) continue;
-        if (formatSettingsErrors(config.assessmentTypeCode, draft.settings).length > 0) { skipped++; continue; }
+        if (formatSettingsErrors(config.assessmentTypeCode, draft.settings).length > 0) { skip(sectionOf(config)); continue; }
         await updateCourseAssessment(
           { ...config, isEnabled: draft.isEnabled, isRequired: draft.isRequired },
           normalizeFormatSettings(draft.settings),
@@ -265,7 +272,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     } finally {
       setSavedSnapshots((prev) => ({ ...prev, ...saved }));
     }
-    return { skipped, skippedPretests };
+    return { skipped, skippedBy };
   };
 
   const autosaveValue = useMemo(() => ({ pretestDrafts, formatDrafts }), [pretestDrafts, formatDrafts]);
@@ -282,12 +289,13 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   // Před odchodem z kroku — chyba uložení už je v toastu, odchod nesmí blokovat
   const saveBeforeLeaving = async () => {
     try {
-      const { skipped, skippedPretests } = await saveChanges();
+      const { skipped, skippedBy } = await saveChanges();
       if (skipped > 0) {
-        // Neplatná část z druhého kroku tu není vidět — toast řekne, kde ji doplnit
-        const where = section === 'tests' && skippedPretests > 0
-          ? ' Neúplný pretest doplňte v kroku Pretest.'
-          : section === 'pretest' && skipped > skippedPretests ? ' Neúplné testy doplňte v kroku Testy.' : '';
+        // Neplatná část z jiného kroku tu není vidět — toast řekne, kde ji doplnit
+        const elsewhere = COURSE_STEPS.filter((s) => s.key !== section && (skippedBy[s.key] ?? 0) > 0).map((s) => s.label);
+        const where = elsewhere.length > 0
+          ? ` Najdete je v ${elsewhere.length > 1 ? 'krocích' : 'kroku'} ${elsewhere.join(' a ')}.`
+          : '';
         toast.info(`Neúplné části testů se neuložily. Doplňte je, jinak se změny ztratí.${where}`);
       }
     } catch {
@@ -302,13 +310,12 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
       const moduleIndex = config.moduleId === null ? -1 : modules.findIndex((m) => m.moduleId === config.moduleId);
       if (config.moduleId !== null && moduleIndex < 0) continue;
       const moduleName = moduleIndex >= 0 ? modules[moduleIndex].title : 'Závěrečný test kurzu';
-      const isPretest = config.assessmentTypeCode === 'pretest';
+      const errorSection = sectionOf(config);
       const pretest = pretestDrafts[config.courseAssessmentId];
       const draft = formatDrafts[config.courseAssessmentId];
-      const messages = isPretest
+      const messages = errorSection === 'pretest'
         ? (pretest ? pretestErrors(pretest).map((m) => `Pretest — ${m}`) : [])
         : (draft ? formatFinishErrors(config.assessmentTypeCode, draft.settings).map((m) => `${formatName(config.assessmentTypeCode)} — ${m}`) : []);
-      const errorSection: TestsSection = isPretest ? 'pretest' : 'tests';
       messages.forEach((message) => errors.push({
         moduleIndex, moduleName, message, section: errorSection, context: config.context, code: config.assessmentTypeCode,
       }));
@@ -333,23 +340,21 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     goToCourseSummary(courseId);
   };
 
-  const selectModuleIndex = (index: number) => {
-    setFinalPicked(false);
-    selectModule(index);
-  };
-
   const handleNextModule = async () => {
     await saveBeforeLeaving();
     if (selectedModuleIndex < modules.length - 1) {
       const nextIndex = selectedModuleIndex + 1;
       setSelectedModuleIndex(nextIndex);
-      setFinalPicked(false);
       setExpandedOutlineItems(prev => new Set(prev).add(nextIndex));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleBack = async () => {
+    if (section === 'final') {
+      goToStep('tests', modules[selectedModuleIndex]?.moduleId);
+      return;
+    }
     if (section === 'tests') {
       goToStep('pretest', modules[selectedModuleIndex]?.moduleId);
       return;
@@ -362,21 +367,22 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const handleStepNavigate = async (step: CourseStep) => {
     if (step === section) return;
     setMobileOutlineOpen(false);
-    // Pretest ↔ Testy je stejná instance (AdminViewRouter), ukládá autosave
-    if (step !== 'pretest' && step !== 'tests') await saveBeforeLeaving();
+    // Pretest ↔ Testy ↔ Závěrečný test je stejná instance (AdminViewRouter), ukládá autosave
+    if (!TESTS_SECTIONS.includes(step)) await saveBeforeLeaving();
     goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
-  // Chyba z druhého kroku přepne krok; u formátu otevře jeho záložku a kartu
+  // Chyba z jiného kroku přepne krok; u formátu otevře jeho záložku a kartu
   const showValidationError = (err: ValidationError) => {
-    if (err.moduleIndex < 0) setFinalPicked(true);
-    else selectModuleIndex(err.moduleIndex);
-    if (err.section === 'tests') {
+    if (err.moduleIndex >= 0) selectModule(err.moduleIndex);
+    if (err.section !== 'pretest') {
       if (isModuleContext(err.context)) setFormatTab(err.context);
       const key = openFormatsKey(err.moduleIndex < 0 ? null : modules[err.moduleIndex].moduleId, err.context);
       setOpenFormats((prev) => (prev[key]?.includes(err.code) ? prev : { ...prev, [key]: [...(prev[key] ?? []), err.code] }));
     }
-    if (err.section !== section) goToStep(err.section, modules[err.moduleIndex]?.moduleId);
+    // Závěrečný test nemá modul — v URL zůstane vybraný modul pro návrat do Testů
+    const moduleIndex = err.moduleIndex >= 0 ? err.moduleIndex : selectedModuleIndex;
+    if (err.section !== section) goToStep(err.section, modules[moduleIndex]?.moduleId);
   };
 
   // true = připojeno
@@ -474,30 +480,21 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     }),
     content: moduleCountHint(modules.length),
     tests: testCountHint(moduleFormatConfigs.length),
+    final: finalTestHint(finalConfigs.length),
   };
 
-  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] => [
-    ...modules.map((module, index) => ({
+  // Závěrečný test je samostatný krok bez modulů
+  const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
+    modules.map((module, index) => ({
       id: module.moduleId,
       title: module.title,
-      selected: !finalSelected && index === selectedModuleIndex,
+      selected: index === selectedModuleIndex,
       badge: feedbackCountByModule(module.moduleId),
       onSelect: () => {
-        selectModuleIndex(index);
+        selectModule(index);
         onPicked?.();
       },
-    })),
-    // Závěrečný test jen v kroku Testy
-    ...(section === 'tests' ? [{
-      id: -1,
-      title: 'Závěrečný test kurzu',
-      selected: finalSelected,
-      onSelect: () => {
-        setFinalPicked(true);
-        onPicked?.();
-      },
-    }] : []),
-  ];
+    }));
 
   // Po pokusu o dokončení i chyby, které hlásí až Dokončit (např. žádná otázka)
   const formatErrors = (config: CourseAssessmentConfig): string[] => {
@@ -568,7 +565,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   };
 
   // Záložky v hlavičce panelu (jako Příručka/Procvičování ve schvalování), karty jsou v body
-  const showFormatTabs = section === 'tests' && !finalSelected && !!selectedModule && !assessmentsLoading && !assessmentsError;
+  const showFormatTabs = section === 'tests' && !!selectedModule && !assessmentsLoading && !assessmentsError;
   const renderFormatTabs = () => (
     <Tabs value={formatTab} onValueChange={(value) => setFormatTab(value as ModuleContext)} className="mt-3 gap-0">
       <TabsList className={FORMAT_TAB_LIST}>
@@ -593,7 +590,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     </Tabs>
   );
 
-  const pageTitle = section === 'pretest' ? 'Tvorba pretestu' : 'Tvorba testů';
+  const pageTitle = section === 'pretest' ? 'Tvorba pretestu' : section === 'final' ? 'Tvorba závěrečného testu' : 'Tvorba testů';
   const panelTitle = finalSelected
     ? 'Závěrečný test kurzu'
     : selectedModule
@@ -632,7 +629,8 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
           course={courseData ?? { title: courseTitle }}
           modules={modules}
           assessments={previewAssessments}
-          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
+          // Závěrečný test je na obrazovce kurzu
+          start={finalSelected ? { screen: 'course' } : { screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
           onExit={() => setPreviewOpen(false)}
         />
       ) : (
@@ -690,7 +688,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
         {!focusMode && (
           <CourseStepsCard current={section} onNavigate={handleStepNavigate} hints={stepHints}>
-            <StepModuleList items={stepModuleItems()} />
+            {!finalSelected && <StepModuleList items={stepModuleItems()} />}
           </CourseStepsCard>
         )}
 
@@ -735,7 +733,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
               hints={stepHints}
               onClose={() => setMobileOutlineOpen(false)}
             >
-              <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />
+              {!finalSelected && <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />}
             </CourseStepsCard>
             {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
             <CourseOutlineSidebar
@@ -811,13 +809,15 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
                   <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
                 </Button>
               )}
-              {section === 'pretest' ? (
+              {section !== 'final' ? (
                 <Button
                   variant="default"
-                  onClick={() => handleStepNavigate('tests')}
+                  onClick={() => handleStepNavigate(section === 'pretest' ? 'tests' : 'final')}
                   className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
                 >
-                  <span className="hidden sm:inline">Pokračovat na testy</span>
+                  <span className="hidden sm:inline">
+                    {section === 'pretest' ? 'Pokračovat na testy' : 'Pokračovat na závěrečný test'}
+                  </span>
                   <span className="sm:hidden">Pokračovat</span>
                 </Button>
               ) : (

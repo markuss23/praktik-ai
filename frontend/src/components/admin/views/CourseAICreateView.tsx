@@ -347,7 +347,7 @@ export function CourseAICreateView() {
       <CourseStepsCard
         // Nový kurz zatím nemá ID — kroky jsou dostupné až po vygenerování (pak se otevřou Podklady)
         current={null}
-        disabledSteps={['content', 'pretest', 'tests', 'summary']}
+        disabledSteps={['content', 'pretest', 'tests', 'final', 'summary']}
         className="lg:mt-8 lg:ml-8"
       />
 

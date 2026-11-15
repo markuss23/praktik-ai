@@ -7,7 +7,7 @@ import { reviewFeedbackLabel } from '@/lib/review-feedback';
 import { getCourse, updateCourse, updateModule, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseCategoryFields, ModuleModal,
-  CourseStepsCard, courseStepLabel, moduleCountHint, useCourseStepNavigation, useAdminChrome,
+  CourseStepsCard, courseStepLabel, moduleCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type ModuleFormData,
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
@@ -41,7 +41,7 @@ const CATALOG_TRIGGER_CLASS = 'w-full px-3 py-2 border border-border rounded-lg 
 
 // Souhrn kurzu s přehledem modulů — od sloučení i popis, obrázek a zařazení kurzu (dřív krok Popis kurzu)
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
-  const { goToCourseTests, goToCourses } = useAdminNavigation();
+  const { goToCourseFinal, goToCourses } = useAdminNavigation();
   const goToStep = useCourseStepNavigation(courseId);
   // Testy kurzu (pretest a připojené formáty) pro souhrn
   const courseAssessments = useCourseAssessments(courseId);
@@ -167,7 +167,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   };
 
   const handleBack = () => {
-    goToCourseTests(courseId);
+    goToCourseFinal(courseId);
   };
 
   const openModuleEdit = (module: Module) => {
@@ -325,11 +325,15 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   }
 
   const totalTests = testCount();
-  const stepTests = (courseAssessments ?? []).filter((c) => c.assessmentTypeCode !== 'pretest').length;
+  // Pretest i závěrečný test mají vlastní krok
+  const stepTests = (courseAssessments ?? []).filter((c) => c.assessmentTypeCode !== 'pretest' && c.context !== 'course_final').length;
+  const finalTests = (courseAssessments ?? []).filter((c) => c.context === 'course_final').length;
   const stepHints = {
     content: moduleCountHint(modules.length),
-    // Pretest má vlastní krok
-    ...(courseAssessments && { tests: `${stepTests} ${czechPlural(stepTests, 'test', 'testy', 'testů')} celkem` }),
+    ...(courseAssessments && {
+      tests: `${stepTests} ${czechPlural(stepTests, 'test', 'testy', 'testů')} celkem`,
+      final: finalTestHint(finalTests),
+    }),
   };
 
   // Náhled pro studenta — rozpracovaný název, popis a zařazení kurzu
@@ -676,7 +680,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
             onBack={handleBack}
             onContinue={handleFinish}
             continueLabel={saving ? 'Ukládám...' : 'Dokončit'}
-            backLabel="Zpět k testům"
+            backLabel="Zpět k závěrečnému testu"
             continueDisabled={saving}
           />
         </div>

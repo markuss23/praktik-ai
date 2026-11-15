@@ -11,6 +11,7 @@ export type AdminView =
   | 'course-content'    // Course content editor
   | 'course-pretest'    // Pretest modulů (sdílí CourseTestsView s course-tests)
   | 'course-tests'      // Course test/exam editor
+  | 'course-final'      // Závěrečný test kurzu (sdílí CourseTestsView s course-tests)
   | 'course-summary'    // Course summary/preview
   | 'course-edit'       // Course edit form
   | 'course-upload'     // Upload course files
@@ -132,6 +133,11 @@ export function useAdminNavigation() {
     navigate({ view: 'course-tests', courseId, moduleId });
   }, [navigate]);
 
+  // Závěrečný test kurzu; moduleId jen drží vybraný modul pro návrat do Testů
+  const goToCourseFinal = useCallback((courseId: number, moduleId?: number) => {
+    navigate({ view: 'course-final', courseId, moduleId });
+  }, [navigate]);
+
   /**
    * Navigate to course summary
    */
@@ -169,6 +175,7 @@ export function useAdminNavigation() {
     goToModuleEdit,
     goToCoursePretest,
     goToCourseTests,
+    goToCourseFinal,
     goToCourseSummary,
     goToCoursePreview,
     goBack,

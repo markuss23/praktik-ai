@@ -8,7 +8,7 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
-  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, testCountHint, useCourseStepNavigation, useAdminChrome,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, testCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
@@ -608,6 +608,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     ...(courseAssessments && {
       // Pretest má vlastní krok
       tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId && c.assessmentTypeCode !== 'pretest').length),
+      final: finalTestHint(courseAssessments.filter((c) => c.context === 'course_final').length),
     }),
   };
 

@@ -58,7 +58,7 @@ function CourseEditorGuard({ courseId, children }: { courseId: number; children:
 }
 
 // Pohledy s tlačítkem celá obrazovka
-const FOCUS_MODE_VIEWS: AdminView[] = ['course-edit', 'course-content', 'course-pretest', 'course-tests', 'course-summary'];
+const FOCUS_MODE_VIEWS: AdminView[] = ['course-edit', 'course-content', 'course-pretest', 'course-tests', 'course-final', 'course-summary'];
 
 // Router používá query params + shallow routing (bez reload stránky)
 export function AdminViewRouter() {
@@ -84,9 +84,10 @@ export function AdminViewRouter() {
           </CourseEditorGuard>
         );
 
-      // Stejný key: Pretest ↔ Testy zachová state i neuložené drafty
+      // Stejný key: Pretest ↔ Testy ↔ Závěrečný test zachová state i neuložené drafty
       case 'course-pretest':
       case 'course-tests':
+      case 'course-final':
         if (!courseId) {
           return <CoursesListView />;
         }
@@ -94,7 +95,7 @@ export function AdminViewRouter() {
           <CourseEditorGuard courseId={courseId}>
             <CourseTestsView
               key={`tests-${courseId}`}
-              section={currentView === 'course-pretest' ? 'pretest' : 'tests'}
+              section={currentView === 'course-pretest' ? 'pretest' : currentView === 'course-final' ? 'final' : 'tests'}
               courseId={courseId}
               initialModuleId={moduleId}
             />

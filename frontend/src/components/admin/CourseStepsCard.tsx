@@ -8,20 +8,21 @@ import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { useAdminChrome } from './AdminChromeProvider';
 import { SideTooltip } from './SideTooltip';
 
-export type CourseStep = 'content' | 'pretest' | 'tests' | 'summary';
+export type CourseStep = 'content' | 'pretest' | 'tests' | 'final' | 'summary';
 
 // Popis kurzu je sloučený se Souhrnem
 export const COURSE_STEPS: { key: CourseStep; label: string; hint: string }[] = [
   { key: 'content', label: 'Podklady', hint: 'Moduly a jejich obsah' },
   { key: 'pretest', label: 'Pretest', hint: 'Vstupní test k modulům' },
   { key: 'tests', label: 'Testy', hint: 'Procvičování a testy k modulům' },
+  { key: 'final', label: 'Závěrečný test', hint: 'Test na konci kurzu' },
   { key: 'summary', label: 'Souhrn', hint: 'Popis, obrázek a dokončení' },
 ];
 
-// "Krok 3 ze 4"
 export function courseStepLabel(step: CourseStep): string {
   const index = COURSE_STEPS.findIndex((s) => s.key === step);
-  return `Krok ${index + 1} ze ${COURSE_STEPS.length}`;
+  const total = COURSE_STEPS.length;
+  return `Krok ${index + 1} ${[2, 3, 4, 7].includes(total) ? 'ze' : 'z'} ${total}`;
 }
 
 export function moduleCountHint(count: number): string {
@@ -33,17 +34,23 @@ export function testCountHint(count: number): string {
   return `${count} ${czechPlural(count, 'test', 'testy', 'testů')} v modulu`;
 }
 
+// Počet formátů závěrečného testu
+export function finalTestHint(count: number): string {
+  return `${count} ${czechPlural(count, 'test', 'testy', 'testů')} na konci kurzu`;
+}
+
 /** Přechod na krok tvorby kurzu (bez ukládání — to si řeší pohled před voláním). */
 export function useCourseStepNavigation(courseId: number) {
-  const { goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary } = useAdminNavigation();
+  const { goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseFinal, goToCourseSummary } = useAdminNavigation();
   return useCallback(
     (step: CourseStep, moduleId?: number) => {
       if (step === 'content') goToCourseContent(courseId, moduleId);
       else if (step === 'pretest') goToCoursePretest(courseId, moduleId);
       else if (step === 'tests') goToCourseTests(courseId, moduleId);
+      else if (step === 'final') goToCourseFinal(courseId, moduleId);
       else goToCourseSummary(courseId);
     },
-    [courseId, goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseSummary],
+    [courseId, goToCourseContent, goToCoursePretest, goToCourseTests, goToCourseFinal, goToCourseSummary],
   );
 }
 
@@ -82,7 +89,7 @@ interface CourseStepsCardProps {
 
 /**
  * Karta „Tvorba kurzu" — svislý krokový průvodce (Podklady → Pretest → Testy →
- * Souhrn). Nahrazuje dřívější lištu „Fáze tvorby" i kartu Osnova
+ * Závěrečný test -> Souhrn). Nahrazuje dřívější lištu Fáze tvorby i kartu Osnova
  * kurzu: přepínání modulů žije pod aktivním krokem. Sbalit ji jde na úzký
  * pruh s čísly kroků (zelená = hotovo, fialová = aktuální, šedá = další).
  */
