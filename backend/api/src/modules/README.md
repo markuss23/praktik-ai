@@ -15,6 +15,7 @@ Kurz, jeho stavy a editovatelnost popisuje [`courses`](../courses/README.md). Le
 | Bloomovy úrovně | M2M `ModuleBloomLevel`. Aspoň jedna, jen aktivní. |
 | `learn_blocks` | Aktivní learn bloky modulu (relace filtruje `is_active`). V praxi max. jeden. |
 | Podcast | `podcast_path` (WAV v SeaweedFS) a `podcast_transcript` (`[{speaker, text}]`). Generuje ho AI na vyžádání lektora, viz [`agents`](../agents/README.md). `null` = modul podcast nemá. |
+| Obrázek | `image_path` (soubor v SeaweedFS). Generuje ho AI na vyžádání lektora, viz [`agents`](../agents/README.md). `null` = modul obrázek nemá. |
 | Myšlenková mapa | `mindmap` (JSONB strom `{root, branches: [{label, children}]}`) a odvozené `mindmap_mermaid` (text pro mermaid `mindmap`, skládá `to_mermaid` při odpovědi). Generuje ji AI na vyžádání lektora, viz [`agents`](../agents/README.md). Přes API ji nejde upravit, jen přegenerovat. `null` = modul ji nemá. |
 | `is_active` | Soft delete. |
 
@@ -26,7 +27,7 @@ Všechny endpointy vyžadují přihlášení. Zápisy vyžadují roli aspoň `le
 | --- | --- | --- | --- | --- |
 | Seznam modulů | jen viditelné kurzy, jen aktivní | vše, i neaktivní (`include_inactive`) | vše | vše |
 | Detail modulu | jen viditelný kurz, jen aktivní | ano, i smazaný | ano, i smazaný | ano, i smazaný |
-| Stáhnout podcast | jen viditelný kurz, jen aktivní | ano | ano | ano |
+| Stáhnout podcast, obrázek | jen viditelný kurz, jen aktivní | ano | ano | ano |
 | Vytvořit modul | ne | ano, v editovatelném stavu | ne | ano, v editovatelném stavu |
 | Upravit modul | ne | ano, v editovatelném stavu | ne | ano, v editovatelném stavu |
 | Smazat modul | ne | ano, v editovatelném stavu | ne | ano, v editovatelném stavu |
@@ -48,6 +49,7 @@ Všechny endpointy vyžadují přihlášení. Zápisy vyžadují roli aspoň `le
 - `text_search` hledá v `title` (`ILIKE`).
 - Modul jde smazat přímo (`DELETE /modules/{id}`) nebo kaskádou se smazáním kurzu (`Course._soft_delete_cascade`). `Module.soft_delete` deaktivuje learn blok (i jeho záznamy mentora), vazby na číselníky a testy modulu (`CourseAssessment`). Sessions studentů zůstávají jako historie, feedbacky taky.
 - `GET /modules/{id}/podcast` vrátí WAV jako přílohu `<název modulu>.wav` (`attachment_response`). Viditelnost stejná jako u detailu, jen smazaný modul nevrátí nikomu. Bez podcastu 404. Přepis je v detailu modulu (`podcast_transcript`), API ho nemění, přepíše ho jen nové generování.
+- `GET /modules/{id}/image` vrátí obrázek inline (MIME podle přípony) s `Content-Security-Policy: sandbox`, protože model může vrátit SVG. Viditelnost stejná jako u podcastu. Bez obrázku 404.
 - Detail modulu vrací learn blok celý. Kontrola viditelnosti kurzu je proto nutná i pro studenty.
 - AI generátor kurzu zakládá moduly sám (`agents/course_generator/nodes/save_to_db.py`), včetně learn bloku a pretestu. Bez platných KRAUU/Bloom kódů převezme vazby kurzu.
 

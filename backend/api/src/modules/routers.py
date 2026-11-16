@@ -7,6 +7,7 @@ from api.src.modules.controllers import (
     update_module,
     delete_module,
     get_module_podcast,
+    get_module_image,
 )
 from api.src.modules.schemas import Module, ModuleCreate, ModuleUpdate
 from api.src.common.annotations import (
@@ -70,6 +71,14 @@ async def endp_get_module_podcast(
 ) -> Response:
     """Podcast modulu ke stažení (`<název modulu>.wav`). 404, když modul podcast nemá."""
     return get_module_podcast(db, module_id, user)
+
+
+@router.get("/{module_id}/image", operation_id="get_module_image")
+async def endp_get_module_image(
+    module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> Response:
+    """Vygenerovaný obrázek modulu. 404, když modul obrázek nemá."""
+    return get_module_image(db, module_id, user)
 
 
 @router.put("/{module_id}", operation_id="update_module", dependencies=[require_role("lector")])

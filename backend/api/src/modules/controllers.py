@@ -1,3 +1,4 @@
+import mimetypes
 from collections.abc import Sequence
 from fastapi import HTTPException, Response
 from sqlalchemy import Select, select
@@ -204,6 +205,22 @@ def get_module_podcast(db: Session, module_id: int, user: models.User) -> Respon
         raise HTTPException(status_code=404, detail="Modul nemá podcast")
     return attachment_response(
         seaweedfs.download_file(module.podcast_path), f"{module.title}.wav"
+    )
+
+
+def get_module_image(db: Session, module_id: int, user: models.User) -> Response:
+    """Vrátí vygenerovaný obrázek modulu. Vidí ho ten, kdo vidí modul (stejně jako podcast)."""
+    module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
+    if not course_visible_to(db, module.course, user):
+        raise HTTPException(status_code=404, detail="Modul nenalezen")
+    if not module.image_path:
+        raise HTTPException(status_code=404, detail="Modul nemá obrázek")
+    media_type = mimetypes.guess_type(module.image_path)[0] or "application/octet-stream"
+    return Response(
+        seaweedfs.download_file(module.image_path),
+        media_type=media_type,
+        # Image model může vrátit SVG — bez sandboxu by v něm běžel skript na naší doméně
+        headers={"Content-Security-Policy": "sandbox"},
     )
 
 
