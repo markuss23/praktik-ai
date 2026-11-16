@@ -81,6 +81,20 @@ export function socraticTurnsToPass(s: AssessmentFormatSettings): number | null 
   return Math.max(0, Math.ceil((passElo - startElo) / maxStep));
 }
 
+// Nastavení, se kterým formát nejde splnit ani samými nejlepšími odpověďmi
+export function unpassableErrors(code: string, s: AssessmentFormatSettings): string[] {
+  if (code !== 'socratic_dialog_ai') return [];
+  const turnsToPass = socraticTurnsToPass(s);
+  if (turnsToPass === null) return [];
+  if (turnsToPass > 10) {
+    return ['S tímto elo nejde dialog splnit ani za 10 kol — zvyšte max. změnu elo za kolo nebo snižte elo ke splnění'];
+  }
+  if (isWholeInRange(s.maxTurns, 2, 10) && s.maxTurns < turnsToPass) {
+    return [`Největší počet kol musí být aspoň ${turnsToPass}, jinak dialog nejde splnit`];
+  }
+  return [];
+}
+
 /**
  * Chyby nastavení formátu, kvůli kterým ho backend odmítne. Prázdné pole je taky cyhba
  */
@@ -95,13 +109,9 @@ export function formatSettingsErrors(code: string, s: AssessmentFormatSettings):
   if (code === 'socratic_dialog_ai') {
     const min = s.minTurns;
     const max = s.maxTurns;
-    const turnsToPass = socraticTurnsToPass(s);
     if (!isWholeInRange(min, 1, 10)) errors.push('Nejmenší počet kol musí být 1–10');
     if (!isWholeInRange(max, 2, 10)) errors.push('Největší počet kol musí být 2–10');
-    else if (turnsToPass !== null && turnsToPass <= 10 && max < turnsToPass) errors.push(`Největší počet kol musí být aspoň ${turnsToPass}, jinak dialog nejde splnit`);
-    if (turnsToPass !== null && turnsToPass > 10) {
-      errors.push('S tímto elo nejde dialog splnit ani za 10 kol — zvyšte max. změnu elo za kolo nebo snižte elo ke splnění');
-    }
+    errors.push(...unpassableErrors(code, s));
     if (min !== undefined && max !== undefined && min > max) errors.push('Nejmenší počet kol nesmí být větší než největší');
     errors.push(...socraticEloErrors(s));
   } else {

@@ -29,7 +29,7 @@ import type { AssessmentContents } from '@/hooks/useCourseAssessments';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
 import {
-  emptyClosedQuestion, emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors,
+  emptyClosedQuestion, emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors, unpassableErrors,
 } from '@/lib/assessment-validation';
 import { isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
 import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
@@ -501,7 +501,10 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
     const draft = formatDrafts[config.courseAssessmentId];
     if (!draft) return [];
     if (showAllErrors) return formatFinishErrors(config.assessmentTypeCode, draft.settings);
-    return isDirty(formatKey(config.courseAssessmentId), draft) ? formatSettingsErrors(config.assessmentTypeCode, draft.settings) : [];
+    // Nesplnitelné nastavení hlásit hned, i když je už uložené a lektor ho nezměnil
+    return isDirty(formatKey(config.courseAssessmentId), draft)
+      ? formatSettingsErrors(config.assessmentTypeCode, draft.settings)
+      : unpassableErrors(config.assessmentTypeCode, draft.settings);
   };
 
   // Karty všech formátů kontextu (moduleId null = závěrečný test)

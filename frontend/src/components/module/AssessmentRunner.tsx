@@ -1,206 +1,44 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import type { SessionStartResponse } from '@/api';
-import {
-  getCurrentAssessmentSession,
-  startAssessmentSession,
-  submitAssessmentAnswer,
-  type AssessmentTarget,
-} from '@/lib/api-client';
-import { readApiErrorDetail, readApiErrorStatus } from '@/lib/api-error';
+import { useAssessmentSession, type SessionResult, type SessionTarget } from '@/hooks/useAssessmentSession';
 import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { SocraticDialog } from './SocraticDialog';
 import { TypedAnswerTextarea } from './TypedAnswerTextarea';
 
-export interface SessionResult {
-  /** 0–100 */
-  score: number | null;
-  isPassed: boolean;
-}
-
-interface AnsweredQuestion {
-  question: string;
-  answer: string;
-  isCorrect: boolean;
-  feedback: string | null;
-}
+export type { SessionResult };
 
 interface AssessmentRunnerProps {
-  target: AssessmentTarget & { assessmentTypeCode: string };
+  target: SessionTarget;
   /** Založit session hned po otevření (pretest — bez AI generování); jinak tlačítko. */
   autoStart?: boolean;
   startLabel?: string;
   onFinished: (result: SessionResult | null) => void;
 }
 
-type Phase = 'loading' | 'idle' | 'running' | 'finished';
-
-const targetKey = (t: AssessmentTarget) =>
-  `${t.courseId}:${t.context}:${t.moduleId ?? ''}:${t.assessmentTypeCode ?? ''}`;
-
-// AI formáty generují otázky i desítky sekund. Když student mezitím odejde
-// na jinou záložku a vrátí se, komponenta se namontuje znovu — navážeme na
-// rozběhnutý požadavek, místo abychom založili druhou session.
-const pendingStarts = new Map<string, Promise<SessionStartResponse>>();
-
-function startSession(target: AssessmentTarget): Promise<SessionStartResponse> {
-  const key = targetKey(target);
-  let pending = pendingStarts.get(key);
-  if (!pending) {
-    pending = startAssessmentSession(target).finally(() => pendingStarts.delete(key));
-    pendingStarts.set(key, pending);
-  }
-  return pending;
-}
-
 /** Průchod jedné session testu: otázky chodí po jedné a hodnotí je server. */
 export function AssessmentRunner({ target, autoStart = false, startLabel = 'Spustit', onFinished }: AssessmentRunnerProps) {
-  const isPretest = target.assessmentTypeCode === 'pretest';
-  const [phase, setPhase] = useState<Phase>('loading');
-  const [current, setCurrent] = useState<SessionStartResponse | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answer, setAnswer] = useState('');
-  const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState('');
-  // Odpovědi odeslané v tomhle zobrazení — u dialogu drží souvislost rozhovoru
-  const [answered, setAnswered] = useState<AnsweredQuestion[]>([]);
-  // Špatná odpověď a zbývá pokus — server vrátí stejnou otázku znovu
-  const [retrying, setRetrying] = useState(false);
-  const [attemptsRanOut, setAttemptsRanOut] = useState(false);
-  const [result, setResult] = useState<SessionResult | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Sokratovský dialog je rozhovor, ne série otázek: vlastní chat UI
+  const isDialog = target.assessmentTypeCode === 'socratic_dialog_ai';
+  const session = useAssessmentSession(target, { autoStart, rememberAnswers: isDialog, onFinished });
+  const {
+    isPretest, phase, current, selected, setSelected, answer, setAnswer, answered,
+    retrying, attemptsRanOut, result, starting, submitting, errorMsg, isClosed, canSubmit,
+  } = session;
+  const handleStart = session.start;
+  const handleSubmit = session.submit;
 
-  const showQuestion = (session: SessionStartResponse) => {
-    setCurrent(session);
-    setSelected(null);
-    setAnswer('');
-    setLastSubmittedAnswer('');
-    setRetrying(false);
-    if (!isPretest) setAttemptsRanOut(false);
-    setPhase('running');
-  };
-
-  const handleStart = useCallback(async () => {
-    setStarting(true);
-    setErrorMsg(null);
-    setAnswered([]);
-    setAttemptsRanOut(false);
-    setResult(null);
-    try {
-      showQuestion(await startSession(target));
-    } catch (err) {
-      // 403 = nesplněné povinné testy nižší úrovně nebo vypnutý test
-      setErrorMsg((await readApiErrorDetail(err)) ?? 'Test se nepodařilo spustit. Zkuste to znovu.');
-      setPhase('idle');
-    } finally {
-      setStarting(false);
-    }
-    // targetKey stačí — objekt target se mění s každým renderem rodiče
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetKey(target)]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setPhase('loading');
-    setErrorMsg(null);
-    setAnswered([]);
-    setAttemptsRanOut(false);
-    setResult(null);
-    getCurrentAssessmentSession(target)
-      .then((session) => {
-        if (cancelled) return;
-        if (session) showQuestion(session);
-        else if (autoStart) handleStart();
-        else setPhase('idle');
-      })
-      .catch(async (err) => {
-        if (cancelled) return;
-        setErrorMsg((await readApiErrorDetail(err)) ?? 'Test se nepodařilo načíst. Zkuste to znovu.');
-        setPhase('idle');
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetKey(target)]);
-
-  const isClosed = !!current?.options?.length;
-  const canSubmit = isClosed
-    ? selected !== null
-    : !!answer.trim() && answer.trim() !== lastSubmittedAnswer;
-
-  const handleSubmit = async () => {
-    if (!current || !canSubmit || submitting) return;
-    const options = current.options ?? [];
-    const answerText = isClosed ? options[selected!] : answer.trim();
-    // Uzavřená otázka pretestu = index možnosti, ostatní formáty porovnávají text
-    const payload = isClosed
-      ? (target.assessmentTypeCode === 'pretest' ? String(selected) : options[selected!])
-      : answer;
-
-    setSubmitting(true);
-    setErrorMsg(null);
-    setLastSubmittedAnswer(answerText);
-    try {
-      const resp = await submitAssessmentAnswer(current.sessionId, payload);
-      setAnswered((prev) => [...prev, {
-        question: current.question,
-        answer: answerText,
-        isCorrect: resp.isCorrect,
-        feedback: resp.feedback ?? null,
-      }]);
-
-      if (resp.finished) {
-        const finished = { score: resp.score ?? null, isPassed: !!resp.isPassed };
-        setResult(finished);
-        setPhase('finished');
-        onFinished(finished);
-        return;
-      }
-
-      const next: SessionStartResponse = {
-        sessionId: resp.sessionId,
-        question: resp.question ?? '',
-        options: resp.options ?? null,
-      };
-      const sameQuestion = !resp.isCorrect && next.question === current.question;
-      if (sameQuestion) {
-        // Psanou odpověď student při dalším pokusu jen upravuje (kontrola rychlosti psaní na serveru)
-        setCurrent(next);
-        setSelected(null);
-        setRetrying(true);
-        if (!isPretest) setAttemptsRanOut(false);
-      } else {
-        showQuestion(next);
-        if (!resp.isCorrect) setAttemptsRanOut(true);
-      }
-    } catch (err) {
-      // Pokus se nezapočítal — stejnou odpověď jde odeslat znovu
-      setLastSubmittedAnswer('');
-      // 409 = session mezitím skončila (jiná záložka). Hláška serveru je technická
-      // a k nové session nepatří — načteme aktuální stav a průběh obnoví rodič.
-      if (readApiErrorStatus(err) === 409) {
-        setAnswered([]);
-        setAttemptsRanOut(false);
-        onFinished(null);
-        const session = await getCurrentAssessmentSession(target).catch(() => null);
-        if (session) {
-          showQuestion(session);
-        } else {
-          setErrorMsg('Tento pokus mezitím skončil v jiném okně.');
-          setPhase('idle');
-        }
-        return;
-      }
-      setErrorMsg((await readApiErrorDetail(err)) ?? 'Nepodařilo se vyhodnotit odpověď. Zkuste to znovu.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  if (isDialog) {
+    return (
+      <SocraticDialog
+        session={session}
+        startLabel={startLabel}
+        courseLevel={target.context === 'course_final'}
+      />
+    );
+  }
 
   if (phase === 'loading' || (starting && phase !== 'running')) {
     return (

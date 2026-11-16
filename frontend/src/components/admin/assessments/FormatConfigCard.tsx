@@ -5,7 +5,7 @@ import type { AssessmentFormatSettings } from '@/lib/api-client';
 import { formatName } from '@/lib/assessment-labels';
 import { emptyClosedQuestion, socraticTurnsToPass } from '@/lib/assessment-validation';
 import { Button, Input, Label } from '@/components/ui';
-import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { ClosedQuestionFields } from './ClosedQuestionFields';
 
 export interface FormatDraft {
@@ -59,6 +59,8 @@ export function FormatConfigCard({ id, code, value, onChange, onRemove, errors }
   const questions = s.questions ?? [];
   const fieldId = (name: string) => `format-${id}-${name}`;
   const turnsToPass = code === 'socratic_dialog_ai' ? socraticTurnsToPass(s) : null;
+  // Šipky u "Nejvíce kol" nepustí pod počet kol, za který jde dialog splnit
+  const minMaxTurns = turnsToPass !== null && turnsToPass <= 10 ? Math.max(2, turnsToPass) : 2;
 
   return (
     // Povinné a Zapnuté jsou v hlavičce karty (FormatCards)
@@ -101,7 +103,7 @@ export function FormatConfigCard({ id, code, value, onChange, onRemove, errors }
           {code === 'socratic_dialog_ai' ? (
             <>
               <NumberField id={fieldId('min-turns')} label="Nejméně kol" value={s.minTurns} onChange={(v) => setSettings({ minTurns: v })} min={1} max={10} />
-              <NumberField id={fieldId('max-turns')} label="Nejvíce kol" value={s.maxTurns} onChange={(v) => setSettings({ maxTurns: v })} min={2} max={10} />
+              <NumberField id={fieldId('max-turns')} label="Nejvíce kol" value={s.maxTurns} onChange={(v) => setSettings({ maxTurns: v })} min={minMaxTurns} max={10} />
             </>
           ) : (
             <>
@@ -139,9 +141,6 @@ export function FormatConfigCard({ id, code, value, onChange, onRemove, errors }
           // Víc než 10 kol hlásí validation
           <p className="text-xs text-muted-foreground">
             Student projde nejdřív po {turnsToPass} kolech, a to jen s výbornými odpověďmi.
-            {/* Po nejmenším počtu kol smí AI rozhovor ukončit (KONEC) */}
-            {s.minTurns !== undefined && s.minTurns < turnsToPass &&
-              ` AI může rozhovor ukončit už po ${s.minTurns} ${czechPlural(s.minTurns, 'kole', 'kolech', 'kolech')} — pak student neprojde.`}
           </p>
         )}
 

@@ -23,6 +23,8 @@ interface TypedAnswerTextareaProps {
   placeholder?: string;
   rows?: number;
   minHeight?: number;
+  ariaLabel?: string;
+  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 }
 
 /**
@@ -37,6 +39,8 @@ export function TypedAnswerTextarea({
   placeholder = 'Napište svou odpověď...',
   rows = 8,
   minHeight = 200,
+  ariaLabel,
+  onKeyDown,
 }: TypedAnswerTextareaProps) {
   const noteId = useId();
   // Pokus o kopírování/vložení — ukáže se vysvětlení, proč se nic nestalo.
@@ -91,6 +95,8 @@ export function TypedAnswerTextarea({
         onCut={blockClipboard}
         onDrop={blockClipboard}
         onDragStart={blockClipboard}
+        onKeyDown={onKeyDown}
+        aria-label={ariaLabel}
         aria-describedby={clipboardBlocked ? noteId : undefined}
         placeholder={placeholder}
         rows={rows}

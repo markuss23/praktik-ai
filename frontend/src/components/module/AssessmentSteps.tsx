@@ -16,6 +16,12 @@ interface AssessmentStepsProps {
   onFinished: (result: SessionResult | null) => void;
 }
 
+// Sokratovský dialog je rozhovor, ostatní formáty se "spouští"
+function startLabel(item: AssessmentProgressItem): string {
+  if (item.assessmentTypeCode === 'socratic_dialog_ai') return item.passed ? 'Nový rozhovor' : 'Začít rozhovor';
+  return item.passed ? 'Projít znovu' : 'Spustit';
+}
+
 /**
  * Formáty připojené k jednomu kontextu (procvičování, test modulu, závěrečný
  * test). Každý se spouští jako session na serveru.
@@ -27,7 +33,7 @@ export function AssessmentSteps({ courseId, moduleId, context, items, onFinished
       renderContent={(item) => (
         <AssessmentRunner
           target={{ courseId, context, moduleId, assessmentTypeCode: item.assessmentTypeCode }}
-          startLabel={item.passed ? 'Projít znovu' : 'Spustit'}
+          startLabel={startLabel(item)}
           onFinished={onFinished}
         />
       )}
