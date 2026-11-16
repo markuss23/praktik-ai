@@ -26,12 +26,18 @@ import { useCourseData } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
 import type { AssessmentContents } from '@/hooks/useCourseAssessments';
-import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
 import {
   emptyClosedQuestion, emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors, unpassableErrors,
 } from '@/lib/assessment-validation';
-import { isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
+import {
+  commentsToFixHint,
+  isCourseFinalFeedback,
+  isCourseLevelFeedback,
+  isSummaryStepFeedback,
+  reviewFeedbackLabel,
+} from '@/lib/review-feedback';
 import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
 import {
   ArrowUpCircle,
@@ -146,18 +152,21 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  // Komentáře k souhrnu kurzu patří do kroku Souhrn, ne k modulu
-  const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
-  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isCourseSummaryFeedback(fb) && !fb.isResolved).length;
+  // Komentáře ke kurzu (souhrn, celý kurz) patří do kroku Souhrn, k závěrečnému testu do kroku Závěrečný test
+  const moduleFeedbacks = feedbacks.filter(fb => !isCourseLevelFeedback(fb));
+  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isSummaryStepFeedback(fb) && !fb.isResolved).length;
+  const finalFeedbacks = feedbacks.filter(isCourseFinalFeedback);
+  const unresolvedFinalFeedbacks = finalFeedbacks.filter(fb => !fb.isResolved).length;
 
   const currentModuleFeedbacks = modules[selectedModuleIndex]
     ? moduleFeedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
     : [];
+  const stepFeedbacks = section === 'final' ? finalFeedbacks : currentModuleFeedbacks;
 
   const feedbackCountByModule = (moduleId: number) =>
     moduleFeedbacks.filter(fb => fb.moduleId === moduleId && !fb.isResolved).length;
 
-  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, currentModuleFeedbacks, setCommentsOpen);
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, stepFeedbacks, setCommentsOpen);
 
   const handleResubmit = async () => {
     setResubmitLoading(true);
@@ -476,11 +485,14 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
   const stepHints = {
     // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
     ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
-      summary: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
+      summary: commentsToFixHint(unresolvedSummaryFeedbacks),
     }),
     content: moduleCountHint(modules.length),
     tests: testCountHint(moduleFormatConfigs.length),
-    final: finalTestHint(finalConfigs.length),
+    // Komentáře garanta k závěrečnému testu mají přednost před počtem formátů
+    final: isEdited && unresolvedFinalFeedbacks > 0
+      ? commentsToFixHint(unresolvedFinalFeedbacks)
+      : finalTestHint(finalConfigs.length),
   };
 
   // Závěrečný test je samostatný krok bez modulů
@@ -621,7 +633,7 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
         onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
-        commentsCount={showCommentsPanel ? currentModuleFeedbacks.filter(fb => !fb.isResolved).length : undefined}
+        commentsCount={showCommentsPanel ? stepFeedbacks.filter(fb => !fb.isResolved).length : undefined}
         commentsOpen={commentsOpen}
         headerRef={reviewHeaderRef}
       />
@@ -842,10 +854,14 @@ export function CourseTestsView({ section, courseId, initialModuleId }: CourseTe
             open={commentsOpen}
             onOpenChange={setCommentsOpen}
             anchorRef={reviewHeaderRef}
-            subtitle={modules[selectedModuleIndex] ? `Modul: ${modules[selectedModuleIndex].title}` : undefined}
-            feedbacks={currentModuleFeedbacks}
+            subtitle={
+              section === 'final'
+                ? 'Závěrečný test kurzu'
+                : modules[selectedModuleIndex] ? `Modul: ${modules[selectedModuleIndex].title}` : undefined
+            }
+            feedbacks={stepFeedbacks}
             allFeedbacks={feedbacks}
-            emptyText="K tomuto modulu nejsou žádné komentáře."
+            emptyText={section === 'final' ? 'K závěrečnému testu nejsou žádné komentáře.' : 'K tomuto modulu nejsou žádné komentáře.'}
             contextLabel={(fb) => reviewFeedbackLabel(fb)}
             onReply={replyToReviewFeedback}
             onToggleResolve={toggleReviewFeedback}

@@ -9,14 +9,11 @@ interface ReviewCourseSummaryProps {
   modulesCount: number;
 }
 
-const EMPTY = 'Neurčeno';
+export const EMPTY = 'Neurčeno';
 
-/**
- * První krok schvalování: vše, co kurz popisuje mimo obsah modulů — obrázek,
- * popis, zařazení v číselnících a pedagogické kategorie. Jen pro čtení.
- */
-export function ReviewCourseSummary({ course, modulesCount }: ReviewCourseSummaryProps) {
-  const info: { label: string; value: string }[] = [
+// Údaje kurzu z číselníků; sdílí je souhrn i automatická kontrola v kroku Rozhodnutí
+export function courseInfoRows(course: Course, modulesCount: number): { label: string; value: string }[] {
+  return [
     { label: 'Obtížnost', value: course.difficulty ? DIFFICULTY_LABELS[course.difficulty] : EMPTY },
     { label: 'Délka', value: course.durationMinutes ? `${course.durationMinutes} minut` : EMPTY },
     { label: 'Počet modulů', value: `${modulesCount} ${czechPlural(modulesCount, 'modul', 'moduly', 'modulů')}` },
@@ -31,6 +28,14 @@ export function ReviewCourseSummary({ course, modulesCount }: ReviewCourseSummar
     { label: 'Cílová skupina', value: course.courseTarget?.name ?? EMPTY },
     { label: 'Obor', value: course.courseSubject?.name ?? EMPTY },
   ];
+}
+
+/**
+ * První krok schvalování: vše, co kurz popisuje mimo obsah modulů — obrázek,
+ * popis, zařazení v číselnících a pedagogické kategorie. Jen pro čtení.
+ */
+export function ReviewCourseSummary({ course, modulesCount }: ReviewCourseSummaryProps) {
+  const info = courseInfoRows(course, modulesCount);
 
   const hasCategories =
     (course.krauuCompetences?.length ?? 0) + (course.bloomLevels?.length ?? 0) + (course.crossSubjects?.length ?? 0) > 0;

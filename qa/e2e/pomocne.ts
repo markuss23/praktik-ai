@@ -153,6 +153,6 @@ export async function editorKurzu(page: Page, nazev: string, krok?: RegExp) {
 // Garant otevře kontrolu kurzu ze seznamu Obsah ke schválení.
 export async function kontrolaKurzu(page: Page, nazev: string) {
   await page.goto("/admin/review");
-  await page.getByRole("button", { name: new RegExp(`^Ke kontrole ${nazev} `) }).first().getByRole("button", { name: "Začít kurz" }).click();
-  await expect(page.getByRole("heading", { name: "Osnova kurzu" })).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(`^Ke kontrole ${nazev} `) }).first().getByRole("button", { name: /^Zkontrolovat/ }).click();
+  await expect(page.getByRole("heading", { name: "Kontrola kurzu" })).toBeVisible();
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Course, Module, FeedbackItem, Status } from '@/api';
@@ -14,30 +14,46 @@ import {
   deleteFeedback,
   updateCourseStatus,
   generateCourseEmbeddings,
+  listCourseAssessments,
+  type CourseAssessmentConfig,
 } from '@/lib/api-client';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { REVIEW_COUNT_EVENT } from '@/components/admin/AdminSidebar';
+import { ArrowLeft, ArrowRight, BookOpenText, Check, CheckCircle, Dumbbell, Gavel, Info } from 'lucide-react';
 import {
-  CheckCircle,
-  XCircle,
-  BookOpenText,
-  Dumbbell,
-  Send,
-  ThumbsUp,
-  ThumbsDown,
-  Trash2,
-  CornerDownRight,
-  Check,
-} from 'lucide-react';
-import { PageSpinner, Button, Tabs, TabsList, TabsTrigger, Textarea, CourseCategories, ModuleCategories } from '@/components/ui';
-import { timeAgo, BTN_KEEP_BOX, cn } from '@/lib/utils';
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  ModuleCategories,
+  PageSpinner,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useToast,
+} from '@/components/ui';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { sanitizeHtml } from '@/lib/sanitize-html';
-import { COURSE_SUMMARY_FEEDBACK, isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
+import {
+  COURSE_FINAL_FEEDBACK,
+  COURSE_GENERAL_FEEDBACK,
+  COURSE_SUMMARY_FEEDBACK,
+  isCourseFinalFeedback,
+  isCourseLevelFeedback,
+  isCourseSummaryFeedback,
+  reviewFeedbackLabel,
+} from '@/lib/review-feedback';
 import { ReviewCourseSummary } from '@/components/admin/ReviewCourseSummary';
-import { CommentsDrawer } from '@/components/admin/ReviewComments';
+import { CommentsDrawer, ReviewerCommentComposer, ReviewerCommentList } from '@/components/admin/ReviewComments';
 import { CommentsToggle } from '@/components/admin/CoursePageHeader';
 import { ReviewModuleTests } from '@/components/admin/assessments/ReviewModuleTests';
+import {
+  collectReviewWarnings,
+  ReviewDecisionActions,
+  ReviewDecisionOverview,
+  type ReviewPart,
+} from '@/components/admin/ReviewDecision';
 
 // Plný (ne podtržený) aktivní stav — kitový `line` variant kreslí podtržení
 // a průhledné pozadí, obojí přebíjíme stejným modifikátorem.
@@ -49,7 +65,51 @@ const MODULE_TAB = [
   "[&_svg:not([class*='size-'])]:size-auto",
 ].join(' ');
 
+// Od této šířky jsou komentáře sloupec vedle obsahu (px breakpoint by Tailwind řadil špatně)
+const COMMENTS_INLINE_FROM = '90rem';
+
 type TabType = 'handbook' | 'practice';
+
+// Kroky kontroly: Souhrn -> moduly -> Závěrečný test -> Rozhodnutí
+type StepKey = 'summary' | 'final' | 'decision' | `module:${number}`;
+const moduleKey = (moduleId: number): StepKey => `module:${moduleId}`;
+
+// "Krok 3 ze 7" / "z 5": ze před číslovkou na s, z, š, ž a skupinu souhlásek
+function stepOf(n: number, total: number): string {
+  const lead = total >= 20 ? Math.floor(total / 10) * 10 : total;
+  const ze = [2, 3, 4, 6, 7, 12, 13, 14, 16, 17, 20, 30, 40, 60, 70].includes(lead);
+  return `Krok ${n} ${ze ? 'ze' : 'z'} ${total}`;
+}
+
+// Otevřené části se pamatují pro kolo kontroly; nové odeslání ke schválení mění updatedAt
+const VISITED_KEY = 'reviewVisited';
+const reviewRound = (course: Course) => new Date(course.updatedAt).toISOString();
+
+function readVisited(courseId: number, round: string): Set<string> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`${VISITED_KEY}.${courseId}`) ?? 'null');
+    if (saved?.round === round && Array.isArray(saved.steps)) return new Set(saved.steps);
+  } catch {
+    // bez úložiště se pamatuje jen v rámci zobrazení
+  }
+  return new Set();
+}
+
+function writeVisited(courseId: number, round: string, steps: Set<string>) {
+  try {
+    localStorage.setItem(`${VISITED_KEY}.${courseId}`, JSON.stringify({ round, steps: [...steps] }));
+  } catch {
+    // viz readVisited
+  }
+}
+
+function clearVisited(courseId: number) {
+  try {
+    localStorage.removeItem(`${VISITED_KEY}.${courseId}`);
+  } catch {
+    // viz readVisited
+  }
+}
 
 interface ReviewCourseViewProps {
   courseId: number;
@@ -57,216 +117,214 @@ interface ReviewCourseViewProps {
 
 export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   const router = useRouter();
+  const toast = useToast();
   const { isGuarantor, isSuperAdmin } = useRole();
   const { currentUser } = useCurrentUser();
 
-  // Data state
+  // Data
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModuleIndex, setSelectedModuleIndex] = useState(0);
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [loadingModule, setLoadingModule] = useState(false);
+  const [configs, setConfigs] = useState<CourseAssessmentConfig[] | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Content navigation
+  // Navigace
+  const [step, setStep] = useState<StepKey>('summary');
   const [activeTab, setActiveTab] = useState<TabType>('handbook');
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
+  const [blockIndex, setBlockIndex] = useState(0);
+  const [visited, setVisited] = useState<Set<string>>(new Set());
 
-  // Feedback state
+  // Komentáře
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [newFeedbackText, setNewFeedbackText] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  // Garant zkusil zamítnout kurz bez komentáře — panel ukáže výzvu ho napsat
-  const [rejectNeedsComment, setRejectNeedsComment] = useState(false);
   const [deletingFeedback, setDeletingFeedback] = useState<number | null>(null);
+  // Garant chce vrátit kurz, ale nemá komentář -> výzva nad polem komentáře
+  const [commentPrompt, setCommentPrompt] = useState(false);
 
-  // Krok 1 = souhrn kurzu (popis, zařazení, obrázek), další kroky = moduly.
-  const [showSummary, setShowSummary] = useState(true);
-  const [summaryReview, setSummaryReview] = useState<'approved' | 'rejected' | null>(null);
-
-  // Per-module approval state (local only)
-  const [approvedModules, setApprovedModules] = useState<Set<number>>(new Set());
-  const [rejectedModules, setRejectedModules] = useState<Set<number>>(new Set());
-
-  // Course-level approval state
-  const [approvalLoading, setApprovalLoading] = useState(false);
-  // Po schválení ukážeme krátkou přechodovou animaci a teprve pak naviguju
-  // zpět na seznam — bez tohoto skoku by se UI změnilo skokem.
+  // Po schválení krátká animace, pak návrat na seznam
   const [approvedTransition, setApprovedTransition] = useState(false);
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  // Panel komentářů začíná pod hlavičkou, ať Schválit / Zamítnout zůstanou vidět
+  // Panel komentářů (pod 90rem) začíná pod hlavičkou
   const headerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Reviewers can't approve courses they own — back-end enforces this too,
-  // but the UI must hide approve/reject controls regardless.
-  const isOwnCourse = !!course && course.ownerId === currentUser?.userId;
-  const canApprove = isGuarantor && !isOwnCourse;
-  const canAddFeedback = isGuarantor && !isOwnCourse;
-  const canDeleteFeedback = (authorId: number) =>
-    isSuperAdmin || (isGuarantor && authorId === currentUser?.userId);
-
-  const allModulesApproved = modules.length > 0 && modules.every(m => approvedModules.has(m.moduleId));
-  const allStepsApproved = summaryReview === 'approved' && allModulesApproved;
-  // Souhrn + jeden krok na modul
-  const totalSteps = 1 + modules.length;
-  const approvedSteps = (summaryReview === 'approved' ? 1 : 0) + modules.filter(m => approvedModules.has(m.moduleId)).length;
-
-  // Load course + modules + first module content + feedbacks
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const [courseData, mods] = await Promise.all([
           getCourse(courseId),
           getModules({ courseId, includeInactive: false }),
         ]);
+        const active = mods.filter((m) => m.isActive);
+        // Plný obsah všech modulů najednou, přepínání je pak okamžité
+        const [fullModules, section, assessmentConfigs] = await Promise.all([
+          Promise.all(active.map((m) => getModule(m.moduleId).catch(() => m))),
+          getFeedbackSection(courseId).catch(() => null),
+          listCourseAssessments(courseId).catch(() => null),
+        ]);
+        if (cancelled) return;
         setCourse(courseData);
-        const activeMods = mods.filter(m => m.isActive);
-        setModules(activeMods);
-
-        if (activeMods.length > 0) {
-          const firstMod = await getModule(activeMods[0].moduleId);
-          setSelectedModule(firstMod);
-        }
-
-        try {
-          const section = await getFeedbackSection(courseId);
-          setFeedbacks(section.feedbacks);
-        } catch {
-          // feedback may not exist yet
-        }
+        setModules(fullModules);
+        setFeedbacks(section?.feedbacks ?? []);
+        setConfigs(assessmentConfigs);
+        setVisited(readVisited(courseId, reviewRound(courseData)));
       } catch (err) {
         console.error('Failed to load course:', err);
-        setError('Nepodařilo se načíst kurz.');
+        if (!cancelled) setError('Nepodařilo se načíst kurz.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
 
-  const handleSelectModule = async (index: number) => {
-    setShowSummary(false);
-    if (index === selectedModuleIndex) return;
-    const mod = modules[index];
-    if (!mod) return;
-    setSelectedModuleIndex(index);
-    setActiveTab('handbook');
-    setCurrentBlockIndex(0);
-    setLoadingModule(true);
-    try {
-      const full = await getModule(mod.moduleId);
-      setSelectedModule(full);
-    } catch (err) {
-      console.error('Failed to load module:', err);
-    } finally {
-      setLoadingModule(false);
-    }
-  };
+  // Otevřená část se označí v osnově jako prohlédnutá
+  useEffect(() => {
+    if (!course || step === 'decision') return;
+    setVisited((prev) => (prev.has(step) ? prev : new Set(prev).add(step)));
+  }, [step, course]);
 
-  const learnBlocks = selectedModule?.learnBlocks ?? [];
-  const currentBlock = learnBlocks[currentBlockIndex];
-  const currentBlockHtml = useMemo(() => sanitizeHtml(currentBlock?.content ?? ''), [currentBlock?.content]);
-  const totalBlocks = learnBlocks.length;
+  useEffect(() => {
+    if (!course || course.status !== Status.InReview || visited.size === 0) return;
+    writeVisited(courseId, reviewRound(course), visited);
+  }, [visited, course, courseId]);
 
-  const handleContinue = () => {
-    if (activeTab === 'handbook') {
-      if (currentBlockIndex < totalBlocks - 1) {
-        setCurrentBlockIndex(prev => prev + 1);
-      } else {
-        // Testy modulu (pretest a formáty) jsou v záložce Procvičování
-        setActiveTab('practice');
-      }
-    } else {
-      goToNextModule();
-    }
-  };
+  // Nová stránka nebo krok začíná nahoře
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [step, activeTab, blockIndex]);
 
-  const goToNextModule = () => {
-    if (selectedModuleIndex < modules.length - 1) {
-      handleSelectModule(selectedModuleIndex + 1);
-    }
-  };
-
-  const handlePrevBlock = () => {
-    if (currentBlockIndex > 0) {
-      setCurrentBlockIndex(prev => prev - 1);
-    }
-  };
-
-  // Derived state
-  const isApproved = course?.status === Status.Approved;
+  // Role
+  const isOwnCourse = !!course && course.ownerId === currentUser?.userId;
   const isInReview = course?.status === Status.InReview;
+  const isApproved = course?.status === Status.Approved;
+  const canDecide = isGuarantor && !isOwnCourse && isInReview;
+  const canDeleteFeedback = (fb: FeedbackItem) =>
+    isSuperAdmin || (isGuarantor && fb.author.userId === currentUser?.userId);
 
-  // Per-module approval
-  const currentModuleId = selectedModule?.moduleId;
-  const currentModuleApproved = currentModuleId ? approvedModules.has(currentModuleId) : false;
-  const currentModuleRejected = currentModuleId ? rejectedModules.has(currentModuleId) : false;
+  // Aktuální modul
+  const moduleIndex = step.startsWith('module:') ? modules.findIndex((m) => moduleKey(m.moduleId) === step) : -1;
+  const selectedModule = moduleIndex >= 0 ? modules[moduleIndex] : null;
+  const learnBlocks = selectedModule?.learnBlocks ?? [];
+  const totalBlocks = learnBlocks.length;
+  const currentBlock = learnBlocks[blockIndex];
+  const currentBlockHtml = useMemo(() => sanitizeHtml(currentBlock?.content ?? ''), [currentBlock?.content]);
 
-  const handleApproveModule = () => {
-    if (!currentModuleId) return;
-    setApprovedModules(prev => new Set(prev).add(currentModuleId));
-    setRejectedModules(prev => {
-      const next = new Set(prev);
-      next.delete(currentModuleId);
-      return next;
-    });
+  // Části ke kontrole (bez Rozhodnutí)
+  const parts: ReviewPart[] = [
+    { key: 'summary', label: 'Souhrn kurzu', visited: visited.has('summary') },
+    ...modules.map((m, i) => ({
+      key: moduleKey(m.moduleId),
+      label: `Modul ${i + 1}: ${m.title}`,
+      visited: visited.has(moduleKey(m.moduleId)),
+    })),
+    { key: 'final', label: 'Závěrečný test kurzu', visited: visited.has('final') },
+  ];
+  const totalSteps = parts.length + 1;
+  const unvisited = parts.filter((p) => !p.visited).map((p) => p.label);
+
+  const openStep = (key: StepKey, tab: TabType = 'handbook') => {
+    setStep(key);
+    setActiveTab(tab);
+    const mod = modules.find((m) => moduleKey(m.moduleId) === key);
+    // Návrat zpět z dalšího modulu míří na konec příručky předchozího
+    setBlockIndex(tab === 'practice' && mod ? Math.max(0, (mod.learnBlocks?.length ?? 0) - 1) : 0);
   };
 
-  const handleRejectModule = () => {
-    if (!currentModuleId) return;
-    setRejectedModules(prev => new Set(prev).add(currentModuleId));
-    setApprovedModules(prev => {
-      const next = new Set(prev);
-      next.delete(currentModuleId);
-      return next;
-    });
+  const goNext = () => {
+    if (step === 'summary') return openStep(modules[0] ? moduleKey(modules[0].moduleId) : 'final');
+    if (step === 'final') return openStep('decision');
+    if (!selectedModule) return;
+    if (activeTab === 'handbook') {
+      if (blockIndex < totalBlocks - 1) setBlockIndex((i) => i + 1);
+      else setActiveTab('practice');
+      return;
+    }
+    const next = modules[moduleIndex + 1];
+    openStep(next ? moduleKey(next.moduleId) : 'final');
   };
 
+  const goBack = () => {
+    if (step === 'decision') return openStep('final');
+    if (step === 'final') {
+      const last = modules[modules.length - 1];
+      return last ? openStep(moduleKey(last.moduleId), 'practice') : openStep('summary');
+    }
+    if (!selectedModule) return;
+    if (activeTab === 'practice') {
+      setActiveTab('handbook');
+      setBlockIndex(Math.max(0, totalBlocks - 1));
+      return;
+    }
+    if (blockIndex > 0) return setBlockIndex((i) => i - 1);
+    const prev = modules[moduleIndex - 1];
+    openStep(prev ? moduleKey(prev.moduleId) : 'summary', 'practice');
+  };
 
-  // Komentáře k souhrnu jsou uložené u prvního modulu, ale patří ke kroku souhrnu
-  const summaryFeedbacks = feedbacks.filter(isCourseSummaryFeedback);
-  const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
+  const nextLabel =
+    step === 'summary'
+      ? modules.length > 0 ? 'Pokračovat na moduly' : 'Pokračovat na závěrečný test'
+      : step === 'final'
+        ? 'Pokračovat na rozhodnutí'
+        : activeTab === 'handbook'
+          ? blockIndex < totalBlocks - 1 ? 'Další stránka' : 'Pokračovat na procvičování'
+          : moduleIndex < modules.length - 1 ? 'Další modul' : 'Pokračovat na závěrečný test';
 
-  // Feedback filtered by current step
-  const currentModuleFeedbacks = showSummary
-    ? summaryFeedbacks
-    : selectedModule
-      ? moduleFeedbacks.filter(fb => fb.moduleId === selectedModule.moduleId)
-      : moduleFeedbacks;
+  // Komentáře podle kroku
+  const moduleFeedbacks = (moduleId: number) =>
+    feedbacks.filter((fb) => !isCourseLevelFeedback(fb) && fb.moduleId === moduleId);
+  const feedbacksForStep = (key: StepKey): FeedbackItem[] => {
+    if (key === 'summary') return feedbacks.filter(isCourseSummaryFeedback);
+    if (key === 'final') return feedbacks.filter(isCourseFinalFeedback);
+    if (key === 'decision') return feedbacks;
+    const mod = modules.find((m) => moduleKey(m.moduleId) === key);
+    return mod ? moduleFeedbacks(mod.moduleId) : [];
+  };
+  const unresolvedFor = (key: StepKey) => feedbacksForStep(key).filter((fb) => !fb.isResolved).length;
+  const stepFeedbacks = feedbacksForStep(step);
+  const unresolvedCount = feedbacks.filter((fb) => !fb.isResolved).length;
+  const resolvedCount = feedbacks.length - unresolvedCount;
+  // Odpovědi nebo vyřešené komentáře = autor už kurz jednou opravoval
+  const isResubmission = feedbacks.some((fb) => fb.isResolved || !!fb.reply);
 
-  // Comment count per module
-  const feedbackCountByModule = (moduleId: number) =>
-    moduleFeedbacks.filter(fb => fb.moduleId === moduleId).length;
+  // Kam se uloží nový komentář; komentáře ke kurzu backend váže k prvnímu modulu
+  const firstModuleId = modules[0]?.moduleId;
+  const commentTarget = ((): { label: string; moduleId?: number; contentType?: string; contentRef?: string } => {
+    if (step === 'summary') return { label: 'Souhrn kurzu', moduleId: firstModuleId, contentType: COURSE_SUMMARY_FEEDBACK };
+    if (step === 'final') return { label: 'Závěrečný test kurzu', moduleId: firstModuleId, contentType: COURSE_FINAL_FEEDBACK };
+    if (step === 'decision') return { label: 'Celý kurz', moduleId: firstModuleId, contentType: COURSE_GENERAL_FEEDBACK };
+    if (!selectedModule) return { label: '' };
+    if (activeTab === 'practice') return { label: 'Procvičování', moduleId: selectedModule.moduleId, contentType: 'practice' };
+    return totalBlocks > 0
+      ? {
+          label: `Příručka – str. ${blockIndex + 1}`,
+          moduleId: selectedModule.moduleId,
+          contentType: 'learn_block',
+          contentRef: String(blockIndex + 1),
+        }
+      : { label: 'Příručka', moduleId: selectedModule.moduleId };
+  })();
 
-  // Build context label for a feedback item
-  const feedbackContextLabel = (fb: FeedbackItem) => reviewFeedbackLabel(fb, { withModule: true });
-
-  // Feedback handlers
   const handleAddFeedback = async () => {
-    if (!newFeedbackText.trim()) return;
-    // Komentář k souhrnu se ukládá k prvnímu modulu (backend modul vyžaduje)
-    const targetModuleId = showSummary ? modules[0]?.moduleId : selectedModule?.moduleId;
-    if (!targetModuleId) return;
+    const text = newFeedbackText.trim();
+    if (!text || !commentTarget.moduleId) return;
     setSubmittingFeedback(true);
     try {
-      const item = await createFeedback(
-        targetModuleId,
-        newFeedbackText.trim(),
-        showSummary
-          ? { contentType: COURSE_SUMMARY_FEEDBACK }
-          : {
-              contentType: activeTab === 'handbook' ? 'learn_block' : 'practice',
-              contentRef: activeTab === 'handbook' ? String(currentBlockIndex + 1) : undefined,
-            },
-      );
-      setFeedbacks(prev => [...prev, item]);
+      const item = await createFeedback(commentTarget.moduleId, text, {
+        contentType: commentTarget.contentType,
+        contentRef: commentTarget.contentRef,
+      });
+      setFeedbacks((prev) => [...prev, item]);
       setNewFeedbackText('');
-      setRejectNeedsComment(false);
+      setCommentPrompt(false);
     } catch (err) {
-      console.error('Failed to add feedback:', err);
+      toast.error(err, 'Komentář se nepodařilo uložit.');
     } finally {
       setSubmittingFeedback(false);
     }
@@ -276,52 +334,47 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     setDeletingFeedback(feedbackId);
     try {
       await deleteFeedback(feedbackId);
-      setFeedbacks(prev => prev.filter(fb => fb.feedbackId !== feedbackId));
+      setFeedbacks((prev) => prev.filter((fb) => fb.feedbackId !== feedbackId));
     } catch (err) {
-      console.error('Failed to delete feedback:', err);
+      toast.error(err, 'Komentář se nepodařilo smazat.');
     } finally {
       setDeletingFeedback(null);
     }
   };
 
-  // Course-level approval handlers
-  const handleApproveCourse = async () => {
-    if (!course) return;
-    setApprovalLoading(true);
+  const handleApproveCourse = async (): Promise<boolean> => {
     try {
       await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.Approved);
       await generateCourseEmbeddings(courseId).catch(() => {});
-      setCourse(prev => prev ? { ...prev, status: Status.Approved } : prev);
+      clearVisited(courseId);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
-      // Krátká success animace, pak skok zpět na výchozí stránku schvalování.
       setApprovedTransition(true);
       setTimeout(() => router.push('/admin/review'), 1400);
+      return true;
     } catch (err) {
-      console.error('Failed to approve:', err);
-      setApprovalLoading(false);
+      toast.error(err, 'Kurz se nepodařilo schválit.');
+      return false;
     }
   };
 
-  // Zamítnout jde jen s aspoň jedním nevyřešeným komentářem — autor jinak neví, co opravit.
-  // Kurz bez modulů komentář uložit nemůže (backend ho váže k modulu), ten jde zamítnout i bez něj.
-  const unresolvedFeedbackCount = feedbacks.filter(fb => !fb.isResolved).length;
-  const handleRejectCourse = async () => {
-    if (!course) return;
-    if (unresolvedFeedbackCount === 0 && modules.length > 0) {
-      setRejectNeedsComment(true);
-      setCommentsOpen(true);
-      return;
-    }
-    setApprovalLoading(true);
+  const handleReturnCourse = async (): Promise<boolean> => {
     try {
       await updateCourseStatus(courseId, UpdateCourseStatusStatusEnum.Edited);
+      clearVisited(courseId);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
+      toast.success('Autor uvidí komentáře a po úpravách kurz znovu odešle.', 'Kurz vrácen k úpravám');
       router.push('/admin/review');
+      return true;
     } catch (err) {
-      console.error('Failed to reject:', err);
-      setApprovalLoading(false);
+      toast.error(err, 'Kurz se nepodařilo vrátit k úpravám.');
+      return false;
     }
   };
+
+  const warnings = useMemo(
+    () => (course ? collectReviewWarnings(course, modules, configs) : []),
+    [course, modules, configs],
+  );
 
   if (loading) {
     return <PageSpinner message="Načítání kurzu…" />;
@@ -332,7 +385,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
           <p className="text-destructive mb-4">{error ?? 'Kurz nebyl nalezen.'}</p>
-          <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "text-gradient-r hover:underline")}>
+          <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, 'text-gradient-r hover:underline')}>
             ← Zpět na přehled
           </Button>
         </div>
@@ -340,223 +393,119 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     );
   }
 
-  return (
-    <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
-      {/* Header */}
-      <div ref={headerRef} className="bg-card border-b border-border px-4 sm:px-6 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between shrink-0">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground mb-0.5 break-words">
-            <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "hover:text-foreground")}>
-              Ke schválení
-            </Button>
-            {' / '}
-            <span className="text-foreground">{course.title}</span>
-          </p>
-          <h1 className="text-xl font-bold text-foreground">Obsah ke schválení</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <CommentsToggle
-            onClick={() => setCommentsOpen(open => !open)}
-            count={currentModuleFeedbacks.filter(fb => !fb.isResolved).length}
-            open={commentsOpen}
-          />
-          {/* Guarantor: approve/reject course (only in_review) */}
-          {canApprove && isInReview && (
-            <>
-              <Button
-                variant="ghost-destructive"
-                onClick={handleRejectCourse}
-                disabled={approvalLoading}
-                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 border border-destructive/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
-              >
-                <ThumbsDown size={16} />
-                Zamítnout kurz
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleApproveCourse}
-                disabled={approvalLoading || !allStepsApproved}
-                title={!allStepsApproved ? 'Nejprve schvalte souhrn kurzu a všechny moduly' : undefined}
-                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed")}
-              >
-                <ThumbsUp size={16} />
-                Schválit kurz
-              </Button>
-            </>
-          )}
-          {/* Status badges */}
-          {isApproved && (
-            <span className="flex items-center gap-1.5 px-3 py-2 bg-success/10 text-success rounded-lg text-sm font-medium border border-success/30">
-              <CheckCircle size={15} />
-              Schváleno
-            </span>
-          )}
-        </div>
-      </div>
+  // Kurz bez modulů nemá kam komentář uložit (backend ho váže k modulu)
+  const canAddFeedback = canDecide && modules.length > 0 && !!commentTarget.moduleId;
+  const returnNeedsComment = unresolvedCount === 0 && modules.length > 0;
 
-      {/* Main 3-column layout */}
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
+  const decisionNotice = !canDecide ? (
+    <Alert variant={isApproved ? 'success' : 'info'}>
+      {isApproved ? <CheckCircle /> : <Info />}
+      <AlertDescription>
+        {isApproved
+          ? 'Kurz je schválený.'
+          : !isInReview
+            ? 'Kurz teď nečeká na schválení.'
+            : isOwnCourse
+              ? 'Vlastní kurz schválit nemůžete, rozhoduje o něm jiný garant.'
+              : 'Schvalovat kurzy může jen garant.'}
+      </AlertDescription>
+    </Alert>
+  ) : null;
 
-        {/* Left: Module sidebar */}
-        <div className="max-h-64 lg:max-h-none lg:w-56 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-border flex items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Osnova kurzu</h2>
-            {isInReview && (
-              <span className="text-xs text-muted-foreground" title="Schválené kroky">
-                {approvedSteps}/{totalSteps}
-              </span>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {/* Krok 1: souhrn kurzu */}
-            <Button
-              variant="plain"
-              onClick={() => setShowSummary(true)}
-              className={cn(BTN_KEEP_BOX, `w-full text-left px-3 py-3 text-sm transition-colors border-b border-border flex items-center gap-2 ${
-                showSummary
-                  ? 'bg-gradient-r/10 border-l-4 border-l-purple-600 font-medium text-foreground'
-                  : 'hover:bg-muted/50 text-foreground border-l-4 border-l-transparent'
-              }`)}
-            >
-              <StepMarker approved={summaryReview === 'approved'} rejected={summaryReview === 'rejected'} />
-              <span className="truncate flex-1">Souhrn kurzu</span>
-              {summaryFeedbacks.length > 0 && (
-                <span className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  {summaryFeedbacks.length}
-                </span>
-              )}
-            </Button>
-            {modules.map((mod, idx) => {
-              const modApproved = approvedModules.has(mod.moduleId);
-              const modRejected = rejectedModules.has(mod.moduleId);
-              return (
-                <Button
-                  variant="plain"
-                  key={mod.moduleId}
-                  onClick={() => handleSelectModule(idx)}
-                  className={cn(BTN_KEEP_BOX, `w-full text-left px-3 py-3 text-sm transition-colors border-b border-border last:border-b-0 flex items-center gap-2 ${
-                    !showSummary && selectedModuleIndex === idx
-                      ? 'bg-gradient-r/10 border-l-4 border-l-purple-600 font-medium text-foreground'
-                      : 'hover:bg-muted/50 text-foreground border-l-4 border-l-transparent'
-                  }`)}
-                >
-                  <StepMarker approved={modApproved} rejected={modRejected} />
-                  <span className="truncate flex-1">{mod.title}</span>
-                  {feedbackCountByModule(mod.moduleId) > 0 && (
-                    <span className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                      {feedbackCountByModule(mod.moduleId)}
-                    </span>
-                  )}
-                </Button>
-              );
-            })}
-            {modules.length === 0 && (
-              <p className="p-3 text-xs text-muted-foreground text-center">Žádné moduly</p>
-            )}
-          </div>
-        </div>
+  const footerNav = (
+    <Button variant="ghost" size="lg" onClick={goBack} disabled={step === 'summary'}>
+      <ArrowLeft data-icon="inline-start" />
+      Zpět
+    </Button>
+  );
+  const nextButton = (
+    <Button size="lg" onClick={goNext}>
+      {nextLabel}
+      <ArrowRight data-icon="inline-end" />
+    </Button>
+  );
 
-        {/* Center: souhrn kurzu (krok 1) nebo obsah modulu */}
-        <div className="flex-1 bg-card rounded-lg border border-border flex flex-col overflow-hidden min-w-0">
-          {showSummary ? (
+  let stepContent: ReactNode;
+  if (step === 'summary') {
+    stepContent = (
+      <StepFrame
+        label={stepOf(1, totalSteps)}
+        title="Souhrn kurzu"
+        description="Zkontrolujte popis, zařazení a náhledový obrázek kurzu."
+        bodyRef={bodyRef}
+        footer={<>{footerNav}{nextButton}</>}
+      >
+        <ReviewCourseSummary course={course} modulesCount={modules.length} />
+      </StepFrame>
+    );
+  } else if (step === 'final') {
+    stepContent = (
+      <StepFrame
+        label={stepOf(totalSteps - 1, totalSteps)}
+        title="Závěrečný test kurzu"
+        description="Zkontrolujte otázky a nastavení závěrečného testu."
+        bodyRef={bodyRef}
+        footer={<>{footerNav}{nextButton}</>}
+      >
+        <ReviewModuleTests courseId={courseId} moduleId={null} />
+      </StepFrame>
+    );
+  } else if (step === 'decision') {
+    stepContent = (
+      <StepFrame
+        label={stepOf(totalSteps, totalSteps)}
+        title="Rozhodnutí"
+        description="Projděte přehled a kurz schvalte, nebo ho vraťte autorovi k úpravám."
+        bodyRef={bodyRef}
+        footer={
           <>
-          <div className="p-4 border-b border-border shrink-0">
-            <p className="text-xs text-muted-foreground mb-0.5">Krok 1 z {totalSteps}</p>
-            <h2 className="font-semibold text-foreground">Souhrn kurzu</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Zkontrolujte popis, zařazení, náhledový obrázek a závěrečný test kurzu.
-            </p>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <ReviewCourseSummary course={course} modulesCount={modules.length} />
-            <section className="mt-8 border-t border-border pt-6">
-              <h3 className="mb-4 font-semibold text-foreground">Závěrečný test kurzu</h3>
-              <ReviewModuleTests courseId={courseId} moduleId={null} />
-            </section>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-4 border-t border-border shrink-0">
-            {canApprove && isInReview && (
-              <>
-                {summaryReview === 'approved' ? (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success bg-success/10 border border-success/30 rounded-lg">
-                    <CheckCircle size={13} />
-                    Souhrn schválen
-                  </span>
-                ) : summaryReview === 'rejected' ? (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-destructive bg-destructive/10 border border-destructive/30 rounded-lg">
-                    <XCircle size={13} />
-                    Souhrn zamítnut
-                  </span>
-                ) : null}
-                <Button
-                  variant="plain"
-                  onClick={() => setSummaryReview('rejected')}
-                  className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors ${
-                    summaryReview === 'rejected'
-                      ? 'border-destructive/30 bg-destructive/20 text-destructive'
-                      : 'border-destructive/30 text-destructive hover:bg-destructive/10'
-                  }`)}
-                >
-                  <ThumbsDown size={13} />
-                  Zamítnout souhrn
-                </Button>
-                <Button
-                  variant="plain"
-                  onClick={() => setSummaryReview('approved')}
-                  className={cn(BTN_KEEP_BOX, "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/80")}
-                >
-                  <ThumbsUp size={13} />
-                  Schválit souhrn
-                </Button>
-              </>
+            {footerNav}
+            {canDecide && (
+              <ReviewDecisionActions
+                unvisited={unvisited}
+                unresolvedCount={unresolvedCount}
+                returnNeedsComment={returnNeedsComment}
+                onWriteComment={() => {
+                  setCommentPrompt(true);
+                  setCommentsOpen(true);
+                }}
+                onApprove={handleApproveCourse}
+                onReturn={handleReturnCourse}
+              />
             )}
-            <Button
-              variant="plain"
-              onClick={() => handleSelectModule(0)}
-              disabled={modules.length === 0}
-              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed")}
-              style={{ backgroundColor: 'var(--primary)' }}
-            >
-              Další krok →
-            </Button>
-          </div>
           </>
-          ) : (
+        }
+      >
+        <ReviewDecisionOverview
+          parts={parts}
+          onOpenPart={(key) => openStep(key as StepKey)}
+          warnings={warnings}
+          testsChecked={configs !== null}
+          unresolvedCount={unresolvedCount}
+          resolvedCount={resolvedCount}
+          onOpenComments={() => setCommentsOpen(true)}
+          notice={decisionNotice}
+        />
+      </StepFrame>
+    );
+  } else if (selectedModule) {
+    stepContent = (
+      <StepFrame
+        label={stepOf(moduleIndex + 2, totalSteps)}
+        title={selectedModule.title}
+        description={selectedModule.perex ?? undefined}
+        bodyRef={bodyRef}
+        headerExtra={
           <>
-          <div className="p-4 border-b border-border shrink-0">
-            <p className="text-xs text-muted-foreground mb-0.5">Krok {selectedModuleIndex + 2} z {totalSteps}</p>
-            <h2 className="font-semibold text-foreground mb-3">
-              {selectedModule?.title ?? 'Výběr modulu'}
-            </h2>
-            {selectedModule?.perex && (
-              <p className="text-sm text-muted-foreground -mt-1 mb-3 break-words">{selectedModule.perex}</p>
-            )}
-            {/* Zařazení kurzu i vybraného modulu — garant ho při schvalování kontroluje */}
-            <details className="mb-3 text-sm">
+            <details className="mt-2 text-sm">
               <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
-                Zařazení kurzu a modulu
+                Zařazení modulu
               </summary>
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-foreground mb-2">Kurz</p>
-                  <CourseCategories course={course} />
-                </div>
-                {selectedModule && (
-                  <div>
-                    <p className="text-xs font-semibold text-foreground mb-2">Modul</p>
-                    <ModuleCategories module={selectedModule} />
-                  </div>
-                )}
+              <div className="mt-3">
+                <ModuleCategories module={selectedModule} />
               </div>
             </details>
-            {/* Tabs — freely switchable */}
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as 'handbook' | 'practice')}
-              className="gap-0"
-            >
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="mt-3 gap-0">
               <TabsList variant="line" className="gap-2 p-0 group-data-horizontal/tabs:h-auto">
                 <TabsTrigger value="handbook" className={MODULE_TAB}>
                   <BookOpenText size={14} />
@@ -568,215 +517,134 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {loadingModule ? (
-              <PageSpinner />
-            ) : activeTab === 'handbook' ? (
-              /* ===== HANDBOOK TAB ===== */
-              currentBlock ? (
-                <>
-                  <div className="mb-4">
-                    <span className="text-xs text-muted-foreground">
-                      Stránka {currentBlockIndex + 1} z {totalBlocks}
-                    </span>
-                  </div>
-                  <div
-                    ref={contentRef}
-                    className="module-content prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: currentBlockHtml }}
-                  />
-                </>
-              ) : (
-                <div className="text-center py-16 text-muted-foreground">
-                  <BookOpenText size={40} className="mx-auto mb-3 text-muted-foreground" />
-                  <p className="font-medium">Obsah příručky není k dispozici</p>
-                </div>
-              )
-            ) : (
-              /* ===== PRACTICE TAB — pretest a připojené formáty modulu ===== */
-              selectedModule && <ReviewModuleTests courseId={courseId} moduleId={selectedModule.moduleId} />
-            )}
-          </div>
-
-          {/* Footer navigation + per-module approval */}
-          <div className="flex flex-wrap items-center justify-between gap-y-3 px-4 sm:px-6 py-4 border-t border-border shrink-0">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="plain"
-                onClick={handlePrevBlock}
-                disabled={activeTab !== 'handbook' || currentBlockIndex === 0}
-                className={cn(BTN_KEEP_BOX, "text-sm font-medium text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed")}
-              >
-                ← Předchozí
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {/* Per-module approve/reject (guarantors only, in_review only) */}
-              {canApprove && isInReview && selectedModule && (
-                <>
-                  {currentModuleApproved ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success bg-success/10 border border-success/30 rounded-lg">
-                      <CheckCircle size={13} />
-                      Modul schválen
-                    </span>
-                  ) : currentModuleRejected ? (
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-destructive bg-destructive/10 border border-destructive/30 rounded-lg">
-                      <XCircle size={13} />
-                      Modul zamítnut
-                    </span>
-                  ) : null}
-                  <Button
-                    variant="plain"
-                    onClick={handleRejectModule}
-                    className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors ${
-                      currentModuleRejected
-                        ? 'border-destructive/30 bg-destructive/20 text-destructive'
-                        : 'border-destructive/30 text-destructive hover:bg-destructive/10'
-                    }`)}
-                  >
-                    <ThumbsDown size={13} />
-                    Zamítnout modul
-                  </Button>
-                  <Button
-                    variant="plain"
-                    onClick={handleApproveModule}
-                    className={cn(BTN_KEEP_BOX, `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      currentModuleApproved
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-primary text-primary-foreground hover:bg-primary/80'
-                    }`)}
-                  >
-                    <ThumbsUp size={13} />
-                    Schválit modul
-                  </Button>
-                </>
-              )}
-
-              <Button
-                variant="plain"
-                onClick={handleContinue}
-                disabled={selectedModuleIndex >= modules.length - 1 && activeTab === 'practice'}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 text-primary-foreground font-semibold py-2 px-5 rounded-lg text-sm transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed")}
-                style={{ backgroundColor: 'var(--primary)' }}
-              >
-                {activeTab === 'handbook' && currentBlockIndex < totalBlocks - 1
-                  ? 'Pokračovat'
-                  : selectedModuleIndex < modules.length - 1
-                  ? 'Další modul'
-                  : 'Dokončit'}
-                →
-              </Button>
-            </div>
-          </div>
           </>
-          )}
+        }
+        footer={<>{footerNav}{nextButton}</>}
+      >
+        {activeTab === 'handbook' ? (
+          currentBlock ? (
+            <>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Stránka {blockIndex + 1} z {totalBlocks}
+              </p>
+              <div className="module-content prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: currentBlockHtml }} />
+            </>
+          ) : (
+            <div className="text-center py-16 text-muted-foreground">
+              <BookOpenText size={40} className="mx-auto mb-3 text-muted-foreground" />
+              <p className="font-medium">Obsah příručky není k dispozici</p>
+            </div>
+          )
+        ) : (
+          <ReviewModuleTests courseId={courseId} moduleId={selectedModule.moduleId} />
+        )}
+      </StepFrame>
+    );
+  }
+
+  const commentsSubtitle =
+    step === 'summary'
+      ? 'Souhrn kurzu'
+      : step === 'final'
+        ? 'Závěrečný test kurzu'
+        : step === 'decision'
+          ? 'Všechny komentáře kurzu'
+          : selectedModule ? `Modul: ${selectedModule.title}` : undefined;
+
+  // Layout: hlavička (název + komentáře), osnova, obsah kroku, panel komentářů.
+  // O kurzu se rozhoduje až v kroku Rozhodnutí, ne v hlavičce.
+  return (
+    <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
+      <div ref={headerRef} className="bg-card border-b border-border px-4 sm:px-6 py-4 flex items-start justify-between gap-3 shrink-0">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground mb-0.5">
+            <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, 'hover:text-foreground')}>
+              Ke schválení
+            </Button>
+            {' / Kontrola kurzu'}
+          </p>
+          <h1 className="text-xl font-bold text-foreground break-words">{course.title}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {course.ownerDisplayName && <span>Autor: {course.ownerDisplayName}</span>}
+            {isResubmission && isInReview && <Badge variant="open">Opravená verze</Badge>}
+            {isApproved && <Badge variant="resolved">Schváleno</Badge>}
+          </div>
+        </div>
+        <CommentsToggle
+          onClick={() => setCommentsOpen((open) => !open)}
+          count={stepFeedbacks.filter((fb) => !fb.isResolved).length}
+          open={commentsOpen}
+        />
+      </div>
+
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
+        <nav
+          aria-label="Kontrola kurzu"
+          className="max-h-64 lg:max-h-none lg:w-56 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden"
+        >
+          <div className="p-3 border-b border-border flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Kontrola kurzu</h2>
+            <span className="text-xs text-muted-foreground" title="Otevřené části kurzu">
+              {parts.filter((p) => p.visited).length}/{parts.length}
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {parts.map((part) => (
+              <OutlineItem
+                key={part.key}
+                label={part.key.startsWith('module:') ? part.label.replace(/^Modul \d+: /, '') : part.label}
+                active={step === part.key}
+                marker={<VisitedMarker visited={part.visited} />}
+                badge={unresolvedFor(part.key as StepKey)}
+                onClick={() => openStep(part.key as StepKey)}
+              />
+            ))}
+            <OutlineItem
+              label="Rozhodnutí"
+              active={step === 'decision'}
+              marker={<Gavel size={16} className="shrink-0 text-muted-foreground" />}
+              onClick={() => openStep('decision')}
+            />
+          </div>
+        </nav>
+
+        <div className="flex-1 bg-card rounded-lg border border-border flex flex-col overflow-hidden min-w-0">
+          {stepContent}
         </div>
 
-        {/* Komentáře — panel vyjíždí zprava přes obsah, garant může dál číst modul */}
         <CommentsDrawer
           open={commentsOpen}
           onOpenChange={setCommentsOpen}
           anchorRef={headerRef}
-          title={`Komentáře${currentModuleFeedbacks.length > 0 ? ` (${currentModuleFeedbacks.length})` : ''}`}
-          subtitle={showSummary ? 'Souhrn kurzu' : selectedModule ? `Modul: ${selectedModule.title}` : undefined}
+          inlineMinWidth={COMMENTS_INLINE_FROM}
+          title={`Komentáře${stepFeedbacks.length > 0 ? ` (${stepFeedbacks.length})` : ''}`}
+          subtitle={commentsSubtitle}
           footer={
-            canAddFeedback && isInReview && modules.length > 0 ? (
-              // Add comment (in_review only — API requires in_review status).
-              // Kurz bez modulů nemá kam komentář k souhrnu uložit.
-              <div className="flex flex-col gap-2">
-                {rejectNeedsComment && (
-                  <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-                    Před zamítnutím kurzu napište aspoň jeden komentář, ať autor ví, co má opravit.
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <Textarea
-                    value={newFeedbackText}
-                    onChange={e => setNewFeedbackText(e.target.value)}
-                    rows={2}
-                    placeholder="Přidat komentář..."
-                    aria-label="Nový komentář"
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAddFeedback();
-                      }
-                    }}
-                    className={cn("field-sizing-fixed min-h-0", "flex-1 border border-border rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gradient-r/30 resize-none")}
-                  />
-                  <Button
-                    variant="brand-solid"
-                    onClick={handleAddFeedback}
-                    disabled={!newFeedbackText.trim() || submittingFeedback}
-                    aria-label="Odeslat komentář"
-                    className={cn(BTN_KEEP_BOX, "self-end p-2 rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0")}
-                  >
-                    <Send size={14} />
-                  </Button>
-                </div>
-              </div>
+            canAddFeedback ? (
+              <ReviewerCommentComposer
+                target={commentTarget.label}
+                value={newFeedbackText}
+                onChange={setNewFeedbackText}
+                onSubmit={handleAddFeedback}
+                submitting={submittingFeedback}
+                warning={commentPrompt ? 'Před vrácením kurzu napište aspoň jeden komentář, ať autor ví, co má opravit.' : null}
+              />
             ) : isApproved ? (
-              <p className="text-xs text-muted-foreground text-center">Kurz je schválený – komentáře jsou uzavřeny.</p>
+              <p className="text-xs text-muted-foreground text-center">Kurz je schválený, komentáře jsou uzavřené.</p>
             ) : undefined
           }
         >
-          {currentModuleFeedbacks.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              {showSummary ? 'Žádné komentáře k souhrnu kurzu' : 'Žádné komentáře pro tento modul'}
-            </p>
-          ) : (
-            currentModuleFeedbacks.map(fb => (
-              <div key={fb.feedbackId}>
-                {/* Feedback bubble */}
-                <div className="bg-muted rounded-xl px-3.5 py-2.5">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-semibold text-foreground text-xs">
-                      {fb.author.displayName ?? 'Uživatel'}
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] text-muted-foreground">{timeAgo(fb.createdAt)}</span>
-                      {canDeleteFeedback(fb.author.userId) && !fb.reply && (
-                        <Button
-                          variant="plain"
-                          onClick={() => handleDeleteFeedback(fb.feedbackId)}
-                          disabled={deletingFeedback === fb.feedbackId}
-                          aria-label="Smazat komentář"
-                          className={cn(BTN_KEEP_BOX, "p-0.5 text-muted-foreground hover:text-destructive transition-colors")}
-                        >
-                          <Trash2 size={11} />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  {feedbackContextLabel(fb) && (
-                    <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
-                  )}
-                  <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
-                </div>
-
-                {/* Reply bubble */}
-                {fb.reply && (
-                  <div className="ml-4 mt-1.5">
-                    <div className="bg-gradient-r/10 rounded-xl px-3.5 py-2.5">
-                      <div className="flex items-center gap-1 mb-1">
-                        <CornerDownRight size={10} className="text-gradient-r" />
-                        <span className="text-[11px] text-gradient-r font-medium">Odpověď</span>
-                      </div>
-                      <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+          <ReviewerCommentList
+            feedbacks={stepFeedbacks}
+            emptyText={step === 'decision' ? 'Kurz nemá žádné komentáře.' : 'K této části nejsou žádné komentáře.'}
+            contextLabel={(fb) => reviewFeedbackLabel(fb, { withModule: step === 'decision' })}
+            canDelete={canDeleteFeedback}
+            deletingId={deletingFeedback}
+            onDelete={handleDeleteFeedback}
+          />
         </CommentsDrawer>
       </div>
 
-      {/* Přechodová animace po schválení kurzu — překryje obsah a po krátké
-          chvíli se naviguje zpět na seznam ke schválení. */}
       <AnimatePresence>
         {approvedTransition && (
           <motion.div
@@ -820,23 +688,91 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   );
 }
 
-/** Značka schválení / zamítnutí kroku v osnově. */
-function StepMarker({ approved, rejected }: { approved: boolean; rejected: boolean }) {
-  if (approved) {
-    return (
-      <span className="shrink-0 size-4 rounded-full bg-primary flex items-center justify-center">
-        <Check size={10} className="text-primary-foreground" />
-      </span>
-    );
-  }
-  if (rejected) {
-    return (
-      <span className="shrink-0 size-4 rounded-full bg-destructive flex items-center justify-center">
-        <XCircle size={10} className="text-primary-foreground" />
-      </span>
-    );
-  }
-  return null;
+// Karta kroku: hlavička s číslem kroku, rolovací obsah, patička s navigací
+function StepFrame({
+  label,
+  title,
+  description,
+  headerExtra,
+  bodyRef,
+  footer,
+  children,
+}: {
+  label: string;
+  title: string;
+  description?: string;
+  headerExtra?: ReactNode;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div className="p-4 border-b border-border shrink-0">
+        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+        <h2 className="font-semibold text-foreground break-words">{title}</h2>
+        {description && <p className="text-sm text-muted-foreground mt-1 break-words">{description}</p>}
+        {headerExtra}
+      </div>
+      <div ref={bodyRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
+        {children}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-border shrink-0">
+        {footer}
+      </div>
+    </>
+  );
+}
+
+function OutlineItem({
+  label,
+  active,
+  marker,
+  badge = 0,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  marker: ReactNode;
+  badge?: number;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="plain"
+      onClick={onClick}
+      aria-current={active ? 'step' : undefined}
+      className={cn(
+        BTN_KEEP_BOX,
+        'w-full justify-start text-left px-3 py-3 text-sm transition-colors border-b border-border last:border-b-0 flex items-center gap-2 border-l-4',
+        active
+          ? 'bg-gradient-r/10 border-l-gradient-r font-medium text-foreground'
+          : 'hover:bg-muted/50 text-foreground border-l-transparent',
+      )}
+    >
+      {marker}
+      <span className="truncate flex-1">{label}</span>
+      {badge > 0 && (
+        <span
+          className="shrink-0 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+          aria-label={`Komentáře k opravě: ${badge}`}
+        >
+          {badge}
+        </span>
+      )}
+    </Button>
+  );
+}
+
+// Plné kolečko s fajfkou = část byla otevřena, prázdné = ještě ne
+function VisitedMarker({ visited }: { visited: boolean }) {
+  return visited ? (
+    <span className="shrink-0 size-4 rounded-full bg-primary flex items-center justify-center" aria-label="Otevřeno">
+      <Check size={10} className="text-primary-foreground" />
+    </span>
+  ) : (
+    <span className="shrink-0 size-4 rounded-full border border-border" aria-label="Neotevřeno" />
+  );
 }
 
 export default ReviewCourseView;

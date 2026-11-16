@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { CheckCircle, CornerDownRight, X } from 'lucide-react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { CheckCircle, ChevronDown, CornerDownRight, Loader2, Send, Trash2, TriangleAlert, X } from 'lucide-react';
 
 import type { FeedbackItem } from '@/api';
-import { Button, Drawer, DrawerContent, Textarea } from '@/components/ui';
+import { Alert, AlertDescription, Badge, Button, Drawer, DrawerContent, Label, Textarea } from '@/components/ui';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { getFeedbackSection, replyToFeedback, resolveFeedback } from '@/lib/api-client';
-import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { BTN_KEEP_BOX, cn, timeAgo } from '@/lib/utils';
 
 // ── Panel ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,8 @@ interface CommentsDrawerProps {
    * komentářů, Schválit / Zamítnout) zůstala vidět a šla použít.
    */
   anchorRef?: RefObject<HTMLElement | null>;
+  // Od této šířky (CSS délka, např. "90rem") je panel sloupec vedle obsahu místo překryvu
+  inlineMinWidth?: string;
   children: ReactNode;
   footer?: ReactNode;
 }
@@ -54,8 +57,38 @@ function useAnchorBottom(anchorRef: RefObject<HTMLElement | null> | undefined, a
  * k němu píše), zavírá se křížkem, tlačítkem v hlavičce nebo Escape — ne
  * klikem vedle, ať při čtení obsahu nezajíždí.
  */
-export function CommentsDrawer({ open, onOpenChange, title, subtitle, anchorRef, children, footer }: CommentsDrawerProps) {
-  const top = useAnchorBottom(anchorRef, open);
+export function CommentsDrawer({ open, onOpenChange, title, subtitle, anchorRef, inlineMinWidth, children, footer }: CommentsDrawerProps) {
+  const inline = useMediaQuery(inlineMinWidth ? `(min-width: ${inlineMinWidth})` : null);
+  const top = useAnchorBottom(anchorRef, open && !inline);
+
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-2 border-b border-border p-3 shrink-0">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+          {subtitle && <p className="truncate text-xs text-muted-foreground" title={subtitle}>{subtitle}</p>}
+        </div>
+        <Button variant="ghost" size="icon-sm" onClick={() => onOpenChange(false)} aria-label="Zavřít komentáře">
+          <X />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">{children}</div>
+      {footer && <div className="border-t border-border p-3 shrink-0">{footer}</div>}
+    </>
+  );
+
+  // Na široké obrazovce sloupec v layoutu, nezakrývá obsah ani jeho patičku
+  if (inline) {
+    return open ? (
+      <aside
+        aria-label={title}
+        className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
+      >
+        {content}
+      </aside>
+    ) : null;
+  }
+
   return (
     <Drawer
       open={open}
@@ -69,19 +102,176 @@ export function CommentsDrawer({ open, onOpenChange, title, subtitle, anchorRef,
         className={cn('shadow-xl', top > 0 && 'rounded-tl-none')}
         style={top > 0 ? { top } : undefined}
       >
-        <div className="flex items-start justify-between gap-2 border-b border-border p-3 shrink-0">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-            {subtitle && <p className="truncate text-xs text-muted-foreground" title={subtitle}>{subtitle}</p>}
-          </div>
-          <Button variant="ghost" size="icon-sm" onClick={() => onOpenChange(false)} aria-label="Zavřít komentáře">
-            <X />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">{children}</div>
-        {footer && <div className="border-t border-border p-3 shrink-0">{footer}</div>}
+        {content}
       </DrawerContent>
     </Drawer>
+  );
+}
+
+// ── Garant ───────────────────────────────────────────────────────────────────
+
+interface ReviewerCommentListProps {
+  feedbacks: FeedbackItem[];
+  emptyText: string;
+  contextLabel: (fb: FeedbackItem) => string | null;
+  canDelete: (fb: FeedbackItem) => boolean;
+  deletingId: number | null;
+  onDelete: (feedbackId: number) => void;
+}
+
+// Komentáře garanta: nevyřešené nahoře, vyřešené autorem sbalené pod nimi
+export function ReviewerCommentList({ feedbacks, emptyText, contextLabel, canDelete, deletingId, onDelete }: ReviewerCommentListProps) {
+  const [showResolved, setShowResolved] = useState(false);
+  const unresolved = feedbacks.filter((fb) => !fb.isResolved);
+  const resolved = feedbacks.filter((fb) => fb.isResolved);
+
+  if (feedbacks.length === 0) {
+    return <p className="py-4 text-center text-xs text-muted-foreground">{emptyText}</p>;
+  }
+
+  const renderItem = (fb: FeedbackItem) => (
+    <ReviewerComment
+      key={fb.feedbackId}
+      fb={fb}
+      label={contextLabel(fb)}
+      deletable={canDelete(fb)}
+      deleting={deletingId === fb.feedbackId}
+      onDelete={() => onDelete(fb.feedbackId)}
+    />
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <section className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold text-muted-foreground">K opravě ({unresolved.length})</h3>
+        {unresolved.length > 0 ? (
+          unresolved.map(renderItem)
+        ) : (
+          <p className="text-xs text-muted-foreground">Žádné nevyřešené komentáře.</p>
+        )}
+      </section>
+      {resolved.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowResolved((v) => !v)}
+            aria-expanded={showResolved}
+            className="justify-between px-1 text-xs font-semibold text-muted-foreground"
+          >
+            Vyřešené autorem ({resolved.length})
+            <ChevronDown data-icon="inline-end" className={cn('transition-transform', showResolved && 'rotate-180')} />
+          </Button>
+          {showResolved && resolved.map(renderItem)}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function ReviewerComment({
+  fb,
+  label,
+  deletable,
+  deleting,
+  onDelete,
+}: {
+  fb: FeedbackItem;
+  label: string | null;
+  deletable: boolean;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <div className={cn('rounded-xl px-3.5 py-2.5', fb.isResolved ? 'border border-success/30 bg-success/10' : 'bg-muted')}>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="truncate text-xs font-semibold text-foreground">{fb.author.displayName ?? 'Uživatel'}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {fb.isResolved && <Badge variant="resolved">Vyřešeno</Badge>}
+          <span className="text-[11px] text-muted-foreground">{timeAgo(fb.createdAt)}</span>
+          {
+            // Komentář s odpovědí autora už smazat nejde (zmizela by i odpověď)
+            deletable && !fb.reply && (
+              <Button
+                variant="ghost-destructive"
+                size="icon-xs"
+                onClick={onDelete}
+                disabled={deleting}
+                aria-label="Smazat komentář"
+              >
+                <Trash2 />
+              </Button>
+            )
+          }
+        </div>
+      </div>
+      {label && <p className="mb-1 text-[10px] font-medium text-gradient-r">{label}</p>}
+      <p className="text-xs leading-relaxed text-foreground">{fb.feedback}</p>
+      {fb.reply && (
+        <div className="mt-2 ml-3 rounded-lg bg-card/70 px-3 py-2">
+          <div className="mb-0.5 flex items-center gap-1">
+            <CornerDownRight size={10} className="text-gradient-r" />
+            <span className="text-[10px] font-medium text-gradient-r">Odpověď autora</span>
+          </div>
+          <p className="text-xs leading-relaxed text-foreground">{fb.reply}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ReviewerCommentComposerProps {
+  // Kam se komentář uloží, např. "Příručka – str. 2"
+  target: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  warning?: string | null;
+}
+
+// Pole pro nový komentář garanta; nad ním je vidět, ke které části se uloží
+export function ReviewerCommentComposer({ target, value, onChange, onSubmit, submitting, warning }: ReviewerCommentComposerProps) {
+  const inputId = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      {warning && (
+        <Alert variant="warning">
+          <TriangleAlert />
+          <AlertDescription className="text-xs">{warning}</AlertDescription>
+        </Alert>
+      )}
+      <Label htmlFor={inputId} className="block text-xs font-normal text-muted-foreground">
+        Komentář k: <span className="font-medium text-foreground">{target}</span>
+      </Label>
+      <div className="flex gap-2">
+        <Textarea
+          id={inputId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={2}
+          placeholder="Co má autor opravit…"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+          className="field-sizing-fixed min-h-0 flex-1 resize-none text-xs"
+        />
+        <Button
+          variant="brand-solid"
+          size="icon"
+          onClick={onSubmit}
+          disabled={!value.trim() || submitting}
+          aria-label="Odeslat komentář"
+          className="self-end rounded-full"
+        >
+          {submitting ? <Loader2 className="animate-spin" /> : <Send />}
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">Enter odešle, Shift+Enter nový řádek.</p>
+    </div>
   );
 }
 

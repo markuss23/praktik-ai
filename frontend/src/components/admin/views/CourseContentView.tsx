@@ -13,8 +13,14 @@ import {
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
 import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
-import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
-import { isCourseSummaryFeedback, reviewFeedbackLabel } from '@/lib/review-feedback';
+import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import {
+  commentsToFixHint,
+  isCourseFinalFeedback,
+  isCourseLevelFeedback,
+  isSummaryStepFeedback,
+  reviewFeedbackLabel,
+} from '@/lib/review-feedback';
 import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
 import { useRichTextEditor } from '@/components/ui/RichTextEditor';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -301,9 +307,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  // Komentáře k souhrnu kurzu patří do kroku Souhrn, ne k modulu
-  const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
-  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isCourseSummaryFeedback(fb) && !fb.isResolved).length;
+  // Komentáře ke kurzu (souhrn, celý kurz, závěrečný test) patří do kroků Souhrn a Závěrečný test, ne k modulu
+  const moduleFeedbacks = feedbacks.filter(fb => !isCourseLevelFeedback(fb));
+  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isSummaryStepFeedback(fb) && !fb.isResolved).length;
+  const unresolvedFinalFeedbacks = feedbacks.filter(fb => isCourseFinalFeedback(fb) && !fb.isResolved).length;
 
   const currentModuleFeedbacks = modules[selectedModuleIndex]
     ? moduleFeedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
@@ -600,13 +607,17 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const stepHints = {
     // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
     ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
-      summary: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
+      summary: commentsToFixHint(unresolvedSummaryFeedbacks),
     }),
     content: moduleCountHint(modules.length),
     ...(courseAssessments && {
       // Pretest má vlastní krok
       tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId && c.assessmentTypeCode !== 'pretest').length),
       final: finalTestHint(courseAssessments.filter((c) => c.context === 'course_final').length),
+    }),
+    // Komentáře garanta k závěrečnému testu mají přednost před počtem formátů
+    ...(isEdited && unresolvedFinalFeedbacks > 0 && {
+      final: commentsToFixHint(unresolvedFinalFeedbacks),
     }),
   };
 
