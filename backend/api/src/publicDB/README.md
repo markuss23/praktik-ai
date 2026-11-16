@@ -27,8 +27,8 @@ stateDiagram-v2
     pending_review --> approved: recenze approved
     pending_review --> rejected: recenze rejected / needs_revision
     rejected --> pending_review: autor, jen když poslední recenze = needs_revision
-    approved --> pending_review: smazání recenze
-    rejected --> pending_review: smazání recenze
+    approved --> pending_review: smazání poslední recenze (is_public=False)
+    rejected --> pending_review: smazání poslední recenze
     approved --> approved: autor přepíná is_public
 ```
 
@@ -48,7 +48,8 @@ Role mají hierarchii `user < lector < guarantor < superadmin` (`require_role` p
 | Upravit / smazat hodnocení | Autor hodnocení nebo superadmin |
 | Upravit / smazat sbírku a její položky | Vlastník sbírky nebo superadmin |
 | Detail neveřejné sbírky | Vlastník nebo superadmin |
-| Recenze, komentář (vytvořit, smazat) | Garant nebo superadmin |
+| Recenze, komentář (vytvořit) | Garant nebo superadmin |
+| Smazat recenzi | Její autor (garant) nebo superadmin |
 | Smazat komentář | Jeho autor nebo superadmin |
 
 Garant cizí materiál neupraví ani nesmaže (`validate_owner_or_superadmin`). Číst smí navíc materiály v `pending_review`, které schvaluje.
@@ -76,12 +77,13 @@ Pravidla jsou na jednom místě v `resources/visibility.py`. Platí pro seznam, 
 - Název materiálu je unikátní mezi aktivními materiály jednoho autora. Totéž pro název sbírky (kontroluje se jen při vytvoření).
 - `krauu_competence_ids` a `bloom_level_ids` musí mít aspoň 1 položku.
 - Upravit lze jen `draft`, nebo `rejected` s poslední recenzí `needs_revision`.
+- Smazat lze jen poslední aktivní recenzi materiálu (jinak 400), protože jen ta určuje jeho stav. Smazání je soft delete (`is_active=False`), vrátí materiál do `pending_review` a nastaví `is_public=False`.
 - Recenze a komentář jdou jen na materiál v `pending_review`.
 - Zveřejnit / skrýt jde jen `approved` materiál. Nastavení stejné hodnoty vrátí 400.
-- Fork: originál musí být veřejný, mít `allow_forks=True` a nesmí být sám fork. Fork kopíruje metadata a KRAUU/Bloom, ne soubory. Fork má `allow_forks=False`.
+- Fork: originál musí být veřejný, mít `allow_forks=True` a nesmí být sám fork. Fork kopíruje metadata a KRAUU/Bloom, ne soubory. Fork má `allow_forks=False`. U forku nejde změnit obor, cílovou skupinu, vzdělávací úroveň ani obtížnost (`FORK_LOCKED_FIELDS` v `update.py`, 400). Kontrolují se jen pole, která klient poslal.
 - Smazání materiálu: nejde, když je veřejný, nebo `approved` s `allow_forks`. `draft` se maže natvrdo včetně souborů v úložišti, ostatní soft delete s kaskádou (soubory, hodnocení, recenze, komentáře, KRAUU, Bloom).
 - Smazat soubor jde jen ve stavu `draft` nebo `rejected`. Velikost souboru max 30 MB. Typ se určuje z obsahu (`filetype`).
-- Hodnocení: jen u materiálu ve stavu `approved`, skóre 1–5 (kontrola v kódu i DB constraint), jedno aktivní na uživatele a materiál.
+- Hodnocení: jen u aktivního materiálu ve stavu `approved`, který uživatel smí vidět (jinak 404). Vlastní materiál hodnotit nejde (403). Skóre 1–5 (kontrola v kódu i DB constraint), jedno aktivní na uživatele a materiál.
 - Do sbírky jde přidat jen `approved` materiál. Neveřejný jen jeho autor.
 - Položky sbírky se filtrují: ostatní vidí jen aktivní, veřejné a `approved`. Vlastník sbírky navíc vidí své vlastní neveřejné materiály.
 - Smazání sbírky je soft delete s kaskádou na položky. Odebrání položky je hard delete.
@@ -108,11 +110,6 @@ Modely jsou v `api/models.py` (`PubResource*`, `PubCollection*`), routery se reg
 ## Pozor na
 
 - `GET /resources` nemá filtr podle autora. „Moje sbírka“ na frontendu stáhne vše viditelné a filtruje podle `author_id` na klientovi.
-- Upload souboru nekontroluje status. Stejný název souboru přepíše objekt v úložišti a dva záznamy pak ukazují na jeden soubor.
-- Smazání recenze vrátí materiál do `pending_review` bez ohledu na to, jestli byla poslední. `is_public` zůstane. Garant smaže i cizí recenzi.
-- `update_resource` vyžaduje existující `subject_id` a `target_id`, i když jsou ve schématu volitelné. `None` vrátí 400.
-- Omezení u forku v `update_resource` se spustí jen když se mění obor, cílovka, úroveň i obtížnost **najednou** (`and`).
-- `update_resource_status` porovnává `new_status in <enum hodnota>`. Funguje díky `Literal` v routeru, ne díky logice.
 - Hard delete `draft` materiálu nemaže vazby KRAUU/Bloom ani záznam forku. Ověřit, že neselže na FK.
 - `DELETE /resources/{id}/comments/{comment_id}` ignoruje `resource_id` a vrací 200 místo 204.
 - `POST /ratings/{id}` bere `resource_id`, `PUT/DELETE /ratings/{id}` bere `rating_id`.

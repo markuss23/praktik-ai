@@ -22,6 +22,9 @@ from api.src.catalogs.controllers import (
 )
 
 
+FORK_LOCKED_FIELDS = ("subject_id", "target_id", "education_level", "difficulty_level")
+
+
 def update_resource(
     db: Session, resource_id: int, resource_data: PubResourceUpdate, user: models.User
 ) -> PubResource:
@@ -104,20 +107,24 @@ def update_resource(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
 
-    # Ošetření pro fork
-    if resource.is_fork:
-        if (
-            resource_data.subject_id != resource.subject_id
-            and resource_data.target_id != resource.target_id
-            and resource_data.education_level != resource.education_level
-            and resource_data.difficulty_level != resource.difficulty_level
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="U forků není možné měnit obor, cílovou skupinu, vzdělávací úroveň a obtížnost zároveň",
-            )
     # Pouze vlastník nebo superadmin může upravovat materiál
     validate_owner_or_superadmin(resource, user, "materiál")
+
+    # U forku nejde změnit žádný z těchto údajů (přebírá je z originálu).
+    # Za změnu se počítá jen pole, které klient poslal, aby výchozí hodnota
+    # ve schématu (např. difficulty_level) nevyvolala falešnou změnu.
+    if resource.is_fork:
+        changed_locked_fields = [
+            field
+            for field in FORK_LOCKED_FIELDS
+            if field in resource_data.model_fields_set
+            and getattr(resource_data, field) != getattr(resource, field)
+        ]
+        if changed_locked_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="U forků není možné měnit obor, cílovou skupinu, vzdělávací úroveň ani obtížnost",
+            )
 
     # U materiálů ve stavu rejected musí být poslední recenze needs_revision, aby bylo možné upravovat
     if resource.status == PubResourceStatus.rejected:
@@ -196,9 +203,9 @@ def update_resource_status(
         db, models.PubResource, resource_id, detail="Materiál nenalezen"
     )
 
-    valid_status_transitions = {
-        PubResourceStatus.draft: PubResourceStatus.pending_review,
-        PubResourceStatus.rejected: PubResourceStatus.pending_review,
+    valid_status_transitions: dict[PubResourceStatus, set[PubResourceStatus]] = {
+        PubResourceStatus.draft: {PubResourceStatus.pending_review},
+        PubResourceStatus.rejected: {PubResourceStatus.pending_review},
     }
 
     allowed_status_change = valid_status_transitions.get(resource.status, set())

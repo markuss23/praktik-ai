@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.enums import PubResourceStatus
-from api.src.common.utils import get_or_404
+from api.src.publicDB.resources.visibility import ensure_resource_visible
 from api.src.publicDB.rating.schemas import (
     PubResourceRatingCreate,
     PubResourceRatingCreated,
@@ -25,9 +25,11 @@ def create_rating(
     Vytvoří hodnocení (1–5) pro veřejný materiál od přihlášeného uživatele.
 
     """
-    resource: models.PubResource = get_or_404(
-        db, models.PubResource, resource_id, detail="Materiál nenalezen"
-    )
+    # Hodnotit jde jen materiál, který uživatel smí vidět (jinak 404),
+    # a jen aktivní (superadmin vidí i smazané).
+    resource = ensure_resource_visible(db, resource_id, user)
+    if not resource.is_active:
+        raise HTTPException(status_code=404, detail="Materiál nenalezen")
 
     # ošetření aby užívatel si nehodnotil svůj vlastní materiál
     if resource.author_id == user.user_id:
