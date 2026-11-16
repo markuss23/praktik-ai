@@ -14,65 +14,35 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   TicketCardsSkeleton,
 } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import {
+  isTicketUnresolved,
   listMyTickets,
   NEW_TICKET_QUERY_PARAM,
   takeTicketDraft,
   Ticket,
+  TICKET_CATEGORY_LABELS,
   TICKET_CREATED_EVENT,
-  TICKET_TYPE_LABELS,
   TicketCard,
+  type TicketCategory,
   TicketCreateModal,
   TicketDeleteModal,
   type TicketDraft,
-  TicketType,
+  TicketTabs,
 } from "@/components/tickets";
 
+// Nevyřešené = open/in_progress/pending, Vyřešené = resolved/closed.
 type TicketsTab = "open" | "resolved";
+
+function ticketTab(ticket: Ticket): TicketsTab {
+  return isTicketUnresolved(ticket) ? "open" : "resolved";
+}
 
 const TAB_DEFINITIONS: { id: TicketsTab; label: string }[] = [
   { id: "open", label: "Nevyřešené" },
   { id: "resolved", label: "Vyřešené" },
 ];
-
-/** Podtržené taby s počty podle mockupu — kitový `Tabs` ve variantě `line`. */
-function TicketTabs({
-  active,
-  counts,
-  onChange,
-}: {
-  active: TicketsTab;
-  counts: Record<TicketsTab, number>;
-  onChange: (tab: TicketsTab) => void;
-}) {
-  return (
-    <Tabs value={active} onValueChange={(value) => onChange(value as TicketsTab)}>
-      <TabsList variant="line" className="border-b border-border">
-        {TAB_DEFINITIONS.map((tab) => (
-          <TabsTrigger key={tab.id} value={tab.id} className="font-semibold">
-            {tab.label}
-            <span
-              className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-medium",
-                tab.id === active
-                  ? "bg-primary/10 text-primary"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {counts[tab.id]}
-            </span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
-  );
-}
 
 export default function MojeTiketyPage() {
   const { user, loading: authLoading, login, isAuthenticated } = useAuth();
@@ -83,7 +53,7 @@ export default function MojeTiketyPage() {
   /** Dotaz odložený v AI chatu před přihlášením — předvyplní „Nový dotaz". */
   const [createDraft, setCreateDraft] = useState<TicketDraft | null>(null);
   const [courseFilter, setCourseFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TicketType | "">("");
+  const [typeFilter, setTypeFilter] = useState<TicketCategory | "">("");
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
 
   useEffect(() => {
@@ -145,21 +115,21 @@ export default function MojeTiketyPage() {
       tickets.filter(
         (t) =>
           (courseFilter === "" || t.courseTitle === courseFilter) &&
-          (typeFilter === "" || t.ticketType === typeFilter),
+          (typeFilter === "" || t.category === typeFilter),
       ),
     [tickets, courseFilter, typeFilter],
   );
 
   const counts = useMemo<Record<TicketsTab, number>>(
     () => ({
-      open: filteredTickets.filter((t) => t.status === "open").length,
-      resolved: filteredTickets.filter((t) => t.status === "resolved").length,
+      open: filteredTickets.filter((t) => ticketTab(t) === "open").length,
+      resolved: filteredTickets.filter((t) => ticketTab(t) === "resolved").length,
     }),
     [filteredTickets],
   );
 
   const visibleTickets = useMemo(
-    () => filteredTickets.filter((t) => t.status === tab),
+    () => filteredTickets.filter((t) => ticketTab(t) === tab),
     [filteredTickets, tab],
   );
 
@@ -172,9 +142,9 @@ export default function MojeTiketyPage() {
   ];
   const typeItems = [
     { label: "Všechny typy", value: null },
-    ...(Object.keys(TICKET_TYPE_LABELS) as TicketType[]).map((type) => ({
-      label: TICKET_TYPE_LABELS[type],
-      value: type,
+    ...(Object.keys(TICKET_CATEGORY_LABELS) as TicketCategory[]).map((category) => ({
+      label: TICKET_CATEGORY_LABELS[category],
+      value: category,
     })),
   ];
 
@@ -209,7 +179,7 @@ export default function MojeTiketyPage() {
 
         {/* Taby + filtry */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <TicketTabs active={tab} counts={counts} onChange={setTab} />
+          <TicketTabs tabs={TAB_DEFINITIONS} active={tab} counts={counts} onChange={setTab} />
           {tickets.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <Select
@@ -233,7 +203,7 @@ export default function MojeTiketyPage() {
                 items={typeItems}
                 value={typeFilter === "" ? null : typeFilter}
                 onValueChange={(value) =>
-                  setTypeFilter(value == null ? "" : (value as TicketType))
+                  setTypeFilter(value == null ? "" : (value as TicketCategory))
                 }
               >
                 <SelectTrigger aria-label="Filtrovat podle typu dotazu">

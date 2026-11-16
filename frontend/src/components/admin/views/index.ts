@@ -7,7 +7,6 @@ export { CourseTestsView } from './CourseTestsView';
 export { CourseSummaryView } from './CourseSummaryView';
 export { CourseAICreateView } from './CourseAICreateView';
 export { CourseUploadView } from './CourseUploadView';
-export { CourseEditView } from './CourseEditView';
 export { ModuleEditView } from './ModuleEditView';
 export { ReviewListView } from './ReviewListView';
 export { ReviewCourseView } from './ReviewCourseView';

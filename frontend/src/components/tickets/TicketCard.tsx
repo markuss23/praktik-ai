@@ -11,8 +11,10 @@ import {
   formatTicketCode,
   formatTicketDateTime,
   isTicketDeletable,
+  isTicketUnresolved,
   Ticket,
-  TICKET_TYPE_LABELS,
+  TICKET_CATEGORY_LABELS,
+  TICKET_ENTITY_LABELS,
 } from "./types";
 
 interface TicketCardProps {
@@ -25,8 +27,12 @@ interface TicketCardProps {
   hideDetailButton?: boolean;
   /** Větší titulek pro hlavičku detailové stránky. */
   large?: boolean;
-  /** Smazání tiketu; tlačítko se zobrazí jen u tiketů bez odpovědi. */
+  // Smazání tiketu; zakladateli jen ve stavu open (isTicketDeletable).
   onDelete?: (ticket: Ticket) => void;
+  // Přebije pravidlo pro smazání (staff smí mazat kdykoli).
+  deletable?: boolean;
+  // Řádek "Od / Řeší" pro přehled v administraci.
+  showPeople?: boolean;
 }
 
 /** Karta tiketu (seznam, profil i hlavička detailu) podle mockupu. */
@@ -37,10 +43,14 @@ export const TicketCard = memo(function TicketCard({
   hideDetailButton = false,
   large = false,
   onDelete,
+  deletable,
+  showPeople = false,
 }: TicketCardProps) {
-  const meta = [ticket.courseTitle, TICKET_TYPE_LABELS[ticket.ticketType]]
-    .filter(Boolean)
-    .join(" · ");
+  // Obecný tiket a materiál kurz nemají, místo něj ukážeme, čeho se týká.
+  const subject =
+    ticket.courseTitle ?? (ticket.entityType ? TICKET_ENTITY_LABELS[ticket.entityType] : undefined);
+  const meta = [subject, TICKET_CATEGORY_LABELS[ticket.category]].filter(Boolean).join(" · ");
+  const canDelete = deletable ?? isTicketDeletable(ticket);
 
   return (
     <Card size="sm" className="h-full">
@@ -51,7 +61,7 @@ export const TicketCard = memo(function TicketCard({
           </span>
           <div className="flex items-center gap-1.5">
             <TicketStatusBadge status={ticket.status} />
-            {onDelete && isTicketDeletable(ticket) && (
+            {onDelete && canDelete && (
               <Button
                 variant="ghost"
                 size="icon-xs"
@@ -74,6 +84,16 @@ export const TicketCard = memo(function TicketCard({
             // `title` kvůli dlouhým názvům kurzů — řádek je oříznutý na jeden.
             <p title={meta} className="mt-1 line-clamp-1 text-xs text-muted-foreground">
               {meta}
+            </p>
+          )}
+          {showPeople && (
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+              Od: {ticket.requesterDisplayName} ·{" "}
+              {ticket.assigneeDisplayName
+                ? `Řeší: ${ticket.assigneeDisplayName}`
+                : isTicketUnresolved(ticket)
+                  ? "Řeší: zatím nikdo"
+                  : "Bez převzetí"}
             </p>
           )}
         </div>

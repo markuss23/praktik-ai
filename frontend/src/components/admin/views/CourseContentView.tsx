@@ -8,7 +8,7 @@ import {
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
-  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, testCountHint, useCourseStepNavigation, useAdminChrome,
+  CourseStepsCard, StepModuleList, courseStepLabel, moduleCountHint, testCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
@@ -46,7 +46,6 @@ interface LocalModule {
   moduleId: number;
   title: string;
   perex: string;
-  maxTaskAttempts?: number;
   categories: ModuleCategoryValues;
   isActive?: boolean;
   courseId?: number;
@@ -302,7 +301,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  // Komentáře k souhrnu kurzu patří do kroku „Popis kurzu", ne k modulu
+  // Komentáře k souhrnu kurzu patří do kroku Souhrn, ne k modulu
   const moduleFeedbacks = feedbacks.filter(fb => !isCourseSummaryFeedback(fb));
   const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isCourseSummaryFeedback(fb) && !fb.isResolved).length;
 
@@ -338,7 +337,6 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       moduleId: m.moduleId,
       title: m.title,
       perex: m.perex ?? '',
-      maxTaskAttempts: m.maxTaskAttempts,
       // Chybějící KRAUU / Bloom modul zdědí z kurzu (uloží se až se změnou modulu).
       categories: moduleCategoryValues(m, courseData, neuroPrinciples),
       isActive: m.isActive,
@@ -600,14 +598,15 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
 
   const stepHints = {
-    // Komentáře k popisu kurzu žijí v kroku 1 — upozornit, ať je autor nepřehlédne
+    // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
     ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
-      description: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
+      summary: `${unresolvedSummaryFeedbacks} ${czechPlural(unresolvedSummaryFeedbacks, 'komentář', 'komentáře', 'komentářů')} k opravě`,
     }),
     content: moduleCountHint(modules.length),
     ...(courseAssessments && {
       // Pretest má vlastní krok
       tests: testCountHint(courseAssessments.filter((c) => c.moduleId === selectedModule?.moduleId && c.assessmentTypeCode !== 'pretest').length),
+      final: finalTestHint(courseAssessments.filter((c) => c.context === 'course_final').length),
     }),
   };
 

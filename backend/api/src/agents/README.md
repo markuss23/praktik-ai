@@ -68,7 +68,7 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 - Generování kurzu jen ze stavu `draft` nebo `failed`. Při chybě: `mark_failed`, rollback a `course.status = failed`. Stav `generated` nastavuje agent (`save_to_db`).
 - Druhé spuštění, když generování běží, nic nespustí. Kurz vrátí stejnou odpověď (jen `title`), obrázek aktuální průběh. Platí napříč workery (`try_start`), pro kurz i obrázky.
 - Cover kurzu: `assert_course_editable` před spuštěním i znovu před uložením. Kurz mezitím odeslaný ke schválení obrázek nepřepíše. Obrázek projde `normalize_course_image` (1280×720 WebP) a nastaví se kurzu.
-- Obrázek modulu se uloží do `module-images/<id>/image.<ext>` a opakované generování ho přepíše.
+- Obrázek modulu: `assert_course_editable` před spuštěním i před uložením. Uloží se do `module-images/<id>/image.<ext>` a opakované generování ho přepíše. Cesta jde do `module.image_path`. Servíruje ho `GET /modules/{id}/image`, vidí ho ten, kdo vidí modul.
 - Podcast modulu: `assert_course_editable` před spuštěním i před uložením. WAV jde do `module-podcasts/<id>/podcast.wav` (přepíše se), cesta a přepis do `module.podcast_path` / `podcast_transcript`. Stažení jako soubor `<název modulu>.wav` přes `GET /modules/{id}/podcast` (viz [`modules`](../modules/README.md)). Modul bez obsahu learn blocku = `failed`.
 - Myšlenková mapa: `assert_course_editable`, modul bez obsahu learn blocku = 400. Nepoužitelný výstup AI (`ValueError`) = 502, nic se neuloží. Strom se uloží do `module.mindmap` a přepíše starý. Odpověď vrací strom i `mindmap_mermaid`.
 - Embeddingy jen pro kurz ve stavu `approved`.
@@ -88,7 +88,6 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 ## Pozor na
 
 - Background task žije v procesu. Když worker spadne, řádek zůstane `running` až 3 minuty a kurz zůstane v `draft`. Pak jde spustit znovu.
-- Obrázek modulu nemá kontrolu editovatelnosti kurzu a cesta se nikam do DB neukládá. V API ho nic neservíruje.
 - Wiki chat je veřejný a bez `ai_budget`. Tokeny se zapíšou s `user_id = NULL` a žádný limit neplatí.
 - Podcast se po úpravě obsahu modulu sám nepřegeneruje. Hlas se do `ai_usage` zapíše jedním řádkem za celý podcast, jen když se povedou všechny repliky. Spálené tokeny nepovedeného běhu se nezapíšou. `/agents/active-*-generations` podcast nevrací.
 - Embeddingy a wiki sync běží v requestu. U velkého kurzu může request trvat dlouho.

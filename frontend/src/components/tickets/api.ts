@@ -1,118 +1,153 @@
-//  Tikety podpory (backend modul module_tickets) API functions
-//
-//  Endpointy zatím nejsou v generovaném klientovi – voláme je přímo
-//  přes fetch se stejným tokenem jako generovaný klient (stejný vzor
-//  jako resource comments v lib/api-client.ts). Po `npm run
-//  generate:openapi` je lze nahradit generovaným ModuleTicketsApi.
-//
-//  Omezení backendu (stav k dnešku):
-//  - GET /module-tickets vyžaduje course_id → „všechny moje tikety"
-//    skládáme přes kurzy z enrollmentů.
-//  - Odpovědět může jen autor kurzu / garant (a jen jednou); vlastník
-//    tiketu komentáře přidávat nemůže a tiket nelze ručně označit jako
-//    vyřešený — příslušné vstupy jsou v UI deaktivované s vysvětlením
-//    (TICKET_MESSAGING_UNAVAILABLE).
+// Tikety podpory (backend modul tickets) přes generovaný TicketsApi.
+// Chyby převádíme na Error s českým `detail` z backendu, UI ho rovnou zobrazí.
 
-import { backendUrl } from "@/lib/constants";
-import { getValidAccessToken } from "@/lib/keycloak";
-import { getMyEnrollments } from "@/lib/api-client";
-import type { Ticket, TicketStatus, TicketType } from "./types";
+import type { TicketCreate, TicketMessageItem } from "@/api";
+import {
+  getCourses,
+  getMe,
+  getMyEnrollments,
+  ticketsApi,
+  type MyEnrollmentExtended,
+} from "@/lib/api-client";
+import { readApiErrorDetail } from "@/lib/api-error";
+import {
+  isTicketUnassigned,
+  type Ticket,
+  type TicketCategory,
+  type TicketEntityType,
+  type TicketStatus,
+} from "./types";
 
-function mapTicket(json: Record<string, unknown>): Ticket {
-  return {
-    ticketId: json["ticket_id"] as number,
-    userId: json["user_id"] as number,
-    moduleId: json["module_id"] as number,
-    courseId: json["course_id"] as number,
-    ticketType: json["ticket_type"] as TicketType,
-    title: json["title"] as string,
-    reason: json["reason"] as string,
-    reply: (json["reply"] as string | null) ?? null,
-    status: json["status"] as TicketStatus,
-    createdAt: new Date(json["created_at"] as string),
-  };
-}
-
-async function ticketsFetch(path: string, init?: RequestInit): Promise<Response> {
-  const token = await getValidAccessToken();
-  const res = await fetch(backendUrl(path), {
-    ...init,
-    headers: {
-      ...(init?.headers as Record<string, string> | undefined),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  if (!res.ok) {
-    let detail = `Požadavek selhal (${res.status})`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = body.detail;
-    } catch {
-      // odpověď nemusí být JSON
-    }
-    throw new Error(detail);
+async function call<T>(request: () => Promise<T>, fallback: string): Promise<T> {
+  try {
+    return await request();
+  } catch (err) {
+    throw new Error((await readApiErrorDetail(err)) ?? fallback);
   }
-  return res;
 }
 
-/** Vrátí tikety jednoho kurzu (student vidí jen své). */
-export async function listCourseTickets(courseId: number): Promise<Ticket[]> {
-  const res = await ticketsFetch(`/api/v1/module-tickets?course_id=${courseId}`);
-  const data = (await res.json()) as Record<string, unknown>[];
-  return data.map(mapTicket);
+// Název kurzu backend v tiketu nevrací, doplníme ho (best-effort): student
+// z enrollmentů, staff ze seznamu kurzů (v kurzech, které řeší, zapsaný není).
+async function loadCourseTitles(staff = false): Promise<Map<number, string>> {
+  if (staff) {
+    const courses = await getCourses({ includeInactive: true }).catch(() => []);
+    return new Map(courses.map((c) => [c.courseId, c.title]));
+  }
+  const enrollments: MyEnrollmentExtended[] = await getMyEnrollments().catch(() => []);
+  return new Map(enrollments.map((e) => [e.courseId, e.course.title]));
 }
 
-/**
- * Vrátí všechny tikety přihlášeného uživatele napříč zapsanými kurzy,
- * seřazené od nejnovějšího. Kurzy, u kterých dotaz selže, přeskočí.
- */
+function withCourseTitle(ticket: Ticket, titles: Map<number, string>): Ticket {
+  return ticket.courseId != null
+    ? { ...ticket, courseTitle: titles.get(ticket.courseId) }
+    : ticket;
+}
+
+// Tikety, které uživatel sám založil, od nejnovějšího.
+// GET /tickets vrací lektorovi i tikety jeho kurzů a garantovi/superadminovi všechny,
+// "Moje tikety" proto filtrujeme na requester.
 export async function listMyTickets(): Promise<Ticket[]> {
-  const enrollments = await getMyEnrollments();
-  const results = await Promise.allSettled(
-    enrollments.map(async (e): Promise<Ticket[]> => {
-      const tickets = await listCourseTickets(e.courseId);
-      return tickets.map((t) => ({ ...t, courseTitle: e.course.title }));
-    }),
+  const [tickets, me, titles] = await Promise.all([
+    call(() => ticketsApi.listTickets(), "Tikety se nepodařilo načíst."),
+    getMe(),
+    loadCourseTitles(),
+  ]);
+  return tickets
+    .filter((t) => t.requesterId === me.userId)
+    .map((t) => withCourseTitle(t, titles));
+}
+
+// Tikety k vyřízení pro staff (administrace): lektor dostane tikety svých kurzů,
+// garant a superadmin všechny. Vlastní dotazy patří do Moje tikety, tady ne.
+export async function listStaffTickets(): Promise<Ticket[]> {
+  const [tickets, me, titles] = await Promise.all([
+    call(() => ticketsApi.listTickets(), "Tikety se nepodařilo načíst."),
+    getMe(),
+    loadCourseTitles(true),
+  ]);
+  return tickets
+    .filter((t) => t.requesterId !== me.userId)
+    .map((t) => withCourseTitle(t, titles));
+}
+
+// Počet tiketů k vyřízení, které nikdo neřeší (záložka Nové) pro odznak v menu administrace.
+export async function countNewStaffTickets(userId: number): Promise<number> {
+  const tickets = await call(() => ticketsApi.listTickets(), "Tikety se nepodařilo načíst.");
+  return tickets.filter((t) => isTicketUnassigned(t) && t.requesterId !== userId).length;
+}
+
+// Tiket v administraci se změnil (převzetí, uzavření, smazání), menu si obnoví počet.
+export const STAFF_TICKETS_CHANGED_EVENT = "tickets:staff-changed";
+
+export function dispatchStaffTicketsChanged(): void {
+  window.dispatchEvent(new Event(STAFF_TICKETS_CHANGED_EVENT));
+}
+
+export async function getTicket(ticketId: number, options: { staff?: boolean } = {}): Promise<Ticket> {
+  const [ticket, titles] = await Promise.all([
+    call(() => ticketsApi.getTicket({ ticketId }), "Tiket se nepodařilo načíst."),
+    loadCourseTitles(options.staff),
+  ]);
+  return withCourseTitle(ticket, titles);
+}
+
+// Staff si převezme tiket ve stavu open -> in_progress, assignee = on.
+export function claimTicket(ticketId: number): Promise<Ticket> {
+  return call(() => ticketsApi.claimTicket({ ticketId }), "Tiket se nepodařilo převzít.");
+}
+
+// Ručně jde jen resolved (jen staff) a closed (z resolved, zakladatel i staff); práva vynucuje backend.
+export function updateTicketStatus(
+  ticketId: number,
+  status: Extract<TicketStatus, "resolved" | "closed">,
+): Promise<Ticket> {
+  return call(
+    () => ticketsApi.updateTicketStatus({ ticketId, ticketStatusUpdate: { status } }),
+    "Stav tiketu se nepodařilo změnit.",
   );
-
-  return results
-    .filter(
-      (r): r is PromiseFulfilledResult<Ticket[]> => r.status === "fulfilled",
-    )
-    .flatMap((r) => r.value)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-export interface TicketCreatePayload {
-  moduleId: number;
-  ticketType: TicketType;
-  title: string;
-  reason: string;
+// Vlákno zpráv od nejstarší; interní poznámky staffu backend zakladateli nepošle.
+export function listTicketMessages(ticketId: number): Promise<TicketMessageItem[]> {
+  return call(
+    () => ticketsApi.listTicketMessages({ ticketId }),
+    "Konverzaci se nepodařilo načíst.",
+  );
 }
 
-/** Vytvoří nový tiket. Student musí být zapsán v kurzu modulu. */
-export async function createTicket(data: TicketCreatePayload): Promise<Ticket> {
-  const res = await ticketsFetch(`/api/v1/module-tickets`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      module_id: data.moduleId,
-      ticket_type: data.ticketType,
-      title: data.title,
-      reason: data.reason,
-    }),
-  });
-  return mapTicket((await res.json()) as Record<string, unknown>);
+// Odpověď do vlákna; u vyřešeného tiketu ho backend vrátí do in_progress.
+// Interní poznámku smí jen staff a zakladatel ji nevidí.
+export function addTicketMessage(
+  ticketId: number,
+  body: string,
+  isInternal = false,
+): Promise<TicketMessageItem> {
+  return call(
+    () => ticketsApi.addTicketMessage({ ticketId, ticketMessageCreate: { body, isInternal } }),
+    "Zprávu se nepodařilo odeslat.",
+  );
 }
 
-/** Smaže tiket (student jen dokud nemá odpověď). */
+// Povolené kategorie pro každý typ entity (GET /tickets/categories, veřejný endpoint).
+export async function getTicketCategories(): Promise<
+  Partial<Record<TicketEntityType, TicketCategory[]>>
+> {
+  const all = await call(
+    () => ticketsApi.getTicketCategories(),
+    "Typy dotazů se nepodařilo načíst.",
+  );
+  return Object.fromEntries(all.map((c) => [c.entityType, c.allowedCategories]));
+}
+
+// První zpráva vlákna se posílá rovnou s tiketem (`message`).
+export function createTicket(data: TicketCreate): Promise<Ticket> {
+  return call(
+    () => ticketsApi.createTicket({ ticketCreate: data }),
+    "Dotaz se nepodařilo odeslat.",
+  );
+}
+
+// Zakladatel smí smazat jen tiket ve stavu open (staff kdykoli).
 export async function deleteTicket(ticketId: number): Promise<void> {
-  await ticketsFetch(`/api/v1/module-tickets/${ticketId}`, { method: "DELETE" });
+  await call(() => ticketsApi.deleteTicket({ ticketId }), "Tiket se nepodařilo smazat.");
 }
-
-/**
- * Jednotné vysvětlení u deaktivovaných vstupů konverzace — backend zatím
- * drží jen dvojici dotaz + odpověď, další zprávy vlastník přidávat nemůže.
- */
-export const TICKET_MESSAGING_UNAVAILABLE =
-  "Přidávání dalších zpráv zatím není dostupné. Na váš dotaz odpoví lektor kurzu.";

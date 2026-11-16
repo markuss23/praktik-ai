@@ -2,7 +2,7 @@
 
 import { Plus, Trash2, X } from 'lucide-react';
 import type { ClosedQuestionItem } from '@/api';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, RadioGroup, RadioGroupItem } from '@/components/ui';
 import { MAX_OPTIONS, MIN_OPTIONS } from '@/lib/assessment-validation';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
@@ -52,20 +52,20 @@ export function ClosedQuestionFields({ label, value, onChange, editableOptionCou
         )}
       </div>
 
-      <div className="space-y-2 ml-4" role="radiogroup" aria-label={`${label} — správná odpověď`}>
-        {value.options.map((option, index) => {
-          const isCorrect = value.correctIndex === index;
-          return (
+      <div className="ml-4 flex flex-col gap-2">
+        <RadioGroup
+          value={value.correctIndex}
+          onValueChange={(correctIndex: number) => onChange({ ...value, correctIndex })}
+          aria-label={`${label} — správná odpověď`}
+        >
+          {value.options.map((option, index) => (
             <div key={index} className="flex items-center gap-3">
-              <Button
-                variant="plain"
-                type="button"
-                role="radio"
-                aria-checked={isCorrect}
-                aria-label={isCorrect ? 'Správná odpověď' : 'Označit jako správnou odpověď'}
+              <RadioGroupItem
+                value={index}
+                aria-label={`Správná odpověď: možnost ${index + 1}`}
                 title="Označit jako správnou odpověď"
-                onClick={() => onChange({ ...value, correctIndex: index })}
-                className={cn(BTN_KEEP_BOX, `size-4 rounded-full shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1 ${isCorrect ? 'bg-gradient-r border-2 border-gradient-r' : 'border-2 border-border hover:border-gradient-r/30'}`)}
+                // Značková fialová místo kitové zelené, jako zbytek tvorby testů
+                className="data-checked:border-gradient-r data-checked:bg-gradient-r"
               />
               <Input
                 type="text"
@@ -85,8 +85,8 @@ export function ClosedQuestionFields({ label, value, onChange, editableOptionCou
                 </Button>
               )}
             </div>
-          );
-        })}
+          ))}
+        </RadioGroup>
         {editableOptionCount && value.options.length < MAX_OPTIONS && (
           <Button
             variant="plain"

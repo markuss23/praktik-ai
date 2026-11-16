@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
-import { Copy, LogIn } from "lucide-react";
+import { Copy, Flag, LogIn } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { fetchMaterialById, fetchMaterialCategories } from "@/components/material/api";
 import {
@@ -13,7 +13,8 @@ import {
 import { MaterialAttachments } from "@/components/material/MaterialAttachments";
 import { MaterialForkModal } from "@/components/material/MaterialForkModal";
 import { RatingsSection } from "@/components/material/RatingsSection";
-import { MaterialCategories, MaterialDetailSkeleton, Button } from "@/components/ui";
+import { MaterialCategories, MaterialDetailSkeleton, Button, useToast } from "@/components/ui";
+import { formatTicketCode, TicketCreateModal } from "@/components/tickets";
 import { useAuth } from "@/hooks/useAuth";
 import type { Material, MaterialCategory } from "@/components/material/types";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
@@ -110,6 +111,9 @@ function MaterialDetail({
   const router = useRouter();
   const category = categories.find((c) => c.id === material.categoryId);
   const [forkOpen, setForkOpen] = useState(false);
+  // Nahlásit problém = tiket k materiálu (pub_resource), řeší ho garant / superadmin.
+  const [reportOpen, setReportOpen] = useState(false);
+  const toast = useToast();
 
   return (
     <>
@@ -118,18 +122,43 @@ function MaterialDetail({
           {category && <MaterialCategoryBadge label={category.label} />}
           <MaterialStatusBadge status={material.status} />
         </div>
-        {material.allowForks && material.isPublic && (
-          <Button
-            variant="plain"
-            type="button"
-            onClick={() => setForkOpen(true)}
-            className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
-          >
-            <Copy size={14} strokeWidth={1.75} />
-            Vytvořit kopii
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" type="button" onClick={() => setReportOpen(true)}>
+            <Flag data-icon="inline-start" />
+            Nahlásit problém
           </Button>
-        )}
+          {material.allowForks && material.isPublic && (
+            <Button
+              variant="plain"
+              type="button"
+              onClick={() => setForkOpen(true)}
+              className={cn(BTN_KEEP_BOX, "inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/50 transition-colors")}
+            >
+              <Copy size={14} strokeWidth={1.75} />
+              Vytvořit kopii
+            </Button>
+          )}
+        </div>
       </div>
+
+      <TicketCreateModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        target={{ entityType: "pub_resource", entityId: Number(material.id), label: material.title }}
+        title="Nahlásit problém s materiálem"
+        description="Popište, co je na materiálu špatně nebo zastaralé. Podíváme se na to."
+        onCreated={(created) =>
+          toast.show({
+            variant: "success",
+            title: "Problém nahlášen",
+            message: `Tiket ${formatTicketCode(created.ticketId)} najdete v Moje tikety.`,
+            action: {
+              label: "Otevřít tiket",
+              onClick: () => router.push(`${ROUTES.MY_TICKETS}/${created.ticketId}`),
+            },
+          })
+        }
+      />
 
       <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">{material.title}</h1>
       <p className="text-sm text-muted-foreground max-w-3xl mb-6">{material.description}</p>

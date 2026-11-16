@@ -17,6 +17,7 @@ export {
   courseStepLabel,
   moduleCountHint,
   testCountHint,
+  finalTestHint,
   useCourseStepNavigation,
   type CourseStep,
   type StepModuleItem,

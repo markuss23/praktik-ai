@@ -313,11 +313,17 @@ async def _run_image_generation(key: str, kind: str, entity_id: int) -> None:
         if kind == "course":
             response = await _save_generated_course_image(db, entity_id, result)
         else:
+            module = get_or_404(db, models.Module, entity_id, detail="Modul nenalezen")
+            # Kurz mohl být během generování odeslán ke schválení — pak nic neměnit
+            assert_course_editable(module.course)
             response = _upload_image_to_seaweedfs(
                 result, remote_dir=f"module-images/{entity_id}", basename="image"
             )
+            module.image_path = response.file_path
+            db.commit()
         mark_completed(key, response.model_dump())
     except Exception as e:  # noqa: BLE001 — chceme zachytit cokoliv
+        db.rollback()
         mark_failed(key, str(e))
     finally:
         db.close()
@@ -428,6 +434,7 @@ async def generate_module_images(
 
     module = get_or_404(db, models.Module, module_id, detail="Modul nenalezen")
     validate_owner_or_superadmin(module, user, "modul")
+    assert_course_editable(module.course)
 
     return _start_image_generation("module", module_id)
 

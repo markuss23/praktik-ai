@@ -9,7 +9,7 @@ import { TicketCard } from "./TicketCard";
 import { TicketDeleteModal } from "./TicketDeleteModal";
 import { listMyTickets } from "./api";
 import { TICKET_CREATED_EVENT } from "./draft";
-import { Ticket } from "./types";
+import { isTicketUnresolved, Ticket } from "./types";
 
 interface ProfileTicketsCardProps {
   /** Kliknutí na „Zobrazit detail" tiketu (otevře chat sidebar). */
@@ -35,7 +35,7 @@ export function ProfileTicketsCard({
   const listRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<number>();
 
-  const openCount = tickets.filter((t) => t.status === "open").length;
+  const openCount = tickets.filter(isTicketUnresolved).length;
 
   useEffect(() => {
     let cancelled = false;

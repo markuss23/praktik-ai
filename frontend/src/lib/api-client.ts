@@ -19,6 +19,7 @@ import {
   ModuleCreate,
   ModuleUpdate,
   AssessmentsApi,
+  TicketsApi,
   ResponseError,
   ClosedQuestionsSettingsFromJSON,
   ClosedQuestionsSettingsToJSON,
@@ -88,6 +89,7 @@ export const reviewsApi = new ReviewsApi(configuration);
 export const ratingsApi = new RatingsApi(configuration);
 export const collectionsApi = new CollectionsApi(configuration);
 export const assessmentsApi = new AssessmentsApi(configuration);
+export const ticketsApi = new TicketsApi(configuration);
 
 // ============ Auth / Current User ============
 
