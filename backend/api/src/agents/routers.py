@@ -7,7 +7,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api.dependencies import CurrentUser, require_role
-from api.authorization import validate_owner_or_superadmin
+from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin
 from api.src.common.utils import assert_course_editable, get_or_404, check_enrollment
 from api.src.agents.schemas import (
     ActiveImageGeneration,
@@ -205,8 +205,9 @@ async def generate_course_embeddings(
 
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
-    # Validace vlastnictví
-    validate_owner_or_superadmin(course, user, "kurz")
+    # Vlastník, garant nebo superadmin
+    if course.owner_id != user.user_id:
+        validate_guarantor_or_superadmin(course, user, "kurz")
 
     # Kontrola statusu kurzu
     if course.status != models.Status.approved:
