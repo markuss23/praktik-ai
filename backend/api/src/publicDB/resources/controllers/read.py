@@ -6,8 +6,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from api import models
-from api.src.common.utils import get_or_404
 from api.src.publicDB.resources.schemas import PubResource, PubResourceFile
+from api.src.publicDB.resources.visibility import (
+    ensure_resource_visible,
+    resource_visibility_clause,
+)
 
 
 def get_resources(
@@ -26,6 +29,7 @@ def get_resources(
     status: str | None = None,
     is_fork: bool | None = None,
     original_id: int | None = None,
+    user: models.User | None = None,
 ) -> list[PubResource]:
     """Vrátí seznam veřejných materiálů s filtrací.
     Doplňuje počty hodnocení, souborů a kolirát si nekdo vytvořil kopii. (fork)
@@ -124,6 +128,10 @@ def get_resources(
         .order_by(models.PubResource.resource_id.desc())
     )
 
+    # Cizí draft a rejected se nevrací nikdy, nepublikované a neaktivní vidí jen
+    # superadmin, pending_review navíc garanti, autor všechny své aktivní.
+    stm = stm.where(resource_visibility_clause(user))
+
     if not include_inactive:
         stm = stm.where(models.PubResource.is_active.is_(True))
 
@@ -185,8 +193,13 @@ def get_resources(
     return result
 
 
-def get_resource(db: Session, resource_id: int) -> PubResource:
-    """Vrátí detail materiálu podle ID s počty."""
+def get_resource(
+    db: Session, resource_id: int, user: models.User | None = None
+) -> PubResource:
+    """Vrátí detail materiálu podle ID s počty.
+    """
+    ensure_resource_visible(db, resource_id, user)
+
     ratings_count_subq = (
         select(
             models.PubResourceRating.resource_id.label("resource_id"),
@@ -267,16 +280,7 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
         .where(models.PubResource.resource_id == resource_id)
     )
 
-    result = db.execute(stm).first()
-    if result is None:
-        get_or_404(
-            db,
-            models.PubResource,
-            resource_id,
-            detail="Materiál nenalezen",
-            check_active=False,
-        )
-
+    result = db.execute(stm).one()
     resource, ratings_cnt, avg_rating, files_cnt, forks_cnt, forked_from_id = result
     resource.__dict__["ratings_count"] = int(ratings_cnt or 0)
     resource.__dict__["avg_rating"] = (
@@ -288,20 +292,18 @@ def get_resource(db: Session, resource_id: int) -> PubResource:
     return PubResource.model_validate(resource)
 
 
-def get_resource_files(db: Session, resource_id: int) -> list[PubResourceFile]:
-    """Vrátí seznam souborů materiálu."""
-    get_or_404(
-        db,
-        models.PubResource,
-        resource_id,
-        detail="Materiál nenalezen",
-        check_active=False,
-    )
+def get_resource_files(
+    db: Session, resource_id: int, user: models.User | None = None
+) -> list[PubResourceFile]:
+    """Vrátí seznam souborů materiálu.
+    """
+    ensure_resource_visible(db, resource_id, user)
 
     files = (
         db.execute(
             select(models.PubResourceFile).where(
-                models.PubResourceFile.resource_id == resource_id
+                models.PubResourceFile.resource_id == resource_id,
+                models.PubResourceFile.is_active.is_(True)
             )
         )
         .scalars()

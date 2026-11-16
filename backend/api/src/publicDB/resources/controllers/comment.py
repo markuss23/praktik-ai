@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from api import models
 from api.enums import PubResourceStatus, UserRole
 from api.src.common.utils import get_or_404
+from api.src.publicDB.resources.visibility import ensure_resource_visible
 from api.authorization import validate_guarantor_or_superadmin
 from api.src.publicDB.resources.schemas import (
     PubResourceComment,
@@ -21,10 +22,11 @@ from api.src.publicDB.resources.schemas import (
 
 
 def get_resource_comments(
-    db: Session, resource_id: int
+    db: Session, resource_id: int, user: models.User | None = None
 ) -> list[PubResourceComment]:
-    """Vrátí komentáře k materiálu (nejnovější první)."""
-    get_or_404(db, models.PubResource, resource_id, detail="Materiál nenalezen")
+    """Vrátí komentáře k materiálu (nejnovější první).
+    """
+    ensure_resource_visible(db, resource_id, user)
 
     stm = (
         select(models.PubResourceComment)

@@ -40,8 +40,9 @@ Role mají hierarchii `user < lector < guarantor < superadmin` (`require_role` p
 
 | Akce | Kdo |
 | --- | --- |
-| Seznam materiálů, veřejné sbírky | Kdokoli, i bez přihlášení |
-| Detail materiálu, soubory, komentáře, hodnocení, recenze | Přihlášený uživatel |
+| Seznam materiálů, veřejné sbírky | Kdokoli, i bez přihlášení (materiály podle [viditelnosti](#viditelnost-materiálů)) |
+| Detail materiálu, soubory, stažení souboru, komentáře | Přihlášený uživatel, který materiál smí vidět (jinak 404) |
+| Hodnocení, recenze (čtení) | Přihlášený uživatel |
 | Vytvořit materiál, fork, hodnocení, sbírku | Přihlášený uživatel |
 | Upravit / smazat materiál, nahrát / smazat soubor, poslat k recenzi, zveřejnit | Autor nebo superadmin |
 | Upravit / smazat hodnocení | Autor hodnocení nebo superadmin |
@@ -50,7 +51,24 @@ Role mají hierarchii `user < lector < guarantor < superadmin` (`require_role` p
 | Recenze, komentář (vytvořit, smazat) | Garant nebo superadmin |
 | Smazat komentář | Jeho autor nebo superadmin |
 
-Garant nemá přístup k cizím materiálům mimo recenze a komentáře (`validate_owner_or_superadmin`).
+Garant cizí materiál neupraví ani nesmaže (`validate_owner_or_superadmin`). Číst smí navíc materiály v `pending_review`, které schvaluje.
+
+### Viditelnost materiálů
+
+Pravidla jsou na jednom místě v `resources/visibility.py`. Platí pro seznam, detail, seznam souborů, stažení souboru a komentáře.
+
+| Kdo | Seznam `GET /resources` | Detail, soubory, stažení, komentáře |
+| --- | --- | --- |
+| Nepřihlášený, `user`, `lector` | Jen publikované (`is_public`) a aktivní | Totéž |
+| `guarantor` | Totéž + `pending_review` (aktivní) | Totéž + `pending_review` (aktivní) |
+| `superadmin` | Vše kromě cizích `draft`/`rejected`, i nepublikované a neaktivní (podle `is_published` a `include_inactive`) | Vše |
+| Autor materiálu | Navíc všechny své aktivní materiály v jakémkoli stavu (i `draft`, `rejected`, nepublikované) | Svůj materiál vždy, i `draft`, `rejected` a smazaný |
+
+- Cizí `draft` a `rejected` seznam nevrací nikomu, ani superadminovi, ani s filtrem `status`. Autor své vidí.
+- Autor ve výpisu nevidí své smazané (neaktivní) materiály, ani s `include_inactive` (to platí jen pro superadmina).
+- `is_published=true` zúží výpis na publikované, takže autorovy nepublikované materiály zmizí. Pro „moje materiály“ ho frontend posílat nemá.
+- Materiál, který uživatel nesmí vidět, dostane stejnou 404 jako neexistující, aby nešlo zjistit, která ID existují.
+- Parametry `is_published` a `include_inactive` mají vliv jen u superadmina, ostatním pravidla obejít nejdou.
 
 ## Pravidla
 
@@ -63,7 +81,7 @@ Garant nemá přístup k cizím materiálům mimo recenze a komentáře (`valida
 - Fork: originál musí být veřejný, mít `allow_forks=True` a nesmí být sám fork. Fork kopíruje metadata a KRAUU/Bloom, ne soubory. Fork má `allow_forks=False`.
 - Smazání materiálu: nejde, když je veřejný, nebo `approved` s `allow_forks`. `draft` se maže natvrdo včetně souborů v úložišti, ostatní soft delete s kaskádou (soubory, hodnocení, recenze, komentáře, KRAUU, Bloom).
 - Smazat soubor jde jen ve stavu `draft` nebo `rejected`. Velikost souboru max 30 MB. Typ se určuje z obsahu (`filetype`).
-- Hodnocení: skóre 1–5 (kontrola v kódu i DB constraint), jedno aktivní na uživatele a materiál.
+- Hodnocení: jen u materiálu ve stavu `approved`, skóre 1–5 (kontrola v kódu i DB constraint), jedno aktivní na uživatele a materiál.
 - Do sbírky jde přidat jen `approved` materiál. Neveřejný jen jeho autor.
 - Položky sbírky se filtrují: ostatní vidí jen aktivní, veřejné a `approved`. Vlastník sbírky navíc vidí své vlastní neveřejné materiály.
 - Smazání sbírky je soft delete s kaskádou na položky. Odebrání položky je hard delete.
@@ -73,7 +91,8 @@ Garant nemá přístup k cizím materiálům mimo recenze a komentáře (`valida
 
 | Soubor | Co dělá |
 | --- | --- |
-| `resources/routers.py` | Materiály, soubory, komentáře, fork. `public_router` = jen seznam bez přihlášení. Stažení souboru je přímo tady. |
+| `resources/routers.py` | Materiály, soubory, komentáře, fork. `public_router` = jen seznam bez přihlášení (přihlášení je volitelné přes `OptionalUser`). Stažení souboru je přímo tady. |
+| `resources/visibility.py` | Kdo smí vidět materiál: `resource_visible_to` (jeden materiál), `resource_visibility_clause` (SQL podmínka pro seznam), `ensure_resource_visible` (načte nebo 404). |
 | `resources/controllers/create.py` | Vytvoření materiálu, upload souboru, fork. |
 | `resources/controllers/read.py` | Seznam s filtry a detail s dopočtenými počty. |
 | `resources/controllers/update.py` | Úprava, přechod statusu, zveřejnění. |
@@ -88,9 +107,7 @@ Modely jsou v `api/models.py` (`PubResource*`, `PubCollection*`), routery se reg
 
 ## Pozor na
 
-- `GET /resources` je bez přihlášení a defaultně vrací **všechny** materiály (i `draft`, cizí, s `include_inactive` i smazané). Filtr `is_published` je opt-in. Frontend na tom staví „Moje sbírka“ (stáhne vše a filtruje podle autora).
-- Detail materiálu, seznam souborů a stažení souboru nekontrolují status, `is_public` ani `is_active`. Seznam souborů a stažení vrací i soft-smazané soubory.
-- Hodnotit jde jakýkoli aktivní materiál, i `draft` nebo vlastní.
+- `GET /resources` nemá filtr podle autora. „Moje sbírka“ na frontendu stáhne vše viditelné a filtruje podle `author_id` na klientovi.
 - Upload souboru nekontroluje status. Stejný název souboru přepíše objekt v úložišti a dva záznamy pak ukazují na jeden soubor.
 - Smazání recenze vrátí materiál do `pending_review` bez ohledu na to, jestli byla poslední. `is_public` zůstane. Garant smaže i cizí recenzi.
 - `update_resource` vyžaduje existující `subject_id` a `target_id`, i když jsou ve schématu volitelné. `None` vrátí 400.
