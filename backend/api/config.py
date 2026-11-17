@@ -32,14 +32,15 @@ class WikiSettings(BaseModel):
 
 
 class SMTPSettings(BaseModel):
-    host: str = "mailpit"
-    port: int = 1025
+    host: str = "localhost"
+    port: int = 587
     username: str | None = None
     password: str | None = None
-    use_tls: bool = False  # STARTTLS (typicky port 587)
+    use_tls: bool = True  # STARTTLS (typicky port 587)
     use_ssl: bool = False  # přímé SSL spojení (typicky port 465)
     sender: str = "noreply@praktik-ai.cz"
-    enabled: bool = True
+    # Bez nastaveného SMTP serveru se e-maily neodesílají, jen se zalogují jako skipped
+    enabled: bool = False
     frontend_url: str = "http://localhost:3000"
 
 

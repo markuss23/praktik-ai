@@ -4,19 +4,17 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, auth, oauth2_bearer
-from api.src.auth.schemas import ProfileNameUpdate, UserResponse
-from api.src.users.controllers import get_user_ai_style, update_user_ai_style
-from api.notifications.email_log import event_label, list_user_email_log
-from api.notifications.preferences import list_preferences, update_preferences
 from api.src.auth.schemas import (
     EmailLogItem,
     EmailLogPage,
     NotificationPreferenceItem,
     NotificationPreferencesUpdate,
     ProfileNameUpdate,
-    ProfileUpdate,
     UserResponse,
 )
+from api.src.users.controllers import get_user_ai_style, update_user_ai_style
+from api.notifications.email_log import event_label, list_user_email_log
+from api.notifications.preferences import list_preferences, update_preferences
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

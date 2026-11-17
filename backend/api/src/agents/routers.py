@@ -69,8 +69,6 @@ PODCAST_GENERATION_TOTAL_STEPS = 4
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/agents", tags=["agents"])
 # Bez autentizace — wiki chat je nápověda pro všechny návštěvníky
 public_router = APIRouter(prefix="/agents", tags=["agents"])
@@ -122,7 +120,7 @@ async def _run_course_generation(course_id: int) -> None:
                 course_id, NotificationEvent.course_generation_failed
             )
             return
-        mark_completed(course_id)
+        mark_completed(key)
         await _notify_generation(course_id, NotificationEvent.course_generated)
     finally:
         db.close()
