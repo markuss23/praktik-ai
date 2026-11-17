@@ -45,6 +45,10 @@
   --brand-accent: oklch(0.7153 0.1794 50.61); /* accent    #F87B1B */
   --gradient-l: oklch(0.5445 0.1389 10.8); /* gradientL #B1475C */
   --gradient-r: oklch(0.6274 0.1301 287.77); /* gradientR #857AD2 */
+  /* Tematické bloky kurzu (blok.a, blok.b, blok.c), značka na kartě kurzu */
+  --block-context: oklch(0.5883 0.0908 187.28); /* Kontext #298E86 */
+  --block-transform: var(--gradient-r); /* Transformace */
+  --block-apply: var(--brand-accent); /* Aplikace */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   /* Fokusový prstenec jede na brandové fialové (gradientR), ne na šedé. */
@@ -108,6 +112,9 @@
   --color-brand-accent: var(--brand-accent);
   --color-gradient-l: var(--gradient-l);
   --color-gradient-r: var(--gradient-r);
+  --color-block: var(--block);
+  --color-block-ink: var(--block-ink);
+  --color-block-context: var(--block-context);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -501,6 +508,10 @@ body.module-fullscreen footer {
 
   --gradient-r: oklch(0.72 0.1301 287.77); /* gradientR #857AD2 */
 
+  --block-context: oklch(0.6451 0.0987 185.48); /* Kontext #33A196 */
+  --block-transform: var(--gradient-r);
+  --block-apply: var(--brand-accent);
+
   --border: oklch(1 0 0 / 10%);
 
   --input: oklch(1 0 0 / 15%);
@@ -549,6 +560,25 @@ body.module-fullscreen footer {
        Záměrně clip, ne hidden: nevytváří scroll kontejner, takže position:
        sticky uvnitř stránky funguje dál. */
     overflow-x: clip;
+  }
+
+  /* Barva bloku pro utility bg-block a text-block-ink. Ink musí vzniknout na
+     stejném elementu jako --block, var() se dosazuje tam, kde je deklarovaný.
+     Mix v srgb drží text na bílé nad kontrastem 4.5:1. */
+  [data-course-block] {
+    --block-ink: color-mix(in srgb, var(--block) 72%, black);
+  }
+  .dark [data-course-block] {
+    --block-ink: color-mix(in srgb, var(--block) 60%, white);
+  }
+  [data-course-block="context"] {
+    --block: var(--block-context);
+  }
+  [data-course-block="transform"] {
+    --block: var(--block-transform);
+  }
+  [data-course-block="apply"] {
+    --block: var(--block-apply);
   }
 }
 

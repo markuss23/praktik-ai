@@ -42,6 +42,7 @@ export default function CoursesContent() {
           duration={course.modulesCount ? course.modulesCount * 20 : 60}
           difficulty={course.difficulty}
           imageUrl={course.imageUrl}
+          block={course.courseBlock}
           completedModules={0}
           totalModules={course.modulesCount || 0}
         />

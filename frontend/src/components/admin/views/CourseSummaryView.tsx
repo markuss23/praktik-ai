@@ -344,6 +344,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     bloomLevels: bloomLevels.filter((b) => editedCategories.bloomLevelIds.includes(b.bloomId)),
     crossSubjects: crossSubjects.filter((c) => editedCategories.crossSubjectIds.includes(c.crossId)),
     imageUrl: course?.imageUrl,
+    courseBlock: blocks.find((b) => b.blockId === editedCatalog.courseBlockId) ?? null,
     difficulty: course?.difficulty,
     durationMinutes: course?.durationMinutes,
   };

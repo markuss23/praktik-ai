@@ -8,8 +8,20 @@ import { Difficulty, Status, type Course } from "@/api";
 
 const MOCK_DATE = new Date("2026-09-01T08:00:00Z");
 
-const base = {
+const CONTEXT = {
   courseBlockId: 1,
+  courseBlock: { blockId: 1, code: "blok.a", name: "Kontext", description: "Porozumění principům AI" },
+};
+const TRANSFORM = {
+  courseBlockId: 2,
+  courseBlock: { blockId: 2, code: "blok.b", name: "Transformace", description: "Redesign výuky a hodnocení" },
+};
+const APPLY = {
+  courseBlockId: 3,
+  courseBlock: { blockId: 3, code: "blok.c", name: "Aplikace", description: "Oborové kurzy" },
+};
+
+const base = {
   courseTargetId: 1,
   ownerId: 1,
   isActive: true,
@@ -26,6 +38,7 @@ const base = {
 export const MOCK_COURSES: Course[] = [
   {
     ...base,
+    ...CONTEXT,
     courseId: 9001,
     title: "Úvod do generativní AI ve výuce",
     description: "Co generativní AI umí, kde selhává a jak ji bezpečně zapojit do běžné vyučovací hodiny.",
@@ -35,6 +48,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...TRANSFORM,
     courseId: 9002,
     title: "Prompt engineering pro učitele",
     description: "Jak psát zadání, aby AI vracela použitelné podklady — od přípravy hodiny po zpětnou vazbu žákům.",
@@ -44,6 +58,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...TRANSFORM,
     courseId: 9003,
     title: "AI a hodnocení žáků",
     description: "Formativní hodnocení s pomocí AI: rubriky, komentáře k úlohám a hlídání férovosti.",
@@ -53,6 +68,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...APPLY,
     courseId: 9004,
     title: "Tvorba výukových materiálů s AI",
     description: "Pracovní listy, kvízy a diferencované úlohy během pár minut — a jak je po AI zkontrolovat.",
@@ -62,6 +78,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...CONTEXT,
     courseId: 9005,
     title: "Etika a bezpečnost AI ve škole",
     description: "Ochrana osobních údajů, autorství a akademická integrita v době jazykových modelů.",
@@ -71,6 +88,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...TRANSFORM,
     courseId: 9006,
     title: "Personalizace výuky pomocí AI",
     description: "Přizpůsobte tempo a náročnost úloh každému žákovi, aniž byste psali šest verzí testu.",
@@ -80,6 +98,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...APPLY,
     courseId: 9007,
     title: "Data a analytika v pedagogické praxi",
     description: "Čtení studijních dat, reporty o pokroku třídy a rozhodování podložené čísly.",
@@ -89,6 +108,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...APPLY,
     courseId: 9008,
     title: "AI tutor: jak ho zapojit do hodiny",
     description: "Scénáře hodin s AI tutorem, role učitele a jak poznat, že tutor žákovi opravdu pomáhá.",
@@ -98,6 +118,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     ...base,
+    ...CONTEXT,
     courseId: 9009,
     title: "Kritické myšlení v době AI",
     description: "Ověřování zdrojů, halucinace modelů a úlohy, které učí žáky AI nevěřit naslepo.",

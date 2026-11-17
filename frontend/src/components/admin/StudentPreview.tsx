@@ -31,7 +31,7 @@ import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 // Co náhled z kurzu a modulů potřebuje 
 export type PreviewCourse = Pick<
   Course,
-  'title' | 'description' | 'krauuCompetences' | 'bloomLevels' | 'crossSubjects' | 'imageUrl' | 'difficulty' | 'durationMinutes'
+  'title' | 'description' | 'krauuCompetences' | 'bloomLevels' | 'crossSubjects' | 'imageUrl' | 'difficulty' | 'durationMinutes' | 'courseBlock'
 >;
 export type PreviewModule = Pick<
   Module,
@@ -246,6 +246,7 @@ function CatalogScreen({ course, modules, enrolled, passed, onOpenCourse }: Cata
             duration={course.durationMinutes ?? (modules.length ? modules.length * 20 : 60)}
             difficulty={course.difficulty}
             imageUrl={course.imageUrl}
+            block={course.courseBlock}
             completedModules={completedModules}
             totalModules={modules.length}
             isEnrolled={enrolled}

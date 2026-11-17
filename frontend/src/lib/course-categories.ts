@@ -14,6 +14,20 @@ const BLOCK_WITH_SUBJECT = 'blok.c';
 const BLOCKS_REQUIRING_CROSS_SUBJECTS = ['blok.a', 'blok.b'];
 const MAX_CROSS_SUBJECTS = 3;
 
+// Barva značky bloku na kartě kurzu, viz [data-course-block] v globals.css.
+export type CourseBlockTone = 'context' | 'transform' | 'apply';
+
+const BLOCK_TONES: Record<string, CourseBlockTone> = {
+  'blok.a': 'context',
+  'blok.b': 'transform',
+  'blok.c': 'apply',
+};
+
+// Neznámý kód (nový blok v číselníku) vrací null, karta pak ukáže jen název bez barvy.
+export function courseBlockTone(block: Pick<CourseBlock, 'code'> | null | undefined): CourseBlockTone | null {
+  return (block && BLOCK_TONES[block.code]) ?? null;
+}
+
 /** Výchozí neurovědní princip — stejný, jaký backend dosazuje modulům bez principu. */
 export const DEFAULT_NEURO_PRINCIPLE_CODE = 'NP-01';
 

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle, ChevronRight, Clock, FileText } from "lucide-react";
-import { type Difficulty } from "@/api";
+import { type CourseBlock, type Difficulty } from "@/api";
+import { courseBlockTone } from "@/lib/course-categories";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { cn, czechPlural } from "@/lib/utils";
 
 import { buttonVariants } from "../ui-kit/button";
 import { Progress } from "../ui-kit/progress";
+import { CourseBlockEyebrow } from "./CourseBlockEyebrow";
 import { CourseImage } from "./CourseImage";
 
 interface CourseRowProps {
@@ -20,6 +22,8 @@ interface CourseRowProps {
   imageUrl?: string | null;
   isEnrolled?: boolean;
   isCompleted?: boolean;
+  // Tematický blok: nadtitulek, hřbet na levém okraji a tón řádku v barvě bloku.
+  block?: CourseBlock | null;
 }
 
 /**
@@ -43,7 +47,9 @@ export function CourseRow({
   imageUrl,
   isEnrolled = false,
   isCompleted = false,
+  block,
 }: CourseRowProps) {
+  const tone = courseBlockTone(block);
   const hasProgress = totalModules > 0;
   const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
   const difficultyLabel = difficulty ? DIFFICULTY_LABELS[difficulty] : "Začátečník";
@@ -62,8 +68,13 @@ export function CourseRow({
 
   const row = (
     <div
+      data-course-block={tone ?? undefined}
       className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 transition-colors sm:px-5",
+        "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 transition-colors sm:px-5",
+        // Tón je u všech řádků stejný (barva Kontextu), blok nese nadtitulek a hřbet.
+        "bg-gradient-to-r from-block-context/12 to-transparent to-55%",
+        // Hřbet je absolutní ::before, do mřížky sloupců se nepočítá.
+        tone && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-block",
         // Pevné šířky drží sloupce zarovnané napříč řádky, i když se liší
         // tlačítko („Pokračovat" × „Zobrazit" × „Dokončeno").
         "lg:grid-cols-[auto_minmax(0,1fr)_220px_132px] xl:grid-cols-[auto_minmax(0,1fr)_220px_190px_132px]",
@@ -85,6 +96,7 @@ export function CourseRow({
       </div>
 
       <div className="min-w-0">
+        <CourseBlockEyebrow block={block} className="mb-0.5" />
         <h3
           className={cn(
             "line-clamp-2 text-base font-semibold sm:line-clamp-1 sm:text-lg",

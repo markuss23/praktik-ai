@@ -59,7 +59,7 @@ export function RecommendedCourses() {
           {Array.from({ length: LIMIT }, (_, i) => (
             <div
               key={i}
-              className="bg-card rounded-lg border border-border h-[530px] animate-pulse"
+              className="bg-card rounded-lg border border-border h-[554px] animate-pulse"
             />
           ))}
         </div>
@@ -74,6 +74,7 @@ export function RecommendedCourses() {
               duration={c.durationMinutes ?? (c.modulesCount ? c.modulesCount * 20 : 60)}
               difficulty={c.difficulty}
               imageUrl={c.imageUrl}
+              block={c.courseBlock}
               completedModules={0}
               totalModules={c.modulesCount ?? 0}
             />
