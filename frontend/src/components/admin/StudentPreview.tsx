@@ -23,6 +23,7 @@ import PaperSheets from '@/components/module/PaperSheets';
 import { PretestPreview } from '@/components/module/PretestPreview';
 import { PreviewAssessmentSteps } from '@/components/module/PreviewAssessmentSteps';
 import { ModuleCompletedCard } from '@/components/module/ModuleCompletedCard';
+import { MilestoneCard } from '@/components/module/MilestoneCard';
 import { useAssessmentContents, type AssessmentContents } from '@/hooks/useCourseAssessments';
 import type { CourseAssessmentConfig } from '@/lib/api-client';
 import { isTypedFormat } from '@/lib/assessment-labels';
@@ -471,15 +472,17 @@ function CourseScreen({ course, modules, finalTests, enrolled, passed, onEnroll,
 
         {/* Závěrečný test kurzu — student ho má zamčený do dokončení modulů, náhled ho ukáže hned */}
         {finalTests.length > 0 && (
-          <section className="mt-8 bg-card rounded-lg p-6 sm:p-8" style={{ border: '1px solid var(--border)' }}>
-            <h2 className="text-xl font-bold text-foreground">Závěrečný test kurzu</h2>
-            <p className="text-sm text-muted-foreground mt-1">Ověřte si znalosti z celého kurzu.</p>
-            <p className="mt-1 mb-5 flex items-center gap-2 text-xs text-muted-foreground">
-              <Lock className="size-3.5" />
-              Student ho uvidí až po dokončení všech modulů, v náhledu je přístupný hned.
-            </p>
+          <MilestoneCard
+            kind="finish"
+            status="active"
+            label="Závěrečný milník"
+            title="Závěrečný test kurzu"
+            headingLevel={2}
+            className="mt-8"
+            note="Student ho uvidí až po dokončení všech modulů, v náhledu je přístupný hned."
+          >
             <PreviewAssessmentSteps configs={finalTests} />
-          </section>
+          </MilestoneCard>
         )}
       </div>
     </div>
@@ -769,14 +772,15 @@ function PracticePreview({ tests, onComplete }: { tests: ModuleTests | undefined
       {loadError && <TestsUnavailableNotice reason={loadError} />}
 
       {pretest && (
-        <section className="mb-8">
-          <h4 className="font-semibold text-foreground mb-1">Pretest</h4>
-          <p className="text-sm text-muted-foreground mb-5">
-            Krátké ověření, že víte, o čem modul je: dvě otázky s výběrem a jedna otevřená.
-            Na každou máte tři pokusy a splnit je potřeba všechny.
-          </p>
+        <MilestoneCard
+          kind="start"
+          status="active"
+          label="Povinný milník"
+          title="Pretest"
+          className="mb-8"
+        >
           <PretestPreview content={pretest} />
-        </section>
+        </MilestoneCard>
       )}
 
       {practice.length > 0 && (
@@ -826,22 +830,28 @@ function TestPreview({ tests, done, onPassed, completedCard }: TestPreviewProps)
 
   return (
     <div>
-      <div className="mb-6">
-        <h3 className="text-xl font-bold text-foreground">Test</h3>
-        {assessment.length > 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Ověřte si znalosti z modulu.
-            {assessment.some((t) => isTypedFormat(t.assessmentTypeCode)) && ' Psané odpovědi pište vlastními slovy, vložit text nejde.'}
-          </p>
-        )}
-      </div>
-
       {loadError && <TestsUnavailableNotice reason={loadError} />}
 
       {assessment.length > 0 ? (
-        <PreviewAssessmentSteps configs={assessment} />
+        <MilestoneCard
+          kind="finish"
+          status={done ? 'done' : 'active'}
+          label="Závěrečný milník"
+          title="Test modulu"
+          headingLevel={3}
+          note={
+            !done && assessment.some((t) => isTypedFormat(t.assessmentTypeCode))
+              ? 'Psané odpovědi pište vlastními slovy, vložit text nejde.'
+              : undefined
+          }
+        >
+          <PreviewAssessmentSteps configs={assessment} />
+        </MilestoneCard>
       ) : !loadError && (
-        <p className="text-muted-foreground py-6 text-center">Tento modul nemá test.</p>
+        <>
+          <h3 className="text-xl font-bold text-foreground">Test</h3>
+          <p className="text-muted-foreground py-6 text-center">Tento modul nemá test.</p>
+        </>
       )}
 
       {done ? (

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getAssessmentProgress } from "@/lib/api-client";
 import type { Course, Module, MyEnrollment, CourseProgressResponse } from "@/api";
 import { AssessmentSteps } from "@/components/module/AssessmentSteps";
+import { MilestoneCard } from "@/components/module/MilestoneCard";
 import { BookOpen, Eye, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -502,26 +503,23 @@ export default function CoursePage() {
 
         {/* Závěrečný test kurzu (course_final) — backend ho pustí po splnění testů všech modulů */}
         {isEnrolled && courseFinal.length > 0 && (
-          <section className="mt-8 bg-card rounded-lg p-6 sm:p-8" style={{ border: '1px solid var(--border)' }}>
-            <h2 className="text-xl font-bold text-foreground">Závěrečný test kurzu</h2>
-            {allModulesCompleted ? (
-              <>
-                <p className="text-sm text-muted-foreground mt-1 mb-5">Ověřte si znalosti z celého kurzu.</p>
-                <AssessmentSteps
-                  courseId={courseId}
-                  moduleId={null}
-                  context="course_final"
-                  items={courseFinal}
-                  onFinished={handleCourseFinalFinished}
-                />
-              </>
-            ) : (
-              <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <Lock className="size-4" />
-                Odemkne se po dokončení všech modulů.
-              </p>
-            )}
-          </section>
+          <MilestoneCard
+            kind="finish"
+            status={enrollment?.completedAt ? 'done' : allModulesCompleted ? 'active' : 'locked'}
+            label="Závěrečný milník"
+            title="Závěrečný test kurzu"
+            headingLevel={2}
+            className="mt-8"
+            note={!allModulesCompleted ? 'Odemkne se po dokončení všech modulů.' : undefined}
+          >
+            <AssessmentSteps
+              courseId={courseId}
+              moduleId={null}
+              context="course_final"
+              items={courseFinal}
+              onFinished={handleCourseFinalFinished}
+            />
+          </MilestoneCard>
         )}
       </div>
 

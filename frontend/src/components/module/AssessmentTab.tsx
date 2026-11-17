@@ -5,6 +5,7 @@ import { isTypedFormat } from '@/lib/assessment-labels';
 import { Button } from '@/components/ui';
 import { ModuleCompletedCard } from './ModuleCompletedCard';
 import { AssessmentSteps } from './AssessmentSteps';
+import { MilestoneCard } from './MilestoneCard';
 import { ProgressStaleNotice } from './ProgressStaleNotice';
 
 interface AssessmentTabProps {
@@ -45,28 +46,34 @@ export default function AssessmentTab({
 
   return (
     <div>
-      <div className="mb-6">
-        <h3 className="text-xl font-bold text-foreground">Test</h3>
-        {tests.length > 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Ověřte si znalosti z modulu.
-            {tests.some((t) => isTypedFormat(t.assessmentTypeCode)) && ' Psané odpovědi pište vlastními slovy, vložit text nejde.'}
-          </p>
-        )}
-      </div>
-
       {progressStale && <ProgressStaleNotice onRetry={onProgressChange} />}
 
       {tests.length > 0 ? (
-        <AssessmentSteps
-          courseId={courseId}
-          moduleId={moduleId}
-          context="assessment"
-          items={tests}
-          onFinished={onProgressChange}
-        />
+        <MilestoneCard
+          kind="finish"
+          status={moduleProgress.completed ? 'done' : 'active'}
+          label="Závěrečný milník"
+          title="Test modulu"
+          headingLevel={3}
+          note={
+            !moduleProgress.completed && tests.some((t) => isTypedFormat(t.assessmentTypeCode))
+              ? 'Psané odpovědi pište vlastními slovy, vložit text nejde.'
+              : undefined
+          }
+        >
+          <AssessmentSteps
+            courseId={courseId}
+            moduleId={moduleId}
+            context="assessment"
+            items={tests}
+            onFinished={onProgressChange}
+          />
+        </MilestoneCard>
       ) : (
-        <p className="text-muted-foreground py-6 text-center">Tento modul nemá test.</p>
+        <>
+          <h3 className="text-xl font-bold text-foreground">Test</h3>
+          <p className="text-muted-foreground py-6 text-center">Tento modul nemá test.</p>
+        </>
       )}
 
       {moduleProgress.completed ? (

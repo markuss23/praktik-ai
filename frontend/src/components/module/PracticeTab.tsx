@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, Lock } from 'lucide-react';
 import type { ModuleProgressItem } from '@/api';
 import { requiredPassed } from '@/lib/assessment-labels';
 import { Button } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { AssessmentRunner } from './AssessmentRunner';
 import { AssessmentSteps } from './AssessmentSteps';
+import { LockedAfterPretest, MilestoneCard } from './MilestoneCard';
 import { ProgressStaleNotice } from './ProgressStaleNotice';
 
 interface PracticeTabProps {
@@ -55,39 +55,33 @@ export default function PracticeTab({ courseId, moduleId, moduleProgress, progre
       {progressStale && <ProgressStaleNotice onRetry={onProgressChange} />}
 
       {pretests.length > 0 && (
-        <section className="mb-8">
-          <h4 className="font-semibold text-foreground mb-1">Pretest</h4>
-          {pretestDone && !pretestJustFinished ? (
-            <p className="inline-flex items-center gap-2 text-sm font-medium text-success">
-              <CheckCircle className="size-5" />
-              Pretest máte splněný.
-            </p>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground mb-5">
-                Krátké ověření, že víte, o čem modul je: dvě otázky s výběrem a jedna otevřená.
-                Na každou máte tři pokusy a splnit je potřeba všechny.
-              </p>
-              <AssessmentRunner
-                target={{ courseId, context: 'pretest', moduleId, assessmentTypeCode: 'pretest' }}
-                autoStart
-                onFinished={(result) => {
-                  // Pretest dokončený jinde (null) — výsledek ukáže až obnovený průběh
-                  setPretestJustFinished(result !== null);
-                  onProgressChange();
-                }}
-              />
-            </>
+        <MilestoneCard
+          kind="start"
+          status={pretestDone ? 'done' : 'active'}
+          label="Povinný milník"
+          title="Pretest"
+          className="mb-8"
+        >
+          {(!pretestDone || pretestJustFinished) && (
+            <AssessmentRunner
+              target={{ courseId, context: 'pretest', moduleId, assessmentTypeCode: 'pretest' }}
+              autoStart
+              onFinished={(result) => {
+                // Pretest dokončený jinde (null) — výsledek ukáže až obnovený průběh
+                setPretestJustFinished(result !== null);
+                onProgressChange();
+              }}
+            />
           )}
-        </section>
+        </MilestoneCard>
       )}
 
       {practices.length > 0 && (
-        <section className="mb-8">
-          <h4 className="font-semibold text-foreground mb-3">
-            {pretests.length > 0 ? 'Další procvičování' : 'Procvičování'}
-          </h4>
-          {pretestDone ? (
+        pretestDone ? (
+          <section className="mb-8">
+            <h4 className="font-semibold text-foreground mb-3">
+              {pretests.length > 0 ? 'Další procvičování' : 'Procvičování'}
+            </h4>
             <AssessmentSteps
               courseId={courseId}
               moduleId={moduleId}
@@ -95,13 +89,10 @@ export default function PracticeTab({ courseId, moduleId, moduleProgress, progre
               items={practices}
               onFinished={onProgressChange}
             />
-          ) : (
-            <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <Lock className="size-4" />
-              Odemkne se po splnění pretestu.
-            </p>
-          )}
-        </section>
+          </section>
+        ) : (
+          <LockedAfterPretest title="Další procvičování" className="mb-8" />
+        )
       )}
 
       {pretests.length === 0 && practices.length === 0 && (
@@ -111,7 +102,7 @@ export default function PracticeTab({ courseId, moduleId, moduleProgress, progre
       <div className="flex flex-wrap items-center justify-end gap-3 mt-8 pt-6 border-t border-border">
         {!readyForTest && (
           <p className="text-sm text-muted-foreground mr-auto">
-            Test se odemkne po splnění povinných částí procvičování.
+            {pretestDone ? 'Test se odemkne po splnění povinných částí procvičování.' : 'Nejdřív splňte pretest.'}
           </p>
         )}
         <Button
