@@ -30,10 +30,12 @@ npx shadcn@latest add tooltip     # spadne do src/components/ui-kit/
 ## Co kit obsahuje
 
 `accordion`, `alert`, `badge`, `button`, `card`, `checkbox`, `dialog`, `drawer`, `dropdown-menu`,
-`input`, `label`, `progress`, `radio-group`, `select`, `separator`, `skeleton`, `slider`, `status-select`, `switch`,
+`input`, `label`, `popover`, `progress`, `radio-group`, `select`, `separator`, `skeleton`, `slider`, `status-select`, `switch`,
 `table`, `tabs`, `textarea`, `toast`, `tooltip`.
 
 `Slider` z kitu bere `value` jako pole (`value={[zoom]}`) — s holým číslem vykreslí dva táhla.
+Je ručně rozšířený o `getAriaLabel` a `getAriaValueText`, které jdou na táhlo (`aria-label` na rootu
+táhlo nepojmenuje, používá to přehrávač podcastu). Po `npx shadcn@latest add slider --overwrite` je vrať.
 Pozor: shadcn CLI 4.22 generuje `import { cn } from "cn"` a přidá do `package.json` balíček `cn`;
 import přepiš na `@/lib/utils` a `cn` z `package.json` vrať.
 

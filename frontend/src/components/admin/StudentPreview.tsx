@@ -24,6 +24,8 @@ import { PretestPreview } from '@/components/module/PretestPreview';
 import { PreviewAssessmentSteps } from '@/components/module/PreviewAssessmentSteps';
 import { ModuleCompletedCard } from '@/components/module/ModuleCompletedCard';
 import { MilestoneCard } from '@/components/module/MilestoneCard';
+import { ModuleMaterialsCard } from '@/components/module/ModuleMaterialsCard';
+import { MindMapViewDialog } from '@/components/module/MindMapDialog';
 import { useAssessmentContents, type AssessmentContents } from '@/hooks/useCourseAssessments';
 import type { CourseAssessmentConfig } from '@/lib/api-client';
 import { isTypedFormat } from '@/lib/assessment-labels';
@@ -36,7 +38,7 @@ export type PreviewCourse = Pick<
 >;
 export type PreviewModule = Pick<
   Module,
-  'moduleId' | 'title' | 'perex' | 'learnBlocks' | 'neuroPrinciples' | 'krauuCompetences' | 'bloomLevels'
+  'moduleId' | 'title' | 'perex' | 'learnBlocks' | 'neuroPrinciples' | 'krauuCompetences' | 'bloomLevels' | 'podcastTranscript' | 'mindmap'
 >;
 
 type ModuleTab = 'prirucka' | 'procvicovani' | 'test';
@@ -525,6 +527,7 @@ function ModuleScreen({
   const totalBlocks = learnBlocks.length;
   const currentBlock = learnBlocks[session.blockIndex];
   const isLastModule = moduleIndex >= moduleCount - 1;
+  const [mapOpen, setMapOpen] = useState(false);
 
   const switchTab = (tab: ModuleTab) => {
     onSessionChange((prev) => ({ ...prev, tab }));
@@ -625,6 +628,17 @@ function ModuleScreen({
 
                 <ModuleCategories module={module} className="mt-4 pt-4 border-t border-border" />
               </div>
+
+              {session.tab !== 'test' && (
+                // Podcast jde v nahledu prehrat, mapa ukaze nabidku u pojmu bez volani tutora
+                <ModuleMaterialsCard
+                  moduleId={module.moduleId}
+                  moduleTitle={module.title}
+                  podcastTranscript={module.podcastTranscript}
+                  mindmap={module.mindmap}
+                  onOpenMap={() => setMapOpen(true)}
+                />
+              )}
 
               {/* AI tutor — ve skutečném modulu se tu student ptá AI na obsah;
                   náhled ho nevolá, aby nic nezapisoval. */}
@@ -732,6 +746,10 @@ function ModuleScreen({
           </div>
         </div>
       </div>
+
+      {module.mindmap && module.mindmap.branches.length > 0 && (
+        <MindMapViewDialog preview open={mapOpen} onOpenChange={setMapOpen} map={module.mindmap} moduleTitle={module.title} />
+      )}
     </div>
   );
 }

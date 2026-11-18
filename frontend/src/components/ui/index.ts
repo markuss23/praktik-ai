@@ -73,6 +73,14 @@ export { Textarea } from "../ui-kit/textarea";
 export { Label } from "../ui-kit/label";
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants } from "../ui-kit/tabs";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../ui-kit/tooltip";
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
+} from "../ui-kit/popover";
 export { Checkbox } from "../ui-kit/checkbox";
 export { RadioGroup, RadioGroupItem } from "../ui-kit/radio-group";
 export { Switch } from "../ui-kit/switch";

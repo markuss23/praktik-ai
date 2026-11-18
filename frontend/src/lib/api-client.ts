@@ -321,6 +321,27 @@ export async function mentorChat(params: {
   });
 }
 
+// WAV podcastu jako blob; endpoint chce Bearer token, takze <audio src> primo nejde
+export async function fetchModulePodcast(moduleId: number): Promise<Blob> {
+  const token = await getValidAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(backendUrl(`/api/v1/modules/${moduleId}/podcast`), { method: 'GET', headers });
+  if (!res.ok) {
+    let detail = `Podcast se nepodařilo načíst (${res.status})`;
+    try {
+      const body = await res.json();
+      if (typeof body?.detail === 'string') detail = body.detail;
+    } catch {
+      // odpoved nemusi byt JSON
+    }
+    throw new Error(detail);
+  }
+  const blob = await res.blob();
+  // Backend posila audio/x-wav nebo octet-stream; prehravac chce audio typ
+  return blob.type.startsWith('audio/') ? blob : new Blob([blob], { type: 'audio/wav' });
+}
+
 export async function generateCourseEmbeddings(courseId: number) {
   return agentsApi.generateCourseEmbeddings({ courseId });
 }

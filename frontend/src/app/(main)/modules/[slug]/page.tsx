@@ -9,6 +9,8 @@ import { requiredPassed } from "@/lib/assessment-labels";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Eye, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
 import { TutorProvider } from "@/components/module/TutorProvider";
+import { ModuleMaterialsCard } from "@/components/module/ModuleMaterialsCard";
+import { MindMapTutorDialog } from "@/components/module/MindMapDialog";
 import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
@@ -42,6 +44,7 @@ export default function ModulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Transition animation
   const [transitioning, setTransitioning] = useState(false);
@@ -411,7 +414,18 @@ export default function ModulePage() {
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat />
+                // Materialy (podcast, mapa) jsou skryte v testu stejne jako tutor
+                <>
+                  <ModuleMaterialsCard
+                    key={module.moduleId}
+                    moduleId={module.moduleId}
+                    moduleTitle={module.title}
+                    podcastTranscript={module.podcastTranscript}
+                    mindmap={module.mindmap}
+                    onOpenMap={() => setMapOpen(true)}
+                  />
+                  <AiTutorChat />
+                </>
               )}
             </div>
           </div>
@@ -571,6 +585,15 @@ export default function ModulePage() {
 
       {/* Vysouvací poznámkový blok */}
       <NotesPanel />
+
+      {module.mindmap && module.mindmap.branches.length > 0 && (
+        <MindMapTutorDialog
+          open={mapOpen}
+          onOpenChange={setMapOpen}
+          map={module.mindmap}
+          moduleTitle={module.title}
+        />
+      )}
     </div>
     </TutorProvider>
   );
