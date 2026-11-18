@@ -321,6 +321,20 @@ export async function mentorChat(params: {
   });
 }
 
+// Podcast modulu: generovani bezi na serveru, prubeh se polluje
+export async function generateModulePodcast(moduleId: number) {
+  return agentsApi.generateModulePodcast({ moduleId });
+}
+
+export async function getModulePodcastProgress(moduleId: number) {
+  return agentsApi.getModulePodcastGenerationProgress({ moduleId });
+}
+
+// Myslenkova mapa modulu: jedno volani AI, odpoved uz obsahuje ulozeny strom
+export async function generateModuleMindmap(moduleId: number) {
+  return agentsApi.generateModuleMindmap({ moduleId });
+}
+
 // WAV podcastu jako blob; endpoint chce Bearer token, takze <audio src> primo nejde
 export async function fetchModulePodcast(moduleId: number): Promise<Blob> {
   const token = await getValidAccessToken();

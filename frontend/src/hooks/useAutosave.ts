@@ -17,7 +17,7 @@ export function useAutosave<T>(
   value: T,
   save: () => Promise<void>,
   options: UseAutosaveOptions = {},
-): { status: SaveStatus } {
+): { status: SaveStatus; flush: () => Promise<boolean> } {
   const { delay = 500, enabled = true } = options;
 
   const [status, setStatus] = useState<SaveStatus>('idle');
@@ -112,5 +112,16 @@ export function useAutosave<T>(
     };
   }, []);
 
-  return { status };
+  // Ulozi hned, napr. pred akci, ktera cte data z DB. true = server ma stav z okamziku volani
+  const flushRef = useRef(async (): Promise<boolean> => {
+    // Bezici ulozeni nejdriv dobehne, jinak by runSave hned skoncil
+    while (savingRef.current) await new Promise((resolve) => setTimeout(resolve, 100));
+    if (savedSnapshotRef.current === null) return true;
+    const target = JSON.stringify(valueRef.current);
+    if (target === savedSnapshotRef.current) return true;
+    await runSaveRef.current();
+    return savedSnapshotRef.current === target;
+  });
+
+  return { status, flush: flushRef.current };
 }

@@ -20,7 +20,9 @@ import {
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { REVIEW_COUNT_EVENT } from '@/components/admin/AdminSidebar';
-import { ArrowLeft, ArrowRight, BookOpenText, Check, CheckCircle, Dumbbell, Gavel, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpenText, Check, CheckCircle, Dumbbell, Gavel, Headphones, Info } from 'lucide-react';
+import { ReviewModuleMaterials } from '@/components/admin/ReviewModuleMaterials';
+import { hasMindmap, hasPodcast } from '@/lib/module-materials';
 import {
   Alert,
   AlertDescription,
@@ -36,6 +38,7 @@ import {
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import { sanitizeHtml } from '@/lib/sanitize-html';
 import {
+  AI_MATERIALS_FEEDBACK,
   COURSE_FINAL_FEEDBACK,
   COURSE_GENERAL_FEEDBACK,
   COURSE_SUMMARY_FEEDBACK,
@@ -68,7 +71,8 @@ const MODULE_TAB = [
 // Od této šířky jsou komentáře sloupec vedle obsahu (px breakpoint by Tailwind řadil špatně)
 const COMMENTS_INLINE_FROM = '90rem';
 
-type TabType = 'handbook' | 'practice';
+// materials = podcast a myslenkova mapa, jen u modulu, ktery je ma
+type TabType = 'handbook' | 'materials' | 'practice';
 
 // Kroky kontroly: Souhrn -> moduly -> Závěrečný test -> Rozhodnutí
 type StepKey = 'summary' | 'final' | 'decision' | `module:${number}`;
@@ -215,6 +219,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
   const totalBlocks = learnBlocks.length;
   const currentBlock = learnBlocks[blockIndex];
   const currentBlockHtml = useMemo(() => sanitizeHtml(currentBlock?.content ?? ''), [currentBlock?.content]);
+  const selectedHasMaterials = !!selectedModule && (hasPodcast(selectedModule) || hasMindmap(selectedModule));
 
   // Části ke kontrole (bez Rozhodnutí)
   const parts: ReviewPart[] = [
@@ -243,7 +248,11 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     if (!selectedModule) return;
     if (activeTab === 'handbook') {
       if (blockIndex < totalBlocks - 1) setBlockIndex((i) => i + 1);
-      else setActiveTab('practice');
+      else setActiveTab(selectedHasMaterials ? 'materials' : 'practice');
+      return;
+    }
+    if (activeTab === 'materials') {
+      setActiveTab('practice');
       return;
     }
     const next = modules[moduleIndex + 1];
@@ -257,7 +266,11 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       return last ? openStep(moduleKey(last.moduleId), 'practice') : openStep('summary');
     }
     if (!selectedModule) return;
-    if (activeTab === 'practice') {
+    if (activeTab === 'practice' && selectedHasMaterials) {
+      setActiveTab('materials');
+      return;
+    }
+    if (activeTab === 'practice' || activeTab === 'materials') {
       setActiveTab('handbook');
       setBlockIndex(Math.max(0, totalBlocks - 1));
       return;
@@ -273,8 +286,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       : step === 'final'
         ? 'Pokračovat na rozhodnutí'
         : activeTab === 'handbook'
-          ? blockIndex < totalBlocks - 1 ? 'Další stránka' : 'Pokračovat na procvičování'
-          : moduleIndex < modules.length - 1 ? 'Další modul' : 'Pokračovat na závěrečný test';
+          ? blockIndex < totalBlocks - 1
+            ? 'Další stránka'
+            : selectedHasMaterials ? 'Pokračovat na podcast a mapu' : 'Pokračovat na procvičování'
+          : activeTab === 'materials'
+            ? 'Pokračovat na procvičování'
+            : moduleIndex < modules.length - 1 ? 'Další modul' : 'Pokračovat na závěrečný test';
 
   // Komentáře podle kroku
   const moduleFeedbacks = (moduleId: number) =>
@@ -301,6 +318,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
     if (step === 'decision') return { label: 'Celý kurz', moduleId: firstModuleId, contentType: COURSE_GENERAL_FEEDBACK };
     if (!selectedModule) return { label: '' };
     if (activeTab === 'practice') return { label: 'Procvičování', moduleId: selectedModule.moduleId, contentType: 'practice' };
+    if (activeTab === 'materials') return { label: 'Podcast a mapa', moduleId: selectedModule.moduleId, contentType: AI_MATERIALS_FEEDBACK };
     return totalBlocks > 0
       ? {
           label: `Příručka – str. ${blockIndex + 1}`,
@@ -511,6 +529,12 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
                   <BookOpenText size={14} />
                   Příručka
                 </TabsTrigger>
+                {selectedHasMaterials && (
+                  <TabsTrigger value="materials" className={MODULE_TAB}>
+                    <Headphones size={14} />
+                    Podcast a mapa
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="practice" className={MODULE_TAB}>
                   <Dumbbell size={14} />
                   Procvičování
@@ -535,6 +559,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               <p className="font-medium">Obsah příručky není k dispozici</p>
             </div>
           )
+        ) : activeTab === 'materials' ? (
+          <ReviewModuleMaterials module={selectedModule} />
         ) : (
           <ReviewModuleTests courseId={courseId} moduleId={selectedModule.moduleId} />
         )}

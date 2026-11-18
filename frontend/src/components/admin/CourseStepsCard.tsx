@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Headphones, Loader2, Network, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
@@ -271,6 +271,8 @@ export interface StepModuleItem {
   onDelete?: () => void;
   /** Doplňkový obsah pod vybraným modulem (např. odkazy na otázky). */
   extra?: React.ReactNode;
+  // Ikony u modulu, ktery uz ma podcast nebo myslenkovou mapu
+  materials?: { podcast: boolean; mindmap: boolean };
 }
 
 interface StepModuleListProps {
@@ -311,6 +313,18 @@ export function StepModuleList({ items, onAdd }: StepModuleListProps) {
                   {item.title || 'Bez názvu'}
                   {item.isNew && <span className="ml-1.5 text-xs text-warning">(nový)</span>}
                 </span>
+                {(item.materials?.podcast || item.materials?.mindmap) && (
+                  <span
+                    className="flex shrink-0 items-center gap-1 text-muted-foreground"
+                    title={[item.materials.podcast && 'Má podcast', item.materials.mindmap && 'Má myšlenkovou mapu'].filter(Boolean).join(', ')}
+                  >
+                    {item.materials.podcast && <Headphones className="size-3" aria-hidden="true" />}
+                    {item.materials.mindmap && <Network className="size-3" aria-hidden="true" />}
+                    <span className="sr-only">
+                      {[item.materials.podcast && 'má podcast', item.materials.mindmap && 'má myšlenkovou mapu'].filter(Boolean).join(', ')}
+                    </span>
+                  </span>
+                )}
               </Button>
               {(item.badge ?? 0) > 0 && (
                 <span

@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LearnBlock, Status } from '@/api';
+import { LearnBlock, Status, type MindMap } from '@/api';
 import {
   updateModule, createModule, createLearnBlock, updateLearnBlock, updateCourseStatus,
 } from '@/lib/api-client';
+import { ModuleAiMaterialsPanel } from '@/components/admin/ModuleAiMaterialsPanel';
+import { MODULE_PODCAST_FINISHED_EVENT, type ModulePodcastFinishedDetail } from '@/components/admin/ModulePodcastGenerationProvider';
+import { hasMindmap, hasPodcast, type ModuleMaterials } from '@/lib/module-materials';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, ModuleCategoryFields,
@@ -12,7 +15,7 @@ import {
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
 import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
-import { Button, Drawer, DrawerContent, Modal, Input, Textarea, useToast } from '@/components/ui';
+import { Button, Drawer, DrawerContent, Modal, Input, Textarea, Tabs, TabsList, TabsTrigger, useToast } from '@/components/ui';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
   commentsToFixHint,
@@ -60,6 +63,28 @@ interface LocalModule {
 }
 
 const PEREX_MAX_LENGTH = 255;
+
+// Pohled karty editoru: text prirucky, nebo AI materialy vybraneho modulu
+type EditorView = 'text' | 'podcast' | 'map';
+
+// Segmentovy prepinac ve stylu Procvicovani / Test modulu (CourseTestsView)
+const EDITOR_VIEW_LIST = 'grid w-full grid-cols-3 gap-1 border border-border p-1 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-fit';
+const EDITOR_VIEW_TAB = [
+  // Na uzkem telefonu se "Myslenkova mapa" do tretiny sirky nevejde, popisky se zalamuji
+  'h-auto min-w-0 rounded-md px-2 py-1 text-center whitespace-normal leading-tight sm:min-w-32 sm:px-3 sm:whitespace-nowrap',
+  'text-muted-foreground hover:bg-card hover:text-foreground',
+  'data-active:bg-gradient-r data-active:text-primary-foreground data-active:shadow-sm',
+].join(' ');
+
+// Backend generuje podcast a mapu jen v rozpracovanem kurzu
+const AI_EDITABLE_STATUSES: string[] = [Status.Draft, Status.Generated, Status.Edited];
+
+const htmlHasText = (html: string | undefined) => !!html && html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0;
+
+const materialsOf = (m: { podcastTranscript?: ModuleMaterials['podcastTranscript']; mindmap?: ModuleMaterials['mindmap'] }): ModuleMaterials => ({
+  podcastTranscript: m.podcastTranscript ?? null,
+  mindmap: m.mindmap ?? null,
+});
 
 // Co z modulu posíláme na PUT /modules — podle toho poznáme, jestli se změnil.
 const moduleMetaKey = (m: LocalModule) =>
@@ -267,6 +292,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
   const reviewHeaderRef = useRef<HTMLDivElement>(null);
   const [moduleMetaOpen, setModuleMetaOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editorView, setEditorView] = useState<EditorView>('text');
+  // Podcast a mapa po modulech; lokalne vygenerovane maji prednost pred daty z cache kurzu
+  const [materials, setMaterials] = useState<Record<number, ModuleMaterials>>({});
+  const locallyUpdatedRef = useRef(new Set<number>());
   const { focusMode } = useAdminChrome();
   const goToStep = useCourseStepNavigation(courseId);
   // Chyba kategorií modulu — ukazuje se v editoru místo alertu, aby autosave
@@ -383,6 +412,41 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     initRef.current = true;
     setContentInitialized(true);
   }, [courseData, editor, initialModuleId, catalogsLoading, neuroPrinciples]);
+
+  // Podcast a mapa z dat kurzu (i po revalidaci cache), lokalne vygenerovane se neprepisuji
+  useEffect(() => {
+    if (!courseData) return;
+    setMaterials((prev) => {
+      // Lokalne vygenerovane zustanou i u modulu, ktere starsi data kurzu jeste neznaji
+      const next: Record<number, ModuleMaterials> = {};
+      for (const id of locallyUpdatedRef.current) {
+        if (prev[id]) next[id] = prev[id];
+      }
+      for (const m of courseData.modules ?? []) {
+        if (!next[m.moduleId]) next[m.moduleId] = materialsOf(m);
+      }
+      return next;
+    });
+  }, [courseData]);
+
+  const setModuleMaterials = (moduleId: number, patch: Partial<ModuleMaterials>) => {
+    locallyUpdatedRef.current.add(moduleId);
+    setMaterials((prev) => ({ ...prev, [moduleId]: { ...(prev[moduleId] ?? materialsOf({})), ...patch } }));
+    invalidateCourseCache(courseId);
+  };
+
+  // Hotovy podcast (i spusteny z jineho modulu); modul s prepisem nacetl uz provider
+  useEffect(() => {
+    const onFinished = (e: Event) => {
+      const m = (e as CustomEvent<ModulePodcastFinishedDetail>).detail?.module;
+      if (!m || m.courseId !== courseId) return;
+      locallyUpdatedRef.current.add(m.moduleId);
+      setMaterials((prev) => ({ ...prev, [m.moduleId]: materialsOf(m) }));
+      invalidateCourseCache(courseId);
+    };
+    window.addEventListener(MODULE_PODCAST_FINISHED_EVENT, onFinished);
+    return () => window.removeEventListener(MODULE_PODCAST_FINISHED_EVENT, onFinished);
+  }, [courseId]);
 
   // Aktualizace obsahu editoru při změně modulu
   useEffect(() => {
@@ -567,7 +631,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
     contents: modules.map((_, i) => moduleContents[i]?.content ?? ''),
   }), [modules, moduleContents]);
 
-  const { status: saveStatus } = useAutosave(
+  const { status: saveStatus, flush: flushAutosave } = useAutosave(
     autosaveValue,
     async () => { await saveContent(); },
     { delay: 3000, enabled: contentInitialized },
@@ -593,9 +657,10 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
         neuroPrinciples: neuroPrinciples.filter((n) => module.categories.neuroPrincipleIds.includes(n.principleId)),
         krauuCompetences: krauuCompetences.filter((k) => module.categories.krauuCompetenceIds.includes(k.krauuId)),
         bloomLevels: bloomLevels.filter((b) => module.categories.bloomLevelIds.includes(b.bloomId)),
+        ...materials[module.moduleId],
       };
     }),
-    [modules, moduleContents, courseData, neuroPrinciples, krauuCompetences, bloomLevels],
+    [modules, moduleContents, courseData, neuroPrinciples, krauuCompetences, bloomLevels, materials],
   );
 
   if (courseLoading) return <LoadingState />;
@@ -603,6 +668,20 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
 
   const selectedModule = modules[selectedModuleIndex] as LocalModule | undefined;
   const selectedModuleIncomplete = !!selectedModule && validateModuleCategories(selectedModule.categories) !== null;
+
+  // Proc u vybraneho modulu nejde generovat podcast a mapu; null = jde
+  const selectedContent = moduleContents[selectedModuleIndex];
+  const aiBlockReason = !selectedModule
+    ? null
+    : !AI_EDITABLE_STATUSES.includes(courseData?.status ?? '')
+      ? 'Kurz teď nejde upravovat (čeká na schválení nebo je schválený), podcast ani mapu proto nejde generovat.'
+      : selectedModule.isTemporary
+        ? 'Nový modul se nejdřív uloží, za pár sekund to půjde.'
+        : !selectedContent?.learnId || !htmlHasText(selectedContent.content)
+          ? 'Modul zatím nemá uložený text příručky. Podcast i mapa se dělají z něj.'
+          : null;
+  // Bez vybraneho modulu (vsechny smazane) zustava jen pohled Text s prazdnym stavem
+  const activeEditorView: EditorView = selectedModule ? editorView : 'text';
 
   const stepHints = {
     // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
@@ -629,6 +708,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
       selected: index === selectedModuleIndex,
       badge: feedbackCountByModule(module.moduleId),
       isNew: module.isTemporary,
+      materials: { podcast: hasPodcast(materials[module.moduleId]), mindmap: hasMindmap(materials[module.moduleId]) },
       onSelect: () => {
         setSelectedModuleIndex(index);
         onPicked?.();
@@ -754,10 +834,37 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
 
         {/* Center - Editor */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
-          <div className="p-4 border-b border-border">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Úpravy podkladů ke kurzu</h2>
+            {selectedModule && (
+              <Tabs value={editorView} onValueChange={(value) => setEditorView(value as EditorView)} className="w-full gap-0 sm:w-auto">
+                <TabsList className={EDITOR_VIEW_LIST}>
+                  <TabsTrigger value="text" className={EDITOR_VIEW_TAB}>Text</TabsTrigger>
+                  <TabsTrigger value="podcast" className={EDITOR_VIEW_TAB}>Podcast</TabsTrigger>
+                  <TabsTrigger value="map" className={EDITOR_VIEW_TAB}>Myšlenková mapa</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </div>
 
+          {selectedModule && (
+            // Panel zustava namontovany, aby bezici generovani mapy prezilo prepnuti na Text
+            <div className={cn('flex-1 overflow-y-auto p-4 sm:p-6', activeEditorView === 'text' && 'hidden')}>
+              <ModuleAiMaterialsPanel
+                view={activeEditorView === 'map' ? 'map' : 'podcast'}
+                moduleId={selectedModule.moduleId}
+                moduleTitle={selectedModule.title}
+                materials={materials[selectedModule.moduleId]}
+                blockReason={aiBlockReason}
+                ensureSaved={flushAutosave}
+                // Chyba ulozeni (napr. kategorie modulu) je videt jen v pohledu Text
+                onSaveFailed={() => setEditorView('text')}
+                onMindmapGenerated={(moduleId: number, mindmap: MindMap) => setModuleMaterials(moduleId, { mindmap })}
+              />
+            </div>
+          )}
+
+          <div className={activeEditorView === 'text' ? 'contents' : 'hidden'}>
           {/* Perex a pedagogické zařazení vybraného modulu */}
           {selectedModule && (
             <div className="border-b border-border shrink-0">
@@ -824,6 +931,7 @@ export function CourseContentView({ courseId, initialModuleId }: CourseContentVi
                 Nejsou k dispozici žádné moduly k úpravě
               </div>
             )}
+          </div>
           </div>
 
           <PageFooterActions onBack={handleBack} onContinue={handleContinue} continueLabel="Uložit a pokračovat" />

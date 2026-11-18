@@ -14,6 +14,9 @@ export const COURSE_SUMMARY_FEEDBACK_LABEL = "Souhrn kurzu";
 export const COURSE_FINAL_FEEDBACK = "course_final";
 export const COURSE_GENERAL_FEEDBACK = "course_general";
 
+// Komentar k podcastu a myslenkove mape modulu (zalozka Podcast a mapa ve schvalovani)
+export const AI_MATERIALS_FEEDBACK = "ai_materials";
+
 const COURSE_LEVEL_LABELS: Record<string, string> = {
   [COURSE_SUMMARY_FEEDBACK]: COURSE_SUMMARY_FEEDBACK_LABEL,
   [COURSE_FINAL_FEEDBACK]: "Závěrečný test kurzu",
@@ -56,6 +59,8 @@ export function reviewFeedbackLabel(
     parts.push(`Příručka – str. ${fb.contentRef}`);
   } else if (fb.contentType === "practice") {
     parts.push(fb.contentRef ? `Procvičování – ot. ${fb.contentRef}` : "Procvičování");
+  } else if (fb.contentType === AI_MATERIALS_FEEDBACK) {
+    parts.push("Podcast a mapa");
   }
   return parts.length > 0 ? parts.join(" / ") : null;
 }
