@@ -44,16 +44,11 @@ export function CourseRow({
   const row = (
     <div
       className={cn(
-        "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5",
+        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5",
         "xl:grid-cols-[auto_minmax(0,1fr)_200px_168px] xl:gap-8",
         done ? "bg-success/[0.04]" : "transition-colors duration-200 group-hover:bg-muted/70 group-focus-visible:bg-muted/70",
       )}
     >
-      {/* Akcent vlevo — tichá značka, že kurz je rozpracovaný. */}
-      {status === "active" && (
-        <span aria-hidden className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-primary sm:inset-y-5" />
-      )}
-
       <div className="relative aspect-[16/10] w-20 shrink-0 self-start overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/[0.06] sm:w-40 sm:self-center">
         <Image
           src={imageUrl}

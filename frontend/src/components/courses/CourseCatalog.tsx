@@ -11,6 +11,7 @@ import {
   CourseCardSkeleton,
   CourseRow,
   CourseRowSkeleton,
+  courseCategoryLabel,
   Input,
   type CourseItemProps,
 } from "@/components/ui";
@@ -290,6 +291,7 @@ export function CourseCatalog({
           description: course.description || '',
           duration: course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60),
           difficulty: course.difficulty,
+          category: courseCategoryLabel(course),
           completedModules: mock?.completedModules ?? enrollment?.completedModules ?? 0,
           totalModules: course.modulesCount || 0,
           isEnrolled: !!(mock || enrollment),
@@ -318,6 +320,7 @@ export function CourseCatalog({
           description: course?.description || e.course.description || '',
           duration: course?.durationMinutes ?? (totalModules ? totalModules * 20 : 60),
           difficulty: course?.difficulty,
+          category: courseCategoryLabel(course),
           completedModules: e.completedModules ?? 0,
           totalModules,
           isEnrolled: true,

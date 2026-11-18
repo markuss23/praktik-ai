@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import type { Course } from '@/api';
 import { getRecommendedCourses } from '@/lib/api-client';
-import { CourseCard, CourseCardSkeleton } from '@/components/ui';
+import { CourseCard, CourseCardSkeleton, courseCategoryLabel } from '@/components/ui';
 
 const LIMIT = 3;
 
@@ -70,6 +70,7 @@ export function RecommendedCourses() {
               description={c.description ?? ''}
               duration={c.durationMinutes ?? (c.modulesCount ? c.modulesCount * 20 : 60)}
               difficulty={c.difficulty}
+              category={courseCategoryLabel(c)}
               completedModules={0}
               totalModules={c.modulesCount ?? 0}
             />

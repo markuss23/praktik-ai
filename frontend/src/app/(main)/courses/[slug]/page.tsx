@@ -9,6 +9,7 @@ import { BookOpen, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CourseCategories, ModuleCategories, CourseDetailSkeleton, Input, useToast } from "@/components/ui";
+import { getMockCourseDetail } from "@/components/courses/courseMocks";
 import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from '@/lib/utils';
@@ -37,6 +38,13 @@ export default function CoursePage() {
   // Track that enrollment just happened so we can animate the transition
   const [justEnrolled, setJustEnrolled] = useState(false);
 
+  // Ukázkové kurzy 9001–9009 (courseMocks.ts) — jen ve vývoji, ať jde detail
+  // otevřít i bez backendu. Ostatní ID jdou normálně na API.
+  const mockDetail = useMemo(
+    () => (process.env.NODE_ENV !== 'production' ? getMockCourseDetail(courseId) : null),
+    [courseId],
+  );
+
   useEffect(() => {
     async function load() {
       try {
@@ -45,6 +53,12 @@ export default function CoursePage() {
 
         if (isNaN(courseId)) {
           setError('Kurz nebyl nalezen.');
+          return;
+        }
+
+        if (mockDetail) {
+          setCourse(mockDetail.course);
+          setModules(mockDetail.modules);
           return;
         }
 
@@ -71,11 +85,21 @@ export default function CoursePage() {
       }
     }
     load();
-  }, [courseId]);
+  }, [courseId, mockDetail]);
 
   useEffect(() => {
     // Počkej, než useAuth vyřeší stav přihlášení.
     if (authLoading) return;
+
+    // Ukázkový kurz: zápis a průběh z mocků bez ohledu na přihlášení, ať jsou
+    // vidět i stavy „rozpracováno" / „dokončeno". Dokončený kurz se tu
+    // (na rozdíl od API větve) nepřesměrovává, ať jde zobrazit.
+    if (mockDetail) {
+      setEnrollment(mockDetail.enrollment);
+      setModuleProgress(mockDetail.progress);
+      setEnrollmentLoading(false);
+      return;
+    }
 
     if (!isAuthenticated) {
       // Nepřihlášený uživatel — nečekáme na žádné další API volání,
@@ -111,7 +135,7 @@ export default function CoursePage() {
     });
 
     return () => { cancelled = true; };
-  }, [authLoading, isAuthenticated, courseId, router]);
+  }, [authLoading, isAuthenticated, courseId, router, mockDetail]);
 
   // Hlavní loading flag — dokud jeden ze zdrojů nebyl vyřešen, UI se nerenderuje.
   // Tím se eliminuje flicker mezi „Zapsat se" stavem a skutečným zápisem.

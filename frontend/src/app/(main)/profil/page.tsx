@@ -10,6 +10,7 @@ import { ProfileModulesSection } from '@/components/profile/ProfileModulesSectio
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
 import { AppearanceCard } from '@/components/profile/AppearanceCard';
+import { ActivityHeatmap } from '@/components/profile/ActivityHeatmap';
 import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
 import { NotificationCenter } from '@/components/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -299,6 +300,16 @@ export default function ProfilPage() {
           <NotificationCenter audience="user" />
         </div>
       </div>
+
+      {/* Aktivita — stejná heatmapa jako na stránce Moje kurzy, přes celou šířku */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="mt-5"
+      >
+        <ActivityHeatmap />
+      </motion.div>
 
       {/* Nápověda a podpora — AI chat nad wiki + konverzace vybraného tiketu */}
       <TicketsSidebar

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle, Clock, FileText } from "lucide-react";
-import { type Difficulty } from "@/api";
+import { type Course, type Difficulty } from "@/api";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { cn, czechPlural } from "@/lib/utils";
 
@@ -17,6 +17,8 @@ export interface CourseItemProps {
   duration: number;
   /** Doporučená obtížnost. Pokud není uvedena, fallback na „Začátečník". */
   difficulty?: Difficulty | null;
+  /** Obor nebo kategorie kurzu — pill v rohu obrázku. Viz `courseCategoryLabel`. */
+  category?: string | null;
   completedModules?: number;
   totalModules?: number;
   imageUrl?: string;
@@ -32,6 +34,16 @@ export type CourseStatus = "idle" | "active" | "done";
 export function getCourseStatus(isEnrolled: boolean, isCompleted: boolean): CourseStatus {
   if (isCompleted) return "done";
   return isEnrolled ? "active" : "idle";
+}
+
+/**
+ * Popisek pillu s kategorií. Obor (školní předmět) mají jen kurzy Bloku C,
+ * ostatní kurzy proto spadnou na název bloku.
+ */
+export function courseCategoryLabel(
+  course?: Pick<Course, "courseSubject" | "courseBlock"> | null,
+): string | undefined {
+  return course?.courseSubject?.name || course?.courseBlock?.name || undefined;
 }
 
 export function modulesWord(n: number) {

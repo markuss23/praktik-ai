@@ -8,7 +8,7 @@ import { getMyEnrollments, type MyEnrollmentExtended } from '@/lib/api-client';
 import { CourseCatalog } from '@/components/courses';
 import { CourseCardSkeleton } from '@/components/ui';
 import { ContinueHeroCard } from './ContinueHeroCard';
-import { ActivityHeatmap } from './ActivityHeatmap';
+import { ActivityHeatmap } from '@/components/profile/ActivityHeatmap';
 import { QuickStats } from './QuickStats';
 import { RecommendedCourses } from './RecommendedCourses';
 

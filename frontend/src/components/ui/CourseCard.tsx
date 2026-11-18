@@ -25,6 +25,7 @@ export function CourseCard({
   description,
   duration,
   difficulty,
+  category,
   completedModules = 0,
   totalModules = 0,
   imageUrl = "/courseai2.png",
@@ -62,6 +63,14 @@ export function CourseCard({
               <CheckCircle className="size-7 text-success" aria-hidden />
             </span>
           </div>
+        )}
+        {/* Obor jako bublina — motiv landing page (bublina u rysa v hero,
+            citace v „O projektu"): lila podklad, jeden ostrý roh, lehké
+            natočení a hluboký měkký stín. Písmo jako podpis citace. */}
+        {category && (
+          <span className="absolute top-3.5 left-3.5 max-w-[calc(100%-1.75rem)] origin-bottom-left rotate-[-1.4deg] truncate rounded-full rounded-bl-[3px] bg-[#EDEAFA] px-3 py-1.5 text-[11px] leading-none font-bold tracking-[0.1em] text-[#23203A] uppercase shadow-[0_10px_24px_rgba(20,19,28,0.18)]">
+            {category}
+          </span>
         )}
       </div>
 
@@ -106,7 +115,9 @@ export function CourseCard({
 export function CourseCardSkeleton() {
   return (
     <div className="flex h-full animate-pulse flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <div className="aspect-[16/9] w-full bg-muted" />
+      <div className="relative aspect-[16/9] w-full bg-muted">
+        <div className="absolute top-3.5 left-3.5 h-6 w-28 rotate-[-1.4deg] rounded-full rounded-bl-[3px] bg-foreground/[0.06]" />
+      </div>
       <div className="flex grow flex-col p-5 sm:p-6">
         <div className="h-5 w-3/4 rounded bg-muted" />
         <div className="mt-4 h-3.5 w-full rounded bg-muted" />

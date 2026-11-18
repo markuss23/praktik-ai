@@ -16,6 +16,8 @@ export const ROUTES = {
   HOME: "/",
   ABOUT: "/about",
   COURSES: "/courses",
+  /** Přehled všech kurzů s filtry. Detail kurzu zůstává na `/courses/[id]`. */
+  COURSE_CATALOG: "/kurzy",
   MODULES: "/modules",
   PROFILE: "/profil",
   MY_TICKETS: "/moje-tikety",

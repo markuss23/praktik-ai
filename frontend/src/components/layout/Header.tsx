@@ -27,6 +27,7 @@ type NavItem = { href: string; label: string; auth?: boolean; lector?: boolean }
 
 const NAV: NavItem[] = [
   { href: ROUTES.HOME, label: "Home" },
+  { href: ROUTES.COURSE_CATALOG, label: "Kurzy" },
   { href: "/moje-kurzy", label: "Moje kurzy", auth: true },
   { href: ROUTES.PUBLIC_DATABASE, label: "Veřejná databáze" },
   { href: "/odmeny", label: "Odměny" },
