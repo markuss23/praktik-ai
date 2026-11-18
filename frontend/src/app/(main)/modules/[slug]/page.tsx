@@ -8,6 +8,7 @@ import type { Module, Course, CourseProgressResponse } from "@/api";
 import { requiredPassed } from "@/lib/assessment-labels";
 import { CheckCircle, BookOpenText, Dumbbell, ClipboardCheck, Eye, Lock, XCircle } from "lucide-react";
 import { AiTutorChat } from "@/components/admin/AiTutorChat";
+import { TutorProvider } from "@/components/module/TutorProvider";
 import { Alert, AlertTitle, AlertDescription, PageSpinner, Button, ModuleCategories } from "@/components/ui";
 import { motion, AnimatePresence } from "motion/react";
 import PracticeTab from "@/components/module/PracticeTab";
@@ -321,9 +322,11 @@ export default function ModulePage() {
     },
   ];
 
+  // TutorProvider drzi konverzaci pro kartu tutora i okno myslenkove mapy
   return (
     /* Celé okno modulu je fixed na viewport (mínus globální Header). Žádné
        vnější scrollování — to obstará jen vnitřní content area. */
+    <TutorProvider courseId={module.courseId} learnBlockId={currentBlock?.learnId} moduleId={activeModuleId}>
     <div
       className="flex flex-col lg:h-[calc(100dvh-70px)]"
       style={{ backgroundColor: 'var(--muted)' }}
@@ -408,7 +411,7 @@ export default function ModulePage() {
 
               {/* AI tutor skrytý v assessment tabu*/}
               {activeTab !== 'test' && (
-                <AiTutorChat courseId={module.courseId} learnBlockId={currentBlock?.learnId} moduleId={activeModuleId} />
+                <AiTutorChat />
               )}
             </div>
           </div>
@@ -569,5 +572,6 @@ export default function ModulePage() {
       {/* Vysouvací poznámkový blok */}
       <NotesPanel />
     </div>
+    </TutorProvider>
   );
 }

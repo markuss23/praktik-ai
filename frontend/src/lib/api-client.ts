@@ -307,6 +307,8 @@ export async function mentorChat(params: {
   courseId: number;
   learnBlockId?: number;
   message: string;
+  // false = tutor nebere v uvahu predchozi otazky (backend je dal uklada)
+  useHistory?: boolean;
 }) {
   return agentsApi.learnBlocksChat({
     learnBlocksChatRequest: {
@@ -315,6 +317,7 @@ export async function mentorChat(params: {
       message: params.message,
     },
     scope: params.scope,
+    useHistory: params.useHistory,
   });
 }
 
