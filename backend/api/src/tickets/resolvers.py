@@ -1,0 +1,159 @@
+from typing import Protocol
+
+from sqlalchemy.orm import Session
+
+from api import models
+from api.enums import TicketEntityType, TicketType, UserRole
+from api.src.common.utils import check_enrollment, get_or_404
+
+# Kategorie dostupné pro libovolný entity_type navíc k jeho allowed_categories —
+# bug/dotaz dává smysl nahlásit ke konkrétní entitě (modulu...) i bez entity.
+UNIVERSAL_CATEGORIES: set[TicketType] = {
+    TicketType.bug,
+    TicketType.question,
+    TicketType.other,
+}
+
+
+def is_course_staff(actor: models.User, course: models.Course) -> bool:
+    """Zjistí, zda actor smí řešit tickety daného kurzu.
+
+    Garant a superadmin řeší tickety všech kurzů, lektor jen kurzů, které vlastní.
+    """
+    if actor.role in (UserRole.guarantor, UserRole.superadmin):
+        return True
+    return actor.role == UserRole.lector and course.owner_id == actor.user_id
+
+
+class TicketEntityResolver(Protocol):
+    """Zapouzdřuje pravidla specifická pro jeden entity_type."""
+
+    allowed_categories: set[TicketType]
+
+    def load_entity(self, db: Session, entity_id: int | None):
+        """Načte entitu podle entity_id, nebo vyhodí 404."""
+        ...
+
+    def authorize_create(self, db: Session, actor: models.User, entity) -> None:
+        """Vyhodí 403, pokud actor nemá právo k této entitě ticket založit."""
+        ...
+
+    def is_staff_for(self, actor: models.User, entity) -> bool:
+        """True, pokud actor smí na ticket k této entitě odpovídat / uzavřít ho."""
+        ...
+
+    def get_course_id(self, entity) -> int | None:
+        """Kurz, pod který entita spadá — pro denormalizaci na ticketu (nullable)."""
+        ...
+
+
+class ModuleTicketResolver:
+    """Ticket vázaný na modul — reklamace AI hodnocení v rámci modulu. Založit ticket smí jen
+    student zapsaný v kurzu, kterému modul patří."""
+
+    allowed_categories = {
+        TicketType.task_session,
+        TicketType.practice,
+    }
+
+    def load_entity(self, db: Session, entity_id: int) -> models.Module:
+        return get_or_404(db, models.Module, entity_id, detail="Modul nenalezen")
+
+    def authorize_create(
+        self, db: Session, actor: models.User, entity: models.Module
+    ) -> None:
+        check_enrollment(db, actor, entity.course)
+
+    def is_staff_for(self, actor: models.User, entity: models.Module) -> bool:
+        return is_course_staff(actor, entity.course)
+
+    def get_course_id(self, entity: models.Module) -> int:
+        return entity.course_id
+
+
+class CourseTicketResolver:
+    """Ticket vázaný na celý kurz — obecná stížnost/dotaz ke
+    kurzu. Založit smí zapsaný student, nebo owner/superadmin bez zápisu."""
+
+    allowed_categories = {TicketType.course_feedback}
+
+    def load_entity(self, db: Session, entity_id: int) -> models.Course:
+        return get_or_404(db, models.Course, entity_id, detail="Kurz nenalezen")
+
+    def authorize_create(
+        self, db: Session, actor: models.User, entity: models.Course
+    ) -> None:
+        check_enrollment(db, actor, entity, bypass_for_owner=True)
+
+    def is_staff_for(self, actor: models.User, entity: models.Course) -> bool:
+        return is_course_staff(actor, entity)
+
+    def get_course_id(self, entity: models.Course) -> int:
+        return entity.course_id
+
+
+class PubResourceTicketResolver:
+    """Ticket vázaný na veřejný materiál — nahlášení obsahového problému.
+    Založit smí kdokoliv přihlášený, žádný enrollment check (materiál je
+    veřejný). Mimo kurzy, course_id je vždy null."""
+
+    allowed_categories = {TicketType.content_issue}
+
+    def load_entity(self, db: Session, entity_id: int) -> models.PubResource:
+        return get_or_404(
+            db, models.PubResource, entity_id, detail="Materiál nenalezen"
+        )
+
+    def authorize_create(
+        self, db: Session, actor: models.User, entity: models.PubResource
+    ) -> None:
+        pass
+
+    def is_staff_for(self, actor: models.User, entity: models.PubResource) -> bool:
+        return actor.role in (UserRole.guarantor, UserRole.superadmin)
+
+    def get_course_id(self, entity: models.PubResource) -> None:
+        return None
+
+
+class GeneralTicketResolver:
+    """Ticket bez vazby na entitu (bug/dotaz) — smí založit kdokoliv přihlášený,
+    staff je jen garant/superadmin (lektor řeší jen tickety svých kurzů)."""
+
+    allowed_categories: set[TicketType] = set()
+
+    def load_entity(self, db: Session, entity_id: int | None) -> None:
+        return None
+
+    def authorize_create(self, db: Session, actor: models.User, entity) -> None:
+        pass
+
+    def is_staff_for(self, actor: models.User, entity) -> bool:
+        return actor.role in (UserRole.guarantor, UserRole.superadmin)
+
+    def get_course_id(self, entity) -> None:
+        return None
+
+
+RESOLVERS: dict[TicketEntityType, TicketEntityResolver] = {
+    TicketEntityType.module: ModuleTicketResolver(),
+    TicketEntityType.course: CourseTicketResolver(),
+    TicketEntityType.pub_resource: PubResourceTicketResolver(),
+    TicketEntityType.general: GeneralTicketResolver(),
+}
+
+
+def get_resolver(entity_type: TicketEntityType) -> TicketEntityResolver:
+    resolver = RESOLVERS.get(entity_type)
+    if resolver is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=400, detail=f"Nepodporovaný typ entity: {entity_type}"
+        )
+    return resolver
+
+
+def get_allowed_categories(entity_type: TicketEntityType) -> set[TicketType]:
+    """Kategorie povolené pro daný entity_type = jeho specifické + univerzální (bug/dotaz)."""
+    return get_resolver(entity_type).allowed_categories | UNIVERSAL_CATEGORIES

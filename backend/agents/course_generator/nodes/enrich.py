@@ -1,3 +1,5 @@
+import contextvars
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import select
@@ -13,7 +15,13 @@ from agents.course_generator.state import (
     ModuleGenerated,
 )
 from api import models
-from api.src.agents.progress import set_progress
+from api.src.assessments.pretest.generator import (
+    create_pretest_llm,
+    generate_pretest,
+)
+from api.src.agents.progress import course_key, set_progress
+
+logger = logging.getLogger(__name__)
 
 
 def build_catalogs(db: Session) -> str:
@@ -50,7 +58,7 @@ def build_catalogs(db: Session) -> str:
 
 
 def build_module_block(module: ModuleGenerated) -> str:
-    """Hotový obsah modulu, ke kterému se určují číselníky a otázky."""
+    """Hotový obsah modulu, ke kterému se určují číselníky a otázky pretestu."""
     return (
         f"NÁZEV: {module.title}\n"
         f"PEREX: {module.perex}\n\n"
@@ -58,69 +66,14 @@ def build_module_block(module: ModuleGenerated) -> str:
     )
 
 
-def validate_enrichment(enrichment: ModuleEnrichment) -> list[str]:
-    """Vrátí chyby otázek, které schéma samo nevynutí.
-
-    Platforma porovnává odpověď s textem možnosti doslova, proto
-    correct_answer lišící se jen bílými znaky rovnou sjednotí s možností.
-    """
-    errors: list[str] = []
-
-    for name in ("closed_question_1", "closed_question_2"):
-        q = getattr(enrichment, name)
-        if len(q.options) != 3:
-            errors.append(f"{name}: má {len(q.options)} možností, musí mít přesně 3")
-        if len({o.strip() for o in q.options}) != len(q.options):
-            errors.append(f"{name}: možnosti se textově opakují")
-        matches = [o for o in q.options if o.strip() == q.correct_answer.strip()]
-        if matches:
-            q.correct_answer = matches[0]
-        else:
-            errors.append(
-                f"{name}: correct_answer „{q.correct_answer}“ není doslova shodný "
-                "s textem žádné z možností"
-            )
-
-    open_q = enrichment.open_question
-    if len(open_q.keywords) != 3:
-        errors.append(
-            f"open_question: má {len(open_q.keywords)} klíčových bodů, musí mít přesně 3"
-        )
-    if not open_q.example_answer.strip():
-        errors.append("open_question: example_answer je prázdný")
-
-    return errors
-
-
-def enrich_module(llm, prompt: str, title: str) -> ModuleEnrichment:
-    """Jedno volání LLM; při chybách otázek jeden opravný pokus s jejich výpisem."""
-    enrichment: ModuleEnrichment = llm.invoke(prompt)
-    errors = validate_enrichment(enrichment)
-    if not errors:
-        return enrichment
-
-    print(f"   -> WARN: Modul '{title}' má chyby v otázkách, opakuji: {errors}")
-    error_lines = "\n".join(f"- {e}" for e in errors)
-    enrichment = llm.invoke(
-        f"{prompt}\n\n"
-        f"PŘEDCHOZÍ VÝSTUP:\n{enrichment.model_dump_json(indent=2)}\n\n"
-        f"CHYBY V PŘEDCHOZÍM VÝSTUPU:\n{error_lines}\n\n"
-        "Vrať celý výstup znovu a tyto chyby oprav."
-    )
-    errors = validate_enrichment(enrichment)
-    if errors:
-        raise ValueError(f"Modul '{title}' má i po opravě chyby v otázkách: {errors}")
-    return enrichment
-
-
 def enrich_modules_node(state: AgentState) -> AgentState:
-    """Node, který k hotovým modulům určí číselníky (NP, KRAUU, Bloom) a vytvoří otázky."""
-    print("Zařazování modulů do číselníků a tvorba otázek...")
+    """Node, který k hotovým modulům určí číselníky (NP, KRAUU, Bloom) a vytvoří pretest."""
+    logger.info("Zařazování modulů do číselníků a tvorba otázek...")
 
     course_id = state.get("course_id")
     if course_id is not None:
         # ponytail: sdílí krok 4 s plánováním, frontend má pevný seznam 5 kroků
-        set_progress(course_id, step=4, label="Číselníky a otázky modulů (AI)")
+        set_progress(course_key(course_id), step=4, label="Číselníky a otázky modulů (AI)")
 
     course: CourseGenerated | None = state.get("course")
     course_input: CourseInput | None = state.get("course_input")
@@ -133,25 +86,42 @@ def enrich_modules_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     cfg = get_llm_config(db, "course_module_enricher")
-    llm = create_chat_llm(cfg.model).with_structured_output(
+    llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(
         ModuleEnrichment, method="json_schema"
     )
 
+    pretest_llm = create_pretest_llm(db)
+
     shared = f"{cfg.prompt}\n\n{build_input_block(course_input)}\n\n{build_catalogs(db)}"
 
-    # Moduly jsou nezávislé, zpracují se paralelně
+    # Moduly i volání jsou nezávislé, zpracují se paralelně.
+    # Vlákna ThreadPoolExecutoru nedědí ContextVars, takže každé úloze předáme
+    # vlastní kopii kontextu — jinak by se tokeny v ai_usage uložily bez
+    # user_id a endpointu (usage_context).
     with ThreadPoolExecutor() as pool:
-        state["enrichments"] = list(
-            pool.map(
-                lambda m: enrich_module(
-                    llm, f"{shared}\n\nMODUL:\n{build_module_block(m)}", m.title
-                ),
-                course.modules,
+        enrichments = [
+            pool.submit(
+                contextvars.copy_context().run,
+                llm.invoke,
+                f"{shared}\n\nMODUL:\n{build_module_block(m)}",
             )
-        )
+            for m in course.modules
+        ]
+        pretests = [
+            pool.submit(
+                contextvars.copy_context().run,
+                generate_pretest,
+                pretest_llm,
+                build_module_block(m),
+                m.title,
+            )
+            for m in course.modules
+        ]
+        state["enrichments"] = [f.result() for f in enrichments]
+        state["pretests"] = [f.result() for f in pretests]
 
     for module, e in zip(course.modules, state["enrichments"], strict=True):
-        print(
+        logger.info(
             f"   -> {module.title}: NP {e.neuro_principle_code}, "
             f"KRAUU {e.krauu_competence_codes}, Bloom {e.bloom_level_codes}"
         )

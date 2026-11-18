@@ -209,9 +209,9 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
   return (
     <div className="flex-1 flex flex-col h-full bg-muted overflow-hidden">
       {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="bg-card border-b border-border px-4 sm:px-6 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between shrink-0">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground mb-0.5">
+          <p className="text-xs text-muted-foreground mb-0.5 break-words">
             <Button variant="plain" onClick={() => router.push('/admin/review')} className={cn(BTN_KEEP_BOX, "hover:text-foreground")}>
               Ke schválení
             </Button>
@@ -220,7 +220,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
           </p>
           <h1 className="text-xl font-bold text-foreground">Materiál ke schválení</h1>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 lg:shrink-0">
           {/* Rozhodnutí garanta (jen u čekajících materiálů) */}
           {canReview && (
             <>
@@ -228,7 +228,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                 variant="plain"
                 onClick={() => submitReview(ReviewVerdict.NeedsRevision)}
                 disabled={actionLoading !== null}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border border-warning/30 text-warning rounded-lg text-sm font-medium hover:bg-warning/10 transition-colors disabled:opacity-50")}
+                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 border border-warning/30 text-warning rounded-lg text-sm font-medium hover:bg-warning/10 transition-colors disabled:opacity-50")}
               >
                 <ThumbsDown size={16} />
                 {actionLoading === 'return' ? 'Vracím…' : 'Vrátit k přepracování'}
@@ -237,7 +237,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                 variant="default"
                 onClick={() => submitReview(ReviewVerdict.Approved)}
                 disabled={actionLoading !== null}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
+                className={cn(BTN_KEEP_BOX, "flex flex-1 lg:flex-none items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50")}
               >
                 <ThumbsUp size={16} />
                 {actionLoading === 'approve' ? 'Schvaluji…' : 'Schválit materiál'}
@@ -273,11 +273,11 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
       </div>
 
       {/* Main 2-column layout */}
-      <div className="flex-1 flex overflow-hidden p-4 gap-4">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
         {/* Center: material content */}
         <div className="flex-1 bg-card rounded-lg border border-border flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold text-foreground mb-2">{resource.title}</h2>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <h2 className="text-2xl font-bold text-foreground mb-2 break-words">{resource.title}</h2>
             {material.description && (
               <p className="text-sm text-muted-foreground mb-5 whitespace-pre-wrap">{material.description}</p>
             )}
@@ -310,10 +310,13 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
                       <span className="inline-flex items-center justify-center size-9 rounded-md bg-muted text-foreground shrink-0">
                         <FileText size={18} strokeWidth={1.75} />
                       </span>
-                      <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
+                        <p className="sm:hidden text-xs text-muted-foreground">{attachment.format}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-xs text-muted-foreground">{attachment.format}</span>
+                      <span className="hidden sm:inline text-xs text-muted-foreground">{attachment.format}</span>
                       {attachment.resourceId != null && attachment.fileId != null ? (
                         <Button
                           variant="plain"
@@ -339,7 +342,7 @@ export function ReviewMaterialView({ resourceId }: ReviewMaterialViewProps) {
         </div>
 
         {/* Right: comments panel */}
-        <div className="w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
+        <div className="lg:w-72 shrink-0 bg-card rounded-lg border border-border flex flex-col overflow-hidden">
           <div className="p-3 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground">
               Komentáře{comments.length > 0 && ` (${comments.length})`}

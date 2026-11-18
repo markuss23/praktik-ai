@@ -76,3 +76,19 @@ class CrossSubject(ORMModel):
     code: str
     name: str
     description: str
+
+
+class AiStyleOption(ORMModel):
+    option_id: int
+    code: str
+    name: str
+    description: str
+    example: str
+    is_default: bool
+
+
+class AiStyleAxis(ORMModel):
+    axis_id: int
+    code: str
+    name: str
+    options: list[AiStyleOption]

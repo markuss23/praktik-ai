@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle, ChevronRight, Clock } from 'lucide-react';
+import { CourseImage } from '@/components/ui/CourseImage';
 import type { MyEnrollmentExtended } from '@/lib/api-client';
 import { czechPlural } from '@/lib/utils';
 
@@ -30,11 +30,10 @@ export function EnrollmentCardWithNext({ enrollment }: EnrollmentCardWithNextPro
       style={{ borderColor: isCompleted ? 'var(--success)' : 'var(--border)' }}
     >
       <Link href={courseHref} className="block relative overflow-hidden shrink-0 h-[180px] group">
-        <Image
-          src="/courseai2.png"
+        <CourseImage
+          imageUrl={enrollment.course.imageUrl}
           alt={enrollment.course.title}
-          fill
-          className={`object-cover transition-transform duration-300 ${
+          className={`transition-transform duration-300 ${
             isCompleted ? 'opacity-80' : 'group-hover:scale-105'
           }`}
         />

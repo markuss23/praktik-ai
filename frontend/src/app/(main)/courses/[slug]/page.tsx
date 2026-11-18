@@ -3,8 +3,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getCourseProgress } from "@/lib/api-client";
-import type { Course, Module, MyEnrollment, ModuleCompletionStatus } from "@/api";
+import { getCourse, getModules, getMyEnrollments, createEnrollment, leaveEnrollment, getAssessmentProgress } from "@/lib/api-client";
+import type { Course, Module, MyEnrollment, CourseProgressResponse } from "@/api";
+import { AssessmentSteps } from "@/components/module/AssessmentSteps";
+import { MilestoneCard } from "@/components/module/MilestoneCard";
 import { BookOpen, Eye, Lock, LogIn, CheckCircle, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -31,7 +33,8 @@ export default function CoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<MyEnrollment | null>(null);
   const [enrollLoading, setEnrollLoading] = useState(false);
-  const [moduleProgress, setModuleProgress] = useState<ModuleCompletionStatus[]>([]);
+  // Splněné testy po modulech a závěrečný test kurzu; null = nezapsaný / nenačteno
+  const [progress, setProgress] = useState<CourseProgressResponse | null>(null);
   const [moduleSearch, setModuleSearch] = useState('');
   // Track that enrollment just happened so we can animate the transition
   const [justEnrolled, setJustEnrolled] = useState(false);
@@ -80,30 +83,32 @@ export default function CoursePage() {
       // Nepřihlášený uživatel — nečekáme na žádné další API volání,
       // ale nastavíme prázdný stav, aby render nezůstal v loadingu.
       setEnrollment(null);
-      setModuleProgress([]);
+      setProgress(null);
       setEnrollmentLoading(false);
       return;
     }
 
     let cancelled = false;
     setEnrollmentLoading(true);
-    Promise.all([
-      getMyEnrollments()
-        .then(enrollments => {
-          if (cancelled) return;
-          // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
-          // splněné, takže se otevřou rovnou s odemčenými záložkami.
-          setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) setEnrollment(null);
-        }),
-      getCourseProgress(courseId)
-        .then(p => { if (!cancelled) setModuleProgress(p); })
-        .catch(() => { if (!cancelled) setModuleProgress([]); }),
-    ]).finally(() => {
-      if (!cancelled) setEnrollmentLoading(false);
-    });
+    getMyEnrollments()
+      .then(async enrollments => {
+        // Dokončený kurz zůstává přístupný jako zpětný náhled — moduly jsou
+        // splněné, takže se otevřou rovnou s odemčenými záložkami.
+        const mine = enrollments.find(e => e.courseId === courseId) ?? null;
+        // Průběh smí číst jen zapsaný — nezapsanému by backend vrátil 403
+        const p = mine ? await getAssessmentProgress(courseId).catch(() => null) : null;
+        if (cancelled) return;
+        setEnrollment(mine);
+        setProgress(p);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEnrollment(null);
+        setProgress(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEnrollmentLoading(false);
+      });
 
     return () => { cancelled = true; };
   }, [authLoading, isAuthenticated, courseId]);
@@ -119,7 +124,7 @@ export default function CoursePage() {
       await createEnrollment(currentUser.userId, courseId);
       const [enrollments] = await Promise.all([
         getMyEnrollments(),
-        getCourseProgress(courseId).then(setModuleProgress).catch(() => {}),
+        getAssessmentProgress(courseId).then(setProgress).catch(() => {}),
       ]);
       setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
       setJustEnrolled(true);
@@ -147,6 +152,22 @@ export default function CoursePage() {
   };
 
   const isEnrolled = !!enrollment;
+  // Modul je hotový, když má student splněné všechny jeho povinné testy (počítá backend)
+  const isModuleCompleted = (moduleId: number | undefined) =>
+    !!progress?.modules.find(p => p.moduleId === moduleId)?.completed;
+  const courseFinal = progress?.courseFinal ?? [];
+  const allModulesCompleted = modules.every(m => isModuleCompleted(m.moduleId));
+
+  // Závěrečný test dokončí kurz — znovu načteme průběh i zápis (completedAt)
+  const handleCourseFinalFinished = async () => {
+    try {
+      const [p, enrollments] = await Promise.all([getAssessmentProgress(courseId), getMyEnrollments()]);
+      setProgress(p);
+      setEnrollment(enrollments.find(e => e.courseId === courseId) ?? null);
+    } catch (err) {
+      console.error('Failed to refresh course progress:', err);
+    }
+  };
 
   const filteredModules = useMemo(() => {
     if (!moduleSearch.trim()) return [...modules];
@@ -333,20 +354,16 @@ export default function CoursePage() {
                 let currentModuleIndex = -1;
                 if (isEnrolled) {
                   for (let i = 0; i < modules.length; i++) {
-                    const p = moduleProgress.find(mp => mp.moduleId === modules[i].moduleId);
-                    if (!(p?.passed)) { currentModuleIndex = i; break; }
+                    if (!isModuleCompleted(modules[i].moduleId)) { currentModuleIndex = i; break; }
                   }
                 }
                 return filteredModules.map((module) => {
                   // Find the original index in full sorted modules
                   const index = modules.findIndex(m => m.moduleId === module.moduleId);
-                  const progress = moduleProgress.find(p => p.moduleId === module.moduleId);
-                  const isPassed = progress?.passed ?? false;
+                  const isPassed = isModuleCompleted(module.moduleId);
                   const isCurrent = index === currentModuleIndex;
 
-                  const prevModulePassed = index === 0 || (moduleProgress.find(
-                    p => p.moduleId === modules[index - 1]?.moduleId
-                  )?.passed ?? false);
+                  const prevModulePassed = index === 0 || isModuleCompleted(modules[index - 1]?.moduleId);
 
                   const isAccessible = isEnrolled && prevModulePassed;
                   const isLocked = !isAccessible;
@@ -483,9 +500,30 @@ export default function CoursePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Závěrečný test kurzu (course_final) — backend ho pustí po splnění testů všech modulů */}
+        {isEnrolled && courseFinal.length > 0 && (
+          <MilestoneCard
+            kind="finish"
+            status={enrollment?.completedAt ? 'done' : allModulesCompleted ? 'active' : 'locked'}
+            label="Závěrečný milník"
+            title="Závěrečný test kurzu"
+            headingLevel={2}
+            className="mt-8"
+            note={!allModulesCompleted ? 'Odemkne se po dokončení všech modulů.' : undefined}
+          >
+            <AssessmentSteps
+              courseId={courseId}
+              moduleId={null}
+              context="course_final"
+              items={courseFinal}
+              onFinished={handleCourseFinalFinished}
+            />
+          </MilestoneCard>
+        )}
       </div>
 
-      {/* Bottom Navigation 
+      {/* Bottom Navigation
       <div className="px-4 sm:px-6 lg:px-[100px] pb-8" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

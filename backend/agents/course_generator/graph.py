@@ -1,3 +1,4 @@
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.course_generator.state import AgentState
@@ -10,10 +11,12 @@ from agents.course_generator.nodes import (
     save_to_db_node,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def create_graph():
     """Vytváří graf uzlů pro generování kurzu."""
-    print("Vytvářím graf uzlů...")
+    logger.info("Vytvářím graf uzlů...")
     workflow = StateGraph(AgentState)
 
     # nodes

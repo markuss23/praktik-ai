@@ -3,7 +3,7 @@ import CourseSection from "./CourseSection";
 import ProjectAboutSection, { ProjectIntroSection } from "./ProjectAboutSection";
 import OnboardingOverlay from "./OnboardingOverlay";
 import { fetchChangelog } from "@/lib/changelog";
-// import ContactSection from "./ContactSection";
+// import ContactSection from "./ContactSection"; — před zapnutím povolit i /api/contact (CONTACT_FORM_ENABLED)
 
 export default async function Home() {
   const changelog = await fetchChangelog();

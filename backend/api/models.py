@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -8,10 +9,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Identity,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     func,
@@ -26,14 +29,16 @@ from api.enums import (
     Difficulty,
     EduLevel,
     PubResourceStatus,
-    QuestionType,
     ReviewVerdict,
     Status,
     TicketType,
+    TicketEntityType,
     UserRole,
-    ModuleTaskSessionStatus,
-    AttemptStatus,
     TicketStatus,
+    AssessmentContext,
+    AssessmentSessionStatus,
+    AssessmentTurnRole,
+    MentorScope,
 )
 
 
@@ -130,12 +135,6 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"), nullable=False, default=UserRole.user
     )
-    ai_tone: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="profesionální a neutrální"
-    )
-    ai_expression_level: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="standardní srozumitelný jazyk"
-    )
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -146,15 +145,95 @@ class User(TimestampMixin, SoftDeleteMixin, Base):
     )
     enrollments: Mapped[list[Enrollment]] = relationship(
         back_populates="user",
-    )
-    task_sessions: Mapped[list[ModuleTaskSession]] = relationship(
-        back_populates="user",
-    )
-    practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
-        back_populates="user",
+        foreign_keys="Enrollment.user_id",
     )
     mentor_logs: Mapped[list[MentorInteractionLog]] = relationship(
         back_populates="user",
+    )
+
+
+class AiStyleAxis(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — AI Styl komunikace, osy (ton, dens, form, rhet).
+    Uživatel si v profilu na každé ose vybere jedno nastavení pro AI mentora.
+    """
+
+    __tablename__ = "ai_style_axis"
+    __table_args__ = (
+        Index(
+            "uq_ai_style_axis_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    axis_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    code: Mapped[str] = mapped_column(String(10), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    options: Mapped[list[AiStyleOption]] = relationship(
+        back_populates="axis",
+        order_by="AiStyleOption.option_id",
+        primaryjoin="and_(AiStyleAxis.axis_id == AiStyleOption.axis_id, AiStyleOption.is_active)",
+    )
+
+
+class AiStyleOption(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Číselník — AI Styl komunikace, nastavení na ose (např. ton.neut).
+    description = popis chování agenta (jde do promptu), example = ukázka výstupu.
+    Na každé ose je právě jedno výchozí nastavení (is_default).
+    """
+
+    __tablename__ = "ai_style_option"
+    __table_args__ = (
+        Index(
+            "uq_ai_style_option_code_active",
+            "code",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+        Index(
+            "uq_ai_style_option_default",
+            "axis_id",
+            unique=True,
+            postgresql_where=text("is_active AND is_default"),
+        ),
+    )
+
+    option_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    axis_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_axis.axis_id"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(20), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    example: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    axis: Mapped[AiStyleAxis] = relationship(back_populates="options")
+
+
+class UserAiStyle(TimestampMixin, Base):
+    """Volba uživatele na ose AI stylu. Chybějící osa = výchozí nastavení."""
+
+    __tablename__ = "user_ai_style"
+    __table_args__ = (
+        Index("uq_user_ai_style_user_axis", "user_id", "axis_id", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    axis_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_axis.axis_id"), nullable=False
+    )
+    option_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_style_option.option_id"), nullable=False
     )
 
 
@@ -189,19 +268,21 @@ class AuditLog(Base):
     diff: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
 
-class CourseGenerationProgress(Base):
-    """Průběh AI generování kurzu — v DB, aby ho viděly všechny workery gunicornu."""
+class GenerationProgress(Base):
+    """Průběh AI generování (kurz, obrázky) — v DB, aby ho viděly všechny workery gunicornu.
 
-    __tablename__ = "course_generation_progress"
+    Klíč: ``course:<id>``, ``course-image:<id>``, ``module-image:<id>``.
+    """
 
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("course.course_id"), primary_key=True
-    )
+    __tablename__ = "generation_progress"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
     step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -414,7 +495,7 @@ class KrauuCompetence(TimestampMixin, SoftDeleteMixin, Base):
     Kompetenční rámec absolventa učitelství, 18 kompetencí v 6 oblastech.
     Oblast (kód x.0) je řádek bez rodiče, kompetence (x.y) odkazují na oblast
     přes parent_id. Vybírají se pouze kompetence, ne oblasti (M2M na Course
-    i Module). Interní mapování — studentovi se nezobrazuje.
+    i Module). Student je vidí na stránce kurzu a modulu.
     """
 
     __tablename__ = "krauu_competence"
@@ -473,7 +554,7 @@ class BloomLevel(TimestampMixin, SoftDeleteMixin, Base):
 class CrossSubject(TimestampMixin, SoftDeleteMixin, Base):
     """
     Číselník — Průřezové obory pro Bloky A a B (O01–O20):
-    třetí klasifikační osa nepředmětových kurzů. Pro Blok C se nezadává.
+    třetí klasifikační osa nepředmětových kurzů. U Bloku C je zakázaný (400).
     M2M na Course.
     """
 
@@ -561,10 +642,9 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
     modules_count_ai_generated: Mapped[int] = mapped_column(
         Integer, nullable=False, default=3
     )
-    min_modules_to_open_final_exam: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=1
-    )
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Náhledový obrázek kurzu v SeaweedFS (vždy 1280×720 WebP); None = výchozí obrázek.
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     status: Mapped[Status] = mapped_column(
         Enum(Status, name="course_status"), nullable=False, default=Status.draft
@@ -623,6 +703,7 @@ class Course(TimestampMixin, SoftDeleteMixin, Base):
         primaryjoin="and_(Course.course_id==CourseLink.course_id, CourseLink.is_active==True)",
     )
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
+    assessments: Mapped[list[CourseAssessment]] = relationship(back_populates="course")
     krauu_competences: Mapped[list[CourseKrauuCompetence]] = relationship(
         back_populates="course",
         primaryjoin="and_(Course.course_id==CourseKrauuCompetence.course_id, CourseKrauuCompetence.is_active==True)",
@@ -813,24 +894,19 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
     perex: Mapped[str] = mapped_column(
         String(255), nullable=False, default="", server_default=""
     )
-    max_task_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
-    passing_score: Mapped[int] = mapped_column(Integer, nullable=False, default=75)
+    # Vygenerovaný podcast (WAV v SeaweedFS) a jeho přepis [{speaker, text}]; None = není.
+    podcast_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    podcast_transcript: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Vygenerovaný obrázek modulu v SeaweedFS; None = není.
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Myšlenková mapa {root, branches: [{label, children}]} generovaná AI; None = není.
+    mindmap: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     course: Mapped[Course] = relationship(back_populates="modules")
 
     learn_blocks: Mapped[list[LearnBlock]] = relationship(
         back_populates="module",
         primaryjoin="and_(Module.module_id==LearnBlock.module_id, LearnBlock.is_active==True)",
-    )
-    practice_questions: Mapped[list[PracticeQuestion]] = relationship(
-        back_populates="module",
-        primaryjoin="and_(Module.module_id==PracticeQuestion.module_id, PracticeQuestion.is_active==True)",
-    )
-    task_sessions: Mapped[list[ModuleTaskSession]] = relationship(
-        back_populates="module", cascade="all, delete-orphan"
-    )
-    user_practice_questions: Mapped[list[UserPracticeQuestion]] = relationship(
-        back_populates="module",
     )
     neuro_principles: Mapped[list[ModuleNeuroPrinciple]] = relationship(
         back_populates="module",
@@ -844,13 +920,17 @@ class Module(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="module",
         primaryjoin="and_(Module.module_id==ModuleBloomLevel.module_id, ModuleBloomLevel.is_active==True)",
     )
+    assessments: Mapped[list[CourseAssessment]] = relationship(
+        back_populates="module",
+        primaryjoin="and_(Module.module_id==CourseAssessment.module_id, CourseAssessment.is_active==True)",
+    )
 
     _soft_delete_cascade = [
         "learn_blocks",
-        "practice_questions",
         "neuro_principles",
         "krauu_competences",
         "bloom_levels",
+        "assessments",
     ]
 
     @property
@@ -1054,183 +1134,10 @@ class LearnBlock(TimestampMixin, SoftDeleteMixin, Base):
         back_populates="learn_block",
     )
 
-    def get_owner_id(self) -> int:
-        return self.module.course.owner_id
-
-
-# ---------- Practice (sdílené) ----------
-
-
-class PracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice_question"
-    __table_args__ = (
-        Index(
-            "uq_question_module_text_active",
-            "module_id",
-            "question",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_question_module_id", "module_id"),
-        CheckConstraint(
-            """
-            (
-              question_type = 'closed'
-              AND correct_answer IS NOT NULL
-              AND example_answer IS NULL
-            )
-            OR
-            (
-              question_type = 'open'
-              AND correct_answer IS NULL
-            )
-            """,
-            name="ck_practice_question_open_closed",
-        ),
-    )
-
-    question_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    question_type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), nullable=False
-    )
-    question: Mapped[str] = mapped_column(Text, nullable=False)
-    correct_answer: Mapped[str | None] = mapped_column(String(255))
-    example_answer: Mapped[str | None] = mapped_column(Text)
-
-    module: Mapped[Module] = relationship(back_populates="practice_questions")
-    closed_options: Mapped[list[PracticeOption]] = relationship(
-        back_populates="question",
-        primaryjoin="and_(PracticeQuestion.question_id==PracticeOption.question_id, PracticeOption.is_active==True)",
-    )
-    open_keywords: Mapped[list[QuestionKeyword]] = relationship(
-        back_populates="question",
-        primaryjoin="and_(PracticeQuestion.question_id==QuestionKeyword.question_id, QuestionKeyword.is_active==True)",
-    )
-
-    _soft_delete_cascade = ["closed_options", "open_keywords"]
+    _soft_delete_cascade: list[str] = ["mentor_logs"]
 
     def get_owner_id(self) -> int:
         return self.module.course.owner_id
-
-
-class PracticeOption(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "practice_option"
-    __table_args__ = (
-        Index(
-            "uq_option_question_text_active",
-            "question_id",
-            "text",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_option_question_id", "question_id"),
-    )
-
-    option_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("practice_question.question_id"), nullable=False
-    )
-    text: Mapped[str] = mapped_column(Text, nullable=False)
-
-    question: Mapped[PracticeQuestion] = relationship(back_populates="closed_options")
-
-    def get_owner_id(self) -> int:
-        return self.question.module.course.owner_id
-
-
-class QuestionKeyword(TimestampMixin, SoftDeleteMixin, Base):
-    __tablename__ = "question_keyword"
-    __table_args__ = (
-        Index(
-            "uq_keyword_question_keyword_active",
-            "question_id",
-            "keyword",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_keyword_question_id", "question_id"),
-    )
-
-    keyword_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    question_id: Mapped[int] = mapped_column(
-        ForeignKey("practice_question.question_id"), nullable=False
-    )
-    keyword: Mapped[str] = mapped_column(String(200), nullable=False)
-
-    question: Mapped[PracticeQuestion] = relationship(back_populates="open_keywords")
-
-    def get_owner_id(self) -> int:
-        return self.question.module.course.owner_id
-
-
-# ---------- Practice (personalizované) ----------
-
-
-class UserPracticeQuestion(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Personalizovaná otázka dogenerovaná pro konkrétního uživatele a modul.
-    Nová otázka = nový řádek. Opakování odpovědí řeší UserPracticeAttempt.
-    """
-
-    __tablename__ = "user_practice_question"
-    __table_args__ = (
-        Index("ix_user_practice_question_user_module", "user_id", "module_id"),
-    )
-
-    user_question_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    question_type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), nullable=False
-    )
-    user_input: Mapped[str] = mapped_column(Text, nullable=False)
-    generated_question: Mapped[str] = mapped_column(Text, nullable=False)
-    # Snapshot možností pro closed otázky: [{"text": "..."}, ...]
-    options: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-
-    user: Mapped[User] = relationship(back_populates="practice_questions")
-    module: Mapped[Module] = relationship(back_populates="user_practice_questions")
-    attempts: Mapped[list[UserPracticeAttempt]] = relationship(
-        back_populates="question",
-        order_by="UserPracticeAttempt.created_at",
-    )
-
-
-class UserPracticeAttempt(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Jeden pokus uživatele na personalizovanou otázku.
-    Dokud is_correct = False, může uživatel přidat další pokus.
-    """
-
-    __tablename__ = "user_practice_attempt"
-    __table_args__ = (
-        Index("ix_user_practice_attempt_question_id", "user_question_id"),
-    )
-
-    attempt_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_question_id: Mapped[int] = mapped_column(
-        ForeignKey("user_practice_question.user_question_id"), nullable=False
-    )
-    user_input: Mapped[str] = mapped_column(Text, nullable=False)
-    ai_response: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-
-    question: Mapped[UserPracticeQuestion] = relationship(back_populates="attempts")
 
 
 # ---------- Enrollment ----------
@@ -1268,6 +1175,10 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
     left_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Kdo studenta vyřadil (remove). NULL u leave — jen ten se smí znovu zapsat sám.
+    removed_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id"), nullable=True
+    )
 
     last_visited_module_id: Mapped[int | None] = mapped_column(
         ForeignKey("module.module_id"), nullable=True
@@ -1276,143 +1187,105 @@ class Enrollment(TimestampMixin, SoftDeleteMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
-    user: Mapped[User] = relationship(back_populates="enrollments")
+    user: Mapped[User] = relationship(back_populates="enrollments", foreign_keys=[user_id])
     course: Mapped[Course] = relationship(back_populates="enrollments")
     last_visited_module: Mapped[Module | None] = relationship(
         "Module", foreign_keys=[last_visited_module_id]
     )
 
 
-# ---------- AI Session / Test ----------
-
-
-class ModuleTaskSession(TimestampMixin, SoftDeleteMixin, Base):
-    """
-    Záznam pro závěrečný AI test modulu.
-    Je navázán na Usera (uchování dat nezávisle na Enrollmentu).
-    Oprávnění ke spuštění se řeší v Python aplikaci.
-    """
-
-    __tablename__ = "module_task_session"
-    __table_args__ = (
-        Index(
-            "uq_module_task_session_user_active",
-            "user_id",
-            "module_id",
-            unique=True,
-            postgresql_where=text("status IN ('in_progress', 'passed')"),
-        ),
-        Index("ix_module_task_session_user_id", "user_id"),
-        Index("ix_module_task_session_module_id", "module_id"),
-    )
-
-    session_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
-    )
-    status: Mapped[ModuleTaskSessionStatus] = mapped_column(
-        Enum(ModuleTaskSessionStatus, name="module_task_session_status"),
-        nullable=False,
-        default=ModuleTaskSessionStatus.in_progress,
-    )
-    generated_task: Mapped[str] = mapped_column(Text, nullable=False)
-
-    user: Mapped[User] = relationship(back_populates="task_sessions")
-    module: Mapped[Module] = relationship(back_populates="task_sessions")
-    attempts: Mapped[list[TaskAttempt]] = relationship(
-        back_populates="session",
-        order_by="TaskAttempt.created_at",
-    )
-
-
-class TaskAttempt(TimestampMixin, SoftDeleteMixin, Base):
-    """Konkrétní pokus uživatele o splnění AI úkolu."""
-
-    __tablename__ = "task_attempt"
-    __table_args__ = (Index("ix_task_attempt_session_id", "session_id"),)
-
-    attempt_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
-    session_id: Mapped[int] = mapped_column(
-        ForeignKey("module_task_session.session_id"), nullable=False
-    )
-    user_response: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[AttemptStatus] = mapped_column(
-        Enum(AttemptStatus, name="attempt_status"),
-        nullable=False,
-        default=AttemptStatus.pending,
-    )
-    ai_feedback: Mapped[str | None] = mapped_column(Text)
-    ai_score: Mapped[int | None] = mapped_column(Integer)
-    is_passed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
-    session: Mapped[ModuleTaskSession] = relationship(back_populates="attempts")
-
-
 # ---------- Ticket ----------
 
 
-class ModuleTicket(TimestampMixin, SoftDeleteMixin, Base):
+class Ticket(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Reklamace studenta k AI hodnocení na úrovni modulu.
-    Typ reklamace určuje ticket_type (concept check, practice evaluátor nebo ostatní).
-    Manuálně řeší autor kurzu.
+    Univerzální reklamace/dotaz vázaný na libovolnou entitu v systému.
+    Vlastní obsah reklamace a odpovědi žije ve vlákně TicketMessage.
     """
 
-    __tablename__ = "module_ticket"
+    __tablename__ = "ticket"
     __table_args__ = (
-        # Jeden otevřený ticket na uživatele, modul a typ
+        # Jeden nevyřešený aktivní ticket na uživatele, entitu a kategorii.
+        # Smazaný (is_active=false) ani vyřešený ticket založení nového neblokuje.
+        # Title unikátní není, dva studenti smí mít stejný titulek.
         Index(
-            "uq_ticket_user_module_type",
-            "user_id",
-            "module_id",
-            "ticket_type",
+            "uq_ticket_requester_entity_category",
+            "requester_id",
+            "entity_type",
+            "entity_id",
+            "category",
             unique=True,
-            postgresql_where=text("status = 'open'"),
+            postgresql_where=text(
+                "is_active AND status IN ('open', 'in_progress', 'pending')"
+            ),
         ),
-        Index(
-            "uq_title_ticket_type_module_active",
-            "title",
-            "ticket_type",
-            "module_id",
-            unique=True,
-            postgresql_where=text("is_active"),
-        ),
-        Index("ix_ticket_user_id", "user_id"),
-        Index("ix_ticket_module_id", "module_id"),
+        Index("ix_ticket_requester_id", "requester_id"),
+        Index("ix_ticket_assignee_id", "assignee_id"),
+        Index("ix_ticket_entity", "entity_type", "entity_id"),
         Index("ix_ticket_course_id", "course_id"),
     )
 
     ticket_id: Mapped[int] = mapped_column(
         BigInteger, Identity(start=1), primary_key=True
     )
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    module_id: Mapped[int] = mapped_column(
-        ForeignKey("module.module_id"), nullable=False
+    requester_id: Mapped[int] = mapped_column(
+        ForeignKey("user.user_id"), nullable=False
     )
-    # Denormalizováno pro rychlý přístup bez joinu (dashboard autora kurzu)
-    course_id: Mapped[int] = mapped_column(
-        ForeignKey("course.course_id"), nullable=False
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.user_id"), nullable=True
     )
-    ticket_type: Mapped[TicketType] = mapped_column(
+    entity_type: Mapped[TicketEntityType] = mapped_column(
+        Enum(TicketEntityType, name="ticket_entity_type"), nullable=False
+    )
+    entity_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Denormalizováno pro rychlý přístup bez joinu (dashboard autora kurzu);
+    # null u entit, které pod žádný kurz nespadají.
+    course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("course.course_id"), nullable=True
+    )
+    category: Mapped[TicketType] = mapped_column(
         Enum(TicketType, name="ticket_type"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TicketStatus] = mapped_column(
         Enum(TicketStatus, name="ticket_status"),
         nullable=False,
         default=TicketStatus.open,
     )
 
-    user: Mapped[User] = relationship(foreign_keys=[user_id])
-    module: Mapped[Module] = relationship()
-    course: Mapped[Course] = relationship()
+    requester: Mapped[User] = relationship(foreign_keys=[requester_id])
+    assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
+    course: Mapped[Course | None] = relationship()
+    messages: Mapped[list[TicketMessage]] = relationship(
+        back_populates="ticket",
+        order_by="TicketMessage.created_at",
+        primaryjoin="and_(Ticket.ticket_id==TicketMessage.ticket_id, TicketMessage.is_active==True)",
+    )
+
+    _soft_delete_cascade: list[str] = ["messages"]
+
+
+class TicketMessage(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Jedna zpráva ve vlákně ticketu. is_internal odlišuje poznámky viditelné
+    jen pro staff (lector/guarantor/superadmin) od odpovědí směrem k requesterovi.
+    """
+
+    __tablename__ = "ticket_message"
+    __table_args__ = (Index("ix_ticket_message_ticket_id", "ticket_id"),)
+
+    message_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    ticket_id: Mapped[int] = mapped_column(
+        ForeignKey("ticket.ticket_id"), nullable=False
+    )
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    ticket: Mapped[Ticket] = relationship(back_populates="messages")
+    author: Mapped[User] = relationship(foreign_keys=[author_id])
 
 
 # ---------- Mentor Interaction Log ----------
@@ -1420,8 +1293,10 @@ class ModuleTicket(TimestampMixin, SoftDeleteMixin, Base):
 
 class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
     """
-    Log konverzace uživatele s AI mentorem v rámci konkrétního LearnBlock.
+    Log konverzace uživatele s AI mentorem.
     Jeden řádek = jedna otázka + odpověď.
+    scope=module: chat v learn blocku, historie podle learn_id.
+    scope=course: chat nad celým kurzem (i bez learn blocku), historie podle course_id.
     """
 
     __tablename__ = "mentor_interaction_log"
@@ -1429,18 +1304,87 @@ class MentorInteractionLog(TimestampMixin, SoftDeleteMixin, Base):
         Index("ix_mentor_log_user_id", "user_id"),
         Index("ix_mentor_log_learn_id", "learn_id"),
         Index("ix_mentor_log_user_learn", "user_id", "learn_id"),
+        Index("ix_mentor_log_user_course", "user_id", "course_id"),
+        CheckConstraint(
+            "scope = 'course' OR learn_id IS NOT NULL",
+            name="ck_mentor_log_module_needs_learn",
+        ),
     )
 
     log_id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
-    learn_id: Mapped[int] = mapped_column(
-        ForeignKey("learn_block.learn_id"), nullable=False
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    learn_id: Mapped[int | None] = mapped_column(ForeignKey("learn_block.learn_id"))
+    scope: Mapped[MentorScope] = mapped_column(
+        Enum(MentorScope, name="mentor_scope"),
+        nullable=False,
+        default=MentorScope.module,
     )
     user_message: Mapped[str] = mapped_column(Text, nullable=False)
     ai_response: Mapped[str] = mapped_column(Text, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="mentor_logs")
-    learn_block: Mapped[LearnBlock] = relationship(back_populates="mentor_logs")
+    course: Mapped[Course] = relationship()
+    learn_block: Mapped[LearnBlock | None] = relationship(back_populates="mentor_logs")
+
+
+# ---------- AI Usage ----------
+
+
+class AiUsage(Base):
+    """
+    Spotřeba AI tokenů. Jeden řádek = jedno LLM volání.
+    Plní se v agents.base.usage.UsageCallback. user_id je NULL u volání
+    mimo request uživatele (veřejný wiki chat, scheduler).
+    """
+
+    __tablename__ = "ai_usage"
+    __table_args__ = (Index("ix_ai_usage_user_created", "user_id", "created_at"),)
+
+    usage_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.user_id"))
+    endpoint: Mapped[str | None] = mapped_column(String(255))
+    # Klíč system_setting, se kterým se LLM vytvořilo (např. course_module_enricher)
+    agent: Mapped[str | None] = mapped_column(String(100))
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Cena v USD podle ai_model_price v okamžiku volání; NULL = model není v ceníku
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AiModelPrice(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Ceník AI modelů v USD za 1M tokenů. Podle něj UsageCallback spočítá
+    ai_usage.cost při zápisu — změna ceny proto nepřepíše historii.
+    model musí přesně odpovídat názvu v system_setting.model.
+    """
+
+    __tablename__ = "ai_model_price"
+    __table_args__ = (
+        Index(
+            "uq_ai_model_price_model",
+            "model",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    price_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_price: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    output_price: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    # Cena tokenů z prompt cache; NULL = účtují se plnou cenou inputu
+    cache_read_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
 
 
 # ---------- Veřejná databáze (pub_*) ----------
@@ -1817,3 +1761,187 @@ class PubCollectionResource(SoftDeleteMixin, Base):
 
     def get_owner_id(self) -> int:
         return self.collection.user_id
+
+
+# ---------- Interakční formáty (assessments) ----------
+#
+# Rozšiřitelný systém typů testování/procvičování v kurzech. Chování formátu
+# (uzavřené otázky, do budoucna otevřené otázky, AI procvičování...) definuje
+# registr v api/src/assessments/base.py — tyto tabulky jsou jen generický
+# nosič dat, o typech samy o sobě nic nevědí.
+#
+# Tři vrstvy dat, každá se mění jinou rychlostí:
+#   assessment_type     — co systém umí (katalog, seed.py)
+#   course_assessment   — co si lektor zapnul a nastavil na kurzu/modulu
+#   assessment_session  — běh studenta, assessment_turn — tah po tahu
+
+
+class AssessmentType(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Katalog interakčních formátů. Nový formát = nový řádek v katalogu
+    (seed.py) + implementace v api/src/assessments.
+    """
+
+    __tablename__ = "assessment_type"
+
+    code: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    # Ve kterých kontextech lze formát nasadit: ["practice", "assessment", "course_final"]
+    allowed_contexts: Mapped[list] = mapped_column(JSONB, nullable=False)
+    # Výchozí nastavení — předvyplní se lektorovi ve formuláři
+    default_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class CourseAssessment(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Konfigurace interakčního formátu na kurzu — lektor si formát zapne
+    pro daný kontext (practice/assessment na modulu, course_final na kurzu)
+    a nastaví ho přes typově specifický JSONB `settings`.
+
+    `settings` validuje aplikace Pydantic schématem z registru
+    (api/src/assessments/base.py) před každým zápisem.
+    """
+
+    __tablename__ = "course_assessment"
+    __table_args__ = (
+        # Unikátnost konfigurace: modulové kontexty vs. course_final zvlášť,
+        # protože NULL v module_id by v jednom indexu unikátnost nevynutil.
+        Index(
+            "uq_course_assessment_module_active",
+            "course_id",
+            "module_id",
+            "context",
+            "assessment_type_code",
+            unique=True,
+            postgresql_where=text("is_active AND module_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_course_assessment_final_active",
+            "course_id",
+            "context",
+            "assessment_type_code",
+            unique=True,
+            postgresql_where=text("is_active AND module_id IS NULL"),
+        ),
+        Index("ix_course_assessment_course_id", "course_id"),
+        Index("ix_course_assessment_module_id", "module_id"),
+        CheckConstraint(
+            """
+            (context = 'course_final' AND module_id IS NULL)
+            OR
+            (context IN ('pretest', 'practice', 'assessment') AND module_id IS NOT NULL)
+            """,
+            name="ck_course_assessment_context_module",
+        ),
+    )
+
+    course_assessment_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("course.course_id"), nullable=False
+    )
+    # NULL = platí pro celý kurz (context = course_final)
+    module_id: Mapped[int | None] = mapped_column(
+        ForeignKey("module.module_id"), nullable=True
+    )
+    assessment_type_code: Mapped[str] = mapped_column(
+        ForeignKey("assessment_type.code"), nullable=False
+    )
+    context: Mapped[AssessmentContext] = mapped_column(
+        Enum(AssessmentContext, name="assessment_context"), nullable=False
+    )
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Počítá se splnění do dokončení kurzu?
+    is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Typově specifické nastavení (validované Pydantic schématem z registru)
+    settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    course: Mapped[Course] = relationship(back_populates="assessments")
+    module: Mapped[Module | None] = relationship(back_populates="assessments")
+    assessment_type: Mapped[AssessmentType] = relationship()
+    sessions: Mapped[list[AssessmentSession]] = relationship(
+        back_populates="course_assessment"
+    )
+
+    def get_owner_id(self) -> int:
+        return self.course.owner_id
+
+
+class AssessmentSession(TimestampMixin, SoftDeleteMixin, Base):
+    """
+    Běh interakčního formátu jedním studentem. Generická pro všechny formáty —
+    typově specifický průběh žije v `assessment_turn` a v JSONB polích.
+
+    Nastavení testu se čte živě z CourseAssessment.settings (bez snapshotu).
+    """
+
+    __tablename__ = "assessment_session"
+    __table_args__ = (
+        Index(
+            "uq_assessment_session_user_in_progress",
+            "user_id",
+            "course_assessment_id",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('in_progress', 'awaiting_review') AND is_active"
+            ),
+        ),
+        Index("ix_assessment_session_user_id", "user_id"),
+        Index("ix_assessment_session_course_assessment_id", "course_assessment_id"),
+    )
+
+    session_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.user_id"), nullable=False)
+    course_assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("course_assessment.course_assessment_id"), nullable=False
+    )
+    status: Mapped[AssessmentSessionStatus] = mapped_column(
+        Enum(AssessmentSessionStatus, name="assessment_session_status"),
+        nullable=False,
+        default=AssessmentSessionStatus.in_progress,
+    )
+    # Typově specifický pracovní/výsledný stav (vybrané téma, rozpracované sekce...)
+    state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Sdílená hodnoticí pole — NULL u formátů bez verdiktu
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped[User] = relationship()
+    course_assessment: Mapped[CourseAssessment] = relationship(
+        back_populates="sessions"
+    )
+    turns: Mapped[list[AssessmentTurn]] = relationship(
+        back_populates="session",
+        order_by="AssessmentTurn.turn_id",
+    )
+
+
+class AssessmentTurn(TimestampMixin, Base):
+    """
+    Jeden tah v assessment session — zpráva dialogu, odeslané otázky,
+    AI feedback... Typově specifická data v `payload`.
+    """
+
+    __tablename__ = "assessment_turn"
+    __table_args__ = (Index("ix_assessment_turn_session_id", "session_id"),)
+
+    turn_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(start=1), primary_key=True
+    )
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_session.session_id"), nullable=False
+    )
+    role: Mapped[AssessmentTurnRole] = mapped_column(
+        Enum(AssessmentTurnRole, name="assessment_turn_role"), nullable=False
+    )
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    session: Mapped[AssessmentSession] = relationship(back_populates="turns")

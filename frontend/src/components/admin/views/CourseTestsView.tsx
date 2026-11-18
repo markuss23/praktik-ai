@@ -1,108 +1,116 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { QuestionType, FeedbackItem, Status, type PracticeQuestion } from '@/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Status, type AssessmentContext, type PretestSettings } from '@/api';
 import {
-  updatePracticeQuestion, updatePracticeOption, createPracticeQuestion, createPracticeOption,
-  getFeedbackSection, replyToFeedback, resolveFeedback, updateCourseStatus,
+  attachCourseAssessment, detachCourseAssessment, getPretestContent, listAssessmentFormats, listCourseAssessments,
+  updateCourseAssessment, updateCourseStatus, updatePretestContent,
+  type AssessmentFormat, type AssessmentFormatSettings, type CourseAssessmentConfig,
 } from '@/lib/api-client';
 import { UpdateCourseStatusStatusEnum } from '@/api/apis/CoursesApi';
 import {
   CoursePageHeader, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseStepsCard, StepModuleList,
-  courseStepLabel, moduleCountHint, questionCountHint, useCourseStepNavigation, useAdminChrome,
+  COURSE_STEPS, courseStepLabel, moduleCountHint, testCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type StepModuleItem,
 } from '@/components/admin';
-import { StudentPreview, type PreviewModule } from '@/components/admin/StudentPreview';
+import { StudentPreview } from '@/components/admin/StudentPreview';
+import { PretestEditor } from '@/components/admin/assessments/PretestEditor';
+import type { FormatDraft } from '@/components/admin/assessments/FormatConfigCard';
+import { FormatCards } from '@/components/admin/assessments/FormatCards';
 // Osnova kurzu je nahrazená kartou „Tvorba kurzu" (viz zakomentované použití níže).
 // import { CourseOutlineSidebar } from '@/components/admin/CourseOutlineSidebar';
-import { Drawer, DrawerContent, Button, FilterSelect, Input, Textarea, useToast } from '@/components/ui';
-import { readApiErrorDetail } from '@/lib/api-error';
-
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'closed', label: 'Uzavřená' },
-  { value: 'open', label: 'Otevřená' },
-];
+import { ConfirmModal, Drawer, DrawerContent, Button, Tabs, TabsList, TabsTrigger, useToast } from '@/components/ui';
+import { readApiErrorDetail, readApiErrorStatus } from '@/lib/api-error';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
-import { useCourseData, invalidateCourseCache } from '@/hooks/useCourseData';
+import { useCourseData } from '@/hooks/useCourseData';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAutosave } from '@/hooks/useAutosave';
+import type { AssessmentContents } from '@/hooks/useCourseAssessments';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { CONTEXT_LABELS, formatName } from '@/lib/assessment-labels';
 import {
-  Plus,
-  Trash2,
-  Send,
-  CheckCircle,
-  CornerDownRight,
+  emptyClosedQuestion, emptyPretest, formatFinishErrors, formatSettingsErrors, normalizeFormatSettings, normalizePretest, pretestErrors, unpassableErrors,
+} from '@/lib/assessment-validation';
+import {
+  commentsToFixHint,
+  isCourseFinalFeedback,
+  isCourseLevelFeedback,
+  isSummaryStepFeedback,
+  reviewFeedbackLabel,
+} from '@/lib/review-feedback';
+import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
+import {
   ArrowUpCircle,
-  X,
 } from 'lucide-react';
 
-interface QuestionItem {
-  id: number;
-  questionId?: number;
-  question: string;
-  type: 'closed' | 'open';
-  correctAnswer?: string;
-  exampleAnswer?: string;
-  options: { id: number; optionId?: number; text: string; isCorrect: boolean }[];
-}
+type TestsSection = Extract<CourseStep, 'pretest' | 'tests' | 'final'>;
+const TESTS_SECTIONS: CourseStep[] = ['pretest', 'tests', 'final'];
 
 interface ValidationError {
+  /** -1 = závěrečný test kurzu */
   moduleIndex: number;
   moduleName: string;
-  questionIndex: number;
   message: string;
+  // Krok, ve kterém se chyba opraví
+  section: TestsSection;
+  // Záložka a karta formátu, kterou klik na chybu otevře
+  context: AssessmentContext;
+  code: string;
 }
 
 interface CourseTestsViewProps {
+  // 'pretest' = pretest modulů, 'tests' = formáty modulů, 'final' = závěrečný test kurzu
+  section: TestsSection;
   courseId: number;
   initialModuleId?: number;
 }
 
-// Co se o existující otázce posílá na PUT. Slouží i jako otisk pro
-// porovnání s naposledy uloženým stavem — autosave posílá jen změněné.
-function questionPayload(question: QuestionItem) {
-  const correctOption = question.options.find((opt) => opt.isCorrect);
-  return {
-    question: question.question,
-    questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
-    correctAnswer: correctOption?.text ?? question.correctAnswer,
-    exampleAnswer: question.exampleAnswer,
-  };
-}
+// Klíče otisků uloženého stavu — pretest a formát se ukládají jinými endpointy
+const pretestKey = (id: number) => `p:${id}`;
+const formatKey = (id: number) => `f:${id}`;
 
-// Rozpracované otázky editoru → tvar, který čte studentské Procvičování
-// (náhled pro studenta). Neuložené otázky/možnosti dostanou záporná ID;
-// klíčová slova otevřených otázek editor neupravuje, berou se z uložených.
-function toPracticeQuestions(
-  moduleId: number,
-  items: QuestionItem[],
-  saved: PracticeQuestion[] = [],
-): PracticeQuestion[] {
-  return items
-    .filter((q) => q.question.trim().length > 0)
-    .map((q, index) => {
-      const questionId = q.questionId ?? -(index + 1);
-      const isClosed = q.type === 'closed';
-      return {
-        questionId,
-        moduleId,
-        question: q.question,
-        questionType: isClosed ? QuestionType.Closed : QuestionType.Open,
-        correctAnswer: isClosed ? (q.options.find((o) => o.isCorrect)?.text ?? q.correctAnswer ?? null) : null,
-        exampleAnswer: isClosed ? null : (q.exampleAnswer ?? null),
-        closedOptions: isClosed
-          ? q.options
-              .filter((o) => o.text.trim().length > 0)
-              .map((o, oIndex) => ({ optionId: o.optionId ?? -(oIndex + 1), questionId, text: o.text }))
-          : [],
-        openKeywords: saved.find((sq) => sq.questionId === q.questionId)?.openKeywords ?? [],
-      };
-    });
-}
+// Krok, ve kterém se část testů upravuje
+const sectionOf = (config: CourseAssessmentConfig): TestsSection =>
+  config.assessmentTypeCode === 'pretest' ? 'pretest' : config.context === 'course_final' ? 'final' : 'tests';
 
-// Editor testů/otázek pro moduly kurzu
-export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewProps) {
+const CONTEXT_ORDER: AssessmentContext[] = ['pretest', 'practice', 'assessment', 'course_final'];
+const byContext = (a: CourseAssessmentConfig, b: CourseAssessmentConfig) =>
+  CONTEXT_ORDER.indexOf(a.context) - CONTEXT_ORDER.indexOf(b.context) || a.courseAssessmentId - b.courseAssessmentId;
+
+// Záložky formátů v modulu
+const MODULE_CONTEXTS = ['practice', 'assessment'] as const;
+type ModuleContext = typeof MODULE_CONTEXTS[number];
+const isModuleContext = (c: AssessmentContext): c is ModuleContext => (MODULE_CONTEXTS as readonly string[]).includes(c);
+
+const MODULE_CONTEXT_DESCRIPTIONS: Record<ModuleContext, string> = {
+  practice: 'Formáty, které student dostane po pretestu. Povinné musí splnit, aby postoupil dál.',
+  assessment: 'Test na konci modulu. Povinné formáty musí student splnit, aby postoupil dál.',
+};
+
+// Uzavřené otázky bez otázek začínají rovnou prázdnou otázkou k vyplnění
+const withStarterQuestion = (code: string, settings: AssessmentFormatSettings): AssessmentFormatSettings =>
+  code === 'closed_questions' && (settings.questions ?? []).length === 0
+    ? { ...settings, questions: [emptyClosedQuestion()] }
+    : settings;
+
+// Náhled ukazuje jen to, co lektor začal vyplňovat
+const withoutBlankQuestions = (code: string, settings: AssessmentFormatSettings): AssessmentFormatSettings =>
+  code === 'closed_questions'
+    ? { ...settings, questions: (settings.questions ?? []).filter((q) => q.question.trim() || q.options.some((o) => o.trim())) }
+    : settings;
+
+// Klíč rozbalených karet — modul (null = závěrečný test) a kontext
+const openFormatsKey = (moduleId: number | null, context: AssessmentContext) => `${moduleId ?? 'final'}:${context}`;
+
+const FORMAT_TAB_LIST = 'grid w-full grid-cols-2 gap-1 border border-border p-1 group-data-horizontal/tabs:h-auto sm:inline-grid sm:w-fit';
+const FORMAT_TAB = [
+  'h-auto min-w-0 gap-1.5 rounded-md px-4 py-1.5 sm:min-w-60',
+  'text-muted-foreground hover:bg-card hover:text-foreground',
+  'data-active:bg-gradient-r data-active:text-primary-foreground data-active:shadow-sm',
+].join(' ');
+
+// Editor kroků Pretest, Testy a Závěrečný test; společná data i autosave, section řídí render
+export function CourseTestsView({ section, courseId, initialModuleId }: CourseTestsViewProps) {
   const { goToCourseContent, goToCourseSummary } = useAdminNavigation();
   const toast = useToast();
   const { isOwner } = useCurrentUser();
@@ -113,9 +121,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     modules,
     selectedModuleIndex,
     setSelectedModuleIndex,
-    expandedOutlineItems,
     setExpandedOutlineItems,
-    toggleOutlineItem,
     selectModule,
     courseData,
   } = useCourseData({ courseId, initialModuleId });
@@ -123,17 +129,20 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const [activeTab, setActiveTab] = useState<CreationTab>('general');
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
-  const [mobileCommentsOpen, setMobileCommentsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Panel komentářů začíná pod hlavičkou stránky
+  const reviewHeaderRef = useRef<HTMLDivElement>(null);
+  // Sdílená instance — po přepnutí kroku scroll editoru nahoru
+  const editorScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    editorScrollRef.current?.scrollTo({ top: 0 });
+  }, [section]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const { focusMode } = useAdminChrome();
   const goToStep = useCourseStepNavigation(courseId);
 
-  // Feedback state
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [replyTexts, setReplyTexts] = useState<Record<number, string>>({});
-  const [showReplyFor, setShowReplyFor] = useState<number | null>(null);
-  const [submittingReply, setSubmittingReply] = useState<number | null>(null);
-  const [resolvingFeedback, setResolvingFeedback] = useState<number | null>(null);
+  // Komentáře garanta u vráceného kurzu (vysouvací panel)
+  const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
   const [resubmitLoading, setResubmitLoading] = useState(false);
 
   const courseStatus = courseData?.status as string | undefined;
@@ -143,53 +152,21 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   const allResolved = feedbacks.length > 0 && feedbacks.every(fb => fb.isResolved);
   const canResubmit = isEdited && allResolved && courseData && isOwner(courseData.ownerId);
 
-  useEffect(() => {
-    if (!courseId) return;
-    getFeedbackSection(courseId)
-      .then(section => setFeedbacks(section.feedbacks))
-      .catch(() => {});
-  }, [courseId]);
+  // Komentáře ke kurzu (souhrn, celý kurz) patří do kroku Souhrn, k závěrečnému testu do kroku Závěrečný test
+  const moduleFeedbacks = feedbacks.filter(fb => !isCourseLevelFeedback(fb));
+  const unresolvedSummaryFeedbacks = feedbacks.filter(fb => isSummaryStepFeedback(fb) && !fb.isResolved).length;
+  const finalFeedbacks = feedbacks.filter(isCourseFinalFeedback);
+  const unresolvedFinalFeedbacks = finalFeedbacks.filter(fb => !fb.isResolved).length;
 
   const currentModuleFeedbacks = modules[selectedModuleIndex]
-    ? feedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
+    ? moduleFeedbacks.filter(fb => fb.moduleId === modules[selectedModuleIndex].moduleId)
     : [];
+  const stepFeedbacks = section === 'final' ? finalFeedbacks : currentModuleFeedbacks;
 
   const feedbackCountByModule = (moduleId: number) =>
-    feedbacks.filter(fb => fb.moduleId === moduleId).length;
+    moduleFeedbacks.filter(fb => fb.moduleId === moduleId && !fb.isResolved).length;
 
-  const feedbackContextLabel = (fb: FeedbackItem) => {
-    if (fb.contentType === 'learn_block' && fb.contentRef) return `Příručka – str. ${fb.contentRef}`;
-    if (fb.contentType === 'practice' && fb.contentRef) return `Procvičování – ot. ${fb.contentRef}`;
-    return null;
-  };
-
-  const handleReply = async (feedbackId: number) => {
-    const text = replyTexts[feedbackId]?.trim();
-    if (!text) return;
-    setSubmittingReply(feedbackId);
-    try {
-      const updated = await replyToFeedback(feedbackId, text);
-      setFeedbacks(prev => prev.map(fb => fb.feedbackId === feedbackId ? updated : fb));
-      setShowReplyFor(null);
-      setReplyTexts(prev => ({ ...prev, [feedbackId]: '' }));
-    } catch (err) {
-      console.error('Failed to reply:', err);
-    } finally {
-      setSubmittingReply(null);
-    }
-  };
-
-  const handleToggleResolve = async (fb: FeedbackItem) => {
-    setResolvingFeedback(fb.feedbackId);
-    try {
-      const updated = await resolveFeedback(fb.feedbackId, !fb.isResolved);
-      setFeedbacks(prev => prev.map(f => f.feedbackId === fb.feedbackId ? updated : f));
-    } catch (err) {
-      console.error('Failed to resolve:', err);
-    } finally {
-      setResolvingFeedback(null);
-    }
-  };
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, stepFeedbacks, setCommentsOpen);
 
   const handleResubmit = async () => {
     setResubmitLoading(true);
@@ -202,339 +179,178 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
     }
   };
 
-  // Stav otázek pro každý modul
-  const [moduleQuestions, setModuleQuestions] = useState<{[key: number]: QuestionItem[]}>({});
-  const [questionsInitialized, setQuestionsInitialized] = useState(false);
-  // Naposledy uložený stav na serveru (otisk otázky podle questionId, text
-  // možnosti podle optionId) — ukládá se jen to, co se od něj liší.
-  const savedQuestionKeysRef = useRef(new Map<number, string>());
-  const savedOptionTextsRef = useRef(new Map<number, string>());
+  // Formáty připojené ke kurzu a katalog formátů
+  const [configs, setConfigs] = useState<CourseAssessmentConfig[]>([]);
+  const [formats, setFormats] = useState<AssessmentFormat[]>([]);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(true);
+  const [assessmentsError, setAssessmentsError] = useState<string | null>(null);
+  // Rozpracovaný obsah pretestů a nastavení formátů podle courseAssessmentId
+  const [pretestDrafts, setPretestDrafts] = useState<Record<number, PretestSettings>>({});
+  const [formatDrafts, setFormatDrafts] = useState<Record<number, FormatDraft>>({});
+  // Otisk naposledy uloženého stavu — ukládá se jen to, co se od něj liší
+  const [savedSnapshots, setSavedSnapshots] = useState<Record<string, string>>({});
+  // Po pokusu o dokončení se chyby ukážou i u neupravených částí
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const finalSelected = section === 'final';
+  const [detachTarget, setDetachTarget] = useState<CourseAssessmentConfig | null>(null);
+  const [detaching, setDetaching] = useState(false);
+  // Záložka zůstává při přepnutí modulu
+  const [formatTab, setFormatTab] = useState<ModuleContext>('practice');
+  const [openFormats, setOpenFormats] = useState<Record<string, string[]>>({});
 
-  // Inicializace otázek z courseData
-  if (courseData && !questionsInitialized) {
-    const allModuleQuestions: {[key: number]: QuestionItem[]} = {};
-    (courseData.modules || []).forEach((module, moduleIndex) => {
-      if (module.practiceQuestions && module.practiceQuestions.length > 0) {
-        allModuleQuestions[moduleIndex] = module.practiceQuestions.map((q, qIndex) => ({
-          id: qIndex + 1,
-          questionId: q.questionId,
-          question: q.question,
-          type: q.questionType === QuestionType.Closed ? 'closed' : 'open',
-          correctAnswer: q.correctAnswer ?? undefined,
-          exampleAnswer: q.exampleAnswer ?? undefined,
-          options: q.closedOptions?.map((opt, oIndex) => ({
-            id: oIndex + 1,
-            optionId: opt.optionId,
-            text: opt.text,
-            isCorrect: opt.text === q.correctAnswer,
-          })) || [],
-        }));
-      } else {
-        allModuleQuestions[moduleIndex] = [];
-      }
-    });
-    // Výchozí stav pro porovnání = to, co právě přišlo ze serveru.
-    savedQuestionKeysRef.current = new Map();
-    savedOptionTextsRef.current = new Map();
-    Object.values(allModuleQuestions).flat().forEach((q) => {
-      if (q.questionId) savedQuestionKeysRef.current.set(q.questionId, JSON.stringify(questionPayload(q)));
-      q.options.forEach((opt) => {
-        if (opt.optionId) savedOptionTextsRef.current.set(opt.optionId, opt.text);
-      });
-    });
-    setModuleQuestions(allModuleQuestions);
-    setQuestionsInitialized(true);
-  }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [list, catalog] = await Promise.all([listCourseAssessments(courseId), listAssessmentFormats()]);
+        const pretestEntries = await Promise.all(
+          list.filter((c) => c.assessmentTypeCode === 'pretest').map(async (c) => {
+            try {
+              return { id: c.courseAssessmentId, content: await getPretestContent(c.courseAssessmentId), stored: true };
+            } catch (err) {
+              // 422 = pretest bez otázek (připojený ručně) — začne se prázdným
+              if (readApiErrorStatus(err) === 422) return { id: c.courseAssessmentId, content: emptyPretest(), stored: false };
+              throw err;
+            }
+          }),
+        );
+        if (cancelled) return;
 
-  const questions = moduleQuestions[selectedModuleIndex] || [];
-
-  const setQuestions = (newQuestions: QuestionItem[] | ((prev: QuestionItem[]) => QuestionItem[])) => {
-    setModuleQuestions(prev => ({
-      ...prev,
-      [selectedModuleIndex]: typeof newQuestions === 'function'
-        ? newQuestions(prev[selectedModuleIndex] || [])
-        : newQuestions
-    }));
-  };
-
-  const addQuestion = () => {
-    const newId = Math.max(...questions.map(q => q.id), 0) + 1;
-    setQuestions([
-      ...questions,
-      {
-        id: newId,
-        question: '',
-        type: 'closed',
-        options: [
-          { id: 1, text: '', isCorrect: false },
-          { id: 2, text: '', isCorrect: false },
-          { id: 3, text: '', isCorrect: false },
-        ],
-      },
-    ]);
-  };
-
-  const updateQuestion = (id: number, field: keyof QuestionItem, value: string | 'closed' | 'open') => {
-    setQuestions(questions.map(q => {
-      if (q.id !== id) return q;
-      if (field === 'type') {
-        if (value === 'closed' && q.type === 'open') {
-          return {
-            ...q,
-            type: 'closed' as const,
-            options: q.options.length > 0 ? q.options : [
-              { id: 1, text: '', isCorrect: false },
-              { id: 2, text: '', isCorrect: false },
-              { id: 3, text: '', isCorrect: false },
-            ],
-          };
-        } else if (value === 'open' && q.type === 'closed') {
-          return { ...q, type: 'open' as const };
+        const snapshots: Record<string, string> = {};
+        const pretests: Record<number, PretestSettings> = {};
+        for (const { id, content, stored } of pretestEntries) {
+          pretests[id] = content;
+          if (stored) snapshots[pretestKey(id)] = JSON.stringify(content);
         }
+        const drafts: Record<number, FormatDraft> = {};
+        for (const c of list) {
+          if (c.assessmentTypeCode === 'pretest' || !c.settings) continue;
+          // Snapshot i s prázdnou otázkou — chyby a autosave až po začátku vyplňování
+          drafts[c.courseAssessmentId] = { settings: withStarterQuestion(c.assessmentTypeCode, c.settings), isEnabled: c.isEnabled, isRequired: c.isRequired };
+          snapshots[formatKey(c.courseAssessmentId)] = JSON.stringify(drafts[c.courseAssessmentId]);
+        }
+        setConfigs(list);
+        setFormats(catalog);
+        setPretestDrafts(pretests);
+        setFormatDrafts(drafts);
+        setSavedSnapshots(snapshots);
+      } catch (err) {
+        if (!cancelled) setAssessmentsError((await readApiErrorDetail(err)) ?? 'Testy kurzu se nepodařilo načíst.');
+      } finally {
+        if (!cancelled) setAssessmentsLoading(false);
       }
-      return { ...q, [field]: value };
-    }));
-  };
+    })();
+    return () => { cancelled = true; };
+  }, [courseId]);
 
-  const updateOption = (questionId: number, optionId: number, text: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        return { ...q, options: q.options.map(opt => opt.id === optionId ? { ...opt, text } : opt) };
-      }
-      return q;
-    }));
-  };
+  const isDirty = (key: string, value: unknown) => savedSnapshots[key] !== JSON.stringify(value);
 
-  const setCorrectOption = (questionId: number, optionId: number) => {
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        return { ...q, options: q.options.map(opt => ({ ...opt, isCorrect: opt.id === optionId })) };
-      }
-      return q;
-    }));
-  };
-
-  const removeQuestion = (id: number) => {
-    setQuestions(questions.filter(q => q.id !== id));
-  };
-
-  // Otázka je "prázdná", pokud nemá vyplněné žádné pole (text, možnosti ani příklad odpovědi)
-  const isQuestionEmpty = (q: QuestionItem) =>
-    !q.question.trim() &&
-    !q.exampleAnswer?.trim() &&
-    q.options.every(opt => !opt.text.trim());
-
-  // Odstraní nevyplněné otázky, které nikdy nebyly uloženy (nemají questionId).
-  // Vrací aktuální mapu otázek, kterou lze rovnou předat do uložení/validace.
-  const pruneEmptyQuestions = (): {[key: number]: QuestionItem[]} => {
-    let changed = false;
-    const pruned: {[key: number]: QuestionItem[]} = {};
-    for (const key of Object.keys(moduleQuestions)) {
-      const idx = Number(key);
-      const list = moduleQuestions[idx] || [];
-      const kept = list.filter(q => q.questionId || !isQuestionEmpty(q));
-      if (kept.length !== list.length) changed = true;
-      pruned[idx] = kept;
-    }
-    if (changed) setModuleQuestions(pruned);
-    return pruned;
-  };
-
-  const saveTestContent = async (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions) => {
+  // Uloží změněné platné části; vrací počet přeskočených neplatných (celkem a po krocích)
+  const saveChanges = async (): Promise<{ skipped: number; skippedBy: Partial<Record<CourseStep, number>> }> => {
+    let skipped = 0;
+    const skippedBy: Partial<Record<CourseStep, number>> = {};
+    const skip = (step: TestsSection) => {
+      skipped++;
+      skippedBy[step] = (skippedBy[step] ?? 0) + 1;
+    };
+    const saved: Record<string, string> = {};
     try {
-      const questionUpdates: { questionId: number; data: Parameters<typeof updatePracticeQuestion>[1]; key: string }[] = [];
-      // Úpravy možností se spouští až po otázkách — kdyby se odpálily hned,
-      // selhání otázky by skočilo do catch a jejich odmítnutí by zůstala
-      // neošetřená (unhandled rejection za každou možnost).
-      const optionUpdates: { optionId: number; text: string }[] = [];
-      const createdQuestions: { moduleIndex: number; questionIndex: number; question: QuestionItem }[] = [];
-      const newOptionsForExistingQuestions: { moduleIndex: number; questionIndex: number; optionIndex: number; option: QuestionItem['options'][0]; questionId: number }[] = [];
-
-      for (const moduleIndex of Object.keys(questionsMap)) {
-        const questionsForModule = questionsMap[Number(moduleIndex)] || [];
-        const mod = modules[Number(moduleIndex)];
-
-        for (let qIndex = 0; qIndex < questionsForModule.length; qIndex++) {
-          const question = questionsForModule[qIndex];
-
-          if (question.questionId) {
-            // Jen otázky a možnosti, které se od posledního uložení změnily
-            const data = questionPayload(question);
-            const key = JSON.stringify(data);
-            if (savedQuestionKeysRef.current.get(question.questionId) !== key) {
-              questionUpdates.push({ questionId: question.questionId, data, key });
-            }
-
-            if (question.type === 'closed') {
-              for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
-                const option = question.options[optIndex];
-                if (option.optionId) {
-                  if (savedOptionTextsRef.current.get(option.optionId) !== option.text) {
-                    optionUpdates.push({ optionId: option.optionId, text: option.text });
-                  }
-                } else {
-                  newOptionsForExistingQuestions.push({
-                    moduleIndex: Number(moduleIndex), questionIndex: qIndex, optionIndex: optIndex, option, questionId: question.questionId,
-                  });
-                }
-              }
-            }
-          } else if (mod?.moduleId) {
-            createdQuestions.push({ moduleIndex: Number(moduleIndex), questionIndex: qIndex, question });
-          }
-        }
+      for (const [idText, draft] of Object.entries(pretestDrafts)) {
+        const id = Number(idText);
+        const snapshot = JSON.stringify(draft);
+        if (savedSnapshots[pretestKey(id)] === snapshot) continue;
+        if (pretestErrors(draft).length > 0) { skip('pretest'); continue; }
+        await updatePretestContent(id, normalizePretest(draft));
+        saved[pretestKey(id)] = snapshot;
       }
-
-      // Uložený stav se posouvá po každém úspěšném zápisu — co selže, zkusí příští uložení.
-      for (const { questionId, data, key } of questionUpdates) {
-        await updatePracticeQuestion(questionId, data);
-        savedQuestionKeysRef.current.set(questionId, key);
+      for (const config of configs) {
+        const draft = formatDrafts[config.courseAssessmentId];
+        if (!draft) continue;
+        const snapshot = JSON.stringify(draft);
+        if (savedSnapshots[formatKey(config.courseAssessmentId)] === snapshot) continue;
+        if (formatSettingsErrors(config.assessmentTypeCode, draft.settings).length > 0) { skip(sectionOf(config)); continue; }
+        await updateCourseAssessment(
+          { ...config, isEnabled: draft.isEnabled, isRequired: draft.isRequired },
+          normalizeFormatSettings(draft.settings),
+        );
+        saved[formatKey(config.courseAssessmentId)] = snapshot;
       }
-
-      await Promise.all(optionUpdates.map(async ({ optionId, text }) => {
-        await updatePracticeOption(optionId, { text });
-        savedOptionTextsRef.current.set(optionId, text);
-      }));
-
-      for (const { moduleIndex, questionIndex, optionIndex, option, questionId } of newOptionsForExistingQuestions) {
-        const createdOption = await createPracticeOption({ questionId, text: option.text });
-        savedOptionTextsRef.current.set(createdOption.optionId, option.text);
-        setModuleQuestions(prev => {
-          const updated = { ...prev };
-          if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
-            const questionCopy = { ...updated[moduleIndex][questionIndex] };
-            questionCopy.options = [...questionCopy.options];
-            questionCopy.options[optionIndex] = { ...questionCopy.options[optionIndex], optionId: createdOption.optionId };
-            updated[moduleIndex] = [...updated[moduleIndex]];
-            updated[moduleIndex][questionIndex] = questionCopy;
-          }
-          return updated;
-        });
-      }
-
-      for (const { moduleIndex, questionIndex, question } of createdQuestions) {
-        const mod = modules[moduleIndex];
-        if (!mod?.moduleId) continue;
-        const correctOption = question.options.find(opt => opt.isCorrect);
-        const createdQuestion = await createPracticeQuestion({
-          moduleId: mod.moduleId,
-          questionType: question.type === 'closed' ? QuestionType.Closed : QuestionType.Open,
-          question: question.question,
-          correctAnswer: correctOption?.text ?? question.correctAnswer,
-          exampleAnswer: question.exampleAnswer,
-        });
-        savedQuestionKeysRef.current.set(createdQuestion.questionId, JSON.stringify(questionPayload(question)));
-
-        setModuleQuestions(prev => {
-          const updated = { ...prev };
-          if (updated[moduleIndex]) {
-            updated[moduleIndex] = [...updated[moduleIndex]];
-            updated[moduleIndex][questionIndex] = { ...updated[moduleIndex][questionIndex], questionId: createdQuestion.questionId };
-          }
-          return updated;
-        });
-
-        if (question.type === 'closed' && createdQuestion.questionId) {
-          for (let optIndex = 0; optIndex < question.options.length; optIndex++) {
-            const option = question.options[optIndex];
-            const createdOption = await createPracticeOption({
-              questionId: createdQuestion.questionId, text: option.text,
-            });
-            savedOptionTextsRef.current.set(createdOption.optionId, option.text);
-            setModuleQuestions(prev => {
-              const updated = { ...prev };
-              if (updated[moduleIndex] && updated[moduleIndex][questionIndex]) {
-                const questionCopy = { ...updated[moduleIndex][questionIndex] };
-                questionCopy.options = [...questionCopy.options];
-                questionCopy.options[optIndex] = { ...questionCopy.options[optIndex], optionId: createdOption.optionId };
-                updated[moduleIndex] = [...updated[moduleIndex]];
-                updated[moduleIndex][questionIndex] = questionCopy;
-              }
-              return updated;
-            });
-          }
-        }
-      }
-      invalidateCourseCache(courseId);
     } catch (err) {
-      console.error('Failed to save test content:', err);
-      toast.error((await readApiErrorDetail(err)) ?? err, 'Nepodařilo se uložit obsah testu');
+      toast.error(err, 'Nepodařilo se uložit testy.');
       throw err;
+    } finally {
+      setSavedSnapshots((prev) => ({ ...prev, ...saved }));
+    }
+    return { skipped, skippedBy };
+  };
+
+  const autosaveValue = useMemo(() => ({ pretestDrafts, formatDrafts }), [pretestDrafts, formatDrafts]);
+
+  const { status: saveStatus } = useAutosave(
+    autosaveValue,
+    async () => {
+      // Neplatné části zůstanou neuložené — stav „neuloženo", dokud je lektor neopraví
+      if ((await saveChanges()).skipped > 0) throw new Error('Neplatné části testů');
+    },
+    { delay: 3000, enabled: !assessmentsLoading && !assessmentsError },
+  );
+
+  // Před odchodem z kroku — chyba uložení už je v toastu, odchod nesmí blokovat
+  const saveBeforeLeaving = async () => {
+    try {
+      const { skipped, skippedBy } = await saveChanges();
+      if (skipped > 0) {
+        // Neplatná část z jiného kroku tu není vidět — toast řekne, kde ji doplnit
+        const elsewhere = COURSE_STEPS.filter((s) => s.key !== section && (skippedBy[s.key] ?? 0) > 0).map((s) => s.label);
+        const where = elsewhere.length > 0
+          ? ` Najdete je v ${elsewhere.length > 1 ? 'krocích' : 'kroku'} ${elsewhere.join(' a ')}.`
+          : '';
+        toast.info(`Neúplné části testů se neuložily. Doplňte je, jinak se změny ztratí.${where}`);
+      }
+    } catch {
+      // toast už je zobrazený
     }
   };
 
-  const validateQuestions = (questionsMap: {[key: number]: QuestionItem[]} = moduleQuestions): ValidationError[] => {
+  // Pretesty i formáty — Dokončit validuje celý kurz
+  const collectErrors = (): ValidationError[] => {
     const errors: ValidationError[] = [];
-    for (const moduleIndexStr of Object.keys(questionsMap)) {
-      const moduleIndex = Number(moduleIndexStr);
-      const questionsForModule = questionsMap[moduleIndex] || [];
-      const mod = modules[moduleIndex];
-      const moduleName = mod?.title || `Modul ${moduleIndex + 1}`;
-
-      questionsForModule.forEach((question, qIndex) => {
-        if (!question.question.trim()) {
-          errors.push({ moduleIndex, moduleName, questionIndex: qIndex, message: `Otázka ${qIndex + 1} nemá zadaný text otázky` });
-        }
-        if (question.type === 'closed') {
-          if (!question.options.some(opt => opt.text.trim())) {
-            errors.push({ moduleIndex, moduleName, questionIndex: qIndex, message: `Otázka ${qIndex + 1} nemá žádné možnosti odpovědí` });
-          }
-          if (!question.options.some(opt => opt.isCorrect && opt.text.trim())) {
-            errors.push({ moduleIndex, moduleName, questionIndex: qIndex, message: `Otázka ${qIndex + 1} nemá označenou správnou odpověď` });
-          }
-        } else if (question.type === 'open') {
-          if (!question.exampleAnswer?.trim()) {
-            errors.push({ moduleIndex, moduleName, questionIndex: qIndex, message: `Otázka ${qIndex + 1} nemá příklad odpovědi` });
-          }
-        }
-      });
+    for (const config of configs) {
+      const moduleIndex = config.moduleId === null ? -1 : modules.findIndex((m) => m.moduleId === config.moduleId);
+      if (config.moduleId !== null && moduleIndex < 0) continue;
+      const moduleName = moduleIndex >= 0 ? modules[moduleIndex].title : 'Závěrečný test kurzu';
+      const errorSection = sectionOf(config);
+      const pretest = pretestDrafts[config.courseAssessmentId];
+      const draft = formatDrafts[config.courseAssessmentId];
+      const messages = errorSection === 'pretest'
+        ? (pretest ? pretestErrors(pretest).map((m) => `Pretest — ${m}`) : [])
+        : (draft ? formatFinishErrors(config.assessmentTypeCode, draft.settings).map((m) => `${formatName(config.assessmentTypeCode)} — ${m}`) : []);
+      messages.forEach((message) => errors.push({
+        moduleIndex, moduleName, message, section: errorSection, context: config.context, code: config.assessmentTypeCode,
+      }));
     }
     return errors;
   };
 
-  // Pro autosave sledujeme jen vyplněné otázky (bez ID a bez prázdných
-  // neuložených, ať přidání prázdné otázky nespouští ukládání).
-  const autosaveValue = useMemo(() => {
-    const norm: { [key: number]: unknown[] } = {};
-    for (const key of Object.keys(moduleQuestions)) {
-      const idx = Number(key);
-      norm[idx] = (moduleQuestions[idx] || [])
-        .filter(q => q.questionId || !(
-          !q.question.trim() && !q.exampleAnswer?.trim() && q.options.every(opt => !opt.text.trim())
-        ))
-        .map(q => ({
-          question: q.question,
-          type: q.type,
-          correctAnswer: q.correctAnswer,
-          exampleAnswer: q.exampleAnswer,
-          options: q.options.map(o => ({ text: o.text, isCorrect: o.isCorrect })),
-        }));
-    }
-    return norm;
-  }, [moduleQuestions]);
-
-  const { status: saveStatus } = useAutosave(
-    autosaveValue,
-    async () => { await saveTestContent(pruneEmptyQuestions()); },
-    { delay: 3000, enabled: questionsInitialized },
-  );
-
   const handleFinish = async () => {
-    const pruned = pruneEmptyQuestions();
-    const errors = validateQuestions(pruned);
+    const errors = collectErrors();
     if (errors.length > 0) {
       setValidationErrors(errors);
+      setShowAllErrors(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     setValidationErrors([]);
-    await saveTestContent(pruned);
+    try {
+      await saveChanges();
+    } catch {
+      return;
+    }
     goToCourseSummary(courseId);
   };
 
   const handleNextModule = async () => {
-    const pruned = pruneEmptyQuestions();
-    await saveTestContent(pruned);
+    await saveBeforeLeaving();
     if (selectedModuleIndex < modules.length - 1) {
       const nextIndex = selectedModuleIndex + 1;
       setSelectedModuleIndex(nextIndex);
@@ -544,175 +360,109 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   };
 
   const handleBack = async () => {
-    // Prázdné (nikdy neuložené) otázky zahodíme, ať neblokují uložení a návrat zpět funguje
-    const pruned = pruneEmptyQuestions();
-    try {
-      await saveTestContent(pruned);
-    } catch {
-      // i kdyby se uložení nepodařilo, návrat zpět musí projít
+    if (section === 'final') {
+      goToStep('tests', modules[selectedModuleIndex]?.moduleId);
+      return;
     }
+    if (section === 'tests') {
+      goToStep('pretest', modules[selectedModuleIndex]?.moduleId);
+      return;
+    }
+    await saveBeforeLeaving();
     goToCourseContent(courseId);
   };
 
   // Přepnutí mezi kroky tvorby přes kartu „Tvorba kurzu"
   const handleStepNavigate = async (step: CourseStep) => {
-    if (step === 'tests') return;
-    const pruned = pruneEmptyQuestions();
-    try {
-      await saveTestContent(pruned);
-    } catch {
-      // i při chybě uložení umožníme přechod (alert je už zobrazen)
-    }
+    if (step === section) return;
+    setMobileOutlineOpen(false);
+    // Pretest ↔ Testy ↔ Závěrečný test je stejná instance (AdminViewRouter), ukládá autosave
+    if (!TESTS_SECTIONS.includes(step)) await saveBeforeLeaving();
     goToStep(step, modules[selectedModuleIndex]?.moduleId);
   };
 
-  const isLastModule = selectedModuleIndex >= modules.length - 1;
-
-  const scrollToQuestion = (moduleIndex: number, questionIndex: number) => {
-    setSelectedModuleIndex(moduleIndex);
-    if (!expandedOutlineItems.has(moduleIndex)) {
-      setExpandedOutlineItems(prev => new Set(prev).add(moduleIndex));
+  // Chyba z jiného kroku přepne krok; u formátu otevře jeho záložku a kartu
+  const showValidationError = (err: ValidationError) => {
+    if (err.moduleIndex >= 0) selectModule(err.moduleIndex);
+    if (err.section !== 'pretest') {
+      if (isModuleContext(err.context)) setFormatTab(err.context);
+      const key = openFormatsKey(err.moduleIndex < 0 ? null : modules[err.moduleIndex].moduleId, err.context);
+      setOpenFormats((prev) => (prev[key]?.includes(err.code) ? prev : { ...prev, [key]: [...(prev[key] ?? []), err.code] }));
     }
-    setTimeout(() => {
-      const el = document.getElementById(`question-${moduleIndex}-${questionIndex}`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+    // Závěrečný test nemá modul — v URL zůstane vybraný modul pro návrat do Testů
+    const moduleIndex = err.moduleIndex >= 0 ? err.moduleIndex : selectedModuleIndex;
+    if (err.section !== section) goToStep(err.section, modules[moduleIndex]?.moduleId);
   };
 
-  // Náhled pro studenta — rozpracované otázky přes uložená data modulů.
-  const previewModules = useMemo<PreviewModule[]>(
-    () => modules.map((module, index) => ({
-      ...module,
-      practiceQuestions: toPracticeQuestions(module.moduleId, moduleQuestions[index] || [], module.practiceQuestions),
-    })),
-    [modules, moduleQuestions],
-  );
+  // true = připojeno
+  const handleAttach = async (code: string, context: AssessmentContext, isRequired: boolean, moduleId: number | null) => {
+    try {
+      const created = await attachCourseAssessment(courseId, { assessmentTypeCode: code, context, moduleId, isRequired });
+      setConfigs((prev) => [...prev, created]);
+      if (code === 'pretest') {
+        setPretestDrafts((prev) => ({ ...prev, [created.courseAssessmentId]: emptyPretest() }));
+        return true;
+      }
+      const defaults = formats.find((f) => f.code === code)?.defaultSettings ?? {};
+      const draft: FormatDraft = {
+        settings: withStarterQuestion(code, created.settings ?? defaults),
+        isEnabled: created.isEnabled,
+        isRequired: created.isRequired,
+      };
+      setFormatDrafts((prev) => ({ ...prev, [created.courseAssessmentId]: draft }));
+      // Snapshot i s prázdnou otázkou — chyby a autosave až po začátku vyplňování
+      setSavedSnapshots((prev) => ({ ...prev, [formatKey(created.courseAssessmentId)]: JSON.stringify(draft) }));
+      return true;
+    } catch (err) {
+      toast.error(err, 'Formát se nepodařilo přidat.');
+      return false;
+    }
+  };
+
+  const handleDetach = async () => {
+    if (!detachTarget) return;
+    const id = detachTarget.courseAssessmentId;
+    setDetaching(true);
+    try {
+      await detachCourseAssessment(id);
+      setConfigs((prev) => prev.filter((c) => c.courseAssessmentId !== id));
+      setFormatDrafts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setDetachTarget(null);
+    } catch (err) {
+      toast.error(err, 'Formát se nepodařilo odebrat.');
+    } finally {
+      setDetaching(false);
+    }
+  };
+
+  const isLastModule = selectedModuleIndex >= modules.length - 1;
+  const selectedModule = modules[selectedModuleIndex];
+  const moduleConfigs = selectedModule
+    ? configs.filter((c) => c.moduleId === selectedModule.moduleId).sort(byContext)
+    : [];
+  const pretestConfig = moduleConfigs.find((c) => c.assessmentTypeCode === 'pretest');
+  const moduleFormatConfigs = moduleConfigs.filter((c) => c.assessmentTypeCode !== 'pretest');
+  const finalConfigs = configs.filter((c) => c.context === 'course_final').sort(byContext);
+
+  // Náhled pro studenta — rozpracované pretesty a nastavení formátů
+  const previewAssessments = useMemo((): AssessmentContents => {
+    const pretests: Record<number, PretestSettings | null> = {};
+    for (const c of configs) {
+      if (c.assessmentTypeCode === 'pretest' && c.moduleId !== null) pretests[c.moduleId] = pretestDrafts[c.courseAssessmentId] ?? null;
+    }
+    const withDrafts = configs.map((c) => {
+      const draft = formatDrafts[c.courseAssessmentId];
+      return draft ? { ...c, ...draft, settings: withoutBlankQuestions(c.assessmentTypeCode, draft.settings) } : c;
+    });
+    return { configs: withDrafts, pretests, loadError: null };
+  }, [configs, pretestDrafts, formatDrafts]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
-
-  const commentsPanelInner = (
-    <>
-      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
-        <h2 className="text-sm font-semibold text-foreground">
-          Komentáře{currentModuleFeedbacks.length > 0 && ` (${currentModuleFeedbacks.length})`}
-        </h2>
-        <Button
-          variant="plain"
-          className={cn(BTN_KEEP_BOX, "lg:hidden p-1 hover:bg-muted rounded")}
-          onClick={() => setMobileCommentsOpen(false)}
-          aria-label="Zavřít komentáře"
-        >
-          <X size={16} className="text-muted-foreground" />
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {currentModuleFeedbacks.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">Žádné komentáře pro tento modul</p>
-        ) : (
-          currentModuleFeedbacks.map(fb => (
-            <div key={fb.feedbackId} className={`rounded-xl border ${fb.isResolved ? 'border-success/30 bg-success/10/50' : 'border-border'}`}>
-              <div className="px-3.5 py-2.5">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-semibold text-foreground text-xs">
-                    {fb.author.displayName ?? 'Uživatel'}
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      variant="plain"
-                      onClick={() => handleToggleResolve(fb)}
-                      disabled={resolvingFeedback === fb.feedbackId}
-                      className={cn(BTN_KEEP_BOX, `p-0.5 rounded transition-colors ${
-                        fb.isResolved
-                          ? 'text-success hover:text-success'
-                          : 'text-muted-foreground hover:text-success'
-                      }`)}
-                      title={fb.isResolved ? 'Označit jako nevyřešené' : 'Označit jako vyřešené'}
-                    >
-                      <CheckCircle size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                {feedbackContextLabel(fb) && (
-                  <p className="text-[10px] text-gradient-r font-medium mb-1">{feedbackContextLabel(fb)}</p>
-                )}
-
-                <p className="text-foreground text-xs leading-relaxed">{fb.feedback}</p>
-              </div>
-
-              {fb.reply && (
-                <div className="px-3.5 pb-2.5">
-                  <div className="ml-3 bg-gradient-r/10 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <CornerDownRight size={10} className="text-gradient-r" />
-                      <span className="text-[10px] text-gradient-r font-medium">Vaše odpověď</span>
-                    </div>
-                    <p className="text-xs text-foreground leading-relaxed">{fb.reply}</p>
-                  </div>
-                </div>
-              )}
-
-              {!fb.reply && (
-                <div className="px-3.5 pb-2.5">
-                  {showReplyFor === fb.feedbackId ? (
-                    <div>
-                      <Textarea
-                        value={replyTexts[fb.feedbackId] ?? ''}
-                        onChange={e => setReplyTexts(prev => ({ ...prev, [fb.feedbackId]: e.target.value }))}
-                        rows={2}
-                        placeholder="Napište odpověď..."
-                        className={cn("field-sizing-fixed min-h-0", "w-full border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gradient-r/30 resize-none")}
-                      />
-                      <div className="flex gap-1 mt-1">
-                        <Button
-                          variant="brand-solid"
-                          onClick={() => handleReply(fb.feedbackId)}
-                          disabled={submittingReply === fb.feedbackId}
-                          className={cn(BTN_KEEP_BOX, "flex-1 py-1 rounded-lg text-xs font-medium disabled:opacity-50")}
-                        >
-                          Odeslat
-                        </Button>
-                        <Button
-                          variant="plain"
-                          onClick={() => setShowReplyFor(null)}
-                          className={cn(BTN_KEEP_BOX, "px-2 py-1 text-muted-foreground hover:text-foreground text-xs")}
-                        >
-                          Zrušit
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="plain"
-                      onClick={() => setShowReplyFor(fb.feedbackId)}
-                      className={cn(BTN_KEEP_BOX, "text-xs text-gradient-r hover:underline flex items-center gap-0.5")}
-                    >
-                      <CornerDownRight size={11} /> Odpovědět
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="p-3 border-t border-border shrink-0">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            Vyřešeno: {feedbacks.filter(fb => fb.isResolved).length}/{feedbacks.length}
-          </span>
-          {allResolved && (
-            <span className="text-success font-medium flex items-center gap-1">
-              <CheckCircle size={12} /> Vše vyřešeno
-            </span>
-          )}
-        </div>
-      </div>
-    </>
-  );
 
   // Outline items pro sidebar
   // Data pro Osnovu kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentovaný blok v JSX).
@@ -733,35 +483,19 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
   // });
 
   const stepHints = {
+    // Komentáře k popisu kurzu žijí v kroku Souhrn — upozornit, ať je autor nepřehlédne
+    ...(isEdited && unresolvedSummaryFeedbacks > 0 && {
+      summary: commentsToFixHint(unresolvedSummaryFeedbacks),
+    }),
     content: moduleCountHint(modules.length),
-    tests: questionCountHint(questions.length),
+    tests: testCountHint(moduleFormatConfigs.length),
+    // Komentáře garanta k závěrečnému testu mají přednost před počtem formátů
+    final: isEdited && unresolvedFinalFeedbacks > 0
+      ? commentsToFixHint(unresolvedFinalFeedbacks)
+      : finalTestHint(finalConfigs.length),
   };
 
-  // Odkazy na otázky pod vybraným modulem v kartě (dřív v rozbalené osnově)
-  const questionLinks = (moduleIndex: number, onPicked?: () => void) => {
-    const moduleQs = moduleQuestions[moduleIndex] || [];
-    if (moduleQs.length === 0) return null;
-    return (
-      <ul className="mt-0.5 mb-1 ml-6 border-l border-border pl-1">
-        {moduleQs.map((q, qIndex) => (
-          <li key={q.id}>
-            <Button
-              variant="plain"
-              type="button"
-              onClick={() => {
-                scrollToQuestion(moduleIndex, qIndex);
-                onPicked?.();
-              }}
-              className={cn(BTN_KEEP_BOX, "h-auto w-full justify-start rounded px-2 py-1 text-left text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground")}
-            >
-              <span className="truncate">{qIndex + 1}. {q.question || 'Bez zadání'}</span>
-            </Button>
-          </li>
-        ))}
-      </ul>
-    );
-  };
-
+  // Závěrečný test je samostatný krok bez modulů
   const stepModuleItems = (onPicked?: () => void): StepModuleItem[] =>
     modules.map((module, index) => ({
       id: module.moduleId,
@@ -772,30 +506,146 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         selectModule(index);
         onPicked?.();
       },
-      extra: questionLinks(index, onPicked),
     }));
+
+  // Po pokusu o dokončení i chyby, které hlásí až Dokončit (např. žádná otázka)
+  const formatErrors = (config: CourseAssessmentConfig): string[] => {
+    const draft = formatDrafts[config.courseAssessmentId];
+    if (!draft) return [];
+    if (showAllErrors) return formatFinishErrors(config.assessmentTypeCode, draft.settings);
+    // Nesplnitelné nastavení hlásit hned, i když je už uložené a lektor ho nezměnil
+    return isDirty(formatKey(config.courseAssessmentId), draft)
+      ? formatSettingsErrors(config.assessmentTypeCode, draft.settings)
+      : unpassableErrors(config.assessmentTypeCode, draft.settings);
+  };
+
+  // Karty všech formátů kontextu (moduleId null = závěrečný test)
+  const renderFormatCards = (context: AssessmentContext, contextConfigs: CourseAssessmentConfig[], moduleId: number | null) => {
+    const key = openFormatsKey(moduleId, context);
+    return (
+      <FormatCards
+        formats={formats}
+        context={context}
+        configs={contextConfigs}
+        drafts={formatDrafts}
+        errorsFor={formatErrors}
+        open={openFormats[key] ?? []}
+        onOpenChange={(next) => setOpenFormats((prev) => ({ ...prev, [key]: next }))}
+        onChange={(config, next) => setFormatDrafts((prev) => ({ ...prev, [config.courseAssessmentId]: next }))}
+        onRemove={setDetachTarget}
+        onAdd={(code) => handleAttach(code, context, true, moduleId)}
+      />
+    );
+  };
+
+  const renderModuleEditor = () => {
+    if (!selectedModule) return <p className="text-sm text-muted-foreground">Kurz zatím nemá žádné moduly.</p>;
+    const pretestDraft = pretestConfig ? pretestDrafts[pretestConfig.courseAssessmentId] : undefined;
+    if (section === 'pretest') {
+      return (
+        <section className="flex flex-col gap-3">
+          <div>
+            <h3 className="font-semibold text-foreground">Pretest</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Student ho dělá po přečtení příručky. Má pevně dvě uzavřené otázky a jednu otevřenou, na každou tři pokusy,
+              a splnit musí všechny — teprve pak se mu odemkne procvičování.
+            </p>
+          </div>
+          {pretestConfig && pretestDraft ? (
+            <PretestEditor
+              value={pretestDraft}
+              onChange={(next) => setPretestDrafts((prev) => ({ ...prev, [pretestConfig.courseAssessmentId]: next }))}
+              errors={showAllErrors || isDirty(pretestKey(pretestConfig.courseAssessmentId), pretestDraft) ? pretestErrors(pretestDraft) : []}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border px-4 py-3">
+              <p className="text-sm text-muted-foreground">Modul nemá pretest — student by procvičování a test dostal bez něj.</p>
+              <Button variant="brand-solid" size="sm" onClick={() => handleAttach('pretest', 'pretest', true, selectedModule.moduleId)}>
+                Vytvořit pretest
+              </Button>
+            </div>
+          )}
+        </section>
+      );
+    }
+    return (
+      <section className="flex flex-col gap-3">
+        <div>
+          <h3 className="font-semibold text-foreground">{CONTEXT_LABELS[formatTab]}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{MODULE_CONTEXT_DESCRIPTIONS[formatTab]}</p>
+        </div>
+        {renderFormatCards(formatTab, moduleFormatConfigs.filter((c) => c.context === formatTab), selectedModule.moduleId)}
+      </section>
+    );
+  };
+
+  // Záložky v hlavičce panelu (jako Příručka/Procvičování ve schvalování), karty jsou v body
+  const showFormatTabs = section === 'tests' && !!selectedModule && !assessmentsLoading && !assessmentsError;
+  const renderFormatTabs = () => (
+    <Tabs value={formatTab} onValueChange={(value) => setFormatTab(value as ModuleContext)} className="mt-3 gap-0">
+      <TabsList className={FORMAT_TAB_LIST}>
+        {MODULE_CONTEXTS.map((context) => {
+          const contextConfigs = moduleFormatConfigs.filter((c) => c.context === context);
+          const hasErrors = contextConfigs.some((c) => formatErrors(c).length > 0);
+          return (
+            <TabsTrigger key={context} value={context} className={FORMAT_TAB}>
+              {CONTEXT_LABELS[context]}
+              {contextConfigs.length > 0 && (
+                <span className="rounded-full bg-current/15 px-1.5 text-xs leading-5">{contextConfigs.length}</span>
+              )}
+              {hasErrors && (
+                <span className="size-1.5 rounded-full bg-destructive">
+                  <span className="sr-only">(obsahuje chyby)</span>
+                </span>
+              )}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
+  );
+
+  const pageTitle = section === 'pretest' ? 'Tvorba pretestu' : section === 'final' ? 'Tvorba závěrečného testu' : 'Tvorba testů';
+  const panelTitle = finalSelected
+    ? 'Závěrečný test kurzu'
+    : selectedModule
+      ? `${section === 'pretest' ? 'Pretest' : 'Testy'} modulu: ${selectedModule.title}`
+      : section === 'pretest' ? 'Pretest' : 'Testy';
+
+  const renderFinalEditor = () => (
+    <section className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Závěrečný test se studentovi odemkne po splnění testů všech modulů. Splněním povinného závěrečného testu je kurz dokončený.
+      </p>
+      {renderFormatCards('course_final', finalConfigs, null)}
+    </section>
+  );
 
   return (
     <div className="flex-1 flex flex-col h-full bg-muted">
       <CoursePageHeader
-        breadcrumb={`Kurzy / ${courseTitle} / Tvorba obsahu testu`}
-        title="Tvorba obsahu testu"
-        stepLabel={courseStepLabel('tests')}
+        breadcrumb={`Kurzy / ${courseTitle} / ${pageTitle}`}
+        title={pageTitle}
+        stepLabel={courseStepLabel(section)}
         saveStatus={saveStatus}
         preview={{ active: previewOpen, onToggle: () => setPreviewOpen((open) => !open) }}
         showFullscreenToggle
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
-        onCommentsClick={showCommentsPanel ? () => setMobileCommentsOpen(true) : undefined}
-        commentsCount={showCommentsPanel ? currentModuleFeedbacks.length : undefined}
+        onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
+        commentsCount={showCommentsPanel ? stepFeedbacks.filter(fb => !fb.isResolved).length : undefined}
+        commentsOpen={commentsOpen}
+        headerRef={reviewHeaderRef}
       />
       {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
       {/* <CourseStepNav current="tests" onNavigate={handleStepNavigate} /> */}
       {previewOpen ? (
         <StudentPreview
           course={courseData ?? { title: courseTitle }}
-          modules={previewModules}
-          start={{ screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
+          modules={modules}
+          assessments={previewAssessments}
+          // Závěrečný test je na obrazovce kurzu
+          start={finalSelected ? { screen: 'course' } : { screen: 'module', moduleIndex: selectedModuleIndex, tab: 'procvicovani' }}
           onExit={() => setPreviewOpen(false)}
         />
       ) : (
@@ -835,8 +685,14 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
           </div>
           <ul className="list-disc list-inside text-foreground text-sm space-y-1">
             {validationErrors.map((err, idx) => (
-              <li key={idx} className="cursor-pointer hover:underline" onClick={() => selectModule(err.moduleIndex)}>
-                <span className="font-medium">{err.moduleName}</span>, otázka {err.questionIndex + 1}: {err.message}
+              <li key={idx}>
+                <Button
+                  variant="plain"
+                  onClick={() => showValidationError(err)}
+                  className={cn(BTN_KEEP_BOX, 'cursor-pointer justify-start p-0 text-left font-normal whitespace-normal hover:underline')}
+                >
+                  <span><span className="font-medium">{err.moduleName}</span>: {err.message}</span>
+                </Button>
               </li>
             ))}
           </ul>
@@ -846,8 +702,8 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
       <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6 min-h-0 view-fade-in">
         {/* Karta „Tvorba kurzu“ — nahrazuje Osnovu kurzu (moduly jsou pod aktivním krokem) */}
         {!focusMode && (
-          <CourseStepsCard current="tests" onNavigate={handleStepNavigate} hints={stepHints}>
-            <StepModuleList items={stepModuleItems()} />
+          <CourseStepsCard current={section} onNavigate={handleStepNavigate} hints={stepHints}>
+            {!finalSelected && <StepModuleList items={stepModuleItems()} />}
           </CourseStepsCard>
         )}
 
@@ -887,12 +743,12 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         <Drawer open={mobileOutlineOpen} onOpenChange={setMobileOutlineOpen} swipeDirection="left">
           <DrawerContent className="lg:hidden" aria-label="Tvorba kurzu">
             <CourseStepsCard
-              current="tests"
+              current={section}
               onNavigate={handleStepNavigate}
               hints={stepHints}
               onClose={() => setMobileOutlineOpen(false)}
             >
-              <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />
+              {!finalSelected && <StepModuleList items={stepModuleItems(() => setMobileOutlineOpen(false))} />}
             </CourseStepsCard>
             {/* Osnova kurzu — nahrazena kartou „Tvorba kurzu“
             <CourseOutlineSidebar
@@ -937,92 +793,20 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
         {/* Center Content - Test Editor */}
         <div className="flex-1 min-h-[400px] lg:min-h-0 bg-card rounded-lg shadow-sm overflow-hidden flex flex-col border border-border">
           <div className="p-4 border-b border-border">
-            <h2 className="font-semibold text-foreground">Úprava testu</h2>
+            <h2 className="font-semibold text-foreground">{panelTitle}</h2>
+            {showFormatTabs && renderFormatTabs()}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
-            {questions.map((question, qIndex) => (
-              <div key={question.id} id={`question-${selectedModuleIndex}-${qIndex}`} className="border border-border rounded-lg p-3 sm:p-4">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
-                  <div className="flex-1 min-w-0">
-                    <label className="block text-sm font-semibold text-foreground mb-2">Otázka {qIndex + 1}</label>
-                    <Input
-                      type="text"
-                      value={question.question}
-                      onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
-                      className={cn("h-auto", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm")}
-                      placeholder="Zadejte otázku..."
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                    <FilterSelect
-                      value={question.type}
-                      onChange={(next) => updateQuestion(question.id, 'type', next as 'closed' | 'open')}
-                      placeholder="Typ otázky"
-                      includeEmpty={false}
-                      options={QUESTION_TYPE_OPTIONS}
-                      className="flex-1 sm:flex-none data-[size=default]:h-auto px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-gradient-r/30 text-foreground text-sm bg-card"
-                    />
-                    <Button variant="ghost-destructive" onClick={() => removeQuestion(question.id)} className={cn(BTN_KEEP_BOX, "p-2 rounded transition-colors shrink-0")}>
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                {question.type === 'closed' && (
-                  <div className="space-y-2 ml-4">
-                    {question.options.map((option) => (
-                      <div key={option.id} className="flex items-center gap-3">
-                        <Button
-                          variant="plain"
-                          type="button"
-                          role="radio"
-                          aria-checked={option.isCorrect}
-                          aria-label={option.isCorrect ? 'Správná odpověď' : 'Označit jako správnou odpověď'}
-                          title="Označit jako správnou odpověď"
-                          onClick={() => setCorrectOption(question.id, option.id)}
-                          className={cn(BTN_KEEP_BOX, `size-4 rounded-full shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gradient-r/30 focus-visible:ring-offset-1 ${option.isCorrect ? 'bg-gradient-r border-2 border-gradient-r' : 'border-2 border-border hover:border-gradient-r/30'}`)}
-                        />
-                        <Input
-                          type="text"
-                          value={option.text}
-                          onChange={(e) => updateOption(question.id, option.id, e.target.value)}
-                          className={cn("h-auto", "flex-1 px-3 py-1.5 border border-border rounded focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm")}
-                          placeholder="Možnost odpovědi..."
-                        />
-                      </div>
-                    ))}
-                    {question.correctAnswer && (
-                      <p className="mt-3 ml-1 text-xs text-success">
-                        <span className="font-semibold">Správná odpověď:</span> {question.correctAnswer}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {question.type === 'open' && (
-                  <div className="ml-4">
-                    <label className="block text-xs text-muted-foreground mb-1">Příklad odpovědi</label>
-                    <Textarea
-                      value={question.exampleAnswer || ''}
-                      onChange={(e) => updateQuestion(question.id, 'exampleAnswer', e.target.value)}
-                      className={cn("field-sizing-fixed min-h-0", "w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-gradient-r/30 text-foreground text-sm resize-none")}
-                      rows={2}
-                      placeholder="Zadejte příklad správné odpovědi..."
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <Button
-              variant="dashed"
-              onClick={addQuestion}
-              className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors w-full justify-center")}
-            >
-              <Plus size={16} />
-              <span className="text-sm">Přidat otázku</span>
-            </Button>
+          <div ref={editorScrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+            {assessmentsLoading ? (
+              <LoadingState />
+            ) : assessmentsError ? (
+              <p role="alert" className="text-sm text-destructive">{assessmentsError}</p>
+            ) : finalSelected ? (
+              renderFinalEditor()
+            ) : (
+              renderModuleEditor()
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-3 sm:py-4 border-t border-border bg-card">
@@ -1030,7 +814,7 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
               Zpět
             </Button>
             <div className="flex items-center gap-2 sm:gap-3">
-              {!isLastModule && (
+              {!isLastModule && !finalSelected && (
                 <Button
                   variant="brand-solid"
                   onClick={handleNextModule}
@@ -1040,37 +824,67 @@ export function CourseTestsView({ courseId, initialModuleId }: CourseTestsViewPr
                   <span className="sm:hidden">Uložit a modul {selectedModuleIndex + 2}</span>
                 </Button>
               )}
-              <Button
-                variant="default"
-                onClick={handleFinish}
-                className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
-              >
-                <span>Dokončit</span>
-              </Button>
+              {section !== 'final' ? (
+                <Button
+                  variant="default"
+                  onClick={() => handleStepNavigate(section === 'pretest' ? 'tests' : 'final')}
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
+                >
+                  <span className="hidden sm:inline">
+                    {section === 'pretest' ? 'Pokračovat na testy' : 'Pokračovat na závěrečný test'}
+                  </span>
+                  <span className="sm:hidden">Pokračovat</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  onClick={handleFinish}
+                  className={cn(BTN_KEEP_BOX, "flex items-center gap-2 px-3 sm:px-5 py-2 rounded-md transition-colors text-sm")}
+                >
+                  <span>Dokončit</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right - Comments panel (desktop, only when course has feedbacks from review) */}
-        {showCommentsPanel && !focusMode && (
-          <div className="hidden lg:flex w-72 shrink-0 bg-card rounded-lg shadow-sm overflow-hidden border border-border flex-col">
-            {commentsPanelInner}
-          </div>
-        )}
-
-        {/* Mobile Comments Drawer */}
+        {/* Komentáře garanta — panel vyjíždí zprava přes obsah (všechny šířky) */}
         {showCommentsPanel && (
-          <Drawer open={mobileCommentsOpen} onOpenChange={setMobileCommentsOpen} swipeDirection="right">
-            <DrawerContent className="lg:hidden" aria-label="Komentáře ke kurzu">
-              {commentsPanelInner}
-            </DrawerContent>
-          </Drawer>
+          <AuthorCommentsDrawer
+            open={commentsOpen}
+            onOpenChange={setCommentsOpen}
+            anchorRef={reviewHeaderRef}
+            subtitle={
+              section === 'final'
+                ? 'Závěrečný test kurzu'
+                : modules[selectedModuleIndex] ? `Modul: ${modules[selectedModuleIndex].title}` : undefined
+            }
+            feedbacks={stepFeedbacks}
+            allFeedbacks={feedbacks}
+            emptyText={section === 'final' ? 'K závěrečnému testu nejsou žádné komentáře.' : 'K tomuto modulu nejsou žádné komentáře.'}
+            contextLabel={(fb) => reviewFeedbackLabel(fb)}
+            onReply={replyToReviewFeedback}
+            onToggleResolve={toggleReviewFeedback}
+          />
         )}
       </div>
       </>
       )}
       </>
       )}
+
+      <ConfirmModal
+        isOpen={detachTarget !== null}
+        title="Odebrat formát?"
+        message={detachTarget
+          ? `${formatName(detachTarget.assessmentTypeCode)} se odebere z kurzu. Pokusy, které už studenti odevzdali, zůstanou v historii.`
+          : ''}
+        confirmLabel="Odebrat"
+        variant="danger"
+        loading={detaching}
+        onConfirm={handleDetach}
+        onCancel={() => setDetachTarget(null)}
+      />
     </div>
   );
 }

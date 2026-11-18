@@ -95,7 +95,7 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: models.U
 
     if course_file.course.status != Status.draft or not course_file.course.is_active:
         raise HTTPException(
-            status_code=400, detail="Nelze mazat soubory z publikovaných kurzů"
+            status_code=400, detail="Soubory lze mazat jen u aktivního kurzu ve stavu koncept"
         )
 
     seaweedfs.delete_file(course_file.file_path)
@@ -124,7 +124,7 @@ def delete_course_link(db: Session, course_id: int, link_id: int, user: models.U
 
     if course_link.course.status != Status.draft or not course_link.course.is_active:
         raise HTTPException(
-            status_code=400, detail="Nelze mazat odkazy z publikovaných kurzů"
+            status_code=400, detail="Odkazy lze mazat jen u aktivního kurzu ve stavu koncept"
         )
 
     db.delete(course_link)

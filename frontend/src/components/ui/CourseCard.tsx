@@ -1,13 +1,15 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, CheckCircle, Clock, FileText } from "lucide-react";
-import { type Difficulty } from "@/api";
+import { type CourseBlock, type Difficulty } from "@/api";
+import { courseBlockTone } from "@/lib/course-categories";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { cn, czechPlural } from "@/lib/utils";
 
 import { Button } from "../ui-kit/button";
 import { Card, CardContent, CardFooter } from "../ui-kit/card";
 import { Progress } from "../ui-kit/progress";
+import { CourseBlockEyebrow } from "./CourseBlockEyebrow";
+import { CourseImage } from "./CourseImage";
 
 interface CourseCardProps {
   id: string;
@@ -18,9 +20,14 @@ interface CourseCardProps {
   difficulty?: Difficulty | null;
   completedModules?: number;
   totalModules?: number;
-  imageUrl?: string;
+  /** `imageUrl` z API kurzu; bez něj se ukáže výchozí obrázek. */
+  imageUrl?: string | null;
   isEnrolled?: boolean;
   isCompleted?: boolean;
+  // Tematický blok: nadtitulek, linka pod obrázkem a tón karty v barvě bloku.
+  block?: CourseBlock | null;
+  /** Místo odkazu na detail kurzu zavolá handler (náhled pro studenta v adminu). */
+  onSelect?: () => void;
 }
 
 export function CourseCard({
@@ -31,27 +38,33 @@ export function CourseCard({
   difficulty,
   completedModules = 0,
   totalModules = 0,
-  imageUrl = "/courseai2.png",
+  imageUrl,
   isEnrolled = false,
   isCompleted = false,
+  block,
+  onSelect,
 }: CourseCardProps) {
   const hasProgress = totalModules > 0;
   const progressPercent = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+  const tone = courseBlockTone(block);
 
+  // Výška počítá s řádkem nadtitulku (h-4 + mb-1.5), bez něj stačilo 530 px. Řádek drží
+  // místo i u kurzu bez bloku, aby názvy karet v mřížce seděly na sebe. Tón papíru a stín
+  // jsou u všech karet stejné (barva Kontextu), blok nesou nadtitulek a linka pod obrázkem.
   const cardContent = (
     <Card
+      data-course-block={tone ?? undefined}
       className={cn(
-        "h-[530px] w-full max-w-[590px] gap-0 py-0 transition-all duration-300",
-        isCompleted ? "border-success opacity-75" : "hover:shadow-xl",
+        "h-[554px] w-full max-w-[590px] gap-0 py-0 transition-all duration-300",
+        isCompleted ? "border-success opacity-75" : "hover:shadow-xl hover:shadow-block-context/30",
       )}
     >
       {/* Course Image */}
       <div className="relative h-[226px] w-full shrink-0 overflow-hidden">
-        <Image
-          src={imageUrl}
+        <CourseImage
+          imageUrl={imageUrl}
           alt={title}
-          fill
-          className={cn("object-cover transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
+          className={cn("transition-transform duration-300", !isCompleted && "group-hover:scale-105")}
         />
         {isCompleted && (
           <div className="absolute inset-0 flex items-center justify-center bg-success/30">
@@ -60,10 +73,14 @@ export function CourseCard({
             </div>
           </div>
         )}
+        {tone && <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-block" />}
       </div>
 
-      <CardContent className="flex min-h-0 grow flex-col px-6 pt-6 pb-4">
+      <CardContent className="flex min-h-0 grow flex-col bg-gradient-to-b from-transparent from-30% to-block-context/12 px-6 pt-6 pb-4">
         <div>
+          <div className="mb-1.5 h-4">
+            <CourseBlockEyebrow block={block} />
+          </div>
           <h3
             className={cn(
               "mb-3 line-clamp-2 min-h-[3.5rem] text-xl font-semibold",
@@ -134,6 +151,15 @@ export function CourseCard({
       </CardFooter>
     </Card>
   );
+
+  // Klávesnicí se karta ovládá přes tlačítko v patičce, klik z něj probublá.
+  if (onSelect) {
+    return (
+      <div onClick={onSelect} className="group block cursor-pointer">
+        {cardContent}
+      </div>
+    );
+  }
 
   // Dokončený kurz je klikací taky — detail kurzu slouží jako zpětný náhled.
   return (

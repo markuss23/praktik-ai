@@ -1,14 +1,15 @@
 from datetime import datetime
-from pydantic import Field
+from pydantic import Field, computed_field
+
+from agents.mindmap_generator.schemas import MindMap, to_mermaid
 from api.src.common.schemas import ORMModel
-from api.src.activities.schemas import LearnBlock, PracticeQuestion
+from api.src.activities.schemas import LearnBlock
 from api.src.catalogs.schemas import BloomLevel, KrauuCompetence, NeuroPrinciple
 
 
 class ModuleBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     perex: str = Field(default="", max_length=255)
-    max_task_attempts: int = Field(default=3, ge=1, le=20, description="Maximální počet pokusů pro splnění modulu")
     neuro_principle_ids: list[int] = Field(
         min_length=1,
         description="ID neurovědních principů navázaných na modul (lze vybrat více, alespoň jeden)",
@@ -46,7 +47,18 @@ class Module(ModuleBase):
     updated_at: datetime
 
     learn_blocks: list[LearnBlock] = []
-    practice_questions: list[PracticeQuestion] = []
+    podcast_transcript: list[dict] | None = Field(
+        default=None,
+        description="Přepis podcastu [{speaker, text}]; None = modul podcast nemá. Audio: GET /modules/{id}/podcast",
+    )
+    mindmap: MindMap | None = Field(
+        default=None, description="Myšlenková mapa (strom); None = modul ji nemá."
+    )
+
+    @computed_field(description="Myšlenková mapa jako mermaid `mindmap`; None = není.")
+    @property
+    def mindmap_mermaid(self) -> str | None:
+        return to_mermaid(self.mindmap) if self.mindmap else None
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"
@@ -57,34 +69,3 @@ class Module(ModuleBase):
     bloom_levels: list[BloomLevel] = Field(
         default=[], validation_alias="bloom_level_list"
     )
-
-
-class ModuleCompletionStatus(ORMModel):
-    module_id: int
-    passed: bool = False
-    score: int | None = None
-    course_completed: bool = False
-    task_session_status: str | None = None
-    attempts_used: int = 0
-    max_attempts: int = 0
-    passing_score: int = 75
-
-
-class CompleteModuleRequest(ORMModel):
-    score: int = Field(ge=0, le=100, description="Test score percentage")
-
-
-class AssessmentAttemptDetail(ORMModel):
-    attempt_id: int
-    ai_score: int
-    is_passed: bool
-    ai_feedback: str | None = None
-
-
-class ModuleAssessmentQuestion(ORMModel):
-    session_id: int
-    generated_task: str
-    status: str
-    attempts_used: int = 0
-    max_attempts: int = 3
-    attempts: list[AssessmentAttemptDetail] = []

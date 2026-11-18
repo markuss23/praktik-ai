@@ -2,47 +2,81 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { updateProfile } from '@/lib/api-client';
-import { Button, Input, Label, Modal } from '@/components/ui';
+import type { AiStyleAxis } from '@/api';
+import { getAiStyles, getMyAiStyle, updateMyAiStyle } from '@/lib/api-client';
+import { readApiErrorDetail } from '@/lib/api-error';
+import { Button, Label, Modal, RadioGroup, RadioGroupItem } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 interface AiPreferencesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialAiTone: string;
-  initialAiExpressionLevel: string;
-  onSaved: () => void;
 }
 
-export function AiPreferencesModal({
-  isOpen,
-  onClose,
-  initialAiTone,
-  initialAiExpressionLevel,
-  onSaved,
-}: AiPreferencesModalProps) {
-  const [aiTone, setAiTone] = useState(initialAiTone);
-  const [aiExpressionLevel, setAiExpressionLevel] = useState(initialAiExpressionLevel);
+// description je prompt pro AI; uživateli krátké shrnutí, neznámý code = jen name
+const OPTION_SUMMARIES: Record<string, string> = {
+  'ton.form': 'Vykání, věcně a s odstupem.',
+  'ton.neut': 'Vykání, věcně a vstřícně.',
+  'ton.frnd': 'Vykání, vřele a s povzbuzením.',
+  'dens.low': 'Jedna myšlenka na větu.',
+  'dens.med': 'Jedna až dvě myšlenky na větu.',
+  'dens.high': 'Víc informací v každé větě.',
+  'form.expo': 'Definice, vysvětlení, shrnutí.',
+  'form.instr': 'Postup v krocích.',
+  'form.narr': 'Krátký příběh z praxe.',
+  'rhet.plain': 'Bez přirovnání a příkladů navíc.',
+  'rhet.ex': 'Příklady z praxe.',
+  'rhet.meta': 'Vysvětlení přirovnáním.',
+};
 
-  useEffect(() => {
-    if (isOpen) {
-      setAiTone(initialAiTone);
-      setAiExpressionLevel(initialAiExpressionLevel);
-    }
-  }, [isOpen, initialAiTone, initialAiExpressionLevel]);
-
+/** Styl komunikace AI tutora — na každé ose (tón, hustota…) jedna volba z číselníku. */
+export function AiPreferencesModal({ isOpen, onClose }: AiPreferencesModalProps) {
+  const [axes, setAxes] = useState<AiStyleAxis[]>([]);
+  // {kód osy: kód nastavení} — uložený stav a rozpracovaná volba
+  const [saved, setSaved] = useState<Record<string, string>>({});
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([getAiStyles(), getMyAiStyle()])
+      .then(([catalog, style]) => {
+        if (cancelled) return;
+        setAxes(catalog);
+        setSaved(style);
+        setChoice(style);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Nastavení se nepodařilo načíst. Zkuste to znovu.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  // Posílají se jen změněné osy, neuvedené zůstanou na serveru beze změny
+  const changed = Object.fromEntries(
+    Object.entries(choice).filter(([axis, option]) => saved[axis] !== option),
+  );
+  const hasChanges = Object.keys(changed).length > 0;
+
   const handleSave = async () => {
-    if (!aiTone.trim() || !aiExpressionLevel.trim()) return;
+    if (!hasChanges) return;
     setSaving(true);
     setError(null);
     try {
-      await updateProfile(aiTone.trim(), aiExpressionLevel.trim());
-      onSaved();
+      await updateMyAiStyle(changed);
       onClose();
-    } catch {
-      setError('Nepodařilo se uložit. Zkuste to znovu.');
+    } catch (err) {
+      setError((await readApiErrorDetail(err)) ?? 'Nepodařilo se uložit. Zkuste to znovu.');
     } finally {
       setSaving(false);
     }
@@ -55,12 +89,14 @@ export function AiPreferencesModal({
         if (!saving) onClose();
       }}
       title="AI Nastavení"
-      maxWidth="max-w-md"
+      description="Jak s vámi má AI tutor komunikovat."
+      maxWidth="max-w-4xl"
+      padding="lg"
       footer={
         <Button
           size="lg"
           className="w-full"
-          disabled={saving || !aiTone.trim() || !aiExpressionLevel.trim()}
+          disabled={saving || loading || !hasChanges}
           onClick={handleSave}
         >
           {saving ? (
@@ -74,35 +110,54 @@ export function AiPreferencesModal({
         </Button>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ai-tone">AI Tón</Label>
-          <Input
-            id="ai-tone"
-            type="text"
-            value={aiTone}
-            onChange={(e) => setAiTone(e.target.value)}
-            maxLength={100}
-            placeholder="Profesionální a neutrální"
-          />
-          <p className="text-xs text-muted-foreground">Styl komunikace AI tutora</p>
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Načítám nastavení" />
         </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ai-expression">AI Vyjadřování</Label>
-          <Input
-            id="ai-expression"
-            type="text"
-            value={aiExpressionLevel}
-            onChange={(e) => setAiExpressionLevel(e.target.value)}
-            maxLength={100}
-            placeholder="Standardní srozumitelný jazyk"
-          />
-          <p className="text-xs text-muted-foreground">Jazyková úroveň odpovědí AI</p>
+      ) : (
+        // Linka mezi osami, pod poslední je border footeru
+        <div className="flex flex-col divide-y divide-border">
+          {axes.map((axis) => {
+            const labelId = `ai-style-${axis.code}-label`;
+            return (
+              // Osa vlevo, options v řadě — wide modal
+              <div
+                key={axis.code}
+                className="grid gap-3 py-5 first:pt-0 last:pb-0 md:grid-cols-[9rem_1fr] md:items-center md:gap-6"
+              >
+                <span id={labelId} className="text-sm font-semibold text-foreground">{axis.name}</span>
+                <RadioGroup
+                  aria-labelledby={labelId}
+                  value={choice[axis.code] ?? null}
+                  onValueChange={(value: string) => setChoice((prev) => ({ ...prev, [axis.code]: value }))}
+                  disabled={saving}
+                  className="sm:grid-cols-3"
+                >
+                  {axis.options.map((option) => {
+                    const summary = OPTION_SUMMARIES[option.code];
+                    return (
+                      <Label
+                        key={option.code}
+                        className={cn(
+                          'cursor-pointer items-start gap-2.5 rounded-lg p-3 font-normal leading-normal transition-colors',
+                          choice[axis.code] === option.code ? 'bg-gradient-r/10' : 'hover:bg-muted/50',
+                        )}
+                      >
+                        <RadioGroupItem value={option.code} className="mt-0.5" />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground">{option.name}</span>
+                          {summary && <span className="text-xs text-muted-foreground">{summary}</span>}
+                        </span>
+                      </Label>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
+            );
+          })}
         </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
+      )}
+      {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
     </Modal>
   );
 }

@@ -418,14 +418,14 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
                 setActiveFolderId((prev) => (prev === folder.id ? null : folder.id))
               }
               aria-pressed={isActive}
-              className={cn(BTN_KEEP_BOX, `inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+              className={cn(BTN_KEEP_BOX, `inline-flex max-w-full items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-gradient-r/10 border-gradient-r/30 text-gradient-r"
                   : "bg-card border-border text-foreground hover:bg-muted/50"
               }`)}
             >
               <Folder size={16} strokeWidth={1.75} />
-              {folder.name}
+              <span className="min-w-0 truncate">{folder.name}</span>
               {folder.isPublic && <Globe size={13} strokeWidth={1.75} className="text-success" />}
               {typeof folder.itemCount === "number" && (
                 <span className="text-xs text-muted-foreground">({folder.itemCount})</span>
@@ -455,7 +455,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{activeFolder.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="plain"
               type="button"

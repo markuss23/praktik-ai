@@ -24,10 +24,11 @@ import {
   DrawerTitle,
   Input,
 } from "@/components/ui";
+import type { TicketMessageItem } from "@/api";
 import { wikiChat } from "@/lib/api-client";
 import { TicketConversation } from "./TicketConversation";
 import { TicketCreateModal } from "./TicketCreateModal";
-import { TICKET_MESSAGING_UNAVAILABLE } from "./api";
+import { listTicketMessages } from "./api";
 import { NEW_TICKET_RETURN_PATH, saveTicketDraft } from "./draft";
 import { buildTicketConversation, formatTicketCode, Ticket, TicketMessage } from "./types";
 
@@ -117,13 +118,38 @@ export function TicketsSidebar({
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
+  // Vlákno otevřeného tiketu; ticketId hlídá, ať se neukáže vlákno předchozího.
+  const [thread, setThread] = useState<{ ticketId: number; items: TicketMessageItem[] } | null>(
+    null,
+  );
+  const [threadError, setThreadError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   const isOpen = open ?? ticket !== null;
+  const ticketId = ticket?.ticketId;
 
+  useEffect(() => {
+    setThreadError(null);
+    if (ticketId === undefined) return;
+    let cancelled = false;
+    listTicketMessages(ticketId)
+      .then((items) => {
+        if (!cancelled) setThread({ ticketId, items });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setThreadError(err instanceof Error ? err.message : "Konverzaci se nepodařilo načíst.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketId]);
+
+  const threadLoaded = ticket !== null && thread?.ticketId === ticket.ticketId;
   const ticketMessages = useMemo(
-    () => (ticket ? buildTicketConversation(ticket) : []),
-    [ticket],
+    () => (ticket && threadLoaded && thread ? buildTicketConversation(ticket, thread.items) : []),
+    [ticket, thread, threadLoaded],
   );
 
   // Poslední dotaz uživatele — předvyplní se jím tiket při eskalaci.
@@ -241,10 +267,20 @@ export function TicketsSidebar({
               <p className="mb-4 text-center text-[11px] text-muted-foreground">
                 {formatTicketCode(ticket.ticketId)} · {ticket.title}
               </p>
-              <TicketConversation messages={ticketMessages} compact />
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                {TICKET_MESSAGING_UNAVAILABLE}
-              </p>
+              {threadError ? (
+                <p className="text-xs text-destructive">{threadError}</p>
+              ) : threadLoaded ? (
+                <TicketConversation messages={ticketMessages} compact />
+              ) : (
+                <p className="text-center text-xs text-muted-foreground">Načítání konverzace…</p>
+              )}
+              <Link
+                href={`${ROUTES.MY_TICKETS}/${ticket.ticketId}`}
+                onClick={onClose}
+                className="mt-3 inline-block text-xs font-medium text-gradient-r hover:underline"
+              >
+                Odpovědět v detailu tiketu
+              </Link>
               <div className="my-5 flex items-center gap-3">
                 <span className="h-px flex-1 bg-border" />
                 <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -281,12 +317,12 @@ export function TicketsSidebar({
                   >
                     {formatTicketCode(createdTicket.ticketId)}
                   </Link>{" "}
-                  byl založen — odpoví na něj lektor kurzu.
+                  byl založen — odpovíme vám co nejdřív.
                 </p>
               ) : !isAuthenticated ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Nepomohlo? Předejte dotaz lektorovi kurzu. Tiket můžete založit
+                    Nepomohlo? Předejte dotaz podpoře. Tiket můžete založit
                     po přihlášení — dotaz z chatu vám předvyplníme.
                   </p>
                   <Button
@@ -302,7 +338,7 @@ export function TicketsSidebar({
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Nepomohlo? Předejte dotaz lektorovi kurzu.
+                    Nepomohlo? Předejte dotaz podpoře.
                   </p>
                   <Button
                     variant="outline"
@@ -351,6 +387,7 @@ export function TicketsSidebar({
           onClose={() => setCreateOpen(false)}
           initialTitle={titleFromQuestion(lastQuestion)}
           initialReason={lastQuestion}
+          defaultEntityType="general"
           onCreated={(created) => {
             setCreatedTicket(created);
             onTicketCreated?.(created);

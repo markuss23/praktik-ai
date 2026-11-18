@@ -1,0 +1,5 @@
+.env_example
+frontend/
+wiki_data/
+**/node_modules/
+**/.venv/

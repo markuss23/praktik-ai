@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Clock, Play } from 'lucide-react';
+import { CourseImage } from '@/components/ui/CourseImage';
 import type { MyEnrollmentExtended } from '@/lib/api-client';
 
 interface ContinueHeroCardProps {
@@ -41,11 +41,10 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
 
       <div className="relative flex flex-col md:flex-row">
         <div className="relative w-full md:w-[340px] h-[200px] md:h-auto shrink-0 overflow-hidden">
-          <Image
-            src="/courseai2.png"
+          <CourseImage
+            imageUrl={enrollment.course.imageUrl}
             alt={enrollment.course.title}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-black/20 md:bg-[var(--gradient-r)]/25" />
           <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-gradient-r">

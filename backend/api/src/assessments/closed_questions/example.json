@@ -1,0 +1,34 @@
+{
+  "questions": [
+    {
+      "question": "Co je to prompt?",
+      "options": [
+        "Zadání nebo instrukce, kterou dáváme jazykovému modelu",
+        "Programovací jazyk pro tvorbu AI",
+        "Databáze trénovacích dat",
+        "Typ grafické karty"
+      ],
+      "correct_index": 0
+    },
+    {
+      "question": "Která technika pomáhá modelu lépe řešit vícekrokové úlohy?",
+      "options": [
+        "Zkrácení promptu na jedno slovo",
+        "Chain-of-thought (postupné uvažování krok za krokem)",
+        "Psaní promptu velkými písmeny"
+      ],
+      "correct_index": 1
+    },
+    {
+      "question": "Co znamená, když model „halucinuje“?",
+      "options": [
+        "Odpovídá pomaleji než obvykle",
+        "Odmítne odpovědět",
+        "Uvádí přesvědčivě znějící, ale nepravdivé informace"
+      ],
+      "correct_index": 2
+    }
+  ],
+  "max_attempts": 2,
+  "pass_threshold": 0.66
+}

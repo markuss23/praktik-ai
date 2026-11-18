@@ -154,15 +154,20 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
             style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="inline-flex items-center justify-center size-9 rounded-md bg-muted text-foreground">
+              <span className="inline-flex items-center justify-center size-9 shrink-0 rounded-md bg-muted text-foreground">
                 <Folder size={18} strokeWidth={1.75} />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{attachment.name}</p>
+                {/* Na mobilu formát a velikost pod názvem, ať zbude místo na název */}
+                <p className="sm:hidden text-xs text-muted-foreground">
+                  {attachment.format}
+                  {attachment.sizeLabel ? ` ${attachment.sizeLabel}` : ""}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4 shrink-0">
-              <span className="text-xs text-muted-foreground">
+              <span className="hidden sm:inline text-xs text-muted-foreground">
                 {attachment.format}
                 {attachment.sizeLabel ? ` ${attachment.sizeLabel}` : ""}
               </span>

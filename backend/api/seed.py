@@ -1,8 +1,14 @@
+from decimal import Decimal
+
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from api.database import SessionLocal
+from api.src.assessments.closed_questions.schemas import ClosedQuestionsSettings
 from api.models import (
+    AiStyleAxis,
+    AiStyleOption,
+    AssessmentType,
     CrossSubject,
     BloomLevel,
     CourseBlock,
@@ -15,7 +21,11 @@ from api.models import (
     KrauuCompetence,
     NeuroPrinciple,
     SystemSetting,
+    AiModelPrice,
 )
+from api.src.assessments.open_question_ai.schemas import OpenQuestionAISettings
+from api.src.assessments.socratic_dialog_ai.schemas import SocraticDialogAISettings
+from api.src.assessments.closed_questions_ai.schemas import ClosedQuestionsAISettings
 
 COURSE_BLOCKS: list[dict[str, str]] = [
     {"code": "blok.a", "name": "Kontext", "description": "Porozumění principům AI"},
@@ -85,6 +95,110 @@ COURSE_LEVELS: list[dict[str, str]] = [
         "code": "level.3",
         "name": "Pokročilý",
         "description": "Aktivní práce s AI ve výuce",
+    },
+]
+
+# Číselník AI Styl komunikace (list „AI Styl komunikace“ v PRAKTIK-AI_ciselniky.xlsx)
+AI_STYLE_AXES: list[dict] = [
+    {
+        "code": "ton",
+        "name": "Tón",
+        "options": [
+            {
+                "code": "ton.form",
+                "name": "Formální",
+                "description": "Vykání. Bez familiárních obratů, bez humoru, minimum emocí. Profesní odstup, věcné pojmenování. Bez oslovování jménem. Vhodné pro auditní/certifikační kontext.",
+                "example": "Halucinace je jev, při kterém velký jazykový model generuje výstup obsahující nepravdivé nebo nepodložené informace. Příčinou je pravděpodobnostní podstata generování, kdy model volí statisticky pravděpodobná pokračování textu bez ověření faktické správnosti.",
+            },
+            {
+                "code": "ton.neut",
+                "name": "Neutrální",
+                "description": "Vykání. Věcný, vstřícný tón bez familiárnosti. Občasné krátké povzbuzení („to je dobrá otázka\" jen výjimečně). Bez humoru, bez metafor navíc. Default pro většinu uživatelů.",
+                "example": "Halucinace znamená, že model vygeneruje odpověď, která zní věrohodně, ale není pravdivá. Vzniká proto, že model neodhaduje pravdu, ale nejpravděpodobnější pokračování textu podle svého tréninku.",
+                "is_default": True,
+            },
+            {
+                "code": "ton.frnd",
+                "name": "Přátelský",
+                "description": "Vykání s vřelostí. Uznává pokrok uživatele, empatické reakce na nejistotu („to je pochopitelné, že to takhle působí\"). Přípustný lehký humor. Nikdy sarkasmus, nikdy tykání.",
+                "example": "Halucinace zní strašidelně, ale ve skutečnosti jde o docela pochopitelnou věc: model si občas „domýšlí\". Není to zlá vůle — model prostě odhaduje, co by mělo následovat, a někdy trefí vedle.",
+            },
+        ],
+    },
+    {
+        "code": "dens",
+        "name": "Informační hustota",
+        "options": [
+            {
+                "code": "dens.low",
+                "name": "Nízká",
+                "description": "Jedna myšlenka na větu. Termín se představí a krátce vysvětlí, pak se s ním pracuje jako se známým — bez opakovaného rozvádění. Bez řetězených nuancí, bez výjimek. Respekt k uživateli: vysvětlit neznamená podceňovat.",
+                "example": "Halucinace je faktická chyba jazykového modelu. Model vygeneruje odpověď, která zní věrohodně, ale není pravdivá. Vzniká proto, že model odhaduje pravděpodobná slova, ne pravdu. Nejčastěji se projeví u konkrétních čísel, jmen a citací.",
+            },
+            {
+                "code": "dens.med",
+                "name": "Střední",
+                "description": "1–2 tvrzení na větu. Termín se zavede a hned se s ním pracuje dál. Nuance se přidávají, když souvisí s hlavní linií. Bez redundance, ale s kontextem, který dává smysl. Default pro výukový režim.",
+                "example": "Halucinace je faktická chyba modelu prezentovaná s jistotou. Vzniká z podstaty generování — model volí pravděpodobná pokračování, ne ověřená fakta — a projeví se hlavně u konkrétních údajů. Riziko roste u okrajových témat, kde má model málo dat.",
+                "is_default": True,
+            },
+            {
+                "code": "dens.high",
+                "name": "Vysoká",
+                "description": "Řetězená tvrzení, více informace na větu. Termíny bez opakovaného vysvětlování (předpokládá se, že si je uživatel drží z předchozího výkladu). Nuance, hraniční případy a příčinné souvislosti přímo v hlavním toku, ne stranou. Odborné slovo jen tam, kde nese vlastní význam, ne jako ozdoba.",
+                "example": "Halucinace je faktická chyba modelu s vysokou mírou jistoty ve výstupu. Vzniká proto, že generování je pravděpodobnostní bez ověřovacího kroku, a zesiluje se u okrajových témat, delších výstupů a požadavků na konkrétní údaje — čísla, jména, citace jsou nejzranitelnější.",
+            },
+        ],
+    },
+    {
+        "code": "form",
+        "name": "Forma výkladu",
+        "options": [
+            {
+                "code": "form.expo",
+                "name": "Výkladová",
+                "description": "Struktura: definice → vysvětlení → shrnutí. Neutrální expozice, žádné kroky ani příběhy. Vhodné pro pojmové/teoretické části.",
+                "example": "Halucinací se v kontextu jazykových modelů označuje výstup, který obsahuje nepravdivé informace. Podstatou je, že model negeneruje odpověď na základě ověřených faktů, ale na základě statistických vzorců z tréninkových dat. Ve výsledku tedy jde o chybu, která není náhodná, ale systémová.",
+                "is_default": True,
+            },
+            {
+                "code": "form.instr",
+                "name": "Instruktážní",
+                "description": "Struktura: kroky nebo checklist v imperativu. „Udělejte X. Pak Y. Ověřte Z.\" Vhodné pro procesní obsah, návody, práci s nástrojem.",
+                "example": "Chcete-li snížit riziko halucinace, postupujte takto:\n 1. Zadejte modelu kontext (dokument, data) místo obecného dotazu.\n 2. Požádejte model, aby označil, co si není jistý.\n 3. Ověřte konkrétní čísla, jména a citace z nezávislého zdroje.\n 4. U důležitých výstupů použijte druhý průchod („zkontroluj předchozí odpověď na faktické chyby\").",
+            },
+            {
+                "code": "form.narr",
+                "name": "Narativní",
+                "description": "Struktura: krátká situace z praxe / dialog / mini-příběh, který nese poučení. Postava, konflikt, poučení. Vhodné pro měkké kompetence, etiku, komunikaci.",
+                "example": "Petra připravovala podklad pro vedení a nechala si od modelu vygenerovat přehled tří studií. Vše znělo přesvědčivě — autoři, roky, závěry. Když si jednu ze studií chtěla otevřít, zjistila, že neexistuje. Model si ji nevymyslel schválně: prostě doplnil to, co „pasovalo do věty\". Petra od té doby každý odkaz otevírá dřív, než ho pošle dál.",
+            },
+        ],
+    },
+    {
+        "code": "rhet",
+        "name": "Rétorické prostředky",
+        "options": [
+            {
+                "code": "rhet.plain",
+                "name": "Věcné",
+                "description": "Bez metafor, bez ilustračních příkladů navíc. Pojmy se pojmenovávají přímo. Vhodné pro uživatele, které příměry zdržují nebo matou.",
+                "example": "Halucinace znamená, že model vygeneruje faktickou chybu. Chyba pramení z toho, že model volí slova podle pravděpodobnosti, ne podle pravdy.",
+            },
+            {
+                "code": "rhet.ex",
+                "name": "S příklady",
+                "description": "Každý klíčový koncept doplněn 1 konkrétním příkladem z praxe (typicky pracovní situace). Příklad není metafora, je to reálný výskyt jevu.",
+                "example": "Halucinace je faktická chyba modelu prezentovaná s jistotou. Například: požádáte model o tři studie k tématu — vrátí tři plausibilně znějící citace, ale dvě z nich neexistují. Nebo: zeptáte se na paragraf zákona a model uvede číslo, které se sice v zákoně vyskytuje, ale říká něco jiného.",
+                "is_default": True,
+            },
+            {
+                "code": "rhet.meta",
+                "name": "S analogiemi",
+                "description": "Vysvětlení metaforou / přirovnání ke známé věci mimo doménu. Analogie nese hlavní vysvětlovací práci, doplněna krátkou věcnou definicí.",
+                "example": "Představte si spolužáka, který nikdy nepřiznal, že něco neví — vždycky pohotově odpověděl něco, co znělo dobře. Někdy trefil, jindy ne, ale nikdy neváhal. Přesně tak funguje jazykový model, když halucinuje: neumí říct „nevím\", tak doplní to, co statisticky nejspíš přijde na řadu.",
+            },
+        ],
     },
 ]
 
@@ -464,9 +578,8 @@ CROSS_SUBJECTS: list[dict[str, str]] = [
 
 
 COURSE_MODULE_ENRICHER_PROMPT = (
-    "K hotovému modulu vzdělávacího kurzu urči zařazení do číselníků a vytvoř otázky k procvičování. "
+    "K hotovému modulu vzdělávacího kurzu urči zařazení do číselníků. "
     "Dostaneš vstupní blok kurzu, seznamy číselníků a obsah modulu (název, perex, výklad). "
-    "Pole vyplňuj v daném pořadí: nejdřív číselníky, potom otázky.\n"
     "\n"
     "ZAŘAZENÍ DO ČÍSELNÍKŮ (rozhoduj podle výkladu, ne podle názvu; kódy vybírej výhradně ze seznamů):\n"
     "- neuro_principle_code: kód PŘESNĚ JEDNOHO neurovědního principu, který nejlépe odpovídá "
@@ -475,27 +588,6 @@ COURSE_MODULE_ENRICHER_PROMPT = (
     'Uváděj jen kódy kompetencí (např. "1.1", "2.4"), nikdy kódy oblastí končící ".0".\n'
     "- bloom_level_codes: 1–3 úrovně Bloomovy taxonomie, kterým odpovídají výukové cíle modulu "
     '(co účastník po prostudování výkladu umí). Uváděj jen číselné kódy, např. "2", "3".\n'
-    "\n"
-    "OTÁZKY (procvičování; platforma je hodnotí automaticky):\n"
-    "Obecně:\n"
-    "- Všechny otázky ověřují látku z výkladu modulu; každá musí jít zodpovědět jen z výkladu. Na zastavení ani doporučení pro AI asistenta se otázky nevážou.\n"
-    "- bloom_level_codes určují, jakou kognitivní činnost otázky ověřují (např. vysvětlit, použít v situaci, posoudit); nejvyšší zvolenou úroveň ověřuje otevřená otázka.\n"
-    "- Každá ze tří otázek ověřuje něco jiného: closed_question_1 klíčový pojem nebo princip, closed_question_2 jeho použití nebo rozlišení v situaci, open_question porozumění na nejvyšší zvolené úrovni Bloomovy taxonomie.\n"
-    "- Vykej a piš genderově neutrálně: preferuj neosobní vazby a množné číslo. Veškerý text je prostý text.\n"
-    '- Nezjednodušuj nad rámec výkladu: zachovej podmínky, míru nejistoty a mechanismus; kvalifikované tvrzení nepřeváděj na absolutní („omezená" ≠ „malá", „naznačuje" ≠ „prokazuje"). Platí pro otázky, možnosti i vzorové odpovědi.\n'
-    "Uzavřené otázky (closed_question_1, closed_question_2; platforma porovnává odpověď doslova s textem možnosti):\n"
-    "- options: přesně 3 možnosti, které se textově liší, každá nejvýše 250 znaků.\n"
-    '- Právě jedna možnost je správná; ostatní dvě jsou podle výkladu jednoznačně nesprávné, ne jen „méně vhodné".\n'
-    "- correct_answer zkopíruj znak po znaku z textu správné možnosti.\n"
-    "- Distraktory vycházejí z typických omylů nebo mýtů uvedených ve výkladu, mají podobnou délku a stavbu jako správná odpověď; správná odpověď není nejdelší ani nejpodrobnější. Pozici správné odpovědi v otázkách střídej.\n"
-    '- Nepoužívej „všechny uvedené", „žádná z uvedených", dvojí zápor ani absolutní slova („vždy", „nikdy") jako nápovědu.\n'
-    "Otevřená otázka (open_question; hodnotí ji AI jen podle otázky a výukového textu, vzorovou odpověď ani klíčové body nevidí):\n"
-    "- Účastník může napsat nejvýše 500 znaků: úplná odpověď se musí vejít do 2–4 vět. Správnost musí jít posoudit jen z výkladu modulu; nežádej fakta, která ve výkladu nejsou.\n"
-    '- Všechno, co se bude hodnotit, musí být v otázce výslovně: části odpovědi vyjmenuj (nejvýše 3, např. „(1) rozhodněte, (2) zdůvodněte"); požadované pojmy pojmenuj; vlastní zkušenost žádej jen výslovně. Nežádej jména autorů, roky ani přesná čísla.\n'
-    '- Žádné otázky typu ano/ne ani „vyjmenujte".\n'
-    "- Žádej zdůvodněné rozhodnutí v konkrétní situaci z praxe.\n"
-    '- example_answer: 2–4 věty, nejvýše 500 znaků, genderově neutrálně; v první osobě formuluj bez příčestí minulého, pokud to jde („Zadání přeformuluji takto…").\n'
-    "- keywords: přesně 3 klíčové body, které dobrá odpověď obsahuje (myšlenka nebo pojem, každý nejvýše 60 znaků), ne vytržená slova."
 )
 
 
@@ -526,6 +618,8 @@ COURSE_PLANNER_PROMPT = (
     "\n"
     "STYL VÝKLADU:\n"
     "Základní pojmy jen připomeň jednou větou; těžiště je v principech, důvodech a typických chybách; porovnávej postupy.\n"
+    "Piš explicitně, ne heslovitě: každá věta musí dávat smysl sama o sobě, bez domýšlení vynechaného kontextu. Vždy pojmenuj, kdo jedná nebo o kom je řeč (AI, účastník, autor…); nepiš aforismy ani zkratkovitá hesla. "
+    'Například místo „Souhlasná odpověď vypovídá spíš o vaší otázce než o vašem nápadu. Plynulost není přesnost a sebejistota není důkaz." napiš „Když AI s vaším nápadem souhlasí, vypovídá to spíš o tom, jak jste otázku položili, než o kvalitě nápadu. Plynulá odpověď AI ještě nemusí být přesná a sebejistý tón není důkazem správnosti."\n'
     "\n"
     "DÉLKA VÝKLADU (content = fáze F1, příručka ke čtení, 130 slov za minutu):\n"
     "Délku výkladu modulu urči podle náročnosti tématu uvedené v souhrnu:\n"
@@ -542,7 +636,7 @@ COURSE_PLANNER_PROMPT = (
     "Piš neosobně nebo vykej.]\n\n"
     "content: [\n"
     "    Nový výukový text, ne shrnutí a ne opis. Pořadí:\n"
-    "    1. Proč je téma pro účastníky důležité.\n"
+    '    1. Proč je téma pro účastníky důležité. Nadpis tohoto oddílu nikdy nezní „Proč se tím zabývat" ani podobně; zvol nebo obměň např. „Výchozí situace", „Výchozí problém", „Význam tématu v širších souvislostech", „Téma v realitě", „Na úvod několik souvislostí", „Téma, které se nás týká", „První nahlédnutí", „Začněme otázkou". V každém modulu kurzu použij jiný nadpis.\n'
     "    2. Hlavní myšlenka.\n"
     "    3. Klíčové pojmy s vysvětlením.\n"
     "    4. Vztahy, příčiny a důsledky.\n"
@@ -630,145 +724,34 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
     },
     {
         "key": "course_module_enricher",
-        "name": "Číselníky a otázky modulu",
+        "name": "Číselníky modulu",
         "model": "claude-opus-5-5",
         "prompt": COURSE_MODULE_ENRICHER_PROMPT,
-        "description": "LLM pro zařazení hotového modulu do číselníků NP, KRAUU a Bloom a tvorbu otázek k procvičování.",
-    },
-    {
-        "key": "assessment_generator",
-        "name": "Generátor otázek",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi odborný lektor. Na základě níže uvedeného výukového textu "
-            "vytvoř jednu otevřenou kontrolní otázku.\n\n"
-            "Pravidla:\n"
-            "- Otázka musí být zodpověditelná výhradně z poskytnutého textu\n"
-            "- Ověřuj porozumění, ne memorování\n"
-            "- Otázka musí být v češtině\n"
-            "- Otázka musí být konkrétní a jednoznačná\n"
-            "- Délka otázky: 1-2 věty"
-        ),
-        "description": "LLM pro generování assessment otázek z výukového obsahu.",
-    },
-    {
-        "key": "assessment_evaluator",
-        "name": "Evaluátor odpovědí",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi přísný, ale spravedlivý lektor. Vyhodnoť odpověď studenta na kontrolní otázku.\n\n"
-            "K dispozici máš:\n"
-            "1. Výukový text (zdroj správných informací)\n"
-            "2. Kontrolní otázku\n"
-            "3. Odpověď studenta\n\n"
-            "Pravidla hodnocení:\n"
-            "- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu\n"
-            "- Ověřuj věcnou správnost, ne stylistiku\n"
-            "- Částečně správná odpověď získá částečné body\n"
-            "- Zcela špatná nebo prázdná odpověď = 0 bodů\n"
-            "- Za úspěšné splnění považuj skóre odpovídající minimálnímu požadavku modulu\n\n"
-            "Pravidla pro zpětnou vazbu:\n"
-            "- NIKDY neprozrazuj správnou odpověď ani její části\n"
-            "- Pouze naznač, ve které oblasti má student mezery "
-            "(např. \u201eChybí vám pochopení vztahu mezi X a Y\u201c)\\n"
-            "- Při neúspěchu motivuj studenta k dalšímu studiu, ale NEŘÍKEJ mu, co měl napsat\n"
-            "- Cílem je, aby se student vrátil k výukovému materiálu a odpověď našel sám\n\n"
-            "Odpověz PŘESNĚ v tomto formátu (3 řádky, nic jiného):\n"
-            "SCORE: <číslo 0-100>\n"
-            "PASSED: <true nebo false>\n"
-            "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině, BEZ správné odpovědi>"
-        ),
-        "description": "LLM pro vyhodnocení odpovědí studentů na assessment otázky.",
+        "description": "LLM pro zařazení hotového modulu do číselníků NP, KRAUU a Bloom.",
     },
     {
         "key": "mentor_reranker",
         "name": "Mentor – reranker",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Máš seznam dokumentů a otázku uživatele.\n"
-            "Seřaď dokumenty podle relevance k otázce (nejrelevantnější první).\n\n"
-            "Vrať POUZE čísla dokumentů seřazená od nejrelevantnějšího "
-            "(např: 3, 7, 1, 5).\n"
-            "Odpověz pouze čísly oddělenými čárkami, nic dalšího."
-        ),
+        "model": "claude-haiku-5-5",
+        # Prompt je v agents/mentor/reranker_prompt.md
+        "prompt": "",
         "description": "LLM pro přeřazení dokumentů podle relevance v RAG mentoru.",
+    },
+    {
+        "key": "mentor_router",
+        "name": "Mentor – router",
+        "model": "claude-haiku-5-5",
+        # Prompt je v agents/mentor/router_prompt.md
+        "prompt": "",
+        "description": "LLM, které rozhodne, jestli mentor potřebuje hledat v materiálech, a přepíše navazující otázku na samostatnou.",
     },
     {
         "key": "mentor_answer",
         "name": "Mentor – odpověď",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi AI asistent pro výuku - mentor studenta.\n"
-            "Odpovídáš na otázky studenta POUZE na základě poskytnutého kontextu z učebních materiálů.\n\n"
-            "PRAVIDLA:\n"
-            "- Odpověz výhradně na základě poskytnutého kontextu\n"
-            "- Pokud kontext neobsahuje odpověď, řekni to otevřeně\n"
-            "- Buď přátelský, trpělivý a pedagogický\n"
-            "- Používej příklady z kontextu pro lepší pochopení\n"
-            "- Pokud student nerozumí, zkus vysvětlit jinak\n"
-            "- Odpovídej vždy v češtině\n"
-            "- odpověd maximálně 500 znaků"
-        ),
+        "model": "claude-sonnet-5-5",
+        # Prompt je v agents/mentor/prompt.md
+        "prompt": "",
         "description": "LLM pro generování odpovědí AI mentora na otázky studentů.",
-    },
-    {
-        "key": "practice_generator_open",
-        "name": "Procvičování – otevřená otázka",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
-            "vytvoř jednu otevřenou procvičovací otázku v češtině.\n\n"
-            "Pravidla:\n"
-            "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
-            "- Otázka má prověřit porozumění, nikoli pouhou reprodukci\n"
-            "- Odpověz POUZE samotnou otázkou, bez dalšího textu"
-        ),
-        "description": "LLM pro generování otevřených procvičovacích otázek z výukového obsahu.",
-    },
-    {
-        "key": "practice_generator_closed",
-        "name": "Procvičování – uzavřená otázka",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi tvůrce vzdělávacích otázek. Na základě poskytnutého výukového textu "
-            "vytvoř jednu uzavřenou procvičovací otázku se 4 možnostmi (A–D) v češtině.\n\n"
-            "Pravidla:\n"
-            "- Otázka musí vycházet výhradně z obsahu výukového textu\n"
-            "- Právě jedna možnost musí být správná\n"
-            "- Ostatní tři možnosti musí být věrohodné, ale nesprávné\n\n"
-            "Odpověz PŘESNĚ v tomto formátu (nic jiného):\n"
-            "QUESTION: <otázka>\n"
-            "A: <možnost>\n"
-            "B: <možnost>\n"
-            "C: <možnost>\n"
-            "D: <možnost>\n"
-            "CORRECT: <písmeno A, B, C nebo D>"
-        ),
-        "description": "LLM pro generování uzavřených procvičovacích otázek z výukového obsahu.",
-    },
-    {
-        "key": "practice_answer_evaluator",
-        "name": "Procvičování – evaluátor odpovědí",
-        "model": "claude-opus-5-5",
-        "prompt": (
-            "Jsi laskavý, ale důsledný lektor. Vyhodnoť odpověď studenta na otevřenou procvičovací otázku.\n\n"
-            "K dispozici máš:\n"
-            "1. Výukový text (zdroj správných informací)\n"
-            "2. Procvičovací otázku\n"
-            "3. Odpověď studenta\n\n"
-            "Pravidla hodnocení:\n"
-            "- Hodnoť VÝHRADNĚ na základě poskytnutého výukového textu\n"
-            "- Odpověď je správná, pokud zachycuje podstatu — nevyžaduj doslovnou shodu\n"
-            "- Zcela nesouvisející nebo prázdná odpověď = nesprávná\n\n"
-            "Pravidla pro zpětnou vazbu:\n"
-            "- Zpětná vazba má být motivující a konstruktivní\n"
-            "- Při správné odpovědi pochval a případně doplň zajímavost\n"
-            "- Při nesprávné naznač, kde má student mezeru, ale NEPROZRAZUJ správnou odpověď\n\n"
-            "Odpověz PŘESNĚ v tomto formátu (2 řádky, nic jiného):\n"
-            "CORRECT: <true nebo false>\n"
-            "FEEDBACK: <zpětná vazba v 1-3 větách, v češtině>"
-        ),
-        "description": "LLM pro vyhodnocení otevřených odpovědí studentů na procvičovací otázky.",
     },
     {
         "key": "open_question_evaluator",
@@ -790,11 +773,142 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
         "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
     },
     {
+        "key": "open_question_ai",
+        "name": "Assessment – otevřená otázka (AI)",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/open_question_ai/agents/generator/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování otevřené procvičovací otázky z výukového obsahu.",
+    },
+    {
+        "key": "open_question_ai_evaluator",
+        "name": "Assessment – otevřená otázka (AI) - evaluátor",
+        "model": "claude-opus-5-5",
+        "prompt": "",
+        "description": "LLM pro vyhodnocení otevřených odpovědí studentů na otevřené otázky generované AI.",
+    },
+    {
+        "key": "closed_questions_ai",
+        "name": "Assessment – uzavřené otázky (AI)",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/closed_questions_ai/agents/generator/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování sady uzavřených otázek z výukového obsahu modulu/kurzu.",
+    },
+    {
+        "key": "socratic_dialog_ai_topic",
+        "name": "Sokratovský dialog (AI) – téma a první otázka",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/topic/prompt.md
+        "prompt": "",
+        "description": "LLM pro výběr tématu sokratovského dialogu z learn blocků modulu a položení první otázky.",
+    },
+    {
+        "key": "socratic_dialog_ai",
+        "name": "Sokratovský dialog (AI) – tazatel",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/dialog/prompt.md
+        "prompt": "",
+        "description": "LLM, které v sokratovském dialogu ohodnotí odpověď (delta elo) a položí další otázku.",
+    },
+    {
+        "key": "socratic_dialog_ai_summary",
+        "name": "Sokratovský dialog (AI) – shrnutí",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/socratic_dialog_ai/agents/summary/prompt.md
+        "prompt": "",
+        "description": "LLM pro závěrečné shrnutí průběhu sokratovského dialogu (bez verdiktu).",
+    },
+    {
+        "key": "pretest",
+        "name": "Pretest – otázky modulu",
+        "model": "claude-opus-5-5",
+        # Prompt je v api/src/assessments/pretest/prompt.md
+        "prompt": "",
+        "description": "LLM pro generování lehkého pretestu (2 uzavřené + 1 otevřená otázka) při generování kurzu.",
+    },
+    {
         "key": "image_generator_model",
         "name": "Image generátor – obrázkový model",
         "model": "gpt-image-2",
         "prompt": "",
         "description": "LLM pro generování obrázků z textového popisu.",
+    },
+    {
+        "key": "module_podcast_script",
+        "name": "Podcast modulu – scénář",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/podcast_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu napíše scénář podcastu (dialog moderátora a experta).",
+    },
+    {
+        "key": "module_podcast_tts_model",
+        "name": "Podcast modulu – hlasový model",
+        "model": "gpt-realtime-2.1-mini",
+        "prompt": "",
+        "description": "OpenAI Realtime model, který předčítá repliky scénáře podcastu (Speech API modely končí 6. 1. 2027).",
+    },
+    {
+        "key": "module_mindmap",
+        "name": "Myšlenková mapa modulu",
+        "model": "claude-sonnet-5",
+        # Prompt je v agents/mindmap_generator/prompt.md
+        "prompt": "",
+        "description": "LLM, které z obsahu modulu vytvoří strom myšlenkové mapy (vykresluje se jako mermaid mindmap).",
+    },
+]
+
+ASSESSMENT_TYPES: list[dict] = [
+    {
+        "code": "closed_questions",
+        "name": "Uzavřené otázky",
+        "description": (
+            "Lektor autoruje otázky s možnostmi; student je prochází po jedné, "
+            "na konci skóre proti prahu úspěšnosti. Bez LLM."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": ClosedQuestionsSettings().model_dump(),
+    },
+    {
+        "code": "open_question_ai",
+        "name": "Otevřené otázky generované AI",
+        "description": (
+            "AI vygeneruje na zaklade contextu otázku a tu pak i vyhodnotí"
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": OpenQuestionAISettings().model_dump(),
+    },
+    {
+        "code": "closed_questions_ai",
+        "name": "Uzavřené otázky generované AI",
+        "description": (
+            "AI vygeneruje z výukového obsahu sadu uzavřených otázek; "
+            "vyhodnocení bez LLM jako u uzavřených otázek."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": ClosedQuestionsAISettings().model_dump(),
+    },
+    {
+        "code": "socratic_dialog_ai",
+        "name": "Sokratovský dialog AI",
+        "description": (
+            "AI z výukového obsahu vymyslí téma a vede se studentem rozhovor "
+            "o 3–5 krocích. Jen se ptá, verdikt nevydává; na konci shrne průběh."
+        ),
+        "allowed_contexts": ["practice", "assessment", "course_final"],
+        "default_settings": SocraticDialogAISettings().model_dump(),
+    },
+    {
+        "code": "pretest",
+        "name": "Pretest",
+        "description": (
+            "Pevně daný test modulu z otázek vygenerovaných s kurzem (2 uzavřené + "
+            "1 otevřená); lektor upravuje jen jejich znění. Odemyká practice."
+        ),
+        "allowed_contexts": ["pretest"],
+        # Otázky doplní generátor kurzu, prázdný pretest se spustit nedá
+        "default_settings": {},
     },
 ]
 
@@ -816,6 +930,30 @@ COURSE_SUBJECTS: list[dict[str, str]] = [
     {"code": "obor.15", "name": "Speciální pedagogika – obecná"},
     {"code": "obor.16", "name": "Speciální pedagogika – specializace"},
     {"code": "obor.17", "name": "Ostatní"},
+]
+
+
+# Ceník AI modelů v USD za 1M tokenů (input, output, cache_read).
+# Stejné výchozí hodnoty vkládá migrace 0030_ai_model_price.sql.
+AI_MODEL_PRICES: list[dict] = [
+    {"model": m, "input_price": Decimal(i), "output_price": Decimal(o),
+     "cache_read_price": Decimal(c) if c is not None else None}
+    for m, i, o, c in [
+        ("claude-fable-5-1", "10", "50", "0.25"),
+        ("claude-fable-5", "10", "50", None),
+        ("claude-opus-5-5", "4", "20", "0.20"),
+        ("claude-opus-5", "5", "25", None),
+        ("claude-sonnet-5-5", "2", "10", "0.20"),
+        ("claude-sonnet-5", "2", "10", None),
+        ("claude-haiku-5-5", "0.10", "0.50", None),
+        ("gpt-4o-mini", "0.15", "0.60", "0.075"),
+        ("gpt-5-mini", "0.25", "2", "0.025"),
+        ("gpt-5.2", "1.75", "14", "0.175"),
+        ("gpt-5.4", "2.50", "15", "0.25"),
+        ("gpt-image-2", "5", "30", "1.25"),
+        # Hlas podcastu: vstup je text, výstup audio
+        ("gpt-realtime-2.1-mini", "0.60", "20", "0.06"),
+    ]
 ]
 
 
@@ -841,6 +979,16 @@ def seed_db() -> None:
 
         if db.query(CourseLevel).count() == 0:
             db.add_all([CourseLevel(**row) for row in COURSE_LEVELS])
+
+        if db.query(AiStyleAxis).count() == 0:
+            for row in AI_STYLE_AXES:
+                db.add(
+                    AiStyleAxis(
+                        code=row["code"],
+                        name=row["name"],
+                        options=[AiStyleOption(**o) for o in row["options"]],
+                    )
+                )
 
         if db.query(CourseType).count() == 0:
             db.add_all([CourseType(**row) for row in COURSE_TYPES])
@@ -869,6 +1017,19 @@ def seed_db() -> None:
 
         if db.query(SystemSetting).count() == 0:
             db.add_all([SystemSetting(**row) for row in SYSTEM_SETTINGS])
+
+        if db.query(AiModelPrice).count() == 0:
+            db.add_all([AiModelPrice(**row) for row in AI_MODEL_PRICES])
+
+        # Doplní chybějící formáty podle kódu — nový formát se přidá i do neprázdné tabulky
+        existing_codes = set(db.scalars(select(AssessmentType.code)))
+        db.add_all(
+            [
+                AssessmentType(**row)
+                for row in ASSESSMENT_TYPES
+                if row["code"] not in existing_codes
+            ]
+        )
 
         db.commit()
     finally:

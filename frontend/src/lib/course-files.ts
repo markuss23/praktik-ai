@@ -22,8 +22,7 @@ export const COURSE_FILE_ACCEPT = COURSE_FILE_EXTENSIONS.join(',');
 export const COURSE_FILE_MAX_SIZE = 25 * 1024 * 1024;
 
 /** Popisek pod výběrem souboru. */
-export const COURSE_FILE_FORMATS_LABEL =
-  'PDF, Word (.docx), PowerPoint, Excel, Markdown, text, obrázky (JPG, PNG), audio a video — max 25 MB';
+export const COURSE_FILE_FORMATS_LABEL = 'PDF, DOCX, PPTX, XLSX, MD, TXT, JPG, PNG, audio, video · max 25 MB';
 
 /** Vrátí důvod, proč backend soubor odmítne, nebo `null`, pokud projde. */
 export function courseFileError(file: File): string | null {

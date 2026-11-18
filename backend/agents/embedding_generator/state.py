@@ -12,6 +12,8 @@ class LearnBlockData(BaseModel):
     learn_id: int
     module_id: int
     course_id: int
+    title: str
+    breadcrumb: str  # „Kurz > Modul > Blok“ — kontext pro každý chunk
     content: str
 
 

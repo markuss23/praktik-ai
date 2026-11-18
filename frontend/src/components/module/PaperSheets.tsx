@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 interface PaperSheetsProps {
   /** HTML obsah learn bloku (listy oddělené značkou <hr> = zalomení listu) */
@@ -16,11 +17,13 @@ interface PaperSheetsProps {
  * dole uprostřed svoje číslo (obdobně jako stránky ve Wordu).
  */
 export function PaperSheets({ html, contentClassName = 'module-content' }: PaperSheetsProps) {
-  // Rozdělení na listy podle značek zalomení (<hr ...>)
+  // Rozdělení na listy podle značek zalomení (<hr ...>). Každý list se čistí až po
+  // rozdělení — řez už vyčištěného HTML by mohl vyrobit nebezpečný fragment
+  // (třeba `<hr>` uvnitř hodnoty atributu).
   const sheets = useMemo(() => {
     const parts = html
       .split(/<hr[^>]*>/i)
-      .map(part => part.trim())
+      .map(part => sanitizeHtml(part).trim())
       .filter(part => part.length > 0);
     return parts.length > 0 ? parts : [''];
   }, [html]);

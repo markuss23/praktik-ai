@@ -1,16 +1,22 @@
+import asyncio
+import logging
 from langchain_core.documents.base import Document
 from agents.vector_store import get_vector_store
 from agents.mentor.state import AgentState, ChunkData
 from agents.mentor.state import LearnBlockQueryAttr
 
+logger = logging.getLogger(__name__)
 
-def query_vector_store(state: AgentState) -> AgentState:
+MAX_DISTANCE = 0.75
+
+
+async def query_vector_store(state: AgentState) -> AgentState:
     """Uzlu pro dotazování vektorového úložiště."""
-    print("Dotazuji vektorové úložiště...")
+    logger.info("Dotazuji vektorové úložiště...")
 
     query_attr: LearnBlockQueryAttr | None = state.get("learn_block_query_attr")
     if not query_attr:
-        print("Chybí learn_block_query_attr ve state")
+        logger.warning("Chybí learn_block_query_attr ve state")
         return {"context_chunks": []}  # Vrať prázdné chunky
 
     course_id = query_attr.course_id
@@ -18,18 +24,33 @@ def query_vector_store(state: AgentState) -> AgentState:
 
     vector_store = get_vector_store()
 
-    results: list[Document] = vector_store.similarity_search(
-        query=state["message"],
-        k=10,  # počet nejbližších výsledků
-        filter={
-            "course_id": course_id,
-            "module_id": module_id,
-        },
+    # Celý kurz je větší prostor — víc kandidátů, ať se mezi ně dostane i aktuální modul
+    search_filter: dict = {"course_id": course_id}
+    k = 20
+    if state.get("scope", "module") == "module" and module_id is not None:
+        search_filter["module_id"] = module_id
+        k = 10
+
+    # Router přepsal navazující dotaz („a proč?“) na samostatnou otázku
+    query = state.get("search_query") or state["message"]
+
+    # Sync PGVector (embedding přes OpenAI + SQL) ve vlákně — jinak blokuje event loop
+    scored: list[tuple[Document, float]] = await asyncio.to_thread(
+        vector_store.similarity_search_with_score,
+        query=query,
+        k=k,  # počet nejbližších výsledků
+        filter=search_filter,
     )
 
-    print(f"✓ Nalezeno {len(results)} relevantních chunků")
+    # Kosinová vzdálenost (menší = bližší) — chunky mimo téma pryč, ať mentor raději řekne „nevím“
+    # ponytail: práh odhadnutý pro text-embedding-3-large, zvýšit, když mentor často „nic nenajde“
+    results: list[Document] = [
+        doc for doc, distance in scored if distance <= MAX_DISTANCE
+    ]
+
+    logger.info(f"✓ Nalezeno {len(results)}/{len(scored)} relevantních chunků")
     for idx, result in enumerate(results, 1):
-        print(f"  {idx}. {result.page_content[:100]}...")
+        logger.debug(f"  {idx}. {result.page_content[:100]}...")
 
     context_chunks: list[ChunkData] = [
         ChunkData(

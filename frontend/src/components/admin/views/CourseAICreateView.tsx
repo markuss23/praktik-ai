@@ -3,11 +3,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowRight, Loader2, Upload, X, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { createCourse, uploadCourseFile, generateCourseWithAI, type CourseGenerationProgress } from '@/lib/api-client';
-import { CoursePageHeader, CourseCategoryFields, CourseStepsCard, courseStepLabel } from '@/components/admin';
+import {
+  createCourse, uploadCourseFile, generateCourseWithAI, uploadCourseImage, generateCourseImage,
+  type CourseGenerationProgress,
+} from '@/lib/api-client';
+import { NewCourseImageField, type PendingCourseImage } from '@/components/admin/CourseImageField';
+import { CoursePageHeader, CourseCategoryFields, CourseStepsCard } from '@/components/admin';
 import { useCourseGeneration, COURSE_GENERATION_FINISHED_EVENT, type CourseGenerationFinishedDetail } from '@/components/admin/CourseGenerationProvider';
 import { BackgroundGenerationsBanner, GenerationProgressCard } from '@/components/admin/GenerationProgress';
-import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea } from '@/components/ui';
+import { Button, CatalogSelect, FilterSelect, Modal, Input, Textarea, useToast } from '@/components/ui';
 import { Difficulty } from '@/api';
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from '@/lib/difficulty';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
@@ -39,6 +43,9 @@ export function CourseAICreateView() {
     .filter((g) => g.courseId !== activeCourseId);
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Náhledový obrázek se uloží / vygeneruje až po založení kurzu (dřív nemá ID).
+  const [courseImage, setCourseImage] = useState<PendingCourseImage>({ kind: 'default' });
+  const toast = useToast();
   const {
     blocks, targets, subjects, requirements, eqfLevels, types, krauuCompetences, bloomLevels, crossSubjects,
     loading: catalogsLoading, error: catalogsError,
@@ -265,6 +272,27 @@ export function CourseAICreateView() {
         await uploadCourseFile(course.courseId, file);
       }
 
+      // Náhledový obrázek — kurz už existuje, takže jeho chyba nesmí zastavit
+      // generování obsahu; obrázek jde nastavit později v Souhrnu kurzu.
+      if (courseImage.kind === 'upload') {
+        try {
+          await uploadCourseImage(course.courseId, courseImage.image);
+        } catch {
+          toast.show({
+            variant: 'warning',
+            message: 'Náhledový obrázek se nepodařilo nahrát. Nastavíte ho později v Souhrnu kurzu.',
+          });
+        }
+      } else if (courseImage.kind === 'generate') {
+        // Běží na pozadí souběžně s generováním kurzu, hotový obrázek backend sám nastaví.
+        generateCourseImage(course.courseId).catch(() => {
+          toast.show({
+            variant: 'warning',
+            message: 'Generování náhledového obrázku se nepodařilo spustit. Zkuste to později v Souhrnu kurzu.',
+          });
+        });
+      }
+
       // Generování kurzu pomocí AI — kurz i podklady už jsou uložené, takže
       // případné selhání jde zopakovat bez nového vyplňování formuláře.
       setActiveCourseId(course.courseId);
@@ -308,20 +336,18 @@ export function CourseAICreateView() {
     <div className="flex-1 lg:h-full lg:overflow-hidden flex flex-col">
       <div className="shrink-0">
         <CoursePageHeader
-          breadcrumb="Kurzy / Přehled kurzů / Popis kurzu"
-          title="Popis kurzu"
-          stepLabel={courseStepLabel('description')}
+          breadcrumb="Kurzy / Přehled kurzů / Nový kurz"
+          title="Nový kurz"
           onSave={handleSave}
           showButtons={false}
         />
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
-      {/* Karta „Tvorba kurzu“ — nový kurz zatím nemá ID, další kroky jsou
-          dostupné až po vygenerování (pak se otevřou Podklady) */}
       <CourseStepsCard
-        current="description"
-        disabledSteps={['content', 'tests', 'summary']}
+        // Nový kurz zatím nemá ID — kroky jsou dostupné až po vygenerování (pak se otevřou Podklady)
+        current={null}
+        disabledSteps={['content', 'pretest', 'tests', 'final', 'summary']}
         className="lg:mt-8 lg:ml-8"
       />
 
@@ -486,6 +512,13 @@ export function CourseAICreateView() {
               <span className="text-xs text-muted-foreground mt-1">{formData.description.length}/500</span>
             </div>
 
+            <NewCourseImageField
+              value={courseImage}
+              onChange={setCourseImage}
+              disabled={loading}
+              labelClassName="block text-sm font-semibold text-foreground mb-2"
+            />
+
             {/* Počet modulů + Doporučená obtížnost + Délka kurzu */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
@@ -614,7 +647,7 @@ export function CourseAICreateView() {
                   Přetáhněte soubory sem nebo klikněte pro výběr
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {COURSE_FILE_FORMATS_LABEL} — lze vybrat více souborů najednou
+                  {COURSE_FILE_FORMATS_LABEL}
                 </p>
                 <input
                   ref={fileInputRef}

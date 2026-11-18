@@ -57,7 +57,7 @@ function CourseCardSkeleton() {
   return (
     <div
       className="bg-card overflow-hidden flex flex-col animate-pulse"
-      style={{ width: '100%', maxWidth: '590px', height: '530px', borderRadius: '8px', border: '1px solid var(--border)' }}
+      style={{ width: '100%', maxWidth: '590px', height: '554px', borderRadius: '8px', border: '1px solid var(--border)' }}
     >
       <div style={{ width: '100%', height: '226px' }} className="bg-muted" />
       <div className="flex flex-col p-6 grow">
@@ -242,6 +242,8 @@ export default function CourseSection() {
       description: course.description || '',
       duration: course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60),
       difficulty: course.difficulty,
+      imageUrl: course.imageUrl,
+      block: course.courseBlock,
       completedModules: mock?.completedModules ?? enrollment?.completedModules ?? 0,
       totalModules: course.modulesCount || 0,
       isEnrolled: !!(mock || enrollment),

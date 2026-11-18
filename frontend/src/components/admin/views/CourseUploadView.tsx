@@ -13,7 +13,7 @@ import { readApiErrorDetail } from '@/lib/api-error';
 import { COURSE_FILE_ACCEPT, COURSE_FILE_FORMATS_LABEL, courseFileError } from '@/lib/course-files';
 // Nahrání souboru pro vytvoření kurzu
 export function CourseUploadView() {
-  const { goToCourses, goToCourseEdit } = useAdminNavigation();
+  const { goToCourses, goToCourseContent } = useAdminNavigation();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -113,8 +113,8 @@ export function CourseUploadView() {
       
       await uploadCourseFile(course.courseId, file);
       
-      // Přechod na editaci kurzu
-      goToCourseEdit(course.courseId);
+      // Přechod na první krok tvorby (Podklady)
+      goToCourseContent(course.courseId);
     } catch (err: unknown) {
       const detail = await readApiErrorDetail(err);
       if (detail) {

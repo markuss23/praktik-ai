@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  Zdroj obrázků palette.png a fonts.png pro UI-KIT.md.
+  Po změně tokenů v src/app/globals.css uprav hodnoty tady, otevři v prohlížeči
+  a vyfoť elementy #palette a #fonts (šířka okna 1000 px).
+-->
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #E5E5E5; font-family: Geist, sans-serif; }
+  .sheet { width: 880px; padding: 40px; background: #EDEDED; }
+  h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #525252; }
+  .group { margin-bottom: 28px; }
+  .group:last-child { margin-bottom: 0; }
+  .row { display: flex; flex-wrap: wrap; }
+  .row.six .sw { flex-basis: 33.333%; box-sizing: border-box; }
+  .sw { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 14px; min-height: 72px; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 6%); }
+  .big .sw { min-height: 120px; }
+  .name { font-size: 14px; font-weight: 600; }
+  .meta { display: flex; flex-direction: column; gap: 2px; font-family: 'Geist Mono', monospace; font-size: 11px; white-space: nowrap; }
+  .meta b { font-weight: 500; font-size: 12px; }
+  .font { background: #fff; padding: 24px 28px; margin-bottom: 16px; border-radius: 10px; }
+  .font:last-child { margin-bottom: 0; }
+  .fhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: #737373; }
+  .fhead strong { font-size: 15px; color: #0A0A0A; }
+  .fhead code { font-family: 'Geist Mono', monospace; font-size: 11px; }
+  .sample { margin: 14px 0; color: #0A0A0A; }
+  .weights { display: flex; gap: 24px; border-top: 1px solid #E5E5E5; padding-top: 12px; font-size: 18px; color: #0A0A0A; }
+  .weights small { display: block; font-family: 'Geist Mono', monospace; font-size: 10px; color: #737373; font-weight: 400; }
+</style>
+</head>
+<body>
+
+<div id="palette" class="sheet">
+  <div class="group big"><h2>Brand</h2><div class="row" data-sw='[
+    ["Primary","--primary","59AC77"],["Brand accent","--brand-accent","F87B1B"],
+    ["Gradient L","--gradient-l","B1475C"],["Gradient R / Ring","--gradient-r","857AD2"]]'></div></div>
+  <div class="group"><h2>Stavy</h2><div class="row" data-sw='[
+    ["Success","--success","59AC77"],["Warning","--warning","FFBD2E"],
+    ["Destructive","--destructive","D5002A"],["Tip","--tip","383BF5"]]'></div></div>
+  <div class="group"><h2>Povrchy</h2><div class="row" data-sw='[
+    ["Background","--background","FFFFFF"],["Card","--card","FFFFFF"],["Popover","--popover","FFFFFF"],
+    ["Muted","--muted","F5F5F5"],["Secondary","--secondary","F5F5F5"],["Accent","--accent","F5F5F5"]]'></div></div>
+  <div class="group"><h2>Text a obrysy</h2><div class="row" data-sw='[
+    ["Foreground","--foreground","0A0A0A"],["On secondary","--secondary-foreground","171717"],
+    ["On accent","--accent-foreground","171717"],["Muted text","--muted-foreground","737373"],
+    ["Border","--border","E5E5E5"],["Input","--input","E5E5E5"]]'></div></div>
+  <div class="group"><h2>Grafy</h2><div class="row" data-sw='[
+    ["Chart 1","--chart-1","D4D4D4"],["Chart 2","--chart-2","737373"],["Chart 3","--chart-3","525252"],
+    ["Chart 4","--chart-4","404040"],["Chart 5","--chart-5","262626"]]'></div></div>
+</div>
+
+<div id="fonts" class="sheet">
+  <div class="font">
+    <div class="fhead"><strong>Geist · font-sans</strong><code>--font-geist-sans</code></div>
+    <div>Text a UI — výchozí písmo celé aplikace.</div>
+    <div class="sample" style="font: 400 20px Geist">Příliš žluťoučký kůň úpěl ďábelské ódy.</div>
+    <div class="weights" style="font-family: Geist" data-w="400,500,600,700"></div>
+  </div>
+  <div class="font">
+    <div class="fhead"><strong>Geist · font-heading</strong><code>--font-heading → --font-sans</code></div>
+    <div>Nadpisy komponent (karta, dialog, drawer, onboarding).</div>
+    <div class="sample" style="font: 600 26px Geist">Úvod do práce s umělou inteligencí</div>
+    <div class="weights" style="font-family: Geist" data-w="500,600"></div>
+  </div>
+  <div class="font">
+    <div class="fhead"><strong>Geist Mono · font-mono</strong><code>--font-geist-mono</code></div>
+    <div>Kód, tokeny a technické popisky.</div>
+    <div class="sample" style="font: 400 16px 'Geist Mono'">const kurz = await getCourse("ai-ve-vyuce");</div>
+    <div class="weights" style="font-family: 'Geist Mono'" data-w="400,500"></div>
+  </div>
+  <div class="font">
+    <div class="fhead"><strong>Bricolage Grotesque · font-display</strong><code>--font-bricolage</code></div>
+    <div>Velké nadpisy na landing page. Načtené řezy 600, 700, 800.</div>
+    <div class="sample" style="font: 700 44px 'Bricolage Grotesque'; letter-spacing: -.02em">Praktická AI pro učitele</div>
+    <div class="weights" style="font-family: 'Bricolage Grotesque'" data-w="600,700,800"></div>
+  </div>
+</div>
+
+<script>
+  const WEIGHT = { 400: "font-normal", 500: "font-medium", 600: "font-semibold", 700: "font-bold", 800: "font-extrabold" };
+  const lum = h => { const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255); return .2126 * r + .7152 * g + .0722 * b; };
+  document.querySelectorAll("[data-sw]").forEach(row => {
+    const items = JSON.parse(row.dataset.sw);
+    row.classList.toggle("six", items.length === 6);
+    row.innerHTML = items.map(([name, token, hex]) =>
+      `<div class="sw" style="background:#${hex};color:${lum(hex) > .5 ? "#0A0A0A" : "#fff"}">
+         <span class="name">${name}</span>
+         <span class="meta"><span>${token}</span><b>#${hex}</b></span></div>`).join("");
+  });
+  document.querySelectorAll("[data-w]").forEach(el => {
+    el.innerHTML = el.dataset.w.split(",").map(w =>
+      `<span style="font-weight:${w}">Aa Čč Řř 012<small>${w} · ${WEIGHT[w]}</small></span>`).join("");
+  });
+</script>
+</body>
+</html>

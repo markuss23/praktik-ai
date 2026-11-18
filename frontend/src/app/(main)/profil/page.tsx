@@ -68,7 +68,7 @@ function computeBadges(enrollments: MyEnrollment[]): Badge[] {
 export default function ProfilPage() {
   const { user, loading, login, isAuthenticated } = useAuth();
   const { roleLabel } = useRole();
-  const { currentUser, refetch: refetchUser } = useCurrentUser();
+  const { currentUser } = useCurrentUser();
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -244,7 +244,7 @@ export default function ProfilPage() {
           >
             <div>
               <p className="text-sm font-semibold text-foreground">AI Nastavení</p>
-              <p className="text-xs text-muted-foreground">Tón a vyjadřování</p>
+              <p className="text-xs text-muted-foreground">Styl komunikace AI tutora</p>
             </div>
           </Button>
 
@@ -306,9 +306,6 @@ export default function ProfilPage() {
       <AiPreferencesModal
         isOpen={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
-        initialAiTone={currentUser?.aiTone ?? ''}
-        initialAiExpressionLevel={currentUser?.aiExpressionLevel ?? ''}
-        onSaved={refetchUser}
       />
 
     </div>

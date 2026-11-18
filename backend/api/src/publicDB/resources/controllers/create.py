@@ -21,7 +21,10 @@ from api.src.publicDB.resources.schemas import (
     PubResourceFile,
     PubResourceCreateFork,
 )
+from api.enums import PubResourceStatus
 from api.storage import seaweedfs
+import uuid
+import mimetypes
 
 
 def create_resource(
@@ -159,13 +162,25 @@ async def upload_resource_file(
     )
     validate_owner_or_superadmin(resource, user, "materiál")
 
+    # Kontrola stavu, ve kterých lze upravovat materiál
+    if resource.status not in (PubResourceStatus.draft, PubResourceStatus.rejected):
+        raise HTTPException(
+            status_code=400,
+            detail="Nahrát soubor lze jen k materiálu ve stavu draft nebo rejected.",
+        )
+
     # Omezit velikost souboru na 30 MB
     max_file_size = 30 * 1024 * 1024
     content = await file.read()
     if len(content) > max_file_size:
         raise HTTPException(status_code=413, detail="Soubor nesmí být větší než 30 MB")
 
-    remote_path = f"resources/{resource_id}/{file.filename}"
+    # Vytvoření uníkátní cesty v úložisti, původní název je v DB
+    original_name = file.filename or "unknown"
+    mime, _ = mimetypes.guess_type(original_name)
+    ext = mimetypes.guess_extension(mime) if mime else None
+
+    remote_path = f"resources/{resource_id}/{uuid.uuid4().hex}{ext or ''}"
     seaweedfs.upload_file(
         remote_path,
         content,

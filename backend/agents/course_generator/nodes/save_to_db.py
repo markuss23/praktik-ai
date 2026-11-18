@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import Update, select, update
 from sqlalchemy.orm.session import Session
 
@@ -7,20 +9,24 @@ from agents.course_generator.state import (
     ModuleEnrichment,
 )
 from api import models
-from api.enums import QuestionType
-from api.src.agents.progress import set_progress
+from api.enums import AssessmentContext
+from api.src.assessments.pretest.schemas import PretestSettings
+from api.src.agents.progress import course_key, set_progress
+
+logger = logging.getLogger(__name__)
 
 
 def save_to_db_node(state: AgentState) -> AgentState:
     """Node pro uložení vygenerovaného kurzu do databáze."""
-    print("Ukládání kurzu do databáze...")
+    logger.info("Ukládání kurzu do databáze...")
 
     course_id: int = state.get("course_id")
     if course_id is not None:
-        set_progress(course_id, step=5, label="Ukládání kurzu")
+        set_progress(course_key(course_id), step=5, label="Ukládání kurzu")
     db: Session = state.get("db")
     generated_course: CourseGenerated | None = state.get("course")
     enrichments: list[ModuleEnrichment] | None = state.get("enrichments")
+    pretests: list[PretestSettings] | None = state.get("pretests")
     summary: str = state.get("summarize_content")
 
     if course_id is None:
@@ -35,6 +41,9 @@ def save_to_db_node(state: AgentState) -> AgentState:
     if enrichments is None:
         raise ValueError("enrichments are not available in state")
 
+    if pretests is None:
+        raise ValueError("pretests are not available in state")
+
     # Označení kurzu jako vygenerovaný
     stmt: Update = (
         update(models.Course)
@@ -45,7 +54,9 @@ def save_to_db_node(state: AgentState) -> AgentState:
     db.execute(stmt)
 
     # Uložení modulů
-    for module, enrichment in zip(generated_course.modules, enrichments, strict=True):
+    for module, enrichment, pretest in zip(
+        generated_course.modules, enrichments, pretests, strict=True
+    ):
         db_module = models.Module(
             course_id=course_id,
             title=module.title,
@@ -63,7 +74,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
             )
         )
         if principle_id is None:
-            print(
+            logger.warning(
                 f"   -> WARN: Neznámý neuro_principle_code '{enrichment.neuro_principle_code}' "
                 f"pro modul '{module.title}', použit fallback NP-01"
             )
@@ -103,7 +114,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     )
                 ).all()
             )
-            print(
+            logger.warning(
                 f"   -> WARN: Modul '{module.title}' nemá platné KRAUU kompetence "
                 f"({enrichment.krauu_competence_codes}), použity kompetence kurzu"
             )
@@ -133,7 +144,7 @@ def save_to_db_node(state: AgentState) -> AgentState:
                     )
                 ).all()
             )
-            print(
+            logger.warning(
                 f"   -> WARN: Modul '{module.title}' nemá platné Bloomovy úrovně "
                 f"({enrichment.bloom_level_codes}), použity úrovně kurzu"
             )
@@ -152,37 +163,23 @@ def save_to_db_node(state: AgentState) -> AgentState:
             )
         )
 
-        # Otázky jsou zvalidované v enrich_modules (poměr 2 + 1 vynucuje schéma)
-        for closed in (enrichment.closed_question_1, enrichment.closed_question_2):
-            db_question = models.PracticeQuestion(
+        # Povinný pretest modulu — otázky vygenerované v enrich_modules
+        db.add(
+            models.CourseAssessment(
+                course_id=course_id,
                 module_id=db_module.module_id,
-                question_type=QuestionType.closed.value,
-                question=closed.question,
-                correct_answer=closed.correct_answer,
+                assessment_type_code="pretest",
+                context=AssessmentContext.pretest,
+                is_enabled=True,
+                is_required=True,
+                settings=pretest.model_dump(),
             )
-            db.add(db_question)
-            db.flush()  # Získání question_id před přidáním options
-            db.add_all(
-                models.PracticeOption(question_id=db_question.question_id, text=text)
-                for text in closed.options
-            )
-
-        db_question = models.PracticeQuestion(
-            module_id=db_module.module_id,
-            question_type=QuestionType.open.value,
-            question=enrichment.open_question.question,
-            example_answer=enrichment.open_question.example_answer,
-        )
-        db.add(db_question)
-        db.flush()  # Získání question_id před přidáním keywords
-        db.add_all(
-            models.QuestionKeyword(question_id=db_question.question_id, keyword=keyword)
-            for keyword in enrichment.open_question.keywords
         )
 
     db.commit()
 
-    print(f"   -> Kurz uložen do databáze (course_id: {course_id})")
-    print(f"   -> Vytvořeno {len(generated_course.modules)} modulů")
+    logger.info(f"   -> Kurz uložen do databáze (course_id: {course_id})")
+    logger.info(f"   -> Vytvořeno {len(generated_course.modules)} modulů")
 
     return state
+

@@ -14,6 +14,20 @@ const BLOCK_WITH_SUBJECT = 'blok.c';
 const BLOCKS_REQUIRING_CROSS_SUBJECTS = ['blok.a', 'blok.b'];
 const MAX_CROSS_SUBJECTS = 3;
 
+// Barva značky bloku na kartě kurzu, viz [data-course-block] v globals.css.
+export type CourseBlockTone = 'context' | 'transform' | 'apply';
+
+const BLOCK_TONES: Record<string, CourseBlockTone> = {
+  'blok.a': 'context',
+  'blok.b': 'transform',
+  'blok.c': 'apply',
+};
+
+// Neznámý kód (nový blok v číselníku) vrací null, karta pak ukáže jen název bez barvy.
+export function courseBlockTone(block: Pick<CourseBlock, 'code'> | null | undefined): CourseBlockTone | null {
+  return (block && BLOCK_TONES[block.code]) ?? null;
+}
+
 /** Výchozí neurovědní princip — stejný, jaký backend dosazuje modulům bez principu. */
 export const DEFAULT_NEURO_PRINCIPLE_CODE = 'NP-01';
 
@@ -101,7 +115,6 @@ export function courseToUpdate(course: Course, overrides: Partial<CourseUpdate> 
     courseEqfLevelId: course.courseEqfLevelId,
     courseTypeId: course.courseTypeId,
     modulesCountAiGenerated: course.modulesCountAiGenerated,
-    minModulesToOpenFinalExam: course.minModulesToOpenFinalExam,
     durationMinutes: course.durationMinutes,
     difficulty: course.difficulty,
     ...courseCategoryValues(course),
@@ -148,14 +161,14 @@ export function validateModuleCategories(values: ModuleCategoryValues): string |
 
 /** Kompletní payload pro PUT /modules/{id} — stejně jako u kurzu backend chce vždy všechny vazby. */
 export function moduleToUpdate(
-  module: Pick<Module, 'title' | 'perex' | 'maxTaskAttempts'>,
+  module: Pick<Module, 'title' | 'perex'>,
   categories: ModuleCategoryValues,
   overrides: Partial<ModuleUpdate> = {},
 ): ModuleUpdate {
+  // max_task_attempts backend odstranil (71fe6c8), do payloadu už nepatří.
   return {
     title: module.title,
     perex: module.perex ?? '',
-    maxTaskAttempts: module.maxTaskAttempts,
     ...categories,
     ...overrides,
   };

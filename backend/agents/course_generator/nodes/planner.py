@@ -1,16 +1,19 @@
+import logging
 from agents.base.llm import get_llm_config, create_chat_llm
 from agents.course_generator.input_block import build_input_block
 from agents.course_generator.state import AgentState, CourseGenerated, CourseInput
-from api.src.agents.progress import set_progress
+from api.src.agents.progress import course_key, set_progress
+
+logger = logging.getLogger(__name__)
 
 
 def plan_content_node(state: AgentState) -> AgentState:
     """Node pro vytvoření modulů kurzu."""
-    print("Generání modulů kurzu...")
+    logger.info("Generání modulů kurzu...")
 
     course_id = state.get("course_id")
     if course_id is not None:
-        set_progress(course_id, step=4, label="Plánování modulů (AI)")
+        set_progress(course_key(course_id), step=4, label="Plánování modulů (AI)")
 
     course_input: CourseInput | None = state.get("course_input")
     summarize_content: str = state.get("summarize_content", "")
@@ -20,7 +23,7 @@ def plan_content_node(state: AgentState) -> AgentState:
         raise ValueError("course_input is not available in state")
 
     cfg = get_llm_config(db, "course_planner")
-    model = create_chat_llm(cfg.model, max_tokens=64000)
+    model = create_chat_llm(cfg.model, agent=cfg.key, max_tokens=64000)
     # method="json_schema" použije nativní strukturované výstupy Anthropic
     # (server-side vynucené schéma), místo pouhého tool-callingu – ten model
     # jen "navádí" a u zanořených schémat (kurz -> moduly) mohl vrátit
@@ -42,14 +45,14 @@ SOUHRN:
         )
 
     if len(output.modules) != course_input.modules_count_ai_generated:
-        print(
+        logger.warning(
             f"   -> WARN: LLM vrátil {len(output.modules)} modulů, "
             f"požadováno {course_input.modules_count_ai_generated}"
         )
 
     state["course"] = output
 
-    print(f"   -> Vytvořen kurz: {output.title}")
-    print(f"   -> Počet modulů: {len(output.modules)}")
+    logger.info(f"   -> Vytvořen kurz: {output.title}")
+    logger.info(f"   -> Počet modulů: {len(output.modules)}")
 
     return state

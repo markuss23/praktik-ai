@@ -1,9 +1,12 @@
 """Node pro načtení dat kurzu z databáze."""
 
+import logging
 from sqlalchemy import select
 
 from agents.embedding_generator.state import AgentState, LearnBlockData
 from api import models
+
+logger = logging.getLogger(__name__)
 
 
 def load_course_data_node(state: AgentState) -> AgentState:
@@ -11,7 +14,7 @@ def load_course_data_node(state: AgentState) -> AgentState:
     course_id = state["course_id"]
     db = state["db"]
 
-    print(f"Načítám learn blocky pro kurz {course_id}...")
+    logger.info(f"Načítám learn blocky pro kurz {course_id}...")
 
     # Ověř že kurz existuje a má správný status
     course = db.execute(
@@ -52,6 +55,8 @@ def load_course_data_node(state: AgentState) -> AgentState:
             learn_id=lb.learn_id,
             module_id=lb.module_id,
             course_id=course_id,
+            title=lb.title,
+            breadcrumb=f"{course.title} > {lb.module.title} > {lb.title}",
             content=lb.content,
         )
         for lb in learn_blocks_db

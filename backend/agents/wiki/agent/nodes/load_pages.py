@@ -1,9 +1,12 @@
 """Node pro načtení obsahu wiki stránek z lokálního disku."""
 
+import logging
 from pathlib import Path
 
 from agents.base.loaders.markdown import MarkdownLoader
 from agents.wiki.agent.state import WikiAgentState, WikiPageData
+
+logger = logging.getLogger(__name__)
 
 
 def load_pages_node(state: WikiAgentState) -> WikiAgentState:
@@ -15,7 +18,7 @@ def load_pages_node(state: WikiAgentState) -> WikiAgentState:
     loader = MarkdownLoader()
 
     md_files = list(Path(local_path).glob("*.md"))
-    print(f"Nacitam {len(md_files)} wiki stranek z {local_path}...")
+    logger.info(f"Nacitam {len(md_files)} wiki stranek z {local_path}...")
 
     pages: list[WikiPageData] = [
         WikiPageData(

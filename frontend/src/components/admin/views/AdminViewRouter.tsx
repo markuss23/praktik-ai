@@ -1,7 +1,10 @@
 'use client';
 
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState, type ReactNode } from 'react';
 import { useAdminNavigation, AdminView } from '@/hooks/useAdminNavigation';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useRole } from '@/hooks/useRole';
+import { getCourse } from '@/lib/api-client';
 import { PageSpinner } from '@/components/ui';
 import { useAdminChrome } from '../AdminChromeProvider';
 
@@ -12,11 +15,50 @@ const CourseTestsView = lazy(() => import('./CourseTestsView'));
 const CourseSummaryView = lazy(() => import('./CourseSummaryView'));
 const CourseAICreateView = lazy(() => import('./CourseAICreateView'));
 const CourseUploadView = lazy(() => import('./CourseUploadView'));
-const CourseEditView = lazy(() => import('./CourseEditView'));
 const ModuleEditView = lazy(() => import('./ModuleEditView'));
+const CoursePreviewView = lazy(() => import('./CoursePreviewView'));
+
+/**
+ * Editor kurzu jen pro autora a superadmina — ostatní (cizí kurz, starý odkaz)
+ * přesměruje do read-only náhledu. Do ověření vlastníka ukazuje spinner, ať se
+ * editor cizího kurzu ani na okamžik nevykreslí.
+ */
+function CourseEditorGuard({ courseId, children }: { courseId: number; children: ReactNode }) {
+  const { currentUser, loading: userLoading, isOwner } = useCurrentUser();
+  const { isSuperAdmin } = useRole();
+  const { goToCoursePreview } = useAdminNavigation();
+  const [owner, setOwner] = useState<{ courseId: number; ownerId: number | null } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCourse(courseId)
+      .then((course) => {
+        if (!cancelled) setOwner({ courseId, ownerId: course.ownerId });
+      })
+      // Kurz nejde načíst — chybu ukáže samotný editor
+      .catch(() => {
+        if (!cancelled) setOwner({ courseId, ownerId: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
+
+  const resolved = owner?.courseId === courseId && !userLoading;
+  // Bez načteného uživatele (selhalo /auth/me) nepřesměrovávat — oprávnění hlídá i backend
+  const forbidden =
+    resolved && owner.ownerId !== null && currentUser !== null && !isSuperAdmin && !isOwner(owner.ownerId);
+
+  useEffect(() => {
+    if (forbidden) goToCoursePreview(courseId, { replace: true });
+  }, [forbidden, courseId, goToCoursePreview]);
+
+  if (!resolved || forbidden) return <PageSpinner />;
+  return <>{children}</>;
+}
 
 // Pohledy s tlačítkem celá obrazovka
-const FOCUS_MODE_VIEWS: AdminView[] = ['course-edit', 'course-content', 'course-tests', 'course-summary'];
+const FOCUS_MODE_VIEWS: AdminView[] = ['course-edit', 'course-content', 'course-pretest', 'course-tests', 'course-final', 'course-summary'];
 
 // Router používá query params + shallow routing (bez reload stránky)
 export function AdminViewRouter() {
@@ -36,25 +78,47 @@ export function AdminViewRouter() {
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseContentView courseId={courseId} initialModuleId={moduleId} />;
+        return (
+          <CourseEditorGuard courseId={courseId}>
+            <CourseContentView courseId={courseId} initialModuleId={moduleId} />
+          </CourseEditorGuard>
+        );
 
+      // Stejný key: Pretest ↔ Testy ↔ Závěrečný test zachová state i neuložené drafty
+      case 'course-pretest':
       case 'course-tests':
+      case 'course-final':
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseTestsView courseId={courseId} initialModuleId={moduleId} />;
+        return (
+          <CourseEditorGuard courseId={courseId}>
+            <CourseTestsView
+              key={`tests-${courseId}`}
+              section={currentView === 'course-pretest' ? 'pretest' : currentView === 'course-final' ? 'final' : 'tests'}
+              courseId={courseId}
+              initialModuleId={moduleId}
+            />
+          </CourseEditorGuard>
+        );
 
+      // Popis kurzu je sloučený se Souhrnem
       case 'course-summary':
-        if (!courseId) {
-          return <CoursesListView />;
-        }
-        return <CourseSummaryView courseId={courseId} />;
-
       case 'course-edit':
         if (!courseId) {
           return <CoursesListView />;
         }
-        return <CourseEditView courseId={courseId} />;
+        return (
+          <CourseEditorGuard courseId={courseId}>
+            <CourseSummaryView courseId={courseId} />
+          </CourseEditorGuard>
+        );
+
+      case 'course-preview':
+        if (!courseId) {
+          return <CoursesListView />;
+        }
+        return <CoursePreviewView courseId={courseId} />;
 
       case 'course-upload':
         return <CourseUploadView />;

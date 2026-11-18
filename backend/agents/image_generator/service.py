@@ -28,7 +28,7 @@ class BaseImageGeneratorService(ABC):
         """
         Args:
             db: SQLAlchemy session.
-            progress_key: Klíč trackeru průběhu (image_progress.progress_key);
+            progress_key: Klíč trackeru průběhu (progress.image_key);
                 None, pokud se průběh nesleduje.
         """
         self.db = db

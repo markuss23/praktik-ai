@@ -1,6 +1,5 @@
 from typing import Literal
 
-import httpx
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from fastapi.responses import Response
@@ -9,7 +8,8 @@ from api.storage import seaweedfs
 
 from api import models
 
-from api.dependencies import CurrentUser, require_role
+from api.dependencies import CurrentUser, OptionalUser, require_role
+from api.src.publicDB.resources.visibility import ensure_resource_visible
 
 from api.src.common.annotations import (
     RESOURCE_DIFFICULTY_LEVEL_ID_ANNOTATION,
@@ -70,6 +70,7 @@ public_router = APIRouter(prefix="/resources", tags=["Resources"])
 @public_router.get("", operation_id="list_resources")
 async def list_resources(
     db: SessionSqlSessionDependency,
+    user: OptionalUser,
     include_inactive: INCLUDE_INACTIVE_ANNOTATION = False,
     text_search: TEXT_SEARCH_ANNOTATION = None,
     is_published: IS_PUBLISHED_ANNOTATION = False,
@@ -85,6 +86,8 @@ async def list_resources(
     is_fork: RESOURCE_IS_FORK_ANNOTATION = None,
     original_id: RESROURCE_ORIGINAL_ID_ANNOTATION = None,
 ) -> list[PubResource]:
+    # Co kdo smí vidět, hlídá get_resources podle user,
+    # parametry to obejít nejdou.
     return get_resources(
         db,
         include_inactive=include_inactive,
@@ -101,14 +104,15 @@ async def list_resources(
         status=status,
         is_fork=is_fork,
         original_id=original_id,
+        user=user,
     )
 
 
 @router.get("/{resource_id}", operation_id="get_resource")
 async def endp_get_resource(
-    resource_id: int, db: SessionSqlSessionDependency
+    resource_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> PubResource:
-    return get_resource(db, resource_id)
+    return get_resource(db, resource_id, user)
 
 
 @router.post("", operation_id="create_resource")
@@ -167,9 +171,9 @@ async def endp_update_resource_public_state(
     dependencies=[require_role("user")],
 )
 async def endp_list_resource_comments(
-    resource_id: int, db: SessionSqlSessionDependency
+    resource_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> list[PubResourceComment]:
-    return get_resource_comments(db, resource_id)
+    return get_resource_comments(db, resource_id, user)
 
 
 @router.post(
@@ -205,38 +209,29 @@ async def endp_delete_resource_comment(
 
 @router.get("/{resource_id}/files", operation_id="list_resource_files")
 async def endp_get_resource_files(
-    resource_id: int, db: SessionSqlSessionDependency
+    resource_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> list[PubResourceFile]:
-    return get_resource_files(db, resource_id)
+    return get_resource_files(db, resource_id, user)
 
 
 @router.get("/{resource_id}/files/{file_id}", operation_id="download_resource_file")
 async def endp_download_resource_file(
-    resource_id: int, file_id: int, db: SessionSqlSessionDependency
+    resource_id: int, file_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> Response:
-    """Stáhne soubor materiálu podle ID."""
+    """Stáhne soubor materiálu podle ID (jen pokud uživatel materiál smí vidět)."""
+    ensure_resource_visible(db, resource_id, user)
 
     resource_file = get_or_404(
         db,
         models.PubResourceFile,
         file_id,
-        check_active=False,
         detail="Soubor nenalezen",
     )
 
     if resource_file.resource_id != resource_id:
         raise HTTPException(status_code=404, detail="Soubor nenalezen")
 
-    try:
-        content = seaweedfs.download_file(resource_file.file_path)
-    except httpx.HTTPError as e:
-        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404, detail="Soubor už není v úložišti"
-            ) from e
-        raise HTTPException(
-            status_code=502, detail="Úložiště souborů je nedostupné"
-        ) from e
+    content = seaweedfs.download_file(resource_file.file_path)
 
     return attachment_response(content, resource_file.filename)
 

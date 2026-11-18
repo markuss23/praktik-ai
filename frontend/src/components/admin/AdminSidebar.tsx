@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot, BookText, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, BookOpen, BarChart3, Menu, X, ClipboardCheck, Bot, BookText, PanelLeftClose, PanelLeftOpen, Ticket } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRole } from '@/hooks/useRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getCourses, listResources } from '@/lib/api-client';
+import { countNewStaffTickets, STAFF_TICKETS_CHANGED_EVENT } from '@/components/tickets/api';
 import { Status } from '@/api';
 import { Button, Drawer, DrawerClose, DrawerContent } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,8 @@ const BASE_NAV_ITEMS = [
 
 const LECTOR_ITEMS = [
   { href: '/admin/stats', label: 'Statistiky', icon: BarChart3 },
+  // Lektor vidí tikety svých kurzů, garant a superadmin všechny.
+  { href: '/admin/tikety', label: 'Tikety', icon: Ticket },
 ];
 
 const SUPERADMIN_ITEMS = [
@@ -71,11 +74,37 @@ export function AdminSidebar() {
     return () => window.removeEventListener(REVIEW_COUNT_EVENT, handler);
   }, [isGuarantor, loadReviewCount]);
 
+  // Nové (nepřevzaté) tikety k vyřízení pro odznak u položky Tikety.
+  const [newTicketCount, setNewTicketCount] = useState(0);
+  const userId = currentUser?.userId;
+  const loadTicketCount = useCallback(async () => {
+    if (userId === undefined) return;
+    try {
+      setNewTicketCount(await countNewStaffTickets(userId));
+    } catch {
+      // odznak je jen nápověda
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadTicketCount();
+  }, [loadTicketCount, pathname]);
+
+  useEffect(() => {
+    const handler = () => { void loadTicketCount(); };
+    window.addEventListener(STAFF_TICKETS_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(STAFF_TICKETS_CHANGED_EVENT, handler);
+  }, [loadTicketCount]);
+
   // Build nav items
   const navItems = [
     BASE_NAV_ITEMS[0],
     BASE_NAV_ITEMS[1],
-    ...LECTOR_ITEMS,
+    ...LECTOR_ITEMS.map((item) =>
+      item.href === '/admin/tikety'
+        ? { ...item, badge: newTicketCount > 0 ? newTicketCount : undefined }
+        : item,
+    ),
     ...(can('superadmin') ? SUPERADMIN_ITEMS : []),
     ...(isGuarantor ? [
       { href: '/admin/review', label: 'Ke schválení', icon: ClipboardCheck, badge: reviewCount > 0 ? reviewCount : undefined },

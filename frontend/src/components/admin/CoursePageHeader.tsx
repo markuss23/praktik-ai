@@ -1,5 +1,6 @@
 'use client';
 
+import type { Ref } from 'react';
 import { Check, Eye, Loader2, Maximize, Menu, MessageSquare, Minimize, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
 import { Button } from '@/components/ui';
@@ -20,8 +21,13 @@ interface CoursePageHeaderProps {
  showFullscreenToggle?: boolean;
   showButtons?: boolean;
   onMenuClick?: () => void;
+  /** Přepínač panelu komentářů ke schválení (jen u vráceného kurzu s komentáři). */
   onCommentsClick?: () => void;
+  /** Počet nevyřešených komentářů aktuálního kroku — badge na tlačítku. */
   commentsCount?: number;
+  commentsOpen?: boolean;
+  /** Ref na kořen hlavičky — panel komentářů se pod ni ukotví. */
+  headerRef?: Ref<HTMLDivElement>;
 }
 
 // indikátor stavu autosave
@@ -63,11 +69,13 @@ export function CoursePageHeader({
   onMenuClick,
   onCommentsClick,
   commentsCount,
+  commentsOpen = false,
+  headerRef,
 }: CoursePageHeaderProps) {
   const { focusMode, toggleFocusMode } = useAdminChrome();
 
   return (
-    <div className="bg-card border-b">
+    <div ref={headerRef} className="bg-card border-b">
       <div className="px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-start gap-2 sm:gap-3 min-w-0">
@@ -93,25 +101,12 @@ export function CoursePageHeader({
                 )}
               </div>
             </div>
-            {onCommentsClick && (
-              <Button
-                variant="plain"
-                type="button"
-                onClick={onCommentsClick}
-                className={cn(BTN_KEEP_BOX, "lg:hidden relative p-2 -mr-2 mt-0.5 hover:bg-muted rounded-md transition-colors shrink-0")}
-                aria-label="Zobrazit komentáře"
-              >
-                <MessageSquare size={20} />
-                {commentsCount !== undefined && commentsCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                    {commentsCount}
-                  </span>
-                )}
-              </Button>
-            )}
           </div>
           {showButtons && (
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {onCommentsClick && (
+                <CommentsToggle onClick={onCommentsClick} count={commentsCount} open={commentsOpen} />
+              )}
               {preview && (
                 <Button
                   variant={preview.active ? 'brand-solid' : 'outline'}
@@ -171,6 +166,29 @@ export function CoursePageHeader({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Tlačítko panelu komentářů ke schválení; badge = nevyřešené komentáře. */
+export function CommentsToggle({ onClick, count, open }: { onClick: () => void; count?: number; open: boolean }) {
+  return (
+    <Button
+      variant={open ? 'brand-solid' : 'outline'}
+      size="lg"
+      type="button"
+      onClick={onClick}
+      aria-pressed={open}
+      aria-label={count ? `Komentáře ke schválení, nevyřešené: ${count}` : 'Komentáře ke schválení'}
+      className="relative px-3"
+    >
+      <MessageSquare data-icon="inline-start" />
+      <span className="hidden sm:inline">Komentáře</span>
+      {count !== undefined && count > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 bg-brand-accent text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          {count}
+        </span>
+      )}
+    </Button>
   );
 }
 

@@ -16,7 +16,11 @@ from api.src.enrollments.routers import router as enrollments_router
 from api.src.feedbacks.routers import router as feedbacks_router
 from api.src.catalogs.routers import router as catalogs_router
 from api.src.superadmin.routers import router as superadmin_router
-from api.src.module_tickets.routers import router as module_tickets_router
+from api.src.tickets.routers import (
+    router as tickets_router,
+    public_router as tickets_public_router,
+)
+from api.src.assessments.routers import router as assessments_router
 from api.src.editor_images.routers import (
     router as editor_images_router,
     public_router as editor_images_public_router,
@@ -29,7 +33,11 @@ from api.src.publicDB.collections.routers import router as collections_router
 from api.src.publicDB.collections.routers import (
     public_router as collections_public_router,
 )
-from api.dependencies import auth
+from api.src.ai_usage.routers import (
+    router as ai_usage_router,
+    admin_router as ai_usage_admin_router,
+)
+from api.dependencies import ai_budget, auth
 
 router = APIRouter()
 
@@ -37,23 +45,32 @@ router = APIRouter()
 router.include_router(auth_router)
 router.include_router(courses_public_router)
 router.include_router(catalogs_router)
+router.include_router(tickets_public_router)
 router.include_router(agents_public_router)
 
 # Všechny ostatní routery s povinnou autentizací
 router.include_router(courses_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(modules_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(activities_router, dependencies=[Depends(auth.get_current_user)])
-router.include_router(agents_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(
+    agents_router, dependencies=[Depends(auth.get_current_user), Depends(ai_budget)]
+)
 router.include_router(users_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(enrollments_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(feedbacks_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(superadmin_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(
-    module_tickets_router, dependencies=[Depends(auth.get_current_user)]
+    ai_usage_admin_router, dependencies=[Depends(auth.get_current_user)]
+)
+router.include_router(ai_usage_router, dependencies=[Depends(auth.get_current_user)])
+router.include_router(
+    assessments_router,
+    dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],
 )
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
 )
+router.include_router(tickets_router, dependencies=[Depends(auth.get_current_user)])
 # --
 # router.include_router(categories_router)
 # router.include_router(courses_router)

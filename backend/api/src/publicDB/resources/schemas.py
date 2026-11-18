@@ -52,6 +52,8 @@ class PubResourceCreateFork(ORMModel):
 
 
 class PubResourceUpdate(PubResourceBase):
+    subject_id: int
+    target_id: int
     krauu_competence_ids: list[int] = KRAUU_IDS_FIELD
     bloom_level_ids: list[int] = BLOOM_IDS_FIELD
 

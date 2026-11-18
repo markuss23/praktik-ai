@@ -3,6 +3,8 @@ from typing import NotRequired, TypedDict
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from api.src.assessments.pretest.schemas import PretestSettings
+
 
 # ---------- Agentní schémata (LLM structured output) ----------
 # Tato schémata jsou oddělena od API response schémat.
@@ -19,24 +21,10 @@ class CourseGenerated(BaseModel):
     modules: list[ModuleGenerated] = []
 
 
-class ClosedQuestionGenerated(BaseModel):
-    question: str
-    options: list[str] = Field(description="Přesně 3 textově odlišné možnosti.")
-    correct_answer: str = Field(description="Doslovná kopie textu správné možnosti.")
-
-
-class OpenQuestionGenerated(BaseModel):
-    question: str
-    example_answer: str
-    keywords: list[str] = Field(description="Přesně 3 klíčové body dobré odpovědi.")
-
-
 class ModuleEnrichment(BaseModel):
-    """Číselníky a otázky k hotovému výkladu modulu.
+    """Zařazení hotového výkladu modulu do číselníků.
 
-    Pořadí polí je záměrné: model vyplňuje pole v pořadí schématu, takže
-    o Bloomových úrovních rozhodne dřív, než podle nich napíše otázky.
-    Pevná pole otázek vynucují poměr 2 uzavřené + 1 otevřená.
+    Otázky (pretest) generuje zvlášť api/src/assessments/pretest/generator.py.
     """
 
     neuro_principle_code: str = Field(
@@ -48,9 +36,6 @@ class ModuleEnrichment(BaseModel):
     bloom_level_codes: list[str] = Field(
         description='1–3 číselné kódy úrovní Bloomovy taxonomie, např. "3".'
     )
-    closed_question_1: ClosedQuestionGenerated
-    closed_question_2: ClosedQuestionGenerated
-    open_question: OpenQuestionGenerated
 
 
 # ---------- Vstupní data kurzu ----------
@@ -76,3 +61,4 @@ class AgentState(TypedDict):
     # Výstup
     course: NotRequired[CourseGenerated]
     enrichments: NotRequired[list[ModuleEnrichment]]  # 1:1 k course.modules
+    pretests: NotRequired[list[PretestSettings]]  # 1:1 k course.modules

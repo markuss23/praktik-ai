@@ -1,8 +1,7 @@
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from api.enums import QuestionType
+from agents.mindmap_generator.schemas import MindMap
 
 
 class GenerateCourseRequest(BaseModel):
@@ -12,10 +11,9 @@ class GenerateCourseRequest(BaseModel):
 
 
 class GenerateCourseResponse(BaseModel):
-    """Response s vygenerovaným kurzem"""
+    """Response po spuštění generování. Výsledek se čte z DB po dokončení."""
 
     title: str
-    modules: list[dict]
 
 
 class CourseGenerationProgressResponse(BaseModel):
@@ -70,6 +68,33 @@ class ImageGenerationProgressResponse(BaseModel):
     )
 
 
+class GeneratePodcastResponse(BaseModel):
+    """Výsledek generování podcastu modulu."""
+
+    lines_count: int = Field(..., description="Počet replik ve scénáři")
+    file_path: str = Field(..., description="Cesta k WAV v SeaweedFS")
+
+
+class PodcastGenerationProgressResponse(BaseModel):
+    """Response s průběhem generování podcastu modulu (background task)."""
+
+    step: int = Field(..., description="Aktuální krok (0 = ještě nezapočato)")
+    total: int = Field(..., description="Celkový počet kroků")
+    label: str = Field(..., description="Popis aktuálního kroku")
+    status: str = Field(..., description="pending | running | completed | failed")
+    error: str | None = Field(default=None, description="Chybová zpráva (pokud failed)")
+    result: GeneratePodcastResponse | None = Field(
+        default=None, description="Výsledek po dokončení (pokud completed)"
+    )
+
+
+class GenerateMindmapResponse(BaseModel):
+    """Vygenerovaná myšlenková mapa modulu (už uložená k modulu)."""
+
+    mindmap: MindMap = Field(..., description="Strom myšlenkové mapy")
+    mindmap_mermaid: str = Field(..., description="Text pro mermaid `mindmap`")
+
+
 class ActiveImageGeneration(BaseModel):
     """Právě běžící generování obrázku (pro obnovení sledování po refreshi stránky)."""
 
@@ -77,108 +102,15 @@ class ActiveImageGeneration(BaseModel):
     entity_id: int = Field(..., description="course_id, resp. module_id")
 
 
-class GenerateAssessmentRequest(BaseModel):
-    """Request pro generování assessment otázky"""
-
-    module_id: int = Field(..., description="ID modulu")
-
-
-class GenerateAssessmentResponse(BaseModel):
-    """Response s vygenerovanou assessment otázkou"""
-
-    session_id: int = Field(..., description="ID task session")
-    generated_question: str = Field(..., description="Vygenerovaná otázka")
-
-
-class EvaluateAssessmentRequest(BaseModel):
-    """Request pro vyhodnocení assessment odpovědi"""
-
-    session_id: int = Field(..., description="ID assessment session")
-    user_response: str = Field(..., min_length=1, description="Odpověď studenta")
-
-
-class EvaluateAssessmentResponse(BaseModel):
-    """Response s výsledkem hodnocení"""
-
-    attempt_id: int = Field(..., description="ID pokusu")
-    ai_score: int = Field(..., description="Skóre 0-100")
-    is_passed: bool = Field(..., description="Zda student uspěl")
-    ai_feedback: str = Field(..., description="Zpětná vazba od AI")
-
-
-class GeneratePracticeQuestionRequest(BaseModel):
-    """Request pro generování personalizované procvičovací otázky"""
-
-    module_id: int = Field(..., description="ID modulu")
-    question_type: QuestionType = Field(..., description="Typ otázky: open nebo closed")
-
-
-class PracticeQuestionOption(BaseModel):
-    """Jedna možnost uzavřené otázky (bez is_correct — skrytý před klientem)"""
-
-    text: str
-
-
-class GeneratePracticeQuestionResponse(BaseModel):
-    """Response s vygenerovanou procvičovací otázkou"""
-
-    user_question_id: int = Field(..., description="ID uložené otázky")
-    question_type: QuestionType
-    generated_question: str = Field(..., description="Vygenerovaná otázka")
-    options: list[PracticeQuestionOption] | None = Field(
-        default=None, description="Možnosti (pouze pro closed otázky)"
-    )
-
-
-class EvaluatePracticeAnswerRequest(BaseModel):
-    """Request pro vyhodnocení odpovědi na procvičovací otázku"""
-
-    user_question_id: int = Field(..., description="ID procvičovací otázky")
-    user_input: str = Field(..., min_length=1, description="Odpověď studenta")
-
-
-class EvaluatePracticeAnswerResponse(BaseModel):
-    """Response s výsledkem vyhodnocení procvičovací odpovědi"""
-
-    attempt_id: int = Field(..., description="ID pokusu")
-    is_correct: bool = Field(..., description="Zda je odpověď správná")
-    ai_response: str | None = Field(
-        default=None, description="Zpětná vazba od AI (pouze pro open otázky)"
-    )
-
-
-class EvaluateOpenQuestionRequest(BaseModel):
-    """Request pro vyhodnocení odpovědi na otevřenou otázku modulu (nic se neukládá)"""
-
-    question_id: int = Field(..., description="ID otevřené PracticeQuestion")
-    user_input: str = Field(..., min_length=1, description="Odpověď studenta")
-
-
-class PracticeAttempt(BaseModel):
-    """Jeden pokus na procvičovací otázku"""
-
-    attempt_id: int
-    user_input: str
-    ai_response: str | None
-    is_correct: bool | None
-    created_at: datetime
-
-
-class PracticeQuestionWithAttempts(BaseModel):
-    """Procvičovací otázka s historií pokusů"""
-
-    user_question_id: int
-    question_type: QuestionType
-    generated_question: str
-    options: list[PracticeQuestionOption] | None
-    attempts: list[PracticeAttempt]
-    created_at: datetime
-
-
 class LearnBlocksChatRequest(BaseModel):
     """Request pro chat s learn blocky"""
 
-    learn_block_id: int = Field(..., description="ID learn blocku")
+    learn_block_id: int | None = Field(
+        None, description="ID learn blocku (povinné pro scope=module)"
+    )
+    course_id: int | None = Field(
+        None, description="ID kurzu — pro scope=course bez learn blocku"
+    )
     message: str = Field(..., description="Zpráva od uživatele (otázka)")
 
 

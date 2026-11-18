@@ -13,11 +13,23 @@ class MentorResult:
 class MentorService:
     """Service pro RAG mentor chat pomocí LangGraph."""
 
-    def __init__(self, db: Session, learn_block_id: int, user_id: int, message: str):
+    def __init__(
+        self,
+        db: Session,
+        course_id: int,
+        learn_block_id: int | None,
+        user_id: int,
+        message: str,
+        use_history: bool = True,
+        scope: str = "module",
+    ):
         self.db = db
+        self.course_id = course_id
         self.learn_block_id = learn_block_id
         self.user_id = user_id
         self.message = message
+        self.use_history = use_history
+        self.scope = scope
 
     async def chat(self) -> MentorResult:
         """Sestaví a spustí graf, vrátí odpověď mentora."""
@@ -25,9 +37,12 @@ class MentorService:
 
         result = await app.ainvoke(
             {
+                "course_id": self.course_id,
                 "learn_block_id": self.learn_block_id,
                 "user_id": self.user_id,
                 "message": self.message,
+                "use_history": self.use_history,
+                "scope": self.scope,
                 "db": self.db,
             }
         )

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -5,7 +6,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from agents.base.llm import create_chat_llm, get_llm_config
 from agents.image_generator.prompt_template import render_image_prompt
 from agents.image_generator.state import ImageContext, ImageGeneratorState, ImageSpec
-from api.src.agents.image_progress import set_image_progress
+from api.src.agents.progress import set_progress
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
@@ -34,8 +37,8 @@ def make_build_prompt_node(
     """
 
     def build_prompt_node(state: ImageGeneratorState) -> ImageGeneratorState:
-        print(f"Sestavuji specifikaci obrázku z kontextu {label}...")
-        set_image_progress(
+        logger.info(f"Sestavuji specifikaci obrázku z kontextu {label}...")
+        set_progress(
             state.get("progress_key"),
             step=2,
             label="Sestavení promptu (AI)",
@@ -53,7 +56,7 @@ def make_build_prompt_node(
             default_model=DEFAULT_MODEL,
             default_prompt=default_prompt,
         )
-        llm = create_chat_llm(cfg.model).with_structured_output(ImageSpec)
+        llm = create_chat_llm(cfg.model, agent=cfg.key).with_structured_output(ImageSpec)
 
         messages = [
             SystemMessage(content=cfg.prompt),
@@ -65,8 +68,8 @@ def make_build_prompt_node(
         state["image_spec"] = image_spec
         state["image_prompt"] = render_image_prompt(image_spec)
 
-        print(f"Image spec: {image_spec.model_dump()}")
-        print(f"Image prompt:\n{state['image_prompt']}")
+        logger.debug(f"Image spec: {image_spec.model_dump()}")
+        logger.debug(f"Image prompt:\n{state['image_prompt']}")
 
         return state
 

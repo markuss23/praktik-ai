@@ -1,20 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Module, Course } from '@/api';
+import { useState, useEffect, useRef } from 'react';
+import { Module, Course, Status } from '@/api';
+import { AuthorCommentsDrawer, useAuthorReviewFeedback, useAutoOpenReviewComments } from '@/components/admin/ReviewComments';
+import { reviewFeedbackLabel } from '@/lib/review-feedback';
 import { getCourse, updateCourse, updateModule, listCourseFiles, downloadCourseFile, type CourseFileItem } from '@/lib/api-client';
 import {
   CoursePageHeader, PageFooterActions, LoadingState, ErrorState, CourseCreationTabs, CourseRubric, CourseCategoryFields, ModuleModal,
-  CourseStepsCard, courseStepLabel, moduleCountHint, useCourseStepNavigation, useAdminChrome,
+  CourseStepsCard, courseStepLabel, moduleCountHint, finalTestHint, useCourseStepNavigation, useAdminChrome,
   type CreationTab, type CourseStep, type ModuleFormData,
 } from '@/components/admin';
 import { StudentPreview } from '@/components/admin/StudentPreview';
-import { Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
+import { CourseImageField } from '@/components/admin/CourseImageField';
+import { CatalogSelect, Drawer, DrawerContent, Button, Input, Textarea, ModuleCategories } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { useCatalogData } from '@/hooks/useCatalogData';
+import { useCourseAssessments } from '@/hooks/useCourseAssessments';
 import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
 import {
-  courseCategoryValues, courseToUpdate, crossSubjectsRule, validateCourseCategories,
+  courseCategoryValues, courseToUpdate, crossSubjectsRule, subjectAllowed, validateCourseCategories,
   moduleCategoryValues, moduleToUpdate, validateModuleCategories,
   type CourseCategoryValues,
 } from '@/lib/course-categories';
@@ -32,10 +36,17 @@ interface CourseSummaryViewProps {
   courseId: number;
 }
 
-// Souhrn kurzu s přehledem modulů
+// Stejný trigger jako u KRAUU / Bloom / průřezových oborů níž
+const CATALOG_TRIGGER_CLASS = 'w-full px-3 py-2 border border-border rounded-lg text-sm text-foreground bg-card data-[size=default]:h-auto';
+
+// Souhrn kurzu s přehledem modulů — od sloučení i popis, obrázek a zařazení kurzu (dřív krok Popis kurzu)
 export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
-  const { goToCourseTests, goToCourses } = useAdminNavigation();
+  const { goToCourseFinal, goToCourses } = useAdminNavigation();
   const goToStep = useCourseStepNavigation(courseId);
+  // Testy kurzu (pretest a připojené formáty) pro souhrn
+  const courseAssessments = useCourseAssessments(courseId);
+  const testCount = (moduleId?: number) =>
+    (courseAssessments ?? []).filter((c) => moduleId === undefined || c.moduleId === moduleId).length;
   const { focusMode } = useAdminChrome();
   const [previewOpen, setPreviewOpen] = useState(false);
   
@@ -53,9 +64,21 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     bloomLevelIds: [],
     crossSubjectIds: [],
   });
+  // Zařazení z bývalého kroku Popis kurzu; 0 = „Neurčeno"
+  const [editedCatalog, setEditedCatalog] = useState({
+    courseBlockId: 0,
+    courseTargetId: 0,
+    courseSubjectId: 0,
+    courseRequirementId: 0,
+    courseEqfLevelId: 0,
+    courseTypeId: 0,
+  });
   // Chyba uložení se ukazuje u formuláře — `error` přepíná celý pohled na ErrorState.
   const [saveError, setSaveError] = useState('');
-  const { blocks, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects, loading: catalogsLoading } = useCatalogData();
+  const {
+    blocks, targets, subjects, requirements, eqfLevels, types, neuroPrinciples, krauuCompetences, bloomLevels, crossSubjects,
+    loading: catalogsLoading,
+  } = useCatalogData();
   const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false);
   // Úprava modulu (název, perex, číselníky) — AI je naplní, autor je ale musí
   // umět opravit i tady, ne jen v editoru obsahu. `null` = modal zavřený.
@@ -67,6 +90,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [filesLoading, setFilesLoading] = useState(true);
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
 
+  // Komentáře garanta u vráceného kurzu — v souhrnu všechny najednou, s názvem modulu
+  const { feedbacks, reply: replyToReviewFeedback, toggleResolve: toggleReviewFeedback } = useAuthorReviewFeedback(courseId);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Panel komentářů začíná pod hlavičkou stránky
+  const reviewHeaderRef = useRef<HTMLDivElement>(null);
+  const showCommentsPanel = course?.status === Status.Edited && feedbacks.length > 0;
+  useAutoOpenReviewComments(courseId, showCommentsPanel, feedbacks, feedbacks, setCommentsOpen);
+
   useEffect(() => {
     async function loadCourse() {
       try {
@@ -76,6 +107,14 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         setEditedTitle(courseData.title || '');
         setEditedDescription(courseData.description || '');
         setEditedCategories(courseCategoryValues(courseData));
+        setEditedCatalog({
+          courseBlockId: courseData.courseBlockId ?? 0,
+          courseTargetId: courseData.courseTargetId ?? 0,
+          courseSubjectId: courseData.courseSubjectId ?? 0,
+          courseRequirementId: courseData.courseRequirementId ?? 0,
+          courseEqfLevelId: courseData.courseEqfLevelId ?? 0,
+          courseTypeId: courseData.courseTypeId ?? 0,
+        });
         // Rozbalit všechny moduly
         setExpandedOutlineItems(new Set((courseData.modules || []).map((_, i) => i)));
       } catch (err) {
@@ -127,14 +166,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     });
   };
 
-  const getTotalQuestions = () => {
-    return modules.reduce((total, module) => {
-      return total + (module.practiceQuestions?.length || 0);
-    }, 0);
-  };
-
   const handleBack = () => {
-    goToCourseTests(courseId);
+    goToCourseFinal(courseId);
   };
 
   const openModuleEdit = (module: Module) => {
@@ -188,11 +221,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
           perex: moduleForm.perex.trim(),
         }),
       );
-      // PUT vrací modul bez otázek a bloků — ty si necháme z načteného kurzu,
-      // aby souhrn dál počítal otázky správně.
+      // PUT vrací modul bez bloků — ty si necháme z načteného kurzu (náhled je potřebuje)
       setModules(prev => prev.map(m => (
         m.moduleId === updated.moduleId
-          ? { ...m, ...updated, learnBlocks: m.learnBlocks, practiceQuestions: m.practiceQuestions }
+          ? { ...m, ...updated, learnBlocks: m.learnBlocks }
           : m
       )));
       setModuleForm(null);
@@ -222,7 +254,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
   const [savingOnly, setSavingOnly] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
-  const crossRule = crossSubjectsRule(blocks, course?.courseBlockId);
+  const crossRule = crossSubjectsRule(blocks, editedCatalog.courseBlockId);
+  const subjectEnabled = subjectAllowed(blocks, editedCatalog.courseBlockId);
 
   const saveCourseChanges = async () => {
     if (!course) return;
@@ -235,6 +268,13 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     await updateCourse(courseId, courseToUpdate(course, {
       title: editedTitle,
       description: editedDescription,
+      // 0 = „Neurčeno", null hodnotu na backendu vymaže
+      courseBlockId: editedCatalog.courseBlockId || null,
+      courseTargetId: editedCatalog.courseTargetId || null,
+      courseSubjectId: subjectEnabled ? editedCatalog.courseSubjectId || null : null,
+      courseRequirementId: editedCatalog.courseRequirementId || null,
+      courseEqfLevelId: editedCatalog.courseEqfLevelId,
+      courseTypeId: editedCatalog.courseTypeId,
       ...editedCategories,
       crossSubjectIds: editedCategories.crossSubjectIds,
     }));
@@ -284,10 +324,16 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     return <ErrorState message={error || 'Kurz nenalezen'} />;
   }
 
-  const totalQuestions = getTotalQuestions();
+  const totalTests = testCount();
+  // Pretest i závěrečný test mají vlastní krok
+  const stepTests = (courseAssessments ?? []).filter((c) => c.assessmentTypeCode !== 'pretest' && c.context !== 'course_final').length;
+  const finalTests = (courseAssessments ?? []).filter((c) => c.context === 'course_final').length;
   const stepHints = {
     content: moduleCountHint(modules.length),
-    tests: `${totalQuestions} ${czechPlural(totalQuestions, 'otázka', 'otázky', 'otázek')} celkem`,
+    ...(courseAssessments && {
+      tests: `${stepTests} ${czechPlural(stepTests, 'test', 'testy', 'testů')} celkem`,
+      final: finalTestHint(finalTests),
+    }),
   };
 
   // Náhled pro studenta — rozpracovaný název, popis a zařazení kurzu
@@ -297,6 +343,10 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
     krauuCompetences: krauuCompetences.filter((k) => editedCategories.krauuCompetenceIds.includes(k.krauuId)),
     bloomLevels: bloomLevels.filter((b) => editedCategories.bloomLevelIds.includes(b.bloomId)),
     crossSubjects: crossSubjects.filter((c) => editedCategories.crossSubjectIds.includes(c.crossId)),
+    imageUrl: course?.imageUrl,
+    courseBlock: blocks.find((b) => b.blockId === editedCatalog.courseBlockId) ?? null,
+    difficulty: course?.difficulty,
+    durationMinutes: course?.durationMinutes,
   };
 
   // Osnova kurzu — nahrazena kartou „Tvorba kurzu“ (viz zakomentované použití v JSX).
@@ -359,14 +409,34 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
         saved={savedFeedback}
         showButtons={true}
         onMenuClick={() => setMobileOutlineOpen(true)}
+        onCommentsClick={showCommentsPanel ? () => setCommentsOpen((open) => !open) : undefined}
+        commentsCount={showCommentsPanel ? feedbacks.filter((fb) => !fb.isResolved).length : undefined}
+        commentsOpen={commentsOpen}
+        headerRef={reviewHeaderRef}
       />
+
+      {showCommentsPanel && (
+        <AuthorCommentsDrawer
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          anchorRef={reviewHeaderRef}
+          subtitle="Všechny komentáře kurzu"
+          feedbacks={feedbacks}
+          allFeedbacks={feedbacks}
+          emptyText="Kurz nemá žádné komentáře."
+          contextLabel={(fb) => reviewFeedbackLabel(fb, { withModule: true })}
+          onReply={replyToReviewFeedback}
+          onToggleResolve={toggleReviewFeedback}
+        />
+      )}
       {/* Lišta „Fáze tvorby“ je nahrazená kartou „Tvorba kurzu“ */}
       {/* <CourseStepNav current="summary" onNavigate={handleStepNavigate} /> */}
       {previewOpen ? (
         <StudentPreview
           course={previewCourse}
+          courseId={courseId}
           modules={modules}
-          start={{ screen: 'course' }}
+          start={{ screen: 'catalog' }}
           onExit={() => setPreviewOpen(false)}
         />
       ) : (
@@ -416,6 +486,87 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                   placeholder="Zadejte popis kurzu"
                 />
               </div>
+
+              <CourseImageField
+                // Ukládá se hned po vygenerování/odebrání, nezávisle na iložit
+                courseId={courseId}
+                imageUrl={course.imageUrl}
+                onChange={(imageUrl) => setCourse((prev) => (prev ? { ...prev, imageUrl } : prev))}
+                labelClassName="block text-sm font-medium text-foreground mb-1"
+                // Stejné stavy jako úpravy kurzu na backendu (koncept / vygenerovaný / editovaný)
+                locked={!([Status.Draft, Status.Generated, Status.Edited] as Status[]).includes(course.status as Status)}
+              />
+
+              {!catalogsLoading && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Blok</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseBlockId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseBlockId: next }))}
+                      options={blocks.map((b) => ({ value: b.blockId, label: b.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Blok"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Cílová skupina</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseTargetId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseTargetId: next }))}
+                      options={targets.map((t) => ({ value: t.targetId, label: t.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Cílová skupina"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Předmět</label>
+                    <CatalogSelect
+                      value={subjectEnabled ? editedCatalog.courseSubjectId : 0}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseSubjectId: next }))}
+                      disabled={!subjectEnabled}
+                      options={subjects.map((s) => ({ value: s.subjectId, label: s.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Předmět"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">EQF úroveň *</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseEqfLevelId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseEqfLevelId: next }))}
+                      options={eqfLevels.map((l) => ({ value: l.eqfLevelId, label: `${l.code} – ${l.name}` }))}
+                      aria-label="EQF úroveň"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Typ kurzu *</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseTypeId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseTypeId: next }))}
+                      options={types.map((t) => ({ value: t.typeId, label: t.name }))}
+                      aria-label="Typ kurzu"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Povinnost kurzu</label>
+                    <CatalogSelect
+                      value={editedCatalog.courseRequirementId}
+                      onValueChange={(next) => setEditedCatalog((prev) => ({ ...prev, courseRequirementId: next }))}
+                      options={requirements.map((r) => ({ value: r.requirementId, label: r.name }))}
+                      emptyLabel="Neurčeno"
+                      aria-label="Povinnost kurzu"
+                      className={CATALOG_TRIGGER_CLASS}
+                    />
+                  </div>
+                </div>
+              )}
+
               {!catalogsLoading && (
                 <CourseCategoryFields
                   values={editedCategories}
@@ -434,7 +585,8 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
 
             {/* Statistics - compact inline */}
             <div className="text-sm text-muted-foreground">
-              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')} • {getTotalQuestions()} {czechPlural(getTotalQuestions(), 'otázka', 'otázky', 'otázek')}
+              {modules.length} {czechPlural(modules.length, 'modul', 'moduly', 'modulů')}
+              {courseAssessments && ` • ${totalTests} ${czechPlural(totalTests, 'test', 'testy', 'testů')}`}
             </div>
 
             {/* Modules List */}
@@ -450,9 +602,11 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{module.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {module.practiceQuestions?.length || 0} {czechPlural(module.practiceQuestions?.length || 0, 'otázka', 'otázky', 'otázek')}
-                      </p>
+                      {courseAssessments && (
+                        <p className="text-xs text-muted-foreground">
+                          {testCount(module.moduleId)} {czechPlural(testCount(module.moduleId), 'test', 'testy', 'testů')}
+                        </p>
+                      )}
                       {module.perex && (
                         <p className="text-xs text-muted-foreground mt-1 break-words">{module.perex}</p>
                       )}
@@ -527,7 +681,7 @@ export function CourseSummaryView({ courseId }: CourseSummaryViewProps) {
             onBack={handleBack}
             onContinue={handleFinish}
             continueLabel={saving ? 'Ukládám...' : 'Dokončit'}
-            backLabel="Zpět k testům"
+            backLabel="Zpět k závěrečnému testu"
             continueDisabled={saving}
           />
         </div>

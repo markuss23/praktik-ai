@@ -1,22 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'motion/react';
-import { Course, Status } from '@/api';
-import { getCourses } from '@/lib/api-client';
-import { czechPlural, BTN_KEEP_BOX, cn } from '@/lib/utils';
+import { Course, FeedbackItem, Status } from '@/api';
+import { getCourses, getFeedbackSection } from '@/lib/api-client';
+import { czechPlural, timeAgo } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ReviewCardsSkeleton, Button, Tabs, TabsList, TabsTrigger } from '@/components/ui';
+import { ArrowRight, BookOpen, ChevronDown } from 'lucide-react';
+import { Badge, ReviewCardsSkeleton, Button, Tabs, TabsList, TabsTrigger } from '@/components/ui';
 import { fetchMaterialsForReview, fetchApprovedMaterials } from '@/components/material/api';
 import { MaterialCard } from '@/components/material/MaterialCard';
 import type { Material } from '@/components/material/types';
 
-// Carousel je stránkovaný, max 5 karet na stránku
-const PAGE_SIZE = 5;
-const MIN_CARD_WIDTH = 220;
-const CARD_GAP = 16;
+const CARD_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4';
 
 function StatusBadge({ status }: { status: Status }) {
   if (status === Status.InReview) {
@@ -36,31 +32,44 @@ function StatusBadge({ status }: { status: Status }) {
   return null;
 }
 
-function CourseCard({ course, onStart }: { course: Course; onStart?: () => void }) {
-  const isApproved = course.status === Status.Approved;
-  const clickable = !!onStart;
+// Komentáře z minulého kola: autor na ně odpověděl nebo je odškrtl
+function resubmissionInfo(feedbacks: FeedbackItem[] | undefined) {
+  if (!feedbacks?.some((fb) => fb.isResolved || !!fb.reply)) return null;
+  return { resolved: feedbacks.filter((fb) => fb.isResolved).length, total: feedbacks.length };
+}
+
+function CourseCard({
+  course,
+  onOpen,
+  feedbacks,
+}: {
+  course: Course;
+  onOpen: () => void;
+  // undefined = komentáře se ještě načítají nebo jde o schválený kurz
+  feedbacks?: FeedbackItem[];
+}) {
+  const inReview = course.status === Status.InReview;
+  const resubmission = inReview ? resubmissionInfo(feedbacks) : null;
+
   return (
     <div
-      className={`bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col gap-4 min-w-0 h-full ${clickable ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}
-      onClick={clickable ? onStart : undefined}
-      role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={clickable ? (e) => {
+      className="bg-card rounded-xl shadow-sm border border-border p-5 flex flex-col gap-4 min-w-0 h-full hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onStart?.();
+          onOpen();
         }
-      } : undefined}
+      }}
     >
       <div className="flex items-start justify-between gap-2">
         <StatusBadge status={course.status} />
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3
-          className="font-semibold text-foreground text-base leading-snug mb-1 break-words"
-          title={course.title}
-        >
+        <h3 className="font-semibold text-foreground text-base leading-snug mb-1 break-words" title={course.title}>
           {course.title}
         </h3>
         {course.modulesCount !== undefined && (
@@ -74,132 +83,33 @@ function CourseCard({ course, onStart }: { course: Course; onStart?: () => void 
             Autor: {course.ownerDisplayName}
           </p>
         )}
+        {inReview && (
+          // Kurz ve stavu ke kontrole autor upravit nemůže, updatedAt = čas odeslání
+          <p className="text-xs text-muted-foreground mt-1">Odesláno {timeAgo(new Date(course.updatedAt)).toLowerCase()}</p>
+        )}
+        {resubmission && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="open">Opravená verze</Badge>
+            <span>
+              Vyřešené komentáře: {resubmission.resolved}/{resubmission.total}
+            </span>
+          </div>
+        )}
       </div>
 
-      {!isApproved && onStart && (
+      {inReview && (
         <Button
-          variant="plain"
-          onClick={(e) => { e.stopPropagation(); onStart(); }}
-          className={cn(BTN_KEEP_BOX, "flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg text-primary-foreground text-sm font-semibold transition-all hover:opacity-90")}
-          style={{ backgroundColor: 'var(--primary)' }}
+          size="lg"
+          className="w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
         >
-          <ArrowRight size={16} />
-          Začít kurz
+          <ArrowRight data-icon="inline-start" />
+          {resubmission ? 'Zkontrolovat opravy' : 'Zkontrolovat'}
         </Button>
       )}
-    </div>
-  );
-}
-
-
-function CourseCarousel<T extends { courseId: number }>({
-  items,
-  renderItem,
-}: {
-  items: T[];
-  renderItem: (item: T) => React.ReactNode;
-}) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const [viewportWidth, setViewportWidth] = useState(0);
-  const [pageIndex, setPageIndex] = useState(0);
-
-  // Sleduj reálnou šířku viewportu — počítáme z ní šířku karty a posun.
-  useLayoutEffect(() => {
-    const measure = () => {
-      const w = viewportRef.current?.clientWidth ?? 0;
-      setViewportWidth(w);
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
-
-  const cardsPerPage = (() => {
-    if (viewportWidth <= 0) return PAGE_SIZE;
-    let n = PAGE_SIZE;
-    while (n > 1) {
-      const cw = (viewportWidth - (n - 1) * CARD_GAP) / n;
-      if (cw >= MIN_CARD_WIDTH) break;
-      n--;
-    }
-    return n;
-  })();
-
-  const totalPages = Math.max(1, Math.ceil(items.length / cardsPerPage));
-
-  useEffect(() => {
-    setPageIndex(p => Math.min(p, totalPages - 1));
-  }, [totalPages]);
-
-  const cardWidth = cardsPerPage > 0 && viewportWidth > 0
-    ? (viewportWidth - (cardsPerPage - 1) * CARD_GAP) / cardsPerPage
-    : 0;
-
-  const canPrev = pageIndex > 0;
-  const canNext = pageIndex < totalPages - 1;
-
-  const handlePrev = () => setPageIndex(p => Math.max(0, p - 1));
-  const handleNext = () => setPageIndex(p => Math.min(totalPages - 1, p + 1));
-
-  const offset = pageIndex * (cardsPerPage * cardWidth + cardsPerPage * CARD_GAP);
-
-  return (
-    <div className="relative">
-      <div
-        ref={viewportRef}
-        className="overflow-hidden"
-        style={{ paddingBottom: 4 }}
-      >
-        <motion.div
-          className="flex"
-          style={{ gap: CARD_GAP }}
-          animate={{ x: -offset }}
-          transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-        >
-          {items.map(item => (
-            <div
-              key={item.courseId}
-              style={{ width: cardWidth || undefined, minWidth: cardWidth || undefined }}
-              className="shrink-0"
-            >
-              {renderItem(item)}
-            </div>
-          ))}
-        </motion.div>
-      </div>
-
-      <AnimatePresence>
-        {canPrev && (
-          <motion.button
-            key="carousel-prev"
-            type="button"
-            onClick={handlePrev}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 size-9 rounded-full bg-card shadow-md border border-border flex items-center justify-center text-foreground hover:bg-muted/50 hover:text-foreground z-10"
-            aria-label="Předchozích pět kurzů"
-          >
-            <ChevronLeft size={18} />
-          </motion.button>
-        )}
-        {canNext && (
-          <motion.button
-            key="carousel-next"
-            type="button"
-            onClick={handleNext}
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 size-9 rounded-full bg-card shadow-md border border-border flex items-center justify-center text-foreground hover:bg-muted/50 hover:text-foreground z-10"
-            aria-label="Dalších pět kurzů"
-          >
-            <ChevronRight size={18} />
-          </motion.button>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -218,17 +128,23 @@ const REVIEW_TAB = [
   'group-data-[variant=default]/tabs-list:data-active:shadow-none',
 ].join(' ');
 
+const SECTION_HEADING = 'text-sm font-semibold text-muted-foreground uppercase tracking-wider';
+
 export function ReviewListView() {
   const router = useRouter();
   const { currentUser } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ReviewTab>('courses');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  // Komentáře kurzů ke kontrole, podle nich se pozná opravená verze
+  const [feedbacksByCourse, setFeedbacksByCourse] = useState<Record<number, FeedbackItem[]>>({});
+  const [showApproved, setShowApproved] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [approvedMaterials, setApprovedMaterials] = useState<Material[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const all = await getCourses({ includeInactive: false });
@@ -236,14 +152,26 @@ export function ReviewListView() {
         const filtered = all.filter(c =>
           c.status === Status.InReview || c.status === Status.Approved
         );
+        if (cancelled) return;
         setCourses(filtered);
+        setLoading(false);
+
+        // Kurzů ke kontrole je málo, komentáře se dotahují až po vykreslení seznamu
+        const inReview = filtered.filter((c) => c.status === Status.InReview);
+        const sections = await Promise.all(
+          inReview.map((c) => getFeedbackSection(c.courseId).then((s) => [c.courseId, s.feedbacks] as const).catch(() => null)),
+        );
+        if (cancelled) return;
+        setFeedbacksByCourse(Object.fromEntries(sections.filter((s) => s !== null)));
       } catch (err) {
         console.error('Failed to load review courses:', err);
-      } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -274,14 +202,15 @@ export function ReviewListView() {
     router.push(`/admin/review/${courseId}`);
   };
 
+  // Schválený kurz se už neupravuje — garant si ho projde v read-only náhledu
   const handleOpenApproved = (courseId: number) => {
-    router.push(`/admin?view=course-content&courseId=${courseId}`);
+    router.push(`/admin?view=course-preview&courseId=${courseId}`);
   };
 
-  // A user cannot review courses they own. in_review courses are hidden
-  const reviewable = courses.filter(c =>
-    c.status === Status.InReview && c.ownerId !== currentUser?.userId
-  );
+  // A user cannot review courses they own. Fronta od nejdéle čekajícího kurzu
+  const reviewable = courses
+    .filter(c => c.status === Status.InReview && c.ownerId !== currentUser?.userId)
+    .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
   const approved = courses.filter(c => c.status === Status.Approved);
 
   return (
@@ -307,47 +236,53 @@ export function ReviewListView() {
       {activeTab === 'courses' ? (
         loading ? (
           <ReviewCardsSkeleton />
-        ) : reviewable.length === 0 && approved.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <BookOpen size={48} className="text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-lg font-medium">Žádné kurzy ke schválení</p>
-            <p className="text-muted-foreground text-sm mt-1">
-              Momentálně nejsou žádné kurzy čekající na schválení.
-            </p>
-          </div>
         ) : (
-          <div className="space-y-8">
-            {reviewable.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                  Ke kontrole ({reviewable.length})
-                </h2>
-                <CourseCarousel
-                  items={reviewable}
-                  renderItem={(course) => (
+          <div className="flex flex-col gap-8">
+            <section>
+              <h2 className={`${SECTION_HEADING} mb-4`}>Ke kontrole ({reviewable.length})</h2>
+              {reviewable.length > 0 ? (
+                <div className={CARD_GRID}>
+                  {reviewable.map((course) => (
                     <CourseCard
+                      key={course.courseId}
                       course={course}
-                      onStart={() => handleStart(course.courseId)}
+                      feedbacks={feedbacksByCourse[course.courseId]}
+                      onOpen={() => handleStart(course.courseId)}
                     />
-                  )}
-                />
-              </section>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
+                  <BookOpen size={40} className="text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground font-medium">Žádné kurzy ke kontrole</p>
+                  <p className="text-muted-foreground text-sm mt-1">Momentálně nic nečeká na schválení.</p>
+                </div>
+              )}
+            </section>
 
             {approved.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+              // Schválené kurzy jsou archiv, ne fronta práce: ve výchozím stavu sbalené
+              <section className="flex flex-col gap-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowApproved((v) => !v)}
+                  aria-expanded={showApproved}
+                  className={`${SECTION_HEADING} self-start px-2 -mx-2`}
+                >
                   Schváleno ({approved.length})
-                </h2>
-                <CourseCarousel
-                  items={approved}
-                  renderItem={(course) => (
-                    <CourseCard
-                      course={course}
-                      onStart={() => handleOpenApproved(course.courseId)}
-                    />
-                  )}
-                />
+                  <ChevronDown data-icon="inline-end" className={showApproved ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                </Button>
+                {showApproved && (
+                  <div className={CARD_GRID}>
+                    {approved.map((course) => (
+                      <CourseCard
+                        key={course.courseId}
+                        course={course}
+                        onOpen={() => handleOpenApproved(course.courseId)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
           </div>

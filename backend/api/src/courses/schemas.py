@@ -19,6 +19,18 @@ from api.src.catalogs.schemas import (
 )
 
 
+def course_image_url(course_id: int, image_path: str | None) -> str | None:
+    """Veřejná URL náhledového obrázku kurzu, None = kurz používá výchozí obrázek.
+
+    Každá verze obrázku má v SeaweedFS vlastní název souboru a ten je součástí URL,
+    takže se URL při změně obrázku změní a cache nevrátí starou verzi.
+    """
+    if not image_path:
+        return None
+    filename = image_path.rsplit("/", 1)[-1]
+    return f"/api/v1/courses/{course_id}/image/{filename}"
+
+
 class CourseBase(ORMModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
@@ -30,18 +42,9 @@ class CourseBase(ORMModel):
     course_level_id: int | None = None
     course_type_id: int
     modules_count_ai_generated: int = Field(default=3, ge=1, le=20)
-    min_modules_to_open_final_exam: int = Field(default=1, ge=1)
     duration_minutes: int | None = Field(default=None, ge=1)
     # Doporučená obtížnost — default mírně pokročilý.
     difficulty: Difficulty = Field(default=Difficulty.slightly_advanced)
-
-    @model_validator(mode="after")
-    def validate_min_modules(self) -> "CourseBase":
-        if self.min_modules_to_open_final_exam > self.modules_count_ai_generated:
-            raise ValueError(
-                "min_modules_to_open_final_exam nesmí být větší než modules_count_ai_generated"
-            )
-        return self
 
 
 BLOOM_IDS_FIELD = Field(
@@ -90,13 +93,18 @@ class CourseLink(ORMModel):
     url: str
 
 
+class CourseImage(ORMModel):
+    """Response po nahrání náhledového obrázku kurzu"""
+
+    image_url: str | None = None
+
+
 class CourseCreated(ORMModel):
     """Zkrácená response po vytvoření kurzu"""
 
     title: str
     description: str | None = None
     modules_count_ai_generated: int
-    min_modules_to_open_final_exam: int
     duration_minutes: int | None = None
     difficulty: Difficulty
     course_id: int
@@ -121,6 +129,8 @@ class Course(CourseBase):
     status: Status
     modules_count: int = 0
     enrollments_count: int = 0
+    # Náhledový obrázek (1280×720); None = frontend ukáže výchozí obrázek.
+    image_url: str | None = None
     # Časové značky pro řazení v administraci („nejnovější", „naposledy upravené").
     created_at: datetime
     updated_at: datetime
@@ -162,6 +172,10 @@ class Course(CourseBase):
                     obj.__dict__["owner_display_name"] = owner.display_name
                 except Exception:
                     pass
+            if hasattr(obj, "image_path"):
+                obj.__dict__["image_url"] = course_image_url(
+                    obj.course_id, obj.image_path
+                )
         return obj
 
 

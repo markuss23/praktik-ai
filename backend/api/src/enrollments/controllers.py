@@ -6,8 +6,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from api import models
+from api.authorization import validate_owner_or_superadmin
 from api.src.common.utils import get_or_404
-from api.enums import Status, UserRole, ModuleTaskSessionStatus
+from api.src.courses.schemas import course_image_url
+from api.enums import AssessmentSessionStatus, Status, UserRole
+from api.src.assessments.utils import course_completion
 from api.src.enrollments.schemas import (
     ActivityDay,
     ActivityResponse,
@@ -16,6 +19,9 @@ from api.src.enrollments.schemas import (
     MyEnrollmentCourse,
     MyEnrollmentNextModule,
 )
+
+CA = models.CourseAssessment
+AS = models.AssessmentSession
 
 
 def list_enrollments(
@@ -56,12 +62,12 @@ def create_enrollment(
     actor: models.User,
 ) -> Enrollment:
     """
-    Zapíše uživatele do kurzu.
-    Běžný uživatel může zapsat pouze sebe.
-    Admin/superadmin může zapsat kohokoliv.
+    Zapíše uživatele do kurzu, nebo obnoví jeho odepsaný zápis.
+    Běžný uživatel může zapsat pouze sebe, garant a superadmin kohokoliv.
+    Vyřazeného studenta (remove) smí obnovit jen garant nebo superadmin.
     """
-    # Regular users can only enroll themselves; admin/superadmin can enroll anyone
-    if actor.role not in (UserRole.guarantor, UserRole.superadmin) and actor.user_id != user_id:
+    can_enroll_others = actor.role in (UserRole.guarantor, UserRole.superadmin)
+    if not can_enroll_others and actor.user_id != user_id:
         raise HTTPException(
             status_code=403,
             detail="Můžete zapsat pouze sami sebe",
@@ -78,16 +84,29 @@ def create_enrollment(
     get_or_404(db, models.User, user_id, detail="Uživatel nenalezen")
 
     existing = db.scalar(
-        select(models.Enrollment).where(
+        select(models.Enrollment)
+        .where(
             models.Enrollment.user_id == user_id,
             models.Enrollment.course_id == course_id,
         )
+        .order_by(models.Enrollment.is_active.desc())
     )
-    if existing is not None:
+    if existing is None:
+        enrollment = models.Enrollment(user_id=user_id, course_id=course_id)
+        db.add(enrollment)
+    elif existing.is_active and existing.left_at is not None:
+        # Odepsaný zápis se obnoví — postup se počítá ze sessions, vrátí se sám
+        if existing.removed_by_id is not None and not can_enroll_others:
+            raise HTTPException(
+                status_code=403,
+                detail="Z kurzu vás vyřadil lektor, znovu vás může zapsat jen garant nebo superadmin",
+            )
+        enrollment = existing
+        enrollment.left_at = None
+        enrollment.removed_by_id = None
+    else:
         raise HTTPException(status_code=409, detail="Uživatel je již zapsán do tohoto kurzu")
 
-    enrollment = models.Enrollment(user_id=user_id, course_id=course_id)
-    db.add(enrollment)
     db.commit()
     db.refresh(enrollment)
     return Enrollment.model_validate(enrollment)
@@ -104,6 +123,10 @@ def delete_enrollment(
     """
     enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
 
+    # Vyřadit studenta smí jen vlastník kurzu nebo superadmin, ne libovolný lektor
+    course = get_or_404(db, models.Course, enrollment.course_id, detail="Kurz nenalezen", check_active=False)
+    validate_owner_or_superadmin(course, actor, "kurz")
+
     if enrollment.left_at is not None:
         raise HTTPException(
             status_code=400,
@@ -111,6 +134,7 @@ def delete_enrollment(
         )
 
     enrollment.left_at = func.now()
+    enrollment.removed_by_id = actor.user_id
     db.commit()
 
 
@@ -138,8 +162,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
     """
     Vrátí zápisy aktuálního uživatele s progress informacemi.
 
-    Implementováno bez N+1 — všechny moduly a passed task sessions jsou
-    načteny v jediném SQL dotazu na uživatele, nikoli per-kurz.
+    Hotové moduly bere z course_completion (nový assessment systém).
     """
     enrollments: list[models.Enrollment] = list(
         db.execute(
@@ -160,65 +183,46 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
     if not course_ids:
         return []
 
-    # Načti všechny aktivní moduly relevantních kurzů jedním dotazem.
-    # Course.modules má custom primaryjoin s is_active==True, takže pro
-    # předvídatelné chování v rámci dávky raději vlastní explicit query.
-    modules_by_course: dict[int, list[models.Module]] = {}
-    for m in db.execute(
-        select(models.Module)
-        .where(
-            models.Module.course_id.in_(course_ids),
-            models.Module.is_active.is_(True),
-        )
-        .order_by(models.Module.course_id, models.Module.module_id)
-    ).scalars():
-        modules_by_course.setdefault(m.course_id, []).append(m)
-
-    # Jedním dotazem stáhneme všechny passed (module_id) pro daného uživatele
-    # napříč jeho zápisy.
-    passed_rows = db.execute(
-        select(models.ModuleTaskSession.module_id)
-        .join(models.Module, models.Module.module_id == models.ModuleTaskSession.module_id)
-        .where(
-            models.ModuleTaskSession.user_id == user.user_id,
-            models.ModuleTaskSession.status == ModuleTaskSessionStatus.passed,
-            models.Module.course_id.in_(course_ids),
-        )
-    ).all()
-    passed_module_ids: set[int] = {row[0] for row in passed_rows}
-
-    # Druhým dotazem agregujeme nejnovější timestamp aktivity pro každý
-    # (user_id, course_id) — bere v úvahu i activity před zavedením
-    # `last_activity_at` (legacy fallback).
-    legacy_activity_rows = db.execute(
-        select(
-            models.Module.course_id,
-            func.max(models.ModuleTaskSession.updated_at),
-        )
-        .join(models.Module, models.Module.module_id == models.ModuleTaskSession.module_id)
-        .where(
-            models.ModuleTaskSession.user_id == user.user_id,
-            models.Module.course_id.in_(course_ids),
-        )
-        .group_by(models.Module.course_id)
-    ).all()
-    legacy_activity: dict[int, datetime] = {row[0]: row[1] for row in legacy_activity_rows}
+    # Poslední aktivita per kurz z assessment sessions — fallback pro zápisy
+    # bez `last_activity_at` (i převedená stará sezení z 0026).
+    session_activity: dict[int, datetime] = dict(
+        db.execute(
+            select(CA.course_id, func.max(AS.updated_at))
+            .join(CA, CA.course_assessment_id == AS.course_assessment_id)
+            .where(
+                AS.user_id == user.user_id,
+                AS.is_active.is_(True),
+                CA.course_id.in_(course_ids),
+            )
+            .group_by(CA.course_id)
+        ).all()
+    )
 
     result: list[MyEnrollment] = []
+    completed_changed = False
     for enrollment in enrollments:
         course = enrollment.course
         if not course or not course.is_active:
             continue
 
-        active_modules = modules_by_course.get(course.course_id, [])
+        # ponytail: course_completion = pár dotazů na kurz (N+1 přes zápisy),
+        # dávkovat až když to bude znát
+        progress = course_completion(db, user, course)
+        done = {m.module_id for m in progress.modules if m.completed}
+        # Kurz bez povinných testů je hotový hned, mark_course_completed se ale volá
+        # jen při passed session — completed_at doplníme tady. Jednou nastavené se nemaže.
+        if progress.course_completed and enrollment.completed_at is None:
+            enrollment.completed_at = progress.course_completed_at or datetime.now(tz=UTC)
+            completed_changed = True
+        active_modules = sorted(course.modules, key=lambda m: m.module_id)
         total_modules = len(active_modules)
 
-        passed_count = sum(1 for m in active_modules if m.module_id in passed_module_ids)
+        passed_count = sum(1 for m in active_modules if m.module_id in done)
 
         # next_module: první neudělaný modul. Když je vše hotovo → None.
         next_module: MyEnrollmentNextModule | None = None
         for idx, m in enumerate(active_modules):
-            if m.module_id not in passed_module_ids:
+            if m.module_id not in done:
                 next_module = MyEnrollmentNextModule(
                     module_id=m.module_id,
                     title=m.title,
@@ -228,9 +232,8 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
                 break
 
         # Pokud uživatel má explicitní last_visited, použij ho; jinak
-        # spadni na agregovaný timestamp ze task_session (backfill pro
-        # existující uživatele před zavedením explicitního trackingu).
-        last_activity = enrollment.last_activity_at or legacy_activity.get(course.course_id)
+        # spadni na poslední assessment session v kurzu.
+        last_activity = enrollment.last_activity_at or session_activity.get(course.course_id)
 
         result.append(MyEnrollment(
             enrollment_id=enrollment.enrollment_id,
@@ -240,6 +243,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
                 title=course.title,
                 description=course.description,
                 modules_count=total_modules,
+                image_url=course_image_url(course.course_id, course.image_path),
             ),
             completed_modules=passed_count,
             total_modules=total_modules,
@@ -249,6 +253,9 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
             last_visited_module_id=enrollment.last_visited_module_id,
             last_activity_at=last_activity,
         ))
+
+    if completed_changed:
+        db.commit()
 
     # Seřaď podle reálné aktivity — frontend tak může vybrat resume kurz
     # bez vlastní heuristiky.
@@ -261,7 +268,7 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
 def leave_enrollment(db: Session, enrollment_id: int, user: models.User) -> None:
     """Uživatel se sám odepíše z kurzu."""
-    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
+    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen")
 
     if enrollment.user_id != user.user_id:
         raise HTTPException(status_code=403, detail="Můžete opustit pouze vlastní zápis")
@@ -320,12 +327,16 @@ def get_my_activity(
     Vrátí denní aktivitu uživatele pro heat mapu.
 
     Pokud jsou předány `from_date` + `to_date`, použije se přímo ten rozsah
-    (např. konkrétní rok nebo měsíc). Jinak fallback na "posledních `days` dnů"
-    od dneška.
+    (např. konkrétní rok nebo měsíc). Jen jeden z nich = 422. Bez nich
+    "posledních `days` dnů" od dneška.
 
-    Aktivita = úspěšně dokončené (passed) task sessions + zapsání do kurzu +
-    dokončení kurzu. Vše agregováno per den v UTC.
+    Aktivita = splněné (passed) assessment sessions + zapsání do kurzu +
+    dokončení kurzu. Soft-smazané zápisy se nepočítají, odepsané ano.
+    Vše agregováno per den v UTC.
     """
+    if (from_date is None) != (to_date is None):
+        raise HTTPException(status_code=422, detail="from_date a to_date se zadávají spolu")
+
     if from_date is not None and to_date is not None:
         if from_date > to_date:
             from_date, to_date = to_date, from_date
@@ -345,20 +356,22 @@ def get_my_activity(
         lambda: {"count": 0, "titles": []}
     )
 
-    # Passed task sessions (užitečnější granularita než completed_at zápisu)
+    # Splněné assessment sessions (pretest, procvičování, test, závěrečný test)
     passed_rows = db.execute(
         select(
-            func.date_trunc("day", models.ModuleTaskSession.updated_at).label("d"),
+            func.date_trunc("day", AS.finished_at).label("d"),
             models.Module.title,
             models.Course.title,
         )
-        .join(models.Module, models.Module.module_id == models.ModuleTaskSession.module_id)
-        .join(models.Course, models.Course.course_id == models.Module.course_id)
+        .join(CA, CA.course_assessment_id == AS.course_assessment_id)
+        .join(models.Course, models.Course.course_id == CA.course_id)
+        .outerjoin(models.Module, models.Module.module_id == CA.module_id)
         .where(
-            models.ModuleTaskSession.user_id == user.user_id,
-            models.ModuleTaskSession.status == ModuleTaskSessionStatus.passed,
-            models.ModuleTaskSession.updated_at >= from_dt,
-            models.ModuleTaskSession.updated_at <= to_dt,
+            AS.user_id == user.user_id,
+            AS.status == AssessmentSessionStatus.passed,
+            AS.is_active.is_(True),
+            AS.finished_at >= from_dt,
+            AS.finished_at <= to_dt,
         )
     ).all()
     for d, mod_title, course_title in passed_rows:
@@ -367,7 +380,7 @@ def get_my_activity(
         entry["count"] = int(entry["count"]) + 1  # type: ignore[arg-type]
         titles = entry["titles"]
         if isinstance(titles, list) and len(titles) < 3:
-            titles.append(f"✅ {course_title}: {mod_title}")
+            titles.append(f"✅ {course_title}: {mod_title or 'závěrečný test'}")
 
     # Enrollment created (zápis do kurzu) — jedno započítané "události" denně
     enrolled_rows = db.execute(
@@ -378,6 +391,7 @@ def get_my_activity(
         .join(models.Course, models.Course.course_id == models.Enrollment.course_id)
         .where(
             models.Enrollment.user_id == user.user_id,
+            models.Enrollment.is_active.is_(True),
             models.Enrollment.created_at >= from_dt,
             models.Enrollment.created_at <= to_dt,
         )
@@ -399,6 +413,7 @@ def get_my_activity(
         .join(models.Course, models.Course.course_id == models.Enrollment.course_id)
         .where(
             models.Enrollment.user_id == user.user_id,
+            models.Enrollment.is_active.is_(True),
             models.Enrollment.completed_at.is_not(None),
             models.Enrollment.completed_at >= from_dt,
             models.Enrollment.completed_at <= to_dt,

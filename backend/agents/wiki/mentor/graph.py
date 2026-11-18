@@ -1,14 +1,17 @@
 """LangGraph pro RAG chat nad wiki obsahem."""
 
+import logging
 from langgraph.graph import StateGraph, END
 
 from agents.wiki.mentor.state import WikiMentorState
 from agents.wiki.mentor.nodes import query_vector_store_node, generate_answer_node
 
+logger = logging.getLogger(__name__)
+
 
 def create_graph():
     """RAG chat: Query -> Generate."""
-    print("Vytvářím wiki mentor graf...")
+    logger.info("Vytvářím wiki mentor graf...")
     workflow = StateGraph(WikiMentorState)
 
     workflow.add_node("query_vector_store", query_vector_store_node)

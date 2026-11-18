@@ -2,6 +2,7 @@ import { AdminSidebar } from '@/components/admin';
 import { AdminRoleGuard } from '@/components/admin/AdminRoleGuard';
 import { AdminChromeProvider } from '@/components/admin/AdminChromeProvider';
 import { CourseGenerationProvider } from '@/components/admin/CourseGenerationProvider';
+import { ModulePodcastGenerationProvider } from '@/components/admin/ModulePodcastGenerationProvider';
 
 export default function AdminLayout({
   children,
@@ -11,6 +12,7 @@ export default function AdminLayout({
   return (
     <AdminRoleGuard>
       <CourseGenerationProvider>
+        <ModulePodcastGenerationProvider>
         {/* Sbalený sidebar, sbalená karta tvorba kurzu a fokus režim */}
         <AdminChromeProvider>
           <div className="flex lg:h-screen overflow-x-hidden lg:overflow-hidden bg-muted">
@@ -20,6 +22,7 @@ export default function AdminLayout({
             </main>
           </div>
         </AdminChromeProvider>
+        </ModulePodcastGenerationProvider>
       </CourseGenerationProvider>
     </AdminRoleGuard>
   );

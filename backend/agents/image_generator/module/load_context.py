@@ -1,15 +1,18 @@
+import logging
 from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
 from agents.image_generator.module.state import ModuleContext, ModuleImageGeneratorState
 from api import models
 
+logger = logging.getLogger(__name__)
+
 
 def load_module_context_node(
     state: ModuleImageGeneratorState,
 ) -> ModuleImageGeneratorState:
     """Node pro načtení kontextu modulu (title, obsah, číselníky kurzu) z databáze."""
-    print("Načítám kontext modulu z databáze...")
+    logger.info("Načítám kontext modulu z databáze...")
 
     db: Session = state["db"]
     module_id: int = state["module_id"]
@@ -41,6 +44,6 @@ def load_module_context_node(
         target_description=target.description if target else None,
     )
 
-    print(f"Načten modul: {module.title}")
+    logger.info(f"Načten modul: {module.title}")
 
     return state
