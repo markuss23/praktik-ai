@@ -2,6 +2,7 @@
 Controllery pro upravování sbírek veřejných materiálů.
 """
 
+from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
@@ -29,14 +30,18 @@ def update_collection(
 
     validate_owner_or_superadmin(collection, user, "sbírka")
 
-    update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    update_data = data.model_dump(exclude_unset=True)
 
-    db.execute(
-        update(models.PubCollection)
-        .where(models.PubCollection.collection_id == collection_id)
-        .values(**update_data)
-    )
-    db.commit()
+    if "title" in update_data and update_data["title"] is None:
+        raise HTTPException(status_code=400, detail="Název sbírky nelze vymazat.")
+
+    if update_data:
+        db.execute(
+            update(models.PubCollection)
+            .where(models.PubCollection.collection_id == collection_id)
+            .values(**update_data)
+        )
+        db.commit()
     db.refresh(collection)
     return PubCollectionCreated.model_validate(collection)
 

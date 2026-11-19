@@ -81,7 +81,7 @@ Pravidla jsou na jednom místě v `resources/visibility.py`. Platí pro seznam, 
 - Recenze a komentář jdou jen na materiál v `pending_review`.
 - Zveřejnit / skrýt jde jen `approved` materiál. Nastavení stejné hodnoty vrátí 400.
 - Fork: originál musí být veřejný, mít `allow_forks=True` a nesmí být sám fork. Fork kopíruje metadata a KRAUU/Bloom, ne soubory. Fork má `allow_forks=False`. U forku nejde změnit obor, cílovou skupinu, vzdělávací úroveň ani obtížnost (`FORK_LOCKED_FIELDS` v `update.py`, 400). Kontrolují se jen pole, která klient poslal.
-- Smazání materiálu: nejde, když je veřejný, nebo `approved` s `allow_forks`. `draft` se maže natvrdo včetně souborů v úložišti, ostatní soft delete s kaskádou (soubory, hodnocení, recenze, komentáře, KRAUU, Bloom).
+- Smazání materiálu: nejde, když je veřejný, nebo `approved` s `allow_forks`. `draft` se maže natvrdo spolu s KRAUU, Bloom, soubory a záznamem forku (soubory v úložišti až po commitu DB). Pokud má draft hodnocení, recenze, komentáře, položky sbírek nebo z něj vznikl fork, vrátí 400. Ostatní stavy soft delete s kaskádou (soubory, hodnocení, recenze, komentáře, KRAUU, Bloom).
 - Smazat soubor jde jen ve stavu `draft` nebo `rejected`. Velikost souboru max 30 MB. Typ se určuje z obsahu (`filetype`).
 - Hodnocení: jen u aktivního materiálu ve stavu `approved`, který uživatel smí vidět (jinak 404). Vlastní materiál hodnotit nejde (403). Skóre 1–5 (kontrola v kódu i DB constraint), jedno aktivní na uživatele a materiál.
 - Do sbírky jde přidat jen `approved` materiál. Neveřejný jen jeho autor.
@@ -110,8 +110,4 @@ Modely jsou v `api/models.py` (`PubResource*`, `PubCollection*`), routery se reg
 ## Pozor na
 
 - `GET /resources` nemá filtr podle autora. „Moje sbírka“ na frontendu stáhne vše viditelné a filtruje podle `author_id` na klientovi.
-- Hard delete `draft` materiálu nemaže vazby KRAUU/Bloom ani záznam forku. Ověřit, že neselže na FK.
-- `DELETE /resources/{id}/comments/{comment_id}` ignoruje `resource_id` a vrací 200 místo 204.
-- `POST /ratings/{id}` bere `resource_id`, `PUT/DELETE /ratings/{id}` bere `rating_id`.
-- Úprava sbírky ignoruje `None`, popis tedy nejde vymazat.
 - Testy modul nemá.

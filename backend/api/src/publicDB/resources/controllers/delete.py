@@ -45,28 +45,69 @@ def delete_resource(db: Session, resource_id: int, user: models.User) -> None:
 
     # Pokud se nachazi ve stavu draft, provedeme hard delete, jinak soft delete
     if resource.status == PubResourceStatus.draft:
-        for files in resource.files:
-            try:
-                if files.is_active:
-                    seaweedfs.delete_file(files.file_path)
-            except Exception as e:
-                logger.error(
-                    "delete_resource: Chyba při mazání souboru %s: %s",
-                    files.file_path,
-                    e,
-                )
+        _hard_delete_draft(db, resource_id)
+    else:
+        resource.soft_delete()
+        db.commit()
 
-        # Smazání záznamu materiálu a jeho souborů
+
+# Vazby, které draft má vždy (KRAUU, Bloom) nebo může mít (soubory, záznam forku).
+# Mažou se spolu s materiálem.
+_DRAFT_OWNED_ROWS = (
+    (models.PubResourceKrauuCompetence, models.PubResourceKrauuCompetence.resource_id),
+    (models.PubResourceBloomLevel, models.PubResourceBloomLevel.resource_id),
+    (models.PubResourceFile, models.PubResourceFile.resource_id),
+    (models.PubResourceFork, models.PubResourceFork.forked_id),
+)
+
+# Vazby, které draft mít nemá (hodnotit, recenzovat, komentovat, přidat do sbírky
+# a forkovat jde jen materiál v jiném stavu). Pokud existují, mazání se odmítne.
+_DRAFT_FORBIDDEN_ROWS = (
+    (models.PubResourceRating, models.PubResourceRating.resource_id),
+    (models.PubResourceReview, models.PubResourceReview.resource_id),
+    (models.PubResourceComment, models.PubResourceComment.resource_id),
+    (models.PubCollectionResource, models.PubCollectionResource.resource_id),
+    (models.PubResourceFork, models.PubResourceFork.original_id),
+)
+
+
+def _hard_delete_draft(db: Session, resource_id: int) -> None:
+    """
+    Natvrdo smaže materiál ve stavu draft i s jeho vazbami a soubory v úložišti.
+
+    """
+    for model, column in _DRAFT_FORBIDDEN_ROWS:
+        if db.execute(select(column).where(column == resource_id).limit(1)).first():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Materiál nelze smazat, existují k němu záznamy v {model.__tablename__}.",
+            )
+
+    # Cesty všech souborů (i neaktivních) je potřeba načíst před smazáním řádků.
+    file_paths = (
         db.execute(
-            delete(models.PubResourceFile).where(
+            select(models.PubResourceFile.file_path).where(
                 models.PubResourceFile.resource_id == resource_id
             )
         )
-        db.delete(resource)
-    else:
-        resource.soft_delete()
+        .scalars()
+        .all()
+    )
 
+    for model, column in _DRAFT_OWNED_ROWS:
+        db.execute(delete(model).where(column == resource_id))
+    db.execute(
+        delete(models.PubResource).where(models.PubResource.resource_id == resource_id)
+    )
     db.commit()
+
+    for file_path in file_paths:
+        try:
+            seaweedfs.delete_file(file_path)
+        except Exception as e:
+            logger.error(
+                "delete_resource: Chyba při mazání souboru %s: %s", file_path, e
+            )
 
 
 def delete_resource_file(

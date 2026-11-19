@@ -194,6 +194,7 @@ async def endp_create_resource_comment(
     "/{resource_id}/comments/{comment_id}",
     operation_id="delete_resource_comment",
     dependencies=[require_role("guarantor")],
+    status_code=204,
 )
 async def endp_delete_resource_comment(
     resource_id: int,
@@ -201,7 +202,7 @@ async def endp_delete_resource_comment(
     db: SessionSqlSessionDependency,
     user: CurrentUser,
 ) -> None:
-    delete_resource_comment(db, comment_id, user)
+    delete_resource_comment(db, resource_id, comment_id, user)
 
 
 # ----------- File endpoints -----------

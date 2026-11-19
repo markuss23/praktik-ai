@@ -24,8 +24,7 @@ from api.src.publicDB.resources.schemas import (
 def get_resource_comments(
     db: Session, resource_id: int, user: models.User | None = None
 ) -> list[PubResourceComment]:
-    """Vrátí komentáře k materiálu (nejnovější první).
-    """
+    """Vrátí komentáře k materiálu (nejnovější první)."""
     ensure_resource_visible(db, resource_id, user)
 
     stm = (
@@ -74,12 +73,16 @@ def create_resource_comment(
 
 
 def delete_resource_comment(
-    db: Session, comment_id: int, user: models.User
+    db: Session, resource_id: int, comment_id: int, user: models.User
 ) -> None:
-    """Soft-delete komentáře. Garant smí smazat jen vlastní, superadmin libovolný."""
+    """
+    Soft-delete komentáře. Garant smí smazat jen vlastní, superadmin libovolný.
+    """
     comment = get_or_404(
         db, models.PubResourceComment, comment_id, detail="Komentář nenalezen"
     )
+    if comment.resource_id != resource_id:
+        raise HTTPException(status_code=404, detail="Komentář nenalezen")
 
     if user.role != UserRole.superadmin and comment.author_id != user.user_id:
         raise HTTPException(

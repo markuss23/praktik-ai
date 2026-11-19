@@ -57,7 +57,7 @@ async def endp_get_rating(
 
 
 @router.post(
-    "/{resource_id}",
+    "/resource/{resource_id}",
     operation_id="create_rating",
     dependencies=[require_role("user")],
 )
