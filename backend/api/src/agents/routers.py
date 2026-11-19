@@ -7,7 +7,10 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from api.dependencies import CurrentUser, require_role
-from api.authorization import validate_owner_or_superadmin, validate_guarantor_or_superadmin
+from api.authorization import (
+    validate_owner_or_superadmin,
+    validate_guarantor_or_superadmin,
+)
 from api.src.common.utils import assert_course_editable, get_or_404, check_enrollment
 from api.src.agents.schemas import (
     ActiveImageGeneration,
@@ -41,6 +44,8 @@ from api.src.agents.progress import (
 )
 from api.database import SessionLocal
 from api.src.courses.controllers.image import normalize_course_image, store_course_image
+from api.enums import NotificationEvent
+from api.notifications.course_status import notify_course_event
 from api.storage import seaweedfs
 from agents.course_generator.service import CourseGeneratorService
 from agents.embedding_generator.service import EmbeddingGeneratorService
@@ -69,6 +74,23 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 public_router = APIRouter(prefix="/agents", tags=["agents"])
 
 
+async def _notify_generation(course_id: int, event: NotificationEvent) -> None:
+    """
+    Pošle e-mail o výsledku AI generování kurzu (E1 úspěch / E2 selhání).
+
+    Odesílání je blokující, proto běží ve vlákně. Případná chyba se jen zaloguje,
+    aby nespadl task generování.
+
+    Args:
+        course_id: ID generovaného kurzu.
+        event: NotificationEvent.course_generated nebo course_generation_failed.
+    """
+    try:
+        await asyncio.to_thread(notify_course_event, course_id, event)
+    except Exception:  # noqa: BLE001
+        logger.exception("Notifikace %s o kurzu %s selhala", event, course_id)
+
+
 async def _run_course_generation(course_id: int) -> None:
     """Background task: spustí CourseGeneratorService s vlastní DB session.
 
@@ -94,8 +116,12 @@ async def _run_course_generation(course_id: int) -> None:
                 db.commit()
             except Exception:  # noqa: BLE001
                 db.rollback()
+            await _notify_generation(
+                course_id, NotificationEvent.course_generation_failed
+            )
             return
         mark_completed(key)
+        await _notify_generation(course_id, NotificationEvent.course_generated)
     finally:
         db.close()
         unregister_task(key)
@@ -462,7 +488,9 @@ async def _run_podcast_generation(module_id: int) -> None:
     db = SessionLocal()
     try:
         set_progress(key, step=1, label="Načítání kontextu z databáze")
-        service = ModulePodcastGeneratorService(db=db, module_id=module_id, progress_key=key)
+        service = ModulePodcastGeneratorService(
+            db=db, module_id=module_id, progress_key=key
+        )
         script, audio = await run_tracked(key, service.generate())
 
         set_progress(key, step=4, label="Ukládání podcastu do SeaweedFS")
@@ -493,7 +521,10 @@ def _podcast_progress_response(module_id: int) -> PodcastGenerationProgressRespo
     progress = get_progress(podcast_key(module_id))
     if progress is None:
         return PodcastGenerationProgressResponse(
-            step=0, total=PODCAST_GENERATION_TOTAL_STEPS, label="Čekání", status="pending"
+            step=0,
+            total=PODCAST_GENERATION_TOTAL_STEPS,
+            label="Čekání",
+            status="pending",
         )
     return PodcastGenerationProgressResponse(
         step=progress.step,
@@ -565,7 +596,8 @@ async def generate_module_mindmap_endpoint(
     learn_block = next(iter(module.learn_blocks), None)
     if learn_block is None or not learn_block.content:
         raise HTTPException(
-            status_code=400, detail="Modul nemá obsah, myšlenkovou mapu není z čeho vytvořit."
+            status_code=400,
+            detail="Modul nemá obsah, myšlenkovou mapu není z čeho vytvořit.",
         )
 
     try:
@@ -628,13 +660,18 @@ async def learn_blocks_chat(
 
     if user_input.learn_block_id is not None:
         learn_block = get_or_404(
-            db, models.LearnBlock, user_input.learn_block_id, detail="Learn block nenalezen"
+            db,
+            models.LearnBlock,
+            user_input.learn_block_id,
+            detail="Learn block nenalezen",
         )
         course = learn_block.module.course
         if user_input.course_id not in (None, course.course_id):
             raise HTTPException(status_code=400, detail="Learn block nepatří do kurzu")
     elif scope == MentorScope.course and user_input.course_id is not None:
-        course = get_or_404(db, models.Course, user_input.course_id, detail="Kurz nenalezen")
+        course = get_or_404(
+            db, models.Course, user_input.course_id, detail="Kurz nenalezen"
+        )
     else:
         raise HTTPException(
             status_code=400,
