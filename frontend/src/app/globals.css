@@ -448,15 +448,18 @@ body.module-fullscreen footer {
 
 .dark {
 
-  --background: oklch(0.145 0 0);
+  /* Neutrální plochy jsou o stupeň světlejší než výchozí shadcn dark
+     (0.145 / 0.205 / 0.269), aby tmavý režim nepůsobil tak černě.
+     Rozestupy page → card → muted zůstávají zachované. */
+  --background: oklch(0.205 0 0);
 
   --foreground: oklch(0.985 0 0);
 
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.25 0 0);
 
   --card-foreground: oklch(0.985 0 0);
 
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.25 0 0);
 
   --popover-foreground: oklch(0.985 0 0);
 
@@ -465,18 +468,18 @@ body.module-fullscreen footer {
 
   --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.269 0 0);
+  --secondary: oklch(0.3 0 0);
 
   --secondary-foreground: oklch(0.985 0 0);
 
-  --muted: oklch(0.269 0 0);
+  --muted: oklch(0.3 0 0);
 
   --muted-foreground: oklch(0.708 0 0);
 
   /* Stránka nejtmavší, karty (`card`) nad ní o stupeň světlejší. */
   --page: var(--background);
 
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.3 0 0);
 
   --accent-foreground: oklch(0.985 0 0);
 
@@ -497,9 +500,9 @@ body.module-fullscreen footer {
 
   --gradient-r: oklch(0.72 0.1301 287.77); /* gradientR #857AD2 */
 
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
 
-  --input: oklch(1 0 0 / 15%);
+  --input: oklch(1 0 0 / 17%);
 
   --ring: var(--gradient-r);
 
@@ -513,7 +516,7 @@ body.module-fullscreen footer {
 
   --chart-5: oklch(0.269 0 0);
 
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.25 0 0);
 
   --sidebar-foreground: oklch(0.985 0 0);
 
@@ -521,11 +524,11 @@ body.module-fullscreen footer {
 
   --sidebar-primary-foreground: oklch(0.985 0 0);
 
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: oklch(0.3 0 0);
 
   --sidebar-accent-foreground: oklch(0.985 0 0);
 
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(1 0 0 / 12%);
 
   --sidebar-ring: oklch(0.556 0 0);
 }

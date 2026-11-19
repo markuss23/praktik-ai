@@ -17,7 +17,6 @@ function S({ className }: { className: string }) {
   ReviewCardsSkeleton - grid karet s pulse efektem (pro stránku ke schválení)
   AiMentorSkeleton - accordion karty s pulse efektem (pro AI Mentor nastavení)
   PageSpinner - univerzální motion spinner s volitelným textem (pro Suspense fallbacky)
-  CourseDetailSkeleton - skeleton detailu kurzu
   ProfileSkeleton - spinner pro profil stránku
   MaterialDetailSkeleton - skeleton detailu veřejného materiálu
   RatingListSkeleton - karty hodnocení s pulse efektem (pro sekci Hodnocení)
@@ -183,40 +182,6 @@ export function PageSpinner({ message }: { message?: string }) {
             {message}
           </motion.span>
         )}
-      </div>
-    </motion.div>
-  );
-}
-
-/**
- * Course detail page skeleton
- */
-export function CourseDetailSkeleton() {
-  return (
-    <motion.div
-      className="min-h-screen"
-      style={{ backgroundColor: 'var(--muted)' }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <S className="h-8 w-2/3 mb-4" />
-        <S className="h-4 w-full mb-2" />
-        <S className="h-4 w-5/6 mb-6" />
-        <div className="flex gap-3 mb-8">
-          <S className="h-10 w-40 rounded-md" />
-          <S className="h-10 w-32 rounded-md" />
-        </div>
-        <div className="bg-card rounded-xl p-6 space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-4 py-3 border-b border-border">
-              <S className="size-8 rounded-full" />
-              <S className="h-5 flex-1 max-w-[300px]" />
-              <S className="h-6 w-20 rounded-full ml-auto" />
-            </div>
-          ))}
-        </div>
       </div>
     </motion.div>
   );

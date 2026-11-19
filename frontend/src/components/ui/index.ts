@@ -117,7 +117,14 @@ export { CategoryGroup, CourseCategories, ModuleCategories } from "./CategoryTag
 export { CourseCard, CourseCardSkeleton } from "./CourseCard";
 export { CourseRow, CourseRowSkeleton } from "./CourseRow";
 export type { CourseItemProps, CourseStatus } from "./CourseItemParts";
-export { courseCategoryLabel } from "./CourseItemParts";
+export {
+  CategoryBubble,
+  CourseMeta,
+  CourseProgressBlock,
+  courseCategoryLabel,
+  getCourseStatus,
+  modulesWord,
+} from "./CourseItemParts";
 export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
@@ -128,7 +135,6 @@ export {
   ReviewCardsSkeleton,
   AiMentorSkeleton,
   PageSpinner,
-  CourseDetailSkeleton,
   ProfileSkeleton,
   MaterialDetailSkeleton,
   MaterialGridSkeleton,

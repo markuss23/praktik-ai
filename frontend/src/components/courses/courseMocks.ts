@@ -1,12 +1,15 @@
 import {
   Difficulty,
+  QuestionType,
   Status,
   type Course,
   type CourseBlock,
   type CourseSubject,
   type CourseTarget,
+  type LearnBlock,
   type Module,
   type ModuleCompletionStatus,
+  type PracticeQuestion,
 } from "@/api";
 import type { MyEnrollmentExtended } from "@/lib/api-client";
 
@@ -307,8 +310,8 @@ export function getMockCourseDetail(courseId: number): MockCourseDetail | null {
     isActive: true,
     createdAt: MOCK_DATE,
     updatedAt: MOCK_DATE,
-    learnBlocks: [],
-    practiceQuestions: [],
+    learnBlocks: mockLearnBlocks(courseId * 100 + i + 1, content),
+    practiceQuestions: mockPracticeQuestions(courseId * 100 + i + 1),
   }));
 
   const state = MOCK_PROGRESS[courseId];
@@ -345,4 +348,138 @@ export function getMockCourseDetail(courseId: number): MockCourseDetail | null {
       passingScore: 75,
     })),
   };
+}
+
+export interface MockModuleDetail {
+  module: Module;
+  /** Kurz včetně modulů — jako `getCourse` (drobečky a „další modul"). */
+  course: Course & { modules: Module[] };
+  progress: ModuleCompletionStatus[];
+}
+
+/**
+ * Data detailu modulu pro ukázkový kurz, jinak `null`. ID modulu je
+ * `kurz * 100 + pořadí` — 900101 je první modul kurzu 9001. Splněné moduly
+ * (podle `MOCK_PROGRESS`) mají rovnou odemčené všechny záložky.
+ */
+export function getMockModuleDetail(moduleId: number): MockModuleDetail | null {
+  const detail = getMockCourseDetail(Math.floor(moduleId / 100));
+  const mod = detail?.modules.find((m) => m.moduleId === moduleId);
+  if (!detail || !mod) return null;
+  return { module: mod, course: { ...detail.course, modules: detail.modules }, progress: detail.progress };
+}
+
+/**
+ * Příručka ve dvou blocích; první má `<hr>` = dva listy. Obsah je pro všechny
+ * moduly stejný (mění se nadpis a perex) a schválně sahá na všechny styly
+ * `.module-content` — nadpisy, seznamy, citaci, tabulku, upozornění a příklady.
+ * Pozor: nadpisy „Klíčové pojmy/koncepty" stránka modulu skrývá, proto tu nejsou.
+ */
+function mockLearnBlocks(moduleId: number, content: Pick<Module, "title" | "perex">): LearnBlock[] {
+  const perex =
+    content.perex ||
+    "Krátké shrnutí toho, co se v modulu naučíte a proč se vám to bude ve třídě hodit.";
+
+  return [
+    {
+      learnId: moduleId * 10 + 1,
+      moduleId,
+      title: "Úvod",
+      content: `
+<h1>${content.title}</h1>
+<p>${perex}</p>
+<div class="alert-info"><p><strong>Cíl modulu:</strong> po dokončení umíte látku vysvětlit kolegovi a použít ji při přípravě vlastní hodiny.</p></div>
+<h2>Proč na tom záleží</h2>
+<p>Nástroje s umělou inteligencí už žáci používají — doma i ve škole. Učitel, který rozumí jejich silným a slabým stránkám, je může <strong>vědomě zapojit</strong> do výuky místo toho, aby je jen zakazoval.</p>
+<ul>
+  <li>ušetříte čas při rutinní přípravě materiálů,</li>
+  <li>poznáte, kdy výstupu nevěřit,</li>
+  <li>naučíte žáky s AI pracovat kriticky a bezpečně.</li>
+</ul>
+<blockquote><p>„AI nenahradí učitele. Učitelé, kteří AI používají, ale nahradí ty, kteří ji nepoužívají.“</p></blockquote>
+<hr>
+<h2>Pojmy, se kterými budeme pracovat</h2>
+<table>
+  <thead><tr><th>Pojem</th><th>Co znamená</th><th>Příklad ze třídy</th></tr></thead>
+  <tbody>
+    <tr><td>Prompt</td><td>Zadání, které modelu napíšete</td><td>„Vytvoř 5 otázek k textu o fotosyntéze pro 7. třídu.“</td></tr>
+    <tr><td>Halucinace</td><td>Sebevědomě podaný, ale vymyšlený údaj</td><td>Neexistující kniha uvedená jako zdroj</td></tr>
+    <tr><td>Kontext</td><td>Informace, které model při odpovědi bere v úvahu</td><td>Ročník, cíl hodiny, úroveň žáků</td></tr>
+  </tbody>
+</table>
+<h3>Jak budeme postupovat</h3>
+<ol>
+  <li>Projdete si příručku a vyzkoušíte příklady.</li>
+  <li>V procvičování si ověříte, co jste pochopili.</li>
+  <li>V testu odpovíte na otázku z praxe — hodnotí ji AI tutor.</li>
+</ol>`,
+    },
+    {
+      learnId: moduleId * 10 + 2,
+      moduleId,
+      title: "Do praxe",
+      content: `
+<h2>Jak to vypadá ve třídě</h2>
+<p>Rozdíl mezi užitečnou a bezcennou odpovědí je většinou v zadání. Čím víc kontextu modelu dáte, tím méně budete výstup přepisovat.</p>
+<div class="example-bad"><p><strong>Takhle ne:</strong> „Napiš mi hodinu o fotosyntéze.“</p></div>
+<div class="example-good"><p><strong>Takhle ano:</strong> „Navrhni 45minutovou hodinu o fotosyntéze pro 7. třídu. Žáci znají stavbu buňky. Chci jednu skupinovou aktivitu a krátké ověření na konci.“</p></div>
+<div class="alert-warning"><p><strong>Pozor:</strong> do chatu nikdy nevkládejte jména žáků, známky ani jiné osobní údaje.</p></div>
+<h3>Shrnutí</h3>
+<ul>
+  <li>Dávejte modelu kontext: ročník, cíl, čas a co žáci už umí.</li>
+  <li>Výstup vždy zkontrolujte — za obsah hodiny odpovídáte vy.</li>
+  <li>Fakta a zdroje ověřujte v nezávislém zdroji.</li>
+</ul>`,
+    },
+  ];
+}
+
+/** Statické procvičování (vyhodnocuje se v prohlížeči): dvě uzavřené a jedna otevřená otázka. */
+function mockPracticeQuestions(moduleId: number): PracticeQuestion[] {
+  const closed = (n: number, question: string, options: string[], correct: number): PracticeQuestion => {
+    const questionId = moduleId * 10 + n;
+    return {
+      questionId,
+      moduleId,
+      questionType: QuestionType.Closed,
+      question,
+      correctAnswer: options[correct],
+      closedOptions: options.map((text, i) => ({ optionId: questionId * 10 + i + 1, questionId, text })),
+    };
+  };
+
+  return [
+    closed(
+      1,
+      "Co jazykový model dělá, když generuje odpověď?",
+      [
+        "Vyhledá odpověď v databázi ověřených faktů",
+        "Předpovídá nejpravděpodobnější pokračování textu",
+        "Pokaždé prohledá internet a shrne výsledky",
+      ],
+      1,
+    ),
+    closed(
+      2,
+      "Žák odevzdá práci, která zjevně vznikla s pomocí AI. Jaký je nejvhodnější první krok?",
+      [
+        "Rovnou ji ohodnotit nedostatečně",
+        "Promluvit si s ním o postupu a o tom, co se při práci naučil",
+        "Zakázat AI celé třídě",
+      ],
+      1,
+    ),
+    {
+      questionId: moduleId * 10 + 3,
+      moduleId,
+      questionType: QuestionType.Open,
+      question: "Jak byste ověřili fakt, který vám AI uvedla v podkladech na hodinu?",
+      exampleAnswer: "Dohledám ho v nezávislém zdroji, například v učebnici nebo na odborném webu, a porovnám údaje.",
+      openKeywords: ["zdroj", "ověř", "porovn"].map((keyword, i) => ({
+        keywordId: moduleId * 100 + i + 1,
+        questionId: moduleId * 10 + 3,
+        keyword,
+      })),
+    },
+  ];
 }

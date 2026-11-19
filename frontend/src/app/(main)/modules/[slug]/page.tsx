@@ -14,6 +14,7 @@ import AssessmentTab from "@/components/module/AssessmentTab";
 import PaperSheets from "@/components/module/PaperSheets";
 import NotesPanel from "@/components/module/NotesPanel";
 import ScrollToBottomButton from "@/components/module/ScrollToBottomButton";
+import { getMockModuleDetail } from "@/components/courses/courseMocks";
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
@@ -103,19 +104,24 @@ export default function ModulePage() {
       setError(null);
       if (isNaN(modId)) { setError('Modul nebyl nalezen.'); return; }
 
-      const moduleData = await getModule(modId);
+      // Ukázkové moduly (900101…) jen pro vývoj bez backendu — viz courseMocks.
+      const mock = process.env.NODE_ENV !== 'production' ? getMockModuleDetail(modId) : null;
+
+      const moduleData = mock?.module ?? await getModule(modId);
       setModule(moduleData);
 
       // Tichý tracking — server si uloží, že user otevřel tenhle modul.
       // Fire-and-forget; nikdy nesmí rozbít načítání stránky.
-      void markModuleVisited(modId);
+      if (!mock) void markModuleVisited(modId);
 
       // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
       // getModules je vynechané záměrně: getCourse moduly už vrací.
-      const [courseData, progress] = await Promise.all([
-        getCourse(moduleData.courseId),
-        getCourseProgress(moduleData.courseId).catch(() => [] as ModuleCompletionStatus[]),
-      ]);
+      const [courseData, progress] = mock
+        ? [mock.course, mock.progress] as const
+        : await Promise.all([
+            getCourse(moduleData.courseId),
+            getCourseProgress(moduleData.courseId).catch(() => [] as ModuleCompletionStatus[]),
+          ]);
       setCourse(courseData);
       setAllModules((courseData.modules ?? []).filter(m => m.isActive));
 

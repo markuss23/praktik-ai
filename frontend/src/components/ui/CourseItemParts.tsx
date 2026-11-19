@@ -50,6 +50,25 @@ export function modulesWord(n: number) {
   return czechPlural(n, "modul", "moduly", "modulů");
 }
 
+/**
+ * Obor jako bublina v rohu obrázku — motiv landing page (bublina u rysa
+ * v hero, citace v „O projektu"): lila podklad, jeden ostrý roh, lehké
+ * natočení a hluboký měkký stín. Písmo jako podpis citace.
+ * Rodič musí být `relative`; karta kurzu i hlavička detailu.
+ */
+export function CategoryBubble({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "absolute top-3.5 left-3.5 max-w-[calc(100%-1.75rem)] origin-bottom-left rotate-[-1.4deg] truncate rounded-full rounded-bl-[3px] bg-[#EDEAFA] px-3 py-1.5 text-[11px] leading-none font-bold tracking-[0.1em] text-[#23203A] uppercase shadow-[0_10px_24px_rgba(20,19,28,0.18)]",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 /** Meta pod popisem: délka + obtížnost. */
 export function CourseMeta({
   duration,

@@ -123,7 +123,11 @@ import {
 import { Textarea } from "@/components/ui-kit/textarea";
 import { Toaster, toast } from "@/components/ui-kit/toast";
 import { Row, Section, ThemeToggle } from "@/components/ui-kit/Showcase";
+import { CourseCard } from "@/components/ui/CourseCard";
+import type { CourseItemProps } from "@/components/ui/CourseItemParts";
+import { Difficulty } from "@/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
+import { CourseCardBanner, CourseCardIcon } from "./course-card-drafts";
 import { cn, czechPlural } from "@/lib/utils";
 
 /** Popisky pro `<Select items>` — bez „vše", aby se uplatnil placeholder. */
@@ -177,6 +181,7 @@ const SECTIONS = [
   { value: "tabs", label: "Tabs" },
   { value: "select", label: "Select" },
   { value: "card", label: "Card" },
+  { value: "card-drafts", label: "Card — návrhy kurzu" },
   { value: "card-cover", label: "Card — SVG covery" },
   { value: "card-review", label: "Card — ke schválení" },
   { value: "dialog", label: "Dialog" },
@@ -239,6 +244,73 @@ const COVER_MOTIF_ITEMS: {
   { name: "AiCover", Cover: AiCover, tone: "green" },
   { name: "PromptCover", Cover: PromptCover, tone: "green" },
   { name: "GitCover", Cover: GitCover, tone: "blue" },
+];
+
+/**
+ * Ukázkové kurzy pro návrhy karet: všechny tři stavy (rozpracovaný,
+ * nezapsaný, dokončený) a kurz bez oboru. `href` míří na sekci, ať klik
+ * v ukázce neodvede ze stránky.
+ */
+const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
+  {
+    course: {
+      id: "draft-ai",
+      title: "Úvod do generativní AI ve výuce",
+      description:
+        "Co generativní AI umí, kde selhává a jak ji bezpečně zapojit do běžné vyučovací hodiny.",
+      duration: 90,
+      difficulty: Difficulty.Beginner,
+      category: "Mediální výchova",
+      completedModules: 2,
+      totalModules: 6,
+      isEnrolled: true,
+      href: "#card-drafts",
+    },
+    icon: <AiCover tone="green" variant="icon" />,
+  },
+  {
+    course: {
+      id: "draft-stats",
+      title: "AI a hodnocení žáků",
+      description:
+        "Jak s pomocí AI připravit kritéria hodnocení, zpětnou vazbu a přehled pokroku celé třídy.",
+      duration: 60,
+      difficulty: Difficulty.Intermediate,
+      category: "Primární vzdělávání",
+      totalModules: 5,
+      href: "#card-drafts",
+    },
+    icon: <StatsCover tone="purple" variant="icon" />,
+  },
+  {
+    course: {
+      id: "draft-prompt",
+      title: "Jak komunikovat s AI?",
+      description:
+        "Jak psát jasné a účinné zadání, aby vám AI dávala přesné a praktické odpovědi k vaší práci.",
+      duration: 86,
+      difficulty: Difficulty.CompleteBeginner,
+      category: "Český jazyk a literatura",
+      completedModules: 4,
+      totalModules: 4,
+      isEnrolled: true,
+      isCompleted: true,
+    },
+    icon: <PromptCover tone="green" variant="icon" />,
+  },
+  {
+    course: {
+      id: "draft-math",
+      title: "Grafy a funkce s AI asistentem",
+      description:
+        "Od čtení grafů po odhad průběhu funkce — AI jako parťák, který vysvětlí každý krok.",
+      duration: 64,
+      difficulty: Difficulty.SlightlyAdvanced,
+      totalModules: 4,
+      href: "#card-drafts",
+    },
+    icon: <MathCover tone="purple" variant="icon" />,
+  },
 ];
 
 /** Přilepený obsah stránky. Zvýrazňuje sekce, které jsou zrovna rozbalené. */
@@ -1552,6 +1624,36 @@ function UiKitContent() {
         </Section>
 
         <Section
+          value="card-drafts"
+          title="Card — návrhy karty kurzu"
+          description={'Dva návrhy vedle současné CourseCard. Data, stavy i spodek karty (meta, průběh po modulech, CTA) jsou stejné — mění se jen hlavička. A: obrázek zabírá přesně čtvrtinu karty (mřížka 1fr / 3fr), obor zůstává v bublině na obrázku. B: místo fotky dlaždice s SVG coverem (variant="icon"), vedle ní obor a název, pod nimi popis. Karty jsou v ukázce ve stavech rozpracovaný · nezapsaný · dokončený · bez oboru.'}
+        >
+          <Row label="současná" className="block">
+            <div className="grid gap-6 md:grid-cols-2">
+              {DRAFT_COURSES.slice(0, 2).map(({ course }) => (
+                <CourseCard key={course.id} {...course} />
+              ))}
+            </div>
+          </Row>
+
+          <Row label="A · obrázek 25 %" className="block">
+            <div className="grid gap-6 md:grid-cols-2">
+              {DRAFT_COURSES.map(({ course }) => (
+                <CourseCardBanner key={course.id} {...course} />
+              ))}
+            </div>
+          </Row>
+
+          <Row label="B · ikona + název" className="block">
+            <div className="grid gap-6 md:grid-cols-2">
+              {DRAFT_COURSES.map(({ course, icon }) => (
+                <CourseCardIcon key={course.id} {...course} icon={icon} />
+              ))}
+            </div>
+          </Row>
+        </Section>
+
+        <Section
           value="card-cover"
           title="Card — SVG covery modulů"
           description="Cover jako komponenta, ne bitmapa. Stejný jazyk jako plocha onboardingu — světlý nádech tónu, dva kruhy a blob v plné barvě z tokenů (--gradient-r, --primary, --tip, …). V blobu místo ikony malé schéma, podle kterého se modul pozná: graf funkce, sloupce, síť, větve. Celé je to jedno SVG — škáluje se, váží pár kB, v tmavém režimu se přebarví samo a do karty jde místo <Image>. Barva se přepíná přes `tone`: příbuzná témata sdílí barvu, jiný obor dostane jinou."
@@ -1645,6 +1747,19 @@ function UiKitContent() {
                   <Cover tone={tone} className="rounded-md" />
                   <figcaption className="text-muted-foreground font-mono text-[11px]">
                     {`<${name} tone="${tone}" />`}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Row>
+
+          <Row label='variant="icon"' className="block">
+            <div className="flex flex-wrap gap-4">
+              {COVER_MOTIF_ITEMS.map(({ name, Cover, tone }) => (
+                <figure key={name} className="m-0 flex flex-col items-center gap-1.5">
+                  <Cover tone={tone} variant="icon" className="size-24 rounded-2xl" />
+                  <figcaption className="text-muted-foreground font-mono text-[11px]">
+                    {name}
                   </figcaption>
                 </figure>
               ))}

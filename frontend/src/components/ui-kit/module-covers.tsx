@@ -22,9 +22,29 @@ import { cn } from "@/lib/utils"
  * blobu, stejnými tahy — návod je v `module-covers.md`.
  */
 
-/** Poměr sedí s <CardImage> (590×226 z Figmy), takže cover nikde neuskočí. */
-const WIDTH = 590
-const HEIGHT = 226
+/**
+ * Plátno a kruhy pro obě podoby coveru.
+ * - `cover`: plocha karty. Poměr sedí s <CardImage> (590×226 z Figmy), takže
+ *   cover nikde neuskočí.
+ * - `icon`: čtvercová dlaždice, výřez kolem blobu. Blob zabírá ~75 % hrany
+ *   a kruhy jsou přisunuté do rohů, aby z nich zůstal vidět kus jako na coveru.
+ */
+const CANVAS = {
+  cover: {
+    width: 590,
+    height: 226,
+    disc: { cx: 81, cy: 194, r: 145 },
+    ring: { cx: 509, cy: 65, r: 161 },
+  },
+  icon: {
+    width: 230,
+    height: 230,
+    disc: { cx: 14, cy: 194, r: 92 },
+    ring: { cx: 226, cy: 16, r: 100 },
+  },
+} as const
+
+type CoverVariant = keyof typeof CANVAS
 
 /**
  * Tóny coverů. Každý jen nastaví `--cover-tone`, ze kterého berou barvu
@@ -99,6 +119,8 @@ const GLYPH_SCALE = (BLOB_SIZE * 0.54) / 64
 
 type CoverProps = Omit<React.ComponentProps<"svg">, "viewBox" | "children"> & {
   tone?: CoverTone
+  /** `cover` = plocha karty (výchozí), `icon` = čtvercová dlaždice. */
+  variant?: CoverVariant
 }
 
 /**
@@ -108,12 +130,14 @@ type CoverProps = Omit<React.ComponentProps<"svg">, "viewBox" | "children"> & {
  */
 function CoverFrame({
   tone = DEFAULT_TONE,
+  variant = "cover",
   className,
   children,
   ...props
 }: CoverProps & { children: React.ReactNode }) {
   // useId vrací i znaky, které v `url(#…)` nefungují — nechat jen bezpečné.
   const shadowId = `cover-shadow-${React.useId().replace(/[^\w-]/g, "")}`
+  const { width: WIDTH, height: HEIGHT, disc, ring } = CANVAS[variant]
 
   return (
     <svg
@@ -142,16 +166,16 @@ function CoverFrame({
 
       {/* dekorativní kruhy, rozmístěné jako v OnboardingMedia */}
       <circle
-        cx="81"
-        cy="194"
-        r="145"
+        cx={disc.cx}
+        cy={disc.cy}
+        r={disc.r}
         className="fill-(--cover-tone)"
         fillOpacity={0.12}
       />
       <circle
-        cx="509"
-        cy="65"
-        r="161"
+        cx={ring.cx}
+        cy={ring.cy}
+        r={ring.r}
         fill="none"
         className="stroke-(--cover-tone)"
         strokeOpacity={0.25}
@@ -392,4 +416,5 @@ export {
   StatsCover,
   COVER_TONES,
   type CoverTone,
+  type CoverVariant,
 }

@@ -17,7 +17,7 @@ jen místo ikony je v blobu malý diagram.
 
 | # | Pravidlo |
 |---|---|
-| 1 | Plátno je vždy `viewBox="0 0 590 226"`. Nic jiného. |
+| 1 | Plátno je `viewBox="0 0 590 226"`, u `variant="icon"` čtverec `230×230` (viz 2.1). Obojí nastavuje `<CoverFrame>` z `CANVAS`. |
 | 2 | Plochu (podklad, kruhy, blob, stín) kreslí `<CoverFrame>`. Motiv do ní nesahá. |
 | 3 | Barva jde jen přes `--cover-tone` (Tailwind `fill-(--cover-tone)`), nikdy jako hex. |
 | 4 | Schéma je **bílé** a vejde se do mřížky **±32** kolem středu blobu. |
@@ -57,6 +57,17 @@ Vrstvy odspoda — všechno řeší `<CoverFrame>`:
 
 Rozměry kruhů jsou rozměry z `OnboardingMedia` přepočítané na výšku 226
 (× ~2), takže cover a onboarding vypadají jako jedna rodina.
+
+### 2.1 Varianta `icon` — dlaždice
+
+`<MathCover variant="icon" />` nakreslí stejný motiv jako čtvercovou dlaždici
+230×230: stejný blob (172, ~75 % hrany) i schéma, kruhy jsou přisunuté do
+rohů (`CANVAS.icon`), aby z nich zůstal vidět kus. Pro karty, kde je místo
+fotky jen ikona vedle názvu (návrh B v `/ui-kit` → **Card — návrhy karty
+kurzu**). Zaoblení a velikost dává obal: `className="size-20 rounded-2xl"`.
+
+Motiv o variantě nic neví — kreslí dál jen do `<CoverFrame>`, takže každý
+nový cover má dlaždici zadarmo. V checklistu (kap. 8) ho zkontroluj i v ní.
 
 ### Blob
 
@@ -246,6 +257,7 @@ o AI musí být zelený, i kdyby se ti to esteticky nehodilo.
 - [ ] Běžné uzly mají výplň blobu — pod nimi nic neprosvítá.
 - [ ] Schéma se vejde do ±32 (jiskra smí přesáhnout).
 - [ ] Zmenši na ~240 px šířky: pozná se motiv? Když ne, je moc detailní.
+- [ ] A jako `variant="icon"` v 80 px — pořád se pozná?
 - [ ] Přepni `/ui-kit` do tmavého režimu — cover musí držet.
 - [ ] Vyzkoušej ho ve **všech pěti tónech** (řádek `tone` v ui-kitu).
 - [ ] `npx eslint` a `npx tsc --noEmit` čisté.
