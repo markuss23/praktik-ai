@@ -18,8 +18,8 @@ import {
 import type { Course, CourseBlock, CourseSubject, CourseTarget } from '@/api';
 import {
   Button,
-  CourseCard,
-  CourseCardSkeleton,
+  CourseIconCard,
+  CourseIconCardSkeleton,
   CourseRow,
   CourseRowSkeleton,
   Input,
@@ -470,7 +470,7 @@ export function CourseExplorer() {
                 transition={{ duration: 0.2 }}
               >
                 {Array.from({ length: 6 }, (_, i) => (
-                  <CourseCardSkeleton key={i} />
+                  <CourseIconCardSkeleton key={i} />
                 ))}
               </motion.div>
             ) : (
@@ -552,7 +552,7 @@ export function CourseExplorer() {
                   }}
                   transition={{ duration: 0.35, ease: 'easeOut' }}
                 >
-                  <CourseCard {...item} />
+                  <CourseIconCard {...item} />
                 </motion.div>
               ))}
             </motion.div>
@@ -783,7 +783,7 @@ export function CourseExplorerFallback() {
       <div className="h-[46px] rounded-md border border-border bg-card" />
       <div className={cn(GRID_CLASS, 'mt-6')}>
         {Array.from({ length: 6 }, (_, i) => (
-          <CourseCardSkeleton key={i} />
+          <CourseIconCardSkeleton key={i} />
         ))}
       </div>
     </section>

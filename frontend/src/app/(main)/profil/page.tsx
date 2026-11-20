@@ -11,6 +11,7 @@ import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
 import { AppearanceCard } from '@/components/profile/AppearanceCard';
 import { ActivityHeatmap } from '@/components/profile/ActivityHeatmap';
+import { AiTokenUsageCard } from '@/components/profile/AiTokenUsageCard';
 import { ProfileTicketsCard, TicketsSidebar, type Ticket } from '@/components/tickets';
 import { NotificationCenter } from '@/components/notifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,7 +71,7 @@ function computeBadges(enrollments: MyEnrollment[]): Badge[] {
 
 export default function ProfilPage() {
   const { user, loading, login, isAuthenticated } = useAuth();
-  const { roleLabel } = useRole();
+  const { roleLabel, isSuperAdmin } = useRole();
   const { currentUser, refetch: refetchUser } = useCurrentUser();
   const [enrollments, setEnrollments] = useState<MyEnrollment[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
@@ -282,6 +283,17 @@ export default function ProfilPage() {
             <ProfileStatsSkeleton />
           ) : (
             <ProfileStatsGrid stats={stats.items} />
+          )}
+
+          {/* Spotřeba AI tokenů — jen pro superadmina */}
+          {isSuperAdmin && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <AiTokenUsageCard />
+            </motion.div>
           )}
 
           {/* Modules sections */}

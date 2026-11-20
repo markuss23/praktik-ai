@@ -4,3 +4,4 @@ export type { ProgressItem } from './ProfileProgressCard';
 export { AccountSettingsCard } from './AccountSettingsCard';
 export { AppearanceCard } from './AppearanceCard';
 export { ActivityHeatmap } from './ActivityHeatmap';
+export { AiTokenUsageCard } from './AiTokenUsageCard';

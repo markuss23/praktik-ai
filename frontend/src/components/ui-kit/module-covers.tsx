@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils"
  *
  * Tón nese téma: příbuzné kurzy sdílí barvu, jiný obor dostane jinou.
  * Zavedeno — matematika a exaktní obory `purple`, AI a data `green`,
- * vývoj a nástroje `blue`. `rose` a `orange` zbývají na další rodiny.
+ * vývoj a nástroje `blue`. `rose`, `orange` a deset doplňkových tónů
+ * (`coral` … `slate`, tokeny `--tone-*`) zbývají na další rodiny.
  *
  * Nový motiv kresli do <CoverFrame> jako schéma v mřížce ±32 kolem středu
  * blobu, stejnými tahy — návod je v `module-covers.md`.
@@ -56,6 +57,17 @@ const COVER_TONES = {
   green: "[--cover-tone:var(--primary)]",
   blue: "[--cover-tone:var(--tip)]",
   orange: "[--cover-tone:var(--brand-accent)]",
+  // Doplňkové tóny (`--tone-*` v globals.css) — stejná rodina, další obory.
+  coral: "[--cover-tone:var(--tone-coral)]",
+  clay: "[--cover-tone:var(--tone-clay)]",
+  amber: "[--cover-tone:var(--tone-amber)]",
+  olive: "[--cover-tone:var(--tone-olive)]",
+  teal: "[--cover-tone:var(--tone-teal)]",
+  cyan: "[--cover-tone:var(--tone-cyan)]",
+  azure: "[--cover-tone:var(--tone-azure)]",
+  orchid: "[--cover-tone:var(--tone-orchid)]",
+  berry: "[--cover-tone:var(--tone-berry)]",
+  slate: "[--cover-tone:var(--tone-slate)]",
 } as const
 
 type CoverTone = keyof typeof COVER_TONES
@@ -408,13 +420,29 @@ function PromptCover(props: CoverProps) {
   )
 }
 
+/**
+ * Motivy podle klíče — pro místa, kde se cover vybírá z dat (např. dlaždice
+ * karty kurzu), ne napevno v JSX.
+ */
+const COVER_MOTIFS = {
+  ai: AiCover,
+  prompt: PromptCover,
+  stats: StatsCover,
+  math: MathCover,
+  git: GitCover,
+} as const
+
+type CoverMotif = keyof typeof COVER_MOTIFS
+
 export {
   AiCover,
   GitCover,
   MathCover,
   PromptCover,
   StatsCover,
+  COVER_MOTIFS,
   COVER_TONES,
+  type CoverMotif,
   type CoverTone,
   type CoverVariant,
 }

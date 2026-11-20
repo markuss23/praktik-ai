@@ -49,6 +49,21 @@
   --brand-accent: oklch(0.7153 0.1794 50.61); /* accent    #F87B1B */
   --gradient-l: oklch(0.5445 0.1389 10.8); /* gradientL #B1475C */
   --gradient-r: oklch(0.6274 0.1301 287.77); /* gradientR #857AD2 */
+
+  /* Doplňkové tóny coverů (module-covers.tsx) — stejná rodina jako pět
+     tónů výše: L 0.55–0.70, sytost 0.09–0.15, aby na blobu držela bílá
+     kresba. Odstíny vyplňují mezery mezi stávajícími tóny. */
+  --tone-coral: oklch(0.64 0.15 30); /* #D86353 */
+  --tone-clay: oklch(0.56 0.09 52); /* #9E6541 */
+  --tone-amber: oklch(0.7 0.14 75); /* #D0901E */
+  --tone-olive: oklch(0.64 0.12 122); /* #80973D */
+  --tone-teal: oklch(0.62 0.1 185); /* #26998E */
+  --tone-cyan: oklch(0.61 0.1 222); /* #2A90AE */
+  --tone-azure: oklch(0.59 0.13 250); /* #3781C7 */
+  --tone-orchid: oklch(0.6 0.15 318); /* #A55FB9 */
+  --tone-berry: oklch(0.56 0.15 348); /* #B14984 */
+  --tone-slate: oklch(0.55 0.035 255); /* #647386 */
+
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   /* Fokusový prstenec jede na brandové fialové (gradientR), ne na šedé. */
@@ -58,6 +73,9 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  /* Barva jedné datové řady v grafech (sloupce, pruhy). Ve světlém = brandová
+     fialová; v tmavém má vlastní, o kus tmavší krok — viz `.dark`. */
+  --chart-accent: var(--gradient-r);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -89,6 +107,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-accent: var(--chart-accent);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -500,6 +519,19 @@ body.module-fullscreen footer {
 
   --gradient-r: oklch(0.72 0.1301 287.77); /* gradientR #857AD2 */
 
+  /* Doplňkové tóny coverů — na tmavém podkladu o stupeň světlejší, stejně
+     jako gradientL/R výše. */
+  --tone-coral: oklch(0.71 0.15 30);
+  --tone-clay: oklch(0.66 0.09 52);
+  --tone-amber: oklch(0.72 0.14 75);
+  --tone-olive: oklch(0.71 0.12 122);
+  --tone-teal: oklch(0.7 0.1 185);
+  --tone-cyan: oklch(0.7 0.1 222);
+  --tone-azure: oklch(0.68 0.13 250);
+  --tone-orchid: oklch(0.69 0.15 318);
+  --tone-berry: oklch(0.66 0.15 348);
+  --tone-slate: oklch(0.66 0.035 255);
+
   --border: oklch(1 0 0 / 12%);
 
   --input: oklch(1 0 0 / 17%);
@@ -515,6 +547,10 @@ body.module-fullscreen footer {
   --chart-4: oklch(0.371 0 0);
 
   --chart-5: oklch(0.269 0 0);
+
+  /* gradientR v dark (L 0.72) je na datové značky moc světlý — graf má
+     vlastní krok L 0.66, ověřený na kartě oklch(0.25): kontrast ≥ 3:1. */
+  --chart-accent: oklch(0.66 0.1301 287.77);
 
   --sidebar: oklch(0.25 0 0);
 

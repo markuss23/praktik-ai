@@ -96,9 +96,24 @@ podle barvy se má dát v seznamu poznat rodina.
 | `blue` | `--tip` | `#383BF5` | vývoj, nástroje, verzování |
 | `rose` | `--gradient-l` | `#B1475C` | *volné* |
 | `orange` | `--brand-accent` | `#F87B1B` | *volné* |
+| `coral` | `--tone-coral` | `#D86353` | *volné* |
+| `clay` | `--tone-clay` | `#9E6541` | *volné* |
+| `amber` | `--tone-amber` | `#D0901E` | *volné* |
+| `olive` | `--tone-olive` | `#80973D` | *volné* |
+| `teal` | `--tone-teal` | `#26998E` | *volné* |
+| `cyan` | `--tone-cyan` | `#2A90AE` | *volné* |
+| `azure` | `--tone-azure` | `#3781C7` | *volné* |
+| `orchid` | `--tone-orchid` | `#A55FB9` | *volné* |
+| `berry` | `--tone-berry` | `#B14984` | *volné* |
+| `slate` | `--tone-slate` | `#647386` | *volné* |
 
 Hexy jsou jen orientační — v kódu se sahá na token, takže se tmavý režim
 přebarví sám.
+
+Doplňkové tóny `--tone-*` (od `coral` dál) jsou v `globals.css` vedle
+značkových barev a drží se stejné rodiny: L 0.55–0.70, sytost 0.09–0.15
+(`slate` 0.035 jako neutrál), v tmavém režimu o ~0.08 světlejší. Odstíny
+vyplňují mezery mezi pěti původními tóny, takže se žádné dva nepletou.
 
 ### Přidání tónu
 
@@ -259,7 +274,7 @@ o AI musí být zelený, i kdyby se ti to esteticky nehodilo.
 - [ ] Zmenši na ~240 px šířky: pozná se motiv? Když ne, je moc detailní.
 - [ ] A jako `variant="icon"` v 80 px — pořád se pozná?
 - [ ] Přepni `/ui-kit` do tmavého režimu — cover musí držet.
-- [ ] Vyzkoušej ho ve **všech pěti tónech** (řádek `tone` v ui-kitu).
+- [ ] Vyzkoušej ho ve **všech tónech** (řádek `tone` v ui-kitu).
 - [ ] `npx eslint` a `npx tsc --noEmit` čisté.
 
 ### Rychlý náhled bez prohlížeče

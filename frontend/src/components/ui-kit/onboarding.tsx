@@ -24,7 +24,22 @@ import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui-kit/dialog"
  * Jestli už uživatel onboarding viděl, si pamatuje aplikace, ne komponenta.
  */
 
-type OnboardingTone = "purple" | "rose" | "green" | "blue" | "orange"
+type OnboardingTone =
+  | "purple"
+  | "rose"
+  | "green"
+  | "blue"
+  | "orange"
+  | "coral"
+  | "clay"
+  | "amber"
+  | "olive"
+  | "teal"
+  | "cyan"
+  | "azure"
+  | "orchid"
+  | "berry"
+  | "slate"
 
 type OnboardingStep = {
   title: React.ReactNode
@@ -43,6 +58,17 @@ const ONBOARDING_TONES: Record<OnboardingTone, string> = {
   green: "[--onboarding-tone:var(--primary)]",
   blue: "[--onboarding-tone:var(--tip)]",
   orange: "[--onboarding-tone:var(--brand-accent)]",
+  // Doplňkové tóny — stejné jako v COVER_TONES (module-covers.tsx).
+  coral: "[--onboarding-tone:var(--tone-coral)]",
+  clay: "[--onboarding-tone:var(--tone-clay)]",
+  amber: "[--onboarding-tone:var(--tone-amber)]",
+  olive: "[--onboarding-tone:var(--tone-olive)]",
+  teal: "[--onboarding-tone:var(--tone-teal)]",
+  cyan: "[--onboarding-tone:var(--tone-cyan)]",
+  azure: "[--onboarding-tone:var(--tone-azure)]",
+  orchid: "[--onboarding-tone:var(--tone-orchid)]",
+  berry: "[--onboarding-tone:var(--tone-berry)]",
+  slate: "[--onboarding-tone:var(--tone-slate)]",
 }
 
 /**

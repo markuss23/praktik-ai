@@ -7,11 +7,12 @@ import type { Course, CourseBlock, CourseSubject } from "@/api";
 import {
   Button,
   CatalogSelect,
-  CourseCard,
-  CourseCardSkeleton,
+  CourseIconCard,
+  CourseIconCardSkeleton,
   CourseRow,
   CourseRowSkeleton,
   courseCategoryLabel,
+  courseCover,
   Input,
   type CourseItemProps,
 } from "@/components/ui";
@@ -292,6 +293,7 @@ export function CourseCatalog({
           duration: course.durationMinutes ?? (course.modulesCount ? course.modulesCount * 20 : 60),
           difficulty: course.difficulty,
           category: courseCategoryLabel(course),
+          cover: courseCover(String(courseId), course.courseBlock?.code),
           completedModules: mock?.completedModules ?? enrollment?.completedModules ?? 0,
           totalModules: course.modulesCount || 0,
           isEnrolled: !!(mock || enrollment),
@@ -321,6 +323,7 @@ export function CourseCatalog({
           duration: course?.durationMinutes ?? (totalModules ? totalModules * 20 : 60),
           difficulty: course?.difficulty,
           category: courseCategoryLabel(course),
+          cover: courseCover(e.courseId, course?.courseBlock?.code),
           completedModules: e.completedModules ?? 0,
           totalModules,
           isEnrolled: true,
@@ -455,7 +458,7 @@ export function CourseCatalog({
               transition={{ duration: 0.2 }}
             >
               {Array.from({ length: enrolledOnly ? 3 : pageSize }, (_, i) => (
-                <CourseCardSkeleton key={i} />
+                <CourseIconCardSkeleton key={i} />
               ))}
             </motion.div>
           ) : (
@@ -529,7 +532,7 @@ export function CourseCatalog({
                 }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
               >
-                <CourseCard {...item} />
+                <CourseIconCard {...item} />
               </motion.div>
             ))}
           </motion.div>

@@ -110,7 +110,7 @@ export function CourseCardSkeleton() {
   return (
     <div className="flex h-full animate-pulse flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="relative aspect-[16/9] w-full bg-muted">
-        <div className="absolute top-3.5 left-3.5 h-6 w-28 rotate-[-1.4deg] rounded-full rounded-bl-[3px] bg-foreground/[0.06]" />
+        <div className="absolute top-3.5 left-3.5 h-6 w-28 rounded-full rounded-bl-[3px] bg-foreground/[0.06]" />
       </div>
       <div className="flex grow flex-col p-5 sm:p-6">
         <div className="h-5 w-3/4 rounded bg-muted" />

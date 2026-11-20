@@ -1,5 +1,5 @@
 import { Difficulty, type Course, type CourseBlock, type CourseSubject, type CourseTarget } from "@/api";
-import { courseCategoryLabel, type CourseItemProps, type CourseStatus } from "@/components/ui";
+import { courseCategoryLabel, courseCover, type CourseItemProps, type CourseStatus } from "@/components/ui";
 import type { MyEnrollmentExtended } from "@/lib/api-client";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
 
@@ -83,6 +83,7 @@ export function toCatalogEntries(
         duration,
         difficulty: course.difficulty,
         category: courseCategoryLabel(course),
+        cover: courseCover(course.courseId, course.courseBlock?.code),
         completedModules: mock?.completedModules ?? enrollment?.completedModules ?? 0,
         totalModules,
         isEnrolled,

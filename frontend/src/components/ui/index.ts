@@ -115,8 +115,9 @@ export { CatalogSelect, type CatalogOption } from "./CatalogSelect";
 export { CatalogMultiSelect, type CatalogOptionGroup } from "./CatalogMultiSelect";
 export { CategoryGroup, CourseCategories, ModuleCategories } from "./CategoryTags";
 export { CourseCard, CourseCardSkeleton } from "./CourseCard";
+export { CourseIconCard, CourseIconCardSkeleton, courseCover } from "./CourseIconCard";
 export { CourseRow, CourseRowSkeleton } from "./CourseRow";
-export type { CourseItemProps, CourseStatus } from "./CourseItemParts";
+export type { CourseCover, CourseItemProps, CourseStatus } from "./CourseItemParts";
 export {
   CategoryBubble,
   CourseMeta,

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight, CheckCircle, Clock, FileText } from "lucide-react";
 import { type Course, type Difficulty } from "@/api";
+import type { CoverMotif, CoverTone } from "@/components/ui-kit/module-covers";
 import { DIFFICULTY_LABELS } from "@/lib/difficulty";
 import { cn, czechPlural } from "@/lib/utils";
 
@@ -17,8 +18,10 @@ export interface CourseItemProps {
   duration: number;
   /** Doporučená obtížnost. Pokud není uvedena, fallback na „Začátečník". */
   difficulty?: Difficulty | null;
-  /** Obor nebo kategorie kurzu — pill v rohu obrázku. Viz `courseCategoryLabel`. */
+  /** Obor nebo kategorie kurzu. Viz `courseCategoryLabel`. */
   category?: string | null;
+  /** Motiv a barva SVG coveru (dlaždice `CourseIconCard`). Viz `courseCover`. */
+  cover?: CourseCover;
   completedModules?: number;
   totalModules?: number;
   imageUrl?: string;
@@ -26,6 +29,11 @@ export interface CourseItemProps {
   isCompleted?: boolean;
   /** Kam vede klik. Výchozí je detail kurzu; zapsaný kurz může vést rovnou na rozpracovaný modul. */
   href?: string;
+}
+
+export interface CourseCover {
+  motif: CoverMotif;
+  tone: CoverTone;
 }
 
 /** `idle` = nezapsán · `active` = zapsán, rozpracováno · `done` = dokončeno */
@@ -52,15 +60,16 @@ export function modulesWord(n: number) {
 
 /**
  * Obor jako bublina v rohu obrázku — motiv landing page (bublina u rysa
- * v hero, citace v „O projektu"): lila podklad, jeden ostrý roh, lehké
- * natočení a hluboký měkký stín. Písmo jako podpis citace.
+ * v hero, citace v „O projektu"): lila podklad, jeden ostrý roh a hluboký
+ * měkký stín. Písmo jako podpis citace. Na rozdíl od citace je rovně (0°),
+ * ať drží linku s obsahem karty.
  * Rodič musí být `relative`; karta kurzu i hlavička detailu.
  */
 export function CategoryBubble({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "absolute top-3.5 left-3.5 max-w-[calc(100%-1.75rem)] origin-bottom-left rotate-[-1.4deg] truncate rounded-full rounded-bl-[3px] bg-[#EDEAFA] px-3 py-1.5 text-[11px] leading-none font-bold tracking-[0.1em] text-[#23203A] uppercase shadow-[0_10px_24px_rgba(20,19,28,0.18)]",
+        "absolute top-3.5 left-3.5 max-w-[calc(100%-1.75rem)] truncate rounded-full rounded-bl-[3px] bg-[#EDEAFA] px-3 py-1.5 text-[11px] leading-none font-bold tracking-[0.1em] text-[#23203A] uppercase shadow-[0_10px_24px_rgba(20,19,28,0.18)]",
         className,
       )}
     >

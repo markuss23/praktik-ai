@@ -124,10 +124,11 @@ import { Textarea } from "@/components/ui-kit/textarea";
 import { Toaster, toast } from "@/components/ui-kit/toast";
 import { Row, Section, ThemeToggle } from "@/components/ui-kit/Showcase";
 import { CourseCard } from "@/components/ui/CourseCard";
+import { CourseIconCard } from "@/components/ui/CourseIconCard";
 import type { CourseItemProps } from "@/components/ui/CourseItemParts";
 import { Difficulty } from "@/api";
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from "@/lib/difficulty";
-import { CourseCardBanner, CourseCardIcon } from "./course-card-drafts";
+import { CourseCardBanner } from "./course-card-drafts";
 import { cn, czechPlural } from "@/lib/utils";
 
 /** Popisky pro `<Select items>` — bez „vše", aby se uplatnil placeholder. */
@@ -228,6 +229,16 @@ const COVER_TONE_ITEMS: { tone: CoverTone; token: string }[] = [
   { tone: "green", token: "--primary" },
   { tone: "blue", token: "--tip" },
   { tone: "orange", token: "--brand-accent" },
+  { tone: "coral", token: "--tone-coral" },
+  { tone: "clay", token: "--tone-clay" },
+  { tone: "amber", token: "--tone-amber" },
+  { tone: "olive", token: "--tone-olive" },
+  { tone: "teal", token: "--tone-teal" },
+  { tone: "cyan", token: "--tone-cyan" },
+  { tone: "azure", token: "--tone-azure" },
+  { tone: "orchid", token: "--tone-orchid" },
+  { tone: "berry", token: "--tone-berry" },
+  { tone: "slate", token: "--tone-slate" },
 ];
 
 /** Motivy se v ukázce tónů střídají, ať je vidět kresba na každém podkladu. */
@@ -249,9 +260,10 @@ const COVER_MOTIF_ITEMS: {
 /**
  * Ukázkové kurzy pro návrhy karet: všechny tři stavy (rozpracovaný,
  * nezapsaný, dokončený) a kurz bez oboru. `href` míří na sekci, ať klik
- * v ukázce neodvede ze stránky.
+ * v ukázce neodvede ze stránky. `cover` určuje motiv a barvu — návrh A ho
+ * kreslí jako cover, `CourseIconCard` jako dlaždici.
  */
-const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
+const DRAFT_COURSES: { course: CourseItemProps }[] = [
   {
     course: {
       id: "draft-ai",
@@ -265,8 +277,8 @@ const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
       totalModules: 6,
       isEnrolled: true,
       href: "#card-drafts",
+      cover: { motif: "ai", tone: "green" },
     },
-    icon: <AiCover tone="green" variant="icon" />,
   },
   {
     course: {
@@ -279,8 +291,8 @@ const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
       category: "Primární vzdělávání",
       totalModules: 5,
       href: "#card-drafts",
+      cover: { motif: "stats", tone: "purple" },
     },
-    icon: <StatsCover tone="purple" variant="icon" />,
   },
   {
     course: {
@@ -295,8 +307,8 @@ const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
       totalModules: 4,
       isEnrolled: true,
       isCompleted: true,
+      cover: { motif: "prompt", tone: "green" },
     },
-    icon: <PromptCover tone="green" variant="icon" />,
   },
   {
     course: {
@@ -308,8 +320,8 @@ const DRAFT_COURSES: { course: CourseItemProps; icon: React.ReactNode }[] = [
       difficulty: Difficulty.SlightlyAdvanced,
       totalModules: 4,
       href: "#card-drafts",
+      cover: { motif: "math", tone: "purple" },
     },
-    icon: <MathCover tone="purple" variant="icon" />,
   },
 ];
 
@@ -1626,7 +1638,7 @@ function UiKitContent() {
         <Section
           value="card-drafts"
           title="Card — návrhy karty kurzu"
-          description={'Dva návrhy vedle současné CourseCard. Data, stavy i spodek karty (meta, průběh po modulech, CTA) jsou stejné — mění se jen hlavička. A: obrázek zabírá přesně čtvrtinu karty (mřížka 1fr / 3fr), obor zůstává v bublině na obrázku. B: místo fotky dlaždice s SVG coverem (variant="icon"), vedle ní obor a název, pod nimi popis. Karty jsou v ukázce ve stavech rozpracovaný · nezapsaný · dokončený · bez oboru.'}
+          description={'Dva návrhy vedle současné CourseCard. Data, stavy i spodek karty (meta, průběh po modulech, CTA) jsou stejné — mění se jen hlavička. A: SVG cover modulu zabírá přesně čtvrtinu karty (mřížka 1fr / 3fr), obor je v bublině nad názvem (na coveru by se srazil s blobem). B (vybraný, běží v katalogu na /kurzy a na úvodní stránce jako CourseIconCard): místo fotky dlaždice s SVG coverem (variant="icon"), vedle ní obor jako popisek verzálkami a název, pod nimi popis. Barva dlaždice je podle bloku kurzu, motiv podle id (courseCover). Karty jsou v ukázce ve stavech rozpracovaný · nezapsaný · dokončený · bez oboru.'}
         >
           <Row label="současná" className="block">
             <div className="grid gap-6 md:grid-cols-2">
@@ -1636,7 +1648,7 @@ function UiKitContent() {
             </div>
           </Row>
 
-          <Row label="A · obrázek 25 %" className="block">
+          <Row label="A · cover 25 %" className="block">
             <div className="grid gap-6 md:grid-cols-2">
               {DRAFT_COURSES.map(({ course }) => (
                 <CourseCardBanner key={course.id} {...course} />
@@ -1644,10 +1656,10 @@ function UiKitContent() {
             </div>
           </Row>
 
-          <Row label="B · ikona + název" className="block">
+          <Row label="B · CourseIconCard (katalog)" className="block">
             <div className="grid gap-6 md:grid-cols-2">
-              {DRAFT_COURSES.map(({ course, icon }) => (
-                <CourseCardIcon key={course.id} {...course} icon={icon} />
+              {DRAFT_COURSES.map(({ course }) => (
+                <CourseIconCard key={course.id} {...course} />
               ))}
             </div>
           </Row>
@@ -1767,7 +1779,7 @@ function UiKitContent() {
           </Row>
 
           <Row label="tone" className="block">
-            <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               {COVER_TONE_ITEMS.map(({ tone, token }, i) => {
                 const Cover = COVER_MOTIFS[i % COVER_MOTIFS.length];
                 return (
@@ -1776,6 +1788,20 @@ function UiKitContent() {
                     <figcaption className="text-muted-foreground font-mono text-[11px]">
                       {tone} · {token}
                     </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          </Row>
+
+          <Row label='tone · variant="icon"' className="block">
+            <div className="flex flex-wrap gap-4">
+              {COVER_TONE_ITEMS.map(({ tone }, i) => {
+                const Cover = COVER_MOTIFS[i % COVER_MOTIFS.length];
+                return (
+                  <figure key={tone} className="m-0 flex flex-col items-center gap-1.5">
+                    <Cover tone={tone} variant="icon" className="size-20 rounded-2xl" />
+                    <figcaption className="text-muted-foreground font-mono text-[11px]">{tone}</figcaption>
                   </figure>
                 );
               })}
