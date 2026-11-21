@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: infra/docker/backend.Dockerfile
+    # Před startem API spustí čekající SQL migrace (backend/scripts/migrate.py); při chybě API nenastartuje.
+    command: sh -c "python -m scripts.migrate && exec uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
     env_file:
@@ -27,6 +29,7 @@ services:
     volumes:
       - ./backend:/code
       - ./wiki_data:/wiki_data
+      - ./migrations:/migrations
     networks:
       - praktikai
     depends_on:
