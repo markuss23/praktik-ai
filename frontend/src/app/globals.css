@@ -638,11 +638,13 @@ body.module-fullscreen footer {
     transform: none;
   }
 }
+/* backwards, ne both: konec animace = přirozený stav prvku a s forwards
+   by Chrome nechal prvek navždy ve vlastní compositor vrstvě (dražší scroll). */
 .hero-enter {
-  animation: heroEnter 0.5s ease-out both;
+  animation: heroEnter 0.5s ease-out backwards;
 }
 .hero-pop {
-  animation: heroPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s both;
+  animation: heroPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s backwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-enter,

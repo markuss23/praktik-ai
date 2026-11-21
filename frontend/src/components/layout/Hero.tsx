@@ -105,16 +105,24 @@ export function Hero({ changelog }: { changelog: string | null }) {
         </defs>
       </svg>
 
-      {/* Zelená plocha — jen od lg. Stín nese obal (drop-shadow kreslí podle
-          ořezu potomka), tvary jsou uvnitř, takže je ořízne stejný obrys. */}
       <div
         aria-hidden
+        // Zelená plocha, jen od lg. Stín nese obal (drop-shadow kreslí podle
+        // ořezu potomka). Uvnitř nesmí být nic animovaného: animace pod
+        // clip-path url() a drop-shadow nutí GPU každý frame znovu počítat
+        // masku a blur přes půlku okna a scroll přes hero se pak seká.
         className="pointer-events-none absolute inset-y-0 right-0 left-[var(--shape-left)] hidden [filter:drop-shadow(-14px_22px_40px_rgba(13,47,49,0.22))] lg:block"
       >
-        <div className={cn('absolute inset-0 overflow-hidden [clip-path:url(#hero-green-shape)]', GREEN_FILL)}>
-          <div className="blob-float-slow absolute -top-[120px] -right-[140px] size-[380px] rounded-[62%_38%_43%_57%/51%_47%_53%_49%] bg-white/15" />
-          <div className="absolute top-[22%] right-[4%] size-[150px] rounded-full border-[1.5px] border-white/40" />
-        </div>
+        <div className={cn('absolute inset-0 [clip-path:url(#hero-green-shape)]', GREEN_FILL)} />
+      </div>
+      <div
+        aria-hidden
+        // Dekorace zelené plochy, mimo clip-path a stín. Leží v pravém horním
+        // rohu, kde má plocha rovné hrany, takže stačí obyčejný overflow-hidden.
+        className="pointer-events-none absolute inset-y-0 right-0 left-[var(--shape-left)] hidden overflow-hidden lg:block"
+      >
+        <div className="blob-float-slow absolute -top-[120px] -right-[140px] size-[380px] rounded-[62%_38%_43%_57%/51%_47%_53%_49%] bg-white/15" />
+        <div className="absolute top-[22%] right-[4%] size-[150px] rounded-full border-[1.5px] border-white/40" />
       </div>
 
       <div
