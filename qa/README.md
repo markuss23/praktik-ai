@@ -25,11 +25,20 @@ npx playwright test --project=chromium
 - Jedna role: `npx playwright test e2e/lector --project=chromium`.
 - Report: `npx playwright show-report`.
 
-## Pro budoucí CI
+## Lokální testovací stack
 
-Testy nepotřebují soubor `.env.test`, stačí proměnné prostředí (v CI jako secrets):
+Čistá DB při každém běhu, účty z dev realmu (`student`, `lektor`, `garant`, `admin`; heslo = jméno):
 
-- `E2E_BASE_URL` – adresa nasazené aplikace,
+```bash
+docker compose -p praktikai-e2e -f compose.yml -f compose.e2e.yml up -d --build --wait
+docker compose -p praktikai-e2e -f compose.yml -f compose.e2e.yml down -v   # úklid
+```
+
+## CI
+
+Workflow `.github/workflows/e2e.yml` běží na PR do `main` a ručně (`workflow_dispatch`). Spustí stejný stack, testy a nahraje `playwright-report/` jako artifact.
+
+Testy nepotřebují soubor `.env.test`, stačí proměnné prostředí:
+
+- `E2E_BASE_URL` – adresa aplikace,
 - `E2E_<ROLE>_NAME` a `E2E_<ROLE>_PASSWORD` pro role `USER`, `LECTOR`, `GARANTOR` a `SUPERADMIN`.
-
-Kroky v CI: `npm ci`, `npx playwright install --with-deps chromium`, `npx playwright test --project=chromium`. Report je ve složce `playwright-report/`.
