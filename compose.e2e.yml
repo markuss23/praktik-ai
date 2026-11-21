@@ -1,0 +1,36 @@
+# Testovací stack pro Playwright (qa/) – override nad compose.yml.
+# Každý běh začíná s čistou DB (tmpfs), Keycloak importuje realm s testovacími účty,
+# api při startu spustí migrace a seed. --wait čeká, až jsou všechny služby healthy.
+#
+# Spuštění: docker compose -p praktikai-e2e -f compose.yml -f compose.e2e.yml up -d --build --wait
+# Úklid:    docker compose -p praktikai-e2e -f compose.yml -f compose.e2e.yml down -v
+#
+# Používá stejné porty jako vývojový stack – nespouštět oba současně.
+services:
+  db:
+    # Data jen v paměti – po zastavení kontejneru zmizí.
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      interval: 5s
+      start_period: 5s
+
+  keycloak:
+    # Obraz nemá curl – dotaz na /health/ready přes bash /dev/tcp (management port 9000).
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"UP\"'"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
