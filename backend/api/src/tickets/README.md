@@ -32,13 +32,14 @@ stateDiagram-v2
     open --> in_progress: claim (staff)
     open --> resolved: staff
     in_progress --> resolved: staff
-    resolved --> in_progress: nová zpráva
+    resolved --> in_progress: zpráva requestera
     resolved --> closed: requester nebo staff
-    closed --> resolved: staff
-    open --> [*]: smazání (requester / staff)
-    in_progress --> [*]: smazání (staff)
-    resolved --> [*]: smazání (staff)
-    closed --> [*]: smazání (staff)
+    open --> closed: requester (stažení)
+    in_progress --> closed: requester (stažení)
+    open --> [*]: smazání (requester / garant / superadmin)
+    in_progress --> [*]: smazání (garant / superadmin)
+    resolved --> [*]: smazání (garant / superadmin)
+    closed --> [*]: smazání (garant / superadmin)
 ```
 
 `pending` je v enumu jen kvůli DB. Kód ho nikde nenastavuje.
@@ -60,8 +61,8 @@ stateDiagram-v2
 | Přidat interní poznámku | ne | kde je staff | ano | ano |
 | Claim (`open` → `in_progress`) | ne | kde je staff | ano | ano |
 | Nastavit `resolved` | ne | kde je staff | ano | ano |
-| Nastavit `closed` (jen z `resolved`) | vlastní | vlastní + kde je staff | ano | ano |
-| Smazat | vlastní, jen ve stavu `open` | vlastní ve stavu `open` + kde je staff vždy | vždy | vždy |
+| Nastavit `closed` | vlastní v jakémkoli stavu | vlastní v jakémkoli stavu + kde je staff jen z `resolved` | jen z `resolved` (vlastní v jakémkoli) | jen z `resolved` (vlastní v jakémkoli) |
+| Smazat | vlastní, jen ve stavu `open` | vlastní, jen ve stavu `open` | vždy | vždy |
 
 Všechny endpointy kromě kategorií mají `require_role("user")`. Skutečná práva řeší controller a resolver.
 
@@ -73,8 +74,12 @@ Všechny endpointy kromě kategorií mají `require_role("user")`. Skutečná pr
 - Založení ticketu vytvoří i první zprávu (`message`) od requestera.
 - Claim jde jen ze stavu `open`. Nastaví `assignee_id` a `in_progress`.
 - Ručně (`PUT`) jdou nastavit jen `resolved` a `closed`. Ostatní stavy = 400.
-- `closed` jde jen z `resolved`, jinak 400.
-- Zpráva na `resolved` ticket ho vrátí do `in_progress`. Předtím se znovu ověří duplicita.
+- Requester smí zavřít (stáhnout) vlastní ticket v jakémkoli neuzavřeném stavu (`open`, `in_progress`, `pending`, `resolved`). Historie zpráv zůstane.
+- Staff smí zavřít cizí ticket jen z `resolved`, jinak 400.
+- `resolved` jde jen z `open`, `in_progress` nebo `pending`. Z `resolved` vrací 400.
+- Vyřešení bez claimu ticket automaticky přiřadí tomu staffu, který ho vyřešil (`assignee_id = actor`). Už přiřazený ticket si `assignee` ponechá.
+- `closed` je konečný stav. Změna stavu i nová zpráva na něm vrací 409. Kdo chce pokračovat, založí nový ticket.
+- Veřejná zpráva requestera na `resolved` ticket ho vrátí do `in_progress`. Předtím se znovu ověří duplicita. Odpověď ani interní poznámka staffu stav nemění.
 - Na `closed` ticket nejde přidat zprávu (409).
 - Requester nevidí interní poznámky. Staff vidí vše.
 - Mazání je soft delete (`is_active = False`). Kaskádově smaže i zprávy.
@@ -94,12 +99,9 @@ Nový `entity_type` = nová hodnota v `TicketEntityType`, nový resolver a zázn
 
 ## Pozor na
 
-- **Jakákoli zpráva** na `resolved` ticketu ho znovu otevře. Platí i pro odpověď nebo interní poznámku staffu, nejen pro requestera.
-- `resolved` jde nastavit z libovolného stavu, i z `closed`. Staff tak může uzavřený ticket znovu otevřít.
-- `resolved` jde nastavit i bez claimu. `assignee_id` pak zůstane `null`.
 - Po claimu může ticket dál řešit kterýkoli staff, nejen `assignee`.
-- Requester nemůže zavřít ticket, který není `resolved`. Může ho jen smazat, a to jen v `open`.
-- Staff smí smazat ticket v libovolném stavu. Docstring `delete_ticket` mluví jen o superadminovi, kód pouští každého staff.
-- Garant nemá u `course` ticketu bypass zápisu. Bez zápisu ho nezaloží, i když je pro kurz staff.
-- Práva k existujícímu ticketu se počítají přes entitu. Když je modul, kurz nebo materiál smazaný, `load_entity` vrátí 404 a ticket je nedostupný i pro requestera.
-- Lektor v seznamu nevidí tickety `pub_resource` a `general` (nejsou staff). Vidí jen své vlastní.
+- V datech se nerozliší ticket „vyřešený a potvrzený“ od ticketu „staženého requesterem“ — oba končí jako `closed`.
+- Lektor nesmí smazat cizí ticket ani u vlastního kurzu (aby nemohl schovat stížnosti na kurz). Může ho jen vyřešit. Mazat smí garant a superadmin, a to i ticket ke smazané entitě (mazání nevolá `load_entity`).
+- Garant nemá u `course` ticketu bypass zápisu — **záměrně**. `course_feedback` je zpětná vazba od studentů; garant kurz sám dohlíží a ticket by vyřizoval sám sobě. Problém s kurzem může nahlásit jako `general` ticket.
+- Práva staffu k existujícímu ticketu se počítají přes entitu, která se načítá i soft-smazaná (`load_entity(..., include_inactive=True)`). Ticket ke smazanému kurzu, modulu nebo materiálu tak dál vidí requester i staff (lektor kurzu). Pokud entita v DB fyzicky není, staff je jen garant a superadmin. Zakládat nový ticket jde jen k aktivní entitě.
+- Lektor v seznamu nevidí cizí tickety `pub_resource` a `general` — **záměrně**, není pro ně staff. Platí to i pro nahlášení chyby ve veřejném materiálu, jehož je autorem. Takové tickety řeší garant nebo superadmin a autorovi je případně předají sami.

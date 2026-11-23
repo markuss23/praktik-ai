@@ -30,8 +30,18 @@ class TicketEntityResolver(Protocol):
 
     allowed_categories: set[TicketType]
 
-    def load_entity(self, db: Session, entity_id: int | None):
-        """Načte entitu podle entity_id, nebo vyhodí 404."""
+    def load_entity(
+        self, db: Session, entity_id: int | None, *, include_inactive: bool = False
+    ):
+        """Načte entitu podle entity_id, nebo vyhodí 404.
+
+        Args:
+            db: DB session.
+            entity_id: ID entity (modul, kurz, materiál; u general None).
+            include_inactive: True = načte i soft-smazanou entitu. Používá se
+                pro práva k už existujícímu ticketu; při zakládání ticketu
+                musí entita být aktivní (výchozí False).
+        """
         ...
 
     def authorize_create(self, db: Session, actor: models.User, entity) -> None:
@@ -56,8 +66,16 @@ class ModuleTicketResolver:
         TicketType.practice,
     }
 
-    def load_entity(self, db: Session, entity_id: int) -> models.Module:
-        return get_or_404(db, models.Module, entity_id, detail="Modul nenalezen")
+    def load_entity(
+        self, db: Session, entity_id: int, *, include_inactive: bool = False
+    ) -> models.Module:
+        return get_or_404(
+            db,
+            models.Module,
+            entity_id,
+            detail="Modul nenalezen",
+            check_active=not include_inactive,
+        )
 
     def authorize_create(
         self, db: Session, actor: models.User, entity: models.Module
@@ -73,12 +91,24 @@ class ModuleTicketResolver:
 
 class CourseTicketResolver:
     """Ticket vázaný na celý kurz — obecná stížnost/dotaz ke
-    kurzu. Založit smí zapsaný student, nebo owner/superadmin bez zápisu."""
+    kurzu. Založit smí zapsaný student, nebo owner/superadmin bez zápisu.
+
+    Garant bypass záměrně nemá — course_feedback je zpětná vazba od studentů
+    a garant by ticket vyřizoval sám sobě; problém hlásí jako general ticket.
+    """
 
     allowed_categories = {TicketType.course_feedback}
 
-    def load_entity(self, db: Session, entity_id: int) -> models.Course:
-        return get_or_404(db, models.Course, entity_id, detail="Kurz nenalezen")
+    def load_entity(
+        self, db: Session, entity_id: int, *, include_inactive: bool = False
+    ) -> models.Course:
+        return get_or_404(
+            db,
+            models.Course,
+            entity_id,
+            detail="Kurz nenalezen",
+            check_active=not include_inactive,
+        )
 
     def authorize_create(
         self, db: Session, actor: models.User, entity: models.Course
@@ -99,9 +129,15 @@ class PubResourceTicketResolver:
 
     allowed_categories = {TicketType.content_issue}
 
-    def load_entity(self, db: Session, entity_id: int) -> models.PubResource:
+    def load_entity(
+        self, db: Session, entity_id: int, *, include_inactive: bool = False
+    ) -> models.PubResource:
         return get_or_404(
-            db, models.PubResource, entity_id, detail="Materiál nenalezen"
+            db,
+            models.PubResource,
+            entity_id,
+            detail="Materiál nenalezen",
+            check_active=not include_inactive,
         )
 
     def authorize_create(
@@ -122,7 +158,9 @@ class GeneralTicketResolver:
 
     allowed_categories: set[TicketType] = set()
 
-    def load_entity(self, db: Session, entity_id: int | None) -> None:
+    def load_entity(
+        self, db: Session, entity_id: int | None, *, include_inactive: bool = False
+    ) -> None:
         return None
 
     def authorize_create(self, db: Session, actor: models.User, entity) -> None:

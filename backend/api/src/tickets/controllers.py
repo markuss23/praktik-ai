@@ -32,7 +32,8 @@ def _ensure_no_unresolved_duplicate(
     category: TicketType,
     exclude_ticket_id: int | None = None,
 ) -> None:
-    """Vyhodí 409, pokud requester už má k entitě a kategorii jiný aktivní
+    """
+    Vyhodí 409, pokud requester už má k entitě a kategorii jiný aktivní
     nevyřešený ticket.
     """
     if entity_id is None:
@@ -57,8 +58,10 @@ def _ensure_no_unresolved_duplicate(
 
 
 def get_ticket_categories() -> list[TicketCategoriesResponse]:
-    """Pro každý entity_type vrátí jeho povolené category — ať si FE podle
-    zvoleného entity_type dokáže sestavit nabídku kategorií bez hádání."""
+    """
+    Pro každý entity_type vrátí jeho povolené category — ať si FE podle
+    zvoleného entity_type dokáže sestavit nabídku kategorií bez hádání.
+    """
     return [
         TicketCategoriesResponse(
             entity_type=entity_type,
@@ -69,10 +72,29 @@ def get_ticket_categories() -> list[TicketCategoriesResponse]:
 
 
 def _is_staff(db: Session, actor: models.User, ticket: models.Ticket) -> bool:
-    """Staff smí odpovídat na ticket a uzavřít ho — delegováno na resolver
-    daného entity_type (general má vlastní GeneralTicketResolver)."""
+    """Zjistí, zda actor smí ticket řešit jako staff (odpovídat, vyřešit, zavřít).
+
+    Args:
+        db: DB session.
+        actor: Přihlášený uživatel.
+        ticket: Ticket, ke kterému se oprávnění ověřuje.
+
+    Returns:
+        True, pokud je actor pro entitu ticketu staff.
+
+    Rozhodnutí deleguje na resolver daného entity_type. Entita se načte i když
+    je soft-smazaná, aby ticket ke smazanému kurzu/modulu/materiálu zůstal
+    dostupný (requesterovi i lektorovi kurzu). Pokud entita v DB vůbec není,
+    jako staff projde jen garant a superadmin. Nikdy nevyhazuje 404 kvůli
+    entitě — přístup requestera tak na entitě nezávisí.
+    """
     resolver = get_resolver(ticket.entity_type)
-    entity = resolver.load_entity(db, ticket.entity_id)
+    try:
+        entity = resolver.load_entity(db, ticket.entity_id, include_inactive=True)
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+        return actor.role in (UserRole.guarantor, UserRole.superadmin)
     return resolver.is_staff_for(actor, entity)
 
 
@@ -81,9 +103,11 @@ def get_tickets(
     actor: models.User,
     course_id: int | None = None,
 ) -> list[TicketItem]:
-    """Vrátí tickety. Student vidí jen své, lektor své + tickety kurzů,
+    """
+    Vrátí tickety. Student vidí jen své, lektor své + tickety kurzů,
     které vlastní, garant a superadmin všechny (volitelně omezené na jeden
-    kurz přes course_id)."""
+    kurz přes course_id).
+    """
     stm = (
         select(models.Ticket)
         .where(models.Ticket.is_active.is_(True))
@@ -111,7 +135,9 @@ def get_tickets(
 
 
 def get_ticket(db, ticket_id: int, actor: models.User) -> TicketItem:
-    """Vrátí ticket podle id. Student vidí jen své, staff role vidí všechny."""
+    """
+    Vrátí ticket podle id. Student vidí jen své, staff role vidí všechny.
+    """
     ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
 
     is_requester = ticket.requester_id == actor.user_id
@@ -137,8 +163,10 @@ def create_ticket(
     data: TicketCreate,
     actor: models.User,
 ) -> TicketItem:
-    """Vytvoří ticket. Ověření práv a dopočet course_id deleguje na resolver
-    daného entity_type (general má vlastní GeneralTicketResolver bez omezení)."""
+    """
+    Vytvoří ticket. Ověření práv a dopočet course_id deleguje na resolver
+    daného entity_type (general má vlastní GeneralTicketResolver bez omezení).
+    """
     resolver = get_resolver(data.entity_type)
     entity = resolver.load_entity(db, data.entity_id)
     resolver.authorize_create(db, actor, entity)
@@ -181,7 +209,9 @@ def get_ticket_messages(
     ticket_id: int,
     actor: models.User,
 ) -> list[TicketMessageItem]:
-    """Vrátí vlákno zpráv ticketu. Requester nevidí interní poznámky staffu."""
+    """
+    Vrátí vlákno zpráv ticketu. Requester nevidí interní poznámky staffu.
+    """
     ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
 
     is_requester = ticket.requester_id == actor.user_id
@@ -235,8 +265,8 @@ def add_ticket_message(
     data: TicketMessageCreate,
     actor: models.User,
 ) -> TicketMessageItem:
-    """Přidá zprávu do vlákna. Zpráva sama o sobě stav nemění — o tom, kdy je
-    ticket vyřešen, rozhoduje staff explicitně přes update_ticket_status.
+    """
+    Přidá zprávu (nebo interní poznámku) do vlákna ticketu.
     """
     ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
 
@@ -253,8 +283,9 @@ def add_ticket_message(
             status_code=403, detail="Interní poznámku může přidat jen staff"
         )
 
-    # ticket byl z pohledu staff vyřešený, ale student na něj reaguje — znovu se otevře
-    if ticket.status == TicketStatus.resolved:
+    # ticket byl z pohledu staff vyřešený, ale requester na něj reaguje — znovu se otevře.
+    # Odpověď nebo interní poznámka staffu (např. doplnění po vyřešení) stav nemění.
+    if ticket.status == TicketStatus.resolved and is_requester and not data.is_internal:
         _ensure_no_unresolved_duplicate(
             db,
             requester_id=ticket.requester_id,
@@ -284,25 +315,34 @@ def update_ticket_status(
     status: TicketStatus,
     actor: models.User,
 ) -> TicketItem:
-    """Ruční změna stavu. Jediné povolené cíle jsou resolved (jen staff) a
-    closed (requester i staff) — ostatní stavy (open/in_progress/pending)
-    vznikají jen z create_ticket/claim_ticket/automatického znovuotevření
-    v add_ticket_message, ne ruční volbou requestera."""
+    """
+    Ruční změna stavu ticketu.
+    """
 
     ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
 
     is_requester = ticket.requester_id == actor.user_id
     is_staff = _is_staff(db, actor, ticket)
-    ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
 
     if not is_requester and not is_staff:
         raise HTTPException(status_code=403, detail="Nemáte přístup k tomuto ticketu")
 
+    # status closed je konečný stav
+    if ticket.status == TicketStatus.closed:
+        raise HTTPException(status_code=409, detail="Ticket je uzavřen")
+
     if status == TicketStatus.resolved:
         if not is_staff:
             raise HTTPException(status_code=403, detail="Vyřešit ticket může jen staff")
+        if ticket.status not in UNRESOLVED_STATUSES:
+            raise HTTPException(status_code=400, detail="Ticket už je vyřešen")
+        # ticket vyřešený bez claimu se automaticky přiřadí tomu, kdo ho vyřešil
+        if ticket.assignee_id is None:
+            ticket.assignee_id = actor.user_id
     elif status == TicketStatus.closed:
-        if not ticket.status == TicketStatus.resolved:
+        # requester smí ticket zavřít (stáhnout) v jakémkoli neuzavřeném stavu,
+        # staff jen ticket ve stavu resolved
+        if not is_requester and ticket.status != TicketStatus.resolved:
             raise HTTPException(
                 status_code=400, detail="Ticket může být uzavřen jen v stavu resolved"
             )
@@ -322,12 +362,16 @@ def delete_ticket(
     ticket_id: int,
     actor: models.User,
 ) -> None:
-    """Smazat ticket. Requester jen dokud je open (bez odpovědi), superadmin vždy."""
-    ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
-    resolver = get_resolver(ticket.entity_type)
-    entity = resolver.load_entity(db, ticket.entity_id)
+    """
+    Soft delete ticketu (kaskádově i jeho zpráv).
 
-    if resolver.is_staff_for(actor, entity):
+    Smí garant a superadmin v jakémkoli stavu. Requester jen vlastní ticket
+    ve stavu open. Lektor cizí ticket smazat nesmí — ani u vlastního kurzu,
+    aby nemohl schovat stížnosti na svůj kurz, může ho jen vyřešit.
+    """
+    ticket = get_or_404(db, models.Ticket, ticket_id, detail="Ticket nenalezen")
+
+    if actor.role in (UserRole.guarantor, UserRole.superadmin):
         pass
     elif ticket.requester_id == actor.user_id:
         if ticket.status != TicketStatus.open:
