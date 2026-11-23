@@ -23,6 +23,18 @@ const cspReportOnly = [
   "report-uri /api/csp-report",
 ].join("; ");
 
+// Terminal ve VS Code (python.terminal.useEnvFile) dedi korenovy .env pro Docker s NEXT_API_URL=http://api:8000.
+// Promenna z prostredi prebije .env.local, next dev pak proxuje na hostname "api", ktery mimo Docker
+// neexistuje (ENOTFOUND -> 500 na vsechno pod /api/backend). Docker frontend bezi jako production build, tam se to netyka.
+function resolveApiUrl() {
+  const url = process.env.NEXT_API_URL ?? "http://localhost:8000";
+  if (isDev && new URL(url).hostname === "api") {
+    console.warn(`NEXT_API_URL=${url} je adresa uvnitr Dockeru, next dev proxuje na http://localhost:8000`);
+    return "http://localhost:8000";
+  }
+  return url;
+}
+
 const nextConfig: NextConfig = {
   output: 'standalone',
 
@@ -55,7 +67,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const apiUrl = process.env.NEXT_API_URL ?? "http://localhost:8000";
+    const apiUrl = resolveApiUrl();
     return [
       {
         source: "/api/backend/:path*",

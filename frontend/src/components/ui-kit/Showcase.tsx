@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 import {
@@ -9,6 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui-kit/accordion";
 import { Button } from "@/components/ui-kit/button";
+import { useTheme } from "@/components/ui/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -69,13 +69,13 @@ export function Row({
   );
 }
 
+// Stejna volba jako na profilu, plati pro celou aplikaci
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const dark = theme === "dark";
 
   function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    setTheme(dark ? "light" : "dark");
   }
 
   return (

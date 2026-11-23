@@ -19,7 +19,8 @@ export default async function ChangelogPage() {
       <section
         className="relative overflow-hidden"
         style={{
-          background: "linear-gradient(90deg, rgba(0, 0, 0, 0.9) 0%, var(--foreground) 100%)",
+          // Hero je tmavy v obou rezimech, --foreground by v tmavem rezimu byl bily
+          background: "linear-gradient(90deg, rgba(0, 0, 0, 0.9) 0%, oklch(0.145 0 0) 100%)",
         }}
       >
         <div

@@ -101,7 +101,7 @@ export function AccountSettingsCard({
                     alt="Avatar"
                     width={60}
                     height={60}
-                    className="size-full object-contain p-2"
+                    className="size-full object-contain p-2 dark:invert"
                   />
                 )}
               </div>

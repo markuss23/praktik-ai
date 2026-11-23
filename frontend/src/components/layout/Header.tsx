@@ -140,8 +140,9 @@ export function Header() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
+  // Landing page je navrzena jen ve svetle variante, lista nad ni drzi svetle tokeny i v tmavem rezimu
   return (
-    <Navbar className={cn(NAV_BASE, transparent ? NAV_TRANSPARENT : NAV_SOLID)}>
+    <Navbar className={cn(NAV_BASE, transparent ? NAV_TRANSPARENT : NAV_SOLID, isHome && "light")}>
       <NavbarBar className="h-16 sm:h-16">
         {/* Logo a navigace vlevo u sebe, akce vpravo. */}
         <div className="flex min-w-0 items-center gap-6 xl:gap-10">

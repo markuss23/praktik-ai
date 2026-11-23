@@ -11,7 +11,8 @@ export default async function Home() {
   return (
     // Celá landing page leží na jedné šedé (#F0F0F0) přes celou šířku okna —
     // i nad 1440 px, kde by jinak po stranách prosvítalo --muted z layoutu.
-    <div className="mx-[calc(50%-50vw)] bg-[#F0F0F0]">
+    // light: landing je navrzena jen svetla, v tmavem rezimu zustava svetla
+    <div className="light mx-[calc(50%-50vw)] bg-[#F0F0F0]">
       <Hero changelog={changelog} />
       <ProjectIntroSection />
       <CourseSection />

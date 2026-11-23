@@ -158,3 +158,5 @@ export {
 // ne na kitovém Base UI toastu — ten je zatím jen v showcase na /ui-kit.
 export { ToastProvider, useToast, parseApiErrorMessage } from "./Toast";
 export type { Toast, ToastAction, ToastVariant } from "./Toast";
+// Svetly/tmavy rezim, provider je v app/layout.tsx
+export { ThemeProvider, useTheme } from "./ThemeProvider";

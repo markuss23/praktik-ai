@@ -410,7 +410,7 @@ export function StatsDashboard({
                     animationDuration={800}
                   >
                     {statusDistribution.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} stroke="white" strokeWidth={2} />
+                      <Cell key={i} fill={entry.color} stroke="var(--card)" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />

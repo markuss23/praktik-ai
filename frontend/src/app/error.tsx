@@ -34,7 +34,8 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111]">
+    // light: styl landing page, navrzeny jen svetly
+    <div className="light flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111]">
       <div className={`flex items-center py-5 ${container}`}>
         <Link href={ROUTES.HOME} className="flex items-center gap-3">
           <Image src="/logo.svg" alt="" width={40} height={41} />

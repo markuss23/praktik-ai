@@ -185,10 +185,32 @@ tokenů nebo písem tam uprav hodnoty a obrázky přefoť (postup je v hlavičce
 - V inline stylech (`style={{}}`) se barvy berou jako `var(--primary)`, ne hex.
 - Mezery `gap-*` ve flexu, ne `space-x-*` / `space-y-*`.
 - Stejná šířka i výška → `size-8`, ne `w-8 h-8`. `shrink-0` místo `flex-shrink-0`.
-- Žádné ruční `dark:` přebarvování — tokeny to řeší samy.
+- Žádné ruční `dark:` přebarvování — tokeny to řeší samy (výjimky viz [Tmavý režim](#tmavý-režim)).
 - Žádný ruční `z-index` na overlayích; `Dialog`/`Drawer`/`Select` si stacking řeší samy.
   Pro ne-overlay vrstvy (sticky header) je škála `--z-header` / `--z-modal` / `--z-toast`:
   `className="z-[var(--z-header)]"`.
+
+## Tmavý režim
+
+- Uživatel si volí **Světlý / Tmavý** na profilu (karta Vzhled, `ThemeSettingsCard`). Volba se pamatuje
+  pro každého přihlášeného uživatele zvlášť: `localStorage` pod klíčem `praktik-ai-theme:<sub>`
+  (`sub` z access tokenu), takže na sdíleném počítači má každý svůj režim. Bez přihlášení
+  (a po odhlášení) je světlý. Mezi zařízeními se nepřenáší, na backendu se neukládá.
+  V kódu `useTheme()` z barrelu (`theme`, `setTheme`), `ThemeProvider` je v `app/layout.tsx`.
+- Režim = třída `.dark` na `<html>`. Nastaví ji inline skript v `<head>` (`lib/theme.ts`, čte `sub`
+  z tokenu) ještě před vykreslením, takže stránka neproblikne; proto `<html suppressHydrationWarning>`.
+- Komponenty na tokenech fungují samy, tmavé hodnoty jsou v `globals.css` v bloku `.dark`.
+  `--tip`, `--destructive` a `--gradient-l/r` slouží jako text na kartě i jako výplň s bílým textem,
+  v tmavém režimu mají kompromisní světlost (oba kontrasty kolem 3.5:1 a víc).
+- `.light` vrací uvnitř tmavého režimu světlé tokeny a vypíná `dark:` varianty. Mají ho stránky
+  navržené jen světle (pevné `#F0F0F0`, `#111111`): landing (`app/(main)/page.tsx`, hlavička na `/`,
+  onboarding), `error.tsx`, `not-found.tsx`. Portál (dialog, select) leží mimo obal stránky —
+  když má zůstat světlý, potřebuje `light` sám.
+- Ručně stylovaný obsah v `globals.css` (`.module-content`, `.paper-sheet`, `.notes-paper`,
+  `hr.page-break`) má tmavé varianty pod blokem `.dark`. Nové takové třídy přidávej i tam.
+- `dark:` třídy jen tam, kam tokeny nedosáhnou: tmavá SVG loga a obrázky (`dark:invert`,
+  loga partnerů `dark:brightness-0 dark:invert`).
+- Kontrola: na `/ui-kit` přepne „Tmavý režim“ v hlavičce celou aplikaci (stejná volba jako na profilu).
 
 ## Na co si dát pozor
 

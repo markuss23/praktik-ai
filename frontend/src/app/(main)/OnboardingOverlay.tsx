@@ -99,8 +99,9 @@ export function OnboardingOverlay() {
         {/* Popup se kliknutí nedotýká (průhledné okolí karty propustí klik
             na backdrop, který okno zavře) — klikatelná je jen karta. */}
         <DialogPrimitive.Popup
+          // light: portal je mimo .light obal landing page, karta je navrzena jen svetla
           className={cn(
-            'pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex justify-center px-4 pb-4 outline-none lg:pb-0',
+            'light pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex justify-center px-4 pb-4 outline-none lg:pb-0',
             '[--lynx-m:min(280px,32svh)] [--lynx-d:clamp(300px,calc((100svh_-_580px)_/_0.39),760px)]',
             'duration-300 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-bottom-8 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-bottom-8',
           )}
