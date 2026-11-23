@@ -39,10 +39,10 @@ export function RecommendedCourses() {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Sparkles size={22} className="text-gradient-r" />
-            Mohlo by tě zajímat
+            Mohlo by vás zajímat
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Kurzy podle tvého zájmu, do kterých ještě nejsi zapsaný/á.
+            Kurzy podle vašeho zájmu, které zatím nestudujete.
           </p>
         </div>
         <Link

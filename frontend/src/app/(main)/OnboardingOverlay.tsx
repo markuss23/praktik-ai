@@ -108,7 +108,7 @@ export function OnboardingOverlay() {
           <div className="relative w-full max-w-[520px] lg:flex lg:w-auto lg:max-w-none lg:items-end">
             <div className="pointer-events-auto relative z-10 max-h-[calc(100svh_-_var(--lynx-m)_*_0.64_-_2rem)] w-full overflow-y-auto rounded-[28px] bg-white px-6 pt-7 pb-7 text-[#111111] shadow-[0_24px_60px_rgba(20,19,28,0.3)] sm:px-8 lg:mb-[calc(var(--lynx-d)_*_0.39)] lg:rounded-br-lg lg:max-h-[calc(100svh_-_var(--lynx-d)_*_0.39_-_1.5rem)] lg:w-[520px]">
               <DialogTitle className="max-w-[16ch] pr-8 text-[26px] leading-tight font-bold tracking-[-0.02em] text-pretty sm:text-[30px]">
-                Ahoj! Provedu vás po Praktik-AI.
+                Dobrý den! Provedu vás po Praktik-AI.
               </DialogTitle>
               <DialogDescription className="mt-3 text-base leading-[1.6] text-pretty text-[#555555]">
                 Tady se budoucí učitelé učí pracovat s umělou inteligencí. Než

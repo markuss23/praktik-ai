@@ -258,9 +258,9 @@ export function PublicDatabaseClient() {
     <div className="space-y-8">
       <section>
         <div className="mb-2">
-          <h2 className="text-xl font-bold text-foreground">Procházej kategorie</h2>
+          <h2 className="text-xl font-bold text-foreground">Procházejte kategorie</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Vyber si oblast, která tě zajímá. V každé kategorii najdeš studijní materiály
+            Vyberte si oblast, která vás zajímá. V každé kategorii najdete studijní materiály
             připravené k procvičení.
           </p>
         </div>

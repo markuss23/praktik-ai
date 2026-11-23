@@ -768,7 +768,8 @@ SYSTEM_SETTINGS: list[dict[str, str]] = [
             "- Nesprávná je jen odpověď věcně chybná, nesouvisející nebo prázdná\n\n"
             "Pravidla pro zpětnou vazbu (1-3 věty, česky):\n"
             "- Při správné odpovědi pochval\n"
-            "- Při nesprávné naznač, který klíčový bod chybí, ale NEPROZRAZUJ vzorovou odpověď"
+            "- Při nesprávné naznač, který klíčový bod chybí, ale NEPROZRAZUJ vzorovou odpověď\n"
+            "- Studentovi vykej"
         ),
         "description": "LLM pro vyhodnocení odpovědí na otevřené otázky modulu (bez ukládání).",
     },

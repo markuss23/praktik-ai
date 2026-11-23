@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bot, ChevronRight, Ticket as TicketIcon } from "lucide-react";
-import { Button, TicketCardsSkeleton } from "@/components/ui";
+import { Button, Hint, TicketCardsSkeleton } from "@/components/ui";
 import { ROUTES } from "@/lib/constants";
 import { TicketCard } from "./TicketCard";
 import { TicketDeleteModal } from "./TicketDeleteModal";
@@ -106,12 +106,11 @@ export function ProfileTicketsCard({
             Moje tikety
           </h3>
           {openCount > 0 && (
-            <span
-              title={`Nevyřešené tikety: ${openCount}`}
-              className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive/10 px-1.5 text-xs font-medium text-destructive"
-            >
-              {openCount}
-            </span>
+            <Hint label={`Nevyřešené tikety: ${openCount}`}>
+              <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive/10 px-1.5 text-xs font-medium text-destructive">
+                {openCount}
+              </span>
+            </Hint>
           )}
         </Link>
         {onOpenHelp && (

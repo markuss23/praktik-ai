@@ -129,7 +129,7 @@ export function ModuleAiMaterialsPanel({
       const result = await generateModuleMindmap(id);
       onMindmapGenerated(id, result.mindmap);
     } catch (err) {
-      const detail = (await readApiErrorDetail(err)) ?? 'AI teď neodpověděla, zkus to prosím znovu.';
+      const detail = (await readApiErrorDetail(err)) ?? 'AI teď neodpověděla, zkuste to prosím znovu.';
       setMapErrors((prev) => ({ ...prev, [id]: detail }));
     } finally {
       setMapBusy((prev) => {

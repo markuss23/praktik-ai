@@ -8,7 +8,7 @@ import {
 } from '@tiptap/react';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { AlignLeft, AlignCenter, AlignRight, Trash2, WrapText } from 'lucide-react';
-import { Button } from '../../ui-kit/button';
+import { Button } from '../Button';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type Align = 'none' | 'left' | 'center' | 'right';

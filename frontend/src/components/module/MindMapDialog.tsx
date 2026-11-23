@@ -22,15 +22,15 @@ import { useTutor } from './TutorProvider';
 type AskKind = 'explain' | 'example' | 'relate' | 'summary';
 
 const ACTIONS: Record<MindMapNode['kind'], { kind: AskKind; label: string }[]> = {
-  root: [{ kind: 'summary', label: 'Shrň mi celé téma' }],
+  root: [{ kind: 'summary', label: 'Shrnout celé téma' }],
   branch: [
-    { kind: 'explain', label: 'Vysvětli mi to' },
-    { kind: 'example', label: 'Dej příklad z praxe' },
+    { kind: 'explain', label: 'Vysvětlit' },
+    { kind: 'example', label: 'Příklad z praxe' },
     { kind: 'relate', label: 'Jak to souvisí s celkem' },
   ],
   child: [
-    { kind: 'explain', label: 'Vysvětli mi to' },
-    { kind: 'example', label: 'Dej příklad z praxe' },
+    { kind: 'explain', label: 'Vysvětlit' },
+    { kind: 'example', label: 'Příklad z praxe' },
     { kind: 'relate', label: 'Jak to souvisí s celkem' },
   ],
 };
@@ -139,7 +139,7 @@ export function MindMapTutorDialog({ open, onOpenChange, map, moduleTitle }: Min
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={DIALOG_CLASS}>
-        <DialogHeaderRow title="Myšlenková mapa" description={`${moduleTitle} · klikni na pojem a zeptej se tutora`} />
+        <DialogHeaderRow title="Myšlenková mapa" description={`${moduleTitle} · klikněte na pojem a zeptejte se tutora`} />
 
         <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as 'map' | 'tutor')} className="shrink-0 gap-0 border-b border-border p-2 lg:hidden">
           <TabsList className="grid w-full grid-cols-2">

@@ -57,7 +57,7 @@ const CHAT_STORAGE_KEY = "praktik-ai:wiki-chat";
 const GREETING: TicketMessage = {
   id: "wiki-greeting",
   author: "ai",
-  text: "Ahoj! 👋 Jsem AI asistent Praktik AI. Odpovídám na otázky o projektu z naší wiki — zeptejte se na cokoliv.",
+  text: "Dobrý den! 👋 Jsem AI asistent Praktik AI. Odpovídám na otázky o projektu z naší wiki — zeptejte se na cokoliv.",
   authorName: "AI asistent",
 };
 

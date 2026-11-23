@@ -63,7 +63,7 @@ Všechny zápisy vyžadují roli aspoň `lector` (`require_role`). Pak platí:
 | Schválit / vrátit z `in_review` | ne (vlastní kurz nikdy) | ano | ano, ale ne vlastní kurz |
 | Vrátit `approved` → `edited` | ne | ne | ano |
 | Archivovat (`approved` → `archived`) | ano | ne | ano |
-| Publikovat / odpublikovat | ano | ne | ano |
+| Publikovat / odpublikovat | ano | ano | ano |
 | Smazat | viz [Pravidla](#pravidla) | ne | vždy |
 
 Čtení:

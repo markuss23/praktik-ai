@@ -198,8 +198,15 @@ tokenů nebo písem tam uprav hodnoty a obrázky přefoť (postup je v hlavičce
 - **Badge** z kitu (`ui-kit/badge.tsx`) je stavový badge (`new` | `open` | `waiting` | `resolved` | `closed`).
   Nad ním staví `StatusBadge`/`PublishBadge`/`ModuleActiveBadge` (`ui/Badge.tsx`),
   `TicketStatusBadge` a `MaterialStatusBadge` — nové stavy mapuj na varianty, nedělej nové barvy.
-- **`Tooltip` potřebuje `TooltipProvider`** — ten zatím v `app/layout.tsx` namountovaný není.
-  Než použiješ první tooltip, přidej ho tam (nebo lokálně obal sekci).
+- **Tooltipy**: `TooltipProvider` je v `app/layout.tsx` (`delay={300}`, další tooltip v řadě hned).
+  `Button` z barrelu (`src/components/ui/Button.tsx`) je kitový Button s tooltipem: ikonové tlačítko
+  (`size="icon*"` nebo bez viditelného textu) udělá z `title`, případně `aria-label`, malý tooltip
+  z kitu místo nativního `title`. Vysvětlivku k textovému tlačítku dej přes `tooltip="..."`,
+  vypnout jde `tooltip={false}` (např. když tlačítko už obaluje jiný tooltip). Disabled tlačítko
+  tooltip neukáže (`pointer-events-none`), obal ho do `span` s `Hint`. Pro prvky mimo Button
+  (odznak, ikonka, `NavbarAction`) je `Hint`: `<Hint label="..."><span>…</span></Hint>`.
+- **Texty pro uživatele vždy vykat** („Vyberte“, „Máte“, „Dobrý den“), i v pozdravech AI
+  asistentů a v chybových hláškách.
 - Kit je **Base UI**, ne Radix. Custom trigger se předává přes `render`, ne přes `asChild`.
 - Komponenty s `useState` / handlery potřebují `"use client"` (projekt je RSC).
 

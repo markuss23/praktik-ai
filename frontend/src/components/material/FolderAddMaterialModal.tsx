@@ -84,7 +84,7 @@ export function FolderAddMaterialModal({
       <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
         {materials.length === 0 ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">
-            Do složky lze zařadit jen schválené materiály. Žádný takový zatím nemáš mimo tuto
+            Do složky lze zařadit jen schválené materiály. Žádný takový zatím nemáte mimo tuto
             složku — koncepty do ní půjdou vložit, až projdou schválením.
           </p>
         ) : (

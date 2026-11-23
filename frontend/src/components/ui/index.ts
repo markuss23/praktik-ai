@@ -12,7 +12,9 @@ export {
   AccordionTrigger,
   AccordionContent,
 } from "../ui-kit/accordion";
-export { Button, buttonVariants } from "../ui-kit/button";
+// Button z kitu obaleny tooltipem pro ikonova tlacitka (viz ./Button)
+export { Button, type ButtonProps } from "./Button";
+export { buttonVariants } from "../ui-kit/button";
 export { Badge, badgeVariants, type BadgeVariant } from "../ui-kit/badge";
 export {
   Alert,
@@ -132,6 +134,7 @@ export { CategoryGroup, CourseCategories, MaterialCategories, ModuleCategories }
 export { CourseCard } from "./CourseCard";
 export { CourseRow } from "./CourseRow";
 export { StatusBadge, PublishBadge, ModuleActiveBadge, GeneratingBadge } from "./Badge";
+export { Hint } from "./Hint";
 export { Modal } from "./Modal";
 export { ConfirmModal, type ConfirmVariant } from "./ConfirmModal";
 export { RichTextEditor, useRichTextEditor } from "./RichTextEditor";

@@ -310,7 +310,7 @@ export default function ModulePage() {
     {
       key: 'procvicovani',
       label: 'Procvičování',
-      sublabel: 'Zkus si svoje znalosti v praxi',
+      sublabel: 'Vyzkoušejte si své znalosti v praxi',
       completed: practiceCompleted,
       locked: !handbookCompleted,
       icon: <Dumbbell className="size-5" />,

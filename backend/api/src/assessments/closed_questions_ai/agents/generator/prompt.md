@@ -10,6 +10,7 @@
 - Možnosti jsou přibližně stejně dlouhé a stejného stylu, aby správná nevyčnívala
 - Nepoužívej možnosti typu „všechny uvedené“ nebo „žádná z uvedených“
 - Délka otázky: 1–2 věty
+- Pokud otázka studenta oslovuje, vyká mu (např. „Vyberte…“, ne „Vyber…“)
 
 ## Výstup
 

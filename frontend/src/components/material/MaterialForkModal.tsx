@@ -48,7 +48,7 @@ export function MaterialForkModal({
     e.preventDefault();
     const trimmed = title.trim();
     if (trimmed.length < 1) {
-      setError("Zadej název kopie.");
+      setError("Zadejte název kopie.");
       return;
     }
     if (trimmed.length > 255) {
@@ -78,7 +78,7 @@ export function MaterialForkModal({
         if (!submitting) onClose();
       }}
       title="Vytvořit kopii materiálu"
-      description="Vznikne nový materiál ve tvé sbírce (jako koncept), který můžeš upravit. Soubory a hodnocení se nekopírují."
+      description="Vznikne nový materiál ve vaší sbírce (jako koncept), který můžete upravit. Soubory a hodnocení se nekopírují."
       maxWidth="max-w-md"
       footer={
         <>

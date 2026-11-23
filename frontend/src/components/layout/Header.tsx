@@ -17,6 +17,7 @@ import {
   NavbarNav,
 } from "@/components/ui-kit/navbar";
 import { Logo } from "@/components/ui-kit/logo";
+import { Hint } from "@/components/ui/Hint";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRole } from "@/hooks/useRole";
@@ -167,22 +168,26 @@ export function Header() {
             <div aria-hidden className="size-9 animate-pulse rounded-full bg-[var(--nav-hover)]" />
           ) : isAuthenticated ? (
             <>
-              <NavbarAction
-                size="default"
-                render={<Link href={ROUTES.PROFILE} />}
-                title={displayName ?? "Můj profil"}
-                aria-label={displayName ? undefined : "Můj profil"}
-                className={cn(isActive(ROUTES.PROFILE) && "bg-[var(--nav-hover)] text-[var(--nav-fg)]")}
-              >
-                <UserRound />
-                {displayName && (
-                  // Až od xl — mezi lg a xl by se s šesti odkazy lišta nevešla.
-                  <span className="hidden max-w-[140px] truncate xl:inline">{displayName}</span>
-                )}
-              </NavbarAction>
-              <NavbarAction onClick={logout} aria-label="Odhlásit se" title="Odhlásit se">
-                <LogOut />
-              </NavbarAction>
+              <Hint label={displayName ? `Můj profil (${displayName})` : "Můj profil"} side="bottom">
+                <NavbarAction
+                  size="default"
+                  render={<Link href={ROUTES.PROFILE} />}
+                  // Jmeno je videt az od xl, pod tim nese nazev odkazu aria-label
+                  aria-label={displayName ? `Můj profil, ${displayName}` : "Můj profil"}
+                  className={cn(isActive(ROUTES.PROFILE) && "bg-[var(--nav-hover)] text-[var(--nav-fg)]")}
+                >
+                  <UserRound />
+                  {displayName && (
+                    // Až od xl — mezi lg a xl by se s šesti odkazy lišta nevešla.
+                    <span className="hidden max-w-[140px] truncate xl:inline">{displayName}</span>
+                  )}
+                </NavbarAction>
+              </Hint>
+              <Hint label="Odhlásit se" side="bottom">
+                <NavbarAction onClick={logout} aria-label="Odhlásit se">
+                  <LogOut />
+                </NavbarAction>
+              </Hint>
             </>
           ) : (
             <NavbarCta onClick={() => login()} className={LOGIN_CTA}>

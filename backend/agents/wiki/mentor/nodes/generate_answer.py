@@ -16,7 +16,7 @@ DEFAULT_PROMPT = (
     "PRAVIDLA:\n"
     "- Odpověz výhradně na základě poskytnutého kontextu\n"
     "- Pokud kontext neobsahuje odpověď, řekni to otevřeně\n"
-    "- Odpovídej vždy v češtině\n"
+    "- Odpovídej vždy v češtině a uživateli vykej\n"
     "- Buď stručný a konkrétní"
 )
 

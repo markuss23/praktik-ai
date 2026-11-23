@@ -331,7 +331,7 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
     if (activeFolderId) {
       setActiveFolderId(null);
       toast.info(
-        "Materiál byl vytvořen jako koncept. Do složky ho zařadíš, až projde schválením.",
+        "Materiál byl vytvořen jako koncept. Do složky ho zařadíte, až projde schválením.",
       );
     }
   };
@@ -378,8 +378,8 @@ export function MyCollectionClient({ materials, folders, onMaterialCreated, onMa
         <div className="mb-2">
           <h2 className="text-xl font-bold text-foreground">Moje sbírka materiálů</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Tvé uložené a vytvořené materiály. Hotové materiály můžeš odeslat ke schválení
-            a sdílet je s ostatními. Pomocí složek si materiály roztřídíš.
+            Vaše uložené a vytvořené materiály. Hotové materiály můžete odeslat ke schválení
+            a sdílet je s ostatními. Pomocí složek si materiály roztřídíte.
           </p>
         </div>
       </section>

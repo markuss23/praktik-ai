@@ -77,7 +77,7 @@ export default function MaterialDetailPage({ params }: PageProps) {
         {showLoginPrompt ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center view-fade-in">
             <p className="text-sm text-muted-foreground mb-4">
-              Pro zobrazení detailu materiálu se nejprve přihlas.
+              Pro zobrazení detailu materiálu se nejprve přihlaste.
             </p>
             <Button
               variant="default"

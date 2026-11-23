@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowDown } from 'lucide-react';
+import { Hint } from '@/components/ui/Hint';
 
 interface ScrollToBottomButtonProps {
   /** Vnitřní scrollovací kontejner obsahu (na mobilu scrolluje window). */
@@ -71,25 +72,26 @@ export function ScrollToBottomButton({ targetRef }: ScrollToBottomButtonProps) {
   return (
     <AnimatePresence>
       {visible && (
-        <motion.button
-          type="button"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          transition={{ duration: 0.2 }}
-          onClick={scrollToBottom}
-          aria-label="Sjet na konec stránky"
-          title="Sjet na konec"
-          className="fixed bottom-(--support-fab-clearance) right-[calc(var(--support-fab-offset)_+_(var(--support-fab-size)_-_2.75rem)_/_2)] z-30 flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground border border-border shadow-lg hover:text-gradient-r hover:shadow-xl transition-colors"
-        >
-          <motion.span
-            animate={{ y: [0, -3, 0] }}
-            transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-            className="flex"
+        <Hint label="Sjet na konec" side="left">
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            onClick={scrollToBottom}
+            aria-label="Sjet na konec stránky"
+            className="fixed bottom-(--support-fab-clearance) right-[calc(var(--support-fab-offset)_+_(var(--support-fab-size)_-_2.75rem)_/_2)] z-30 flex size-11 items-center justify-center rounded-full bg-card text-muted-foreground border border-border shadow-lg hover:text-gradient-r hover:shadow-xl transition-colors"
           >
-            <ArrowDown size={18} />
-          </motion.span>
-        </motion.button>
+            <motion.span
+              animate={{ y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+              className="flex"
+            >
+              <ArrowDown size={18} />
+            </motion.span>
+          </motion.button>
+        </Hint>
       )}
     </AnimatePresence>
   );

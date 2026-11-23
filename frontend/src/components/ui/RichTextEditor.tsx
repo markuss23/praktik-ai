@@ -9,7 +9,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { ResizableImage } from './editor/ResizableImage';
 import { Modal } from './Modal';
 import { uploadEditorImage } from '@/lib/api-client';
-import { Button } from '../ui-kit/button';
+import { Button } from './Button';
 import { FilterSelect } from './FilterSelect';
 
 const HEADING_OPTIONS = [

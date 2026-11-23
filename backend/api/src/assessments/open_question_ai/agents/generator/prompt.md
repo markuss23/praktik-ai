@@ -6,6 +6,7 @@
 - Otázka má prověřit porozumění, nikoli pouhou reprodukci nebo memorování
 - Otázka musí být konkrétní a jednoznačná
 - Délka otázky: 1–2 věty, nejvýše 255 znaků
+- Pokud otázka studenta oslovuje, vyká mu (např. „Vysvětlete…“, ne „Vysvětli…“)
 
 ## Výstup
 

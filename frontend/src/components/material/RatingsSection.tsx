@@ -121,7 +121,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
   const handleSubmit = async () => {
     if (submitting) return;
     if (score < 1) {
-      setFormError("Vyber počet hvězdiček (1–5).");
+      setFormError("Vyberte počet hvězdiček (1–5).");
       return;
     }
     setSubmitting(true);
@@ -187,7 +187,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
     >
       {editing && (
         <p className="text-xs font-medium text-gradient-r mb-2">
-          Úprava tvého hodnocení
+          Úprava vašeho hodnocení
         </p>
       )}
       <div className="mb-3">
@@ -247,7 +247,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
               {myRating.userDisplayName ?? "Uživatel"}
             </p>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
-              Tvůj komentář
+              Váš komentář
             </span>
             {justSaved && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-success save-status-pop">
@@ -388,7 +388,7 @@ export function RatingsSection({ resourceId }: RatingsSectionProps) {
       <ConfirmModal
         isOpen={deleteModalOpen}
         title="Smazat hodnocení"
-        message="Opravdu chceš smazat své hodnocení? Tato akce je nevratná."
+        message="Opravdu chcete smazat své hodnocení? Tato akce je nevratná."
         confirmLabel="Ano, smazat"
         variant="danger"
         loading={deleting}

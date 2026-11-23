@@ -6,6 +6,8 @@ import { Course, FeedbackItem, Status } from '@/api';
 import { getCourses, getFeedbackSection } from '@/lib/api-client';
 import { czechPlural, timeAgo } from '@/lib/utils';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useRole } from '@/hooks/useRole';
+import { PublishCourseButton } from '@/components/admin/PublishCourseButton';
 import { ArrowRight, BookOpen, ChevronDown } from 'lucide-react';
 import { Badge, ReviewCardsSkeleton, Button, Tabs, TabsList, TabsTrigger } from '@/components/ui';
 import { fetchMaterialsForReview, fetchApprovedMaterials } from '@/components/material/api';
@@ -42,13 +44,17 @@ function CourseCard({
   course,
   onOpen,
   feedbacks,
+  onPublished,
 }: {
   course: Course;
   onOpen: () => void;
   // undefined = komentáře se ještě načítají nebo jde o schválený kurz
   feedbacks?: FeedbackItem[];
+  // Jen u schváleného kurzu, ktery smi aktualni uzivatel publikovat
+  onPublished?: () => void;
 }) {
   const inReview = course.status === Status.InReview;
+  const isApproved = course.status === Status.Approved;
   const resubmission = inReview ? resubmissionInfo(feedbacks) : null;
 
   return (
@@ -66,6 +72,11 @@ function CourseCard({
     >
       <div className="flex items-start justify-between gap-2">
         <StatusBadge status={course.status} />
+        {isApproved && (
+          <Badge variant={course.isPublished ? 'resolved' : 'waiting'}>
+            {course.isPublished ? 'Publikováno' : 'Nepublikováno'}
+          </Badge>
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -110,6 +121,15 @@ function CourseCard({
           {resubmission ? 'Zkontrolovat opravy' : 'Zkontrolovat'}
         </Button>
       )}
+
+      {isApproved && !course.isPublished && onPublished && (
+        <PublishCourseButton
+          courseId={course.courseId}
+          courseTitle={course.title}
+          onPublished={onPublished}
+          className="w-full"
+        />
+      )}
     </div>
   );
 }
@@ -133,6 +153,7 @@ const SECTION_HEADING = 'text-sm font-semibold text-muted-foreground uppercase t
 export function ReviewListView() {
   const router = useRouter();
   const { currentUser } = useCurrentUser();
+  const { isGuarantor } = useRole();
   const [activeTab, setActiveTab] = useState<ReviewTab>('courses');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,6 +161,11 @@ export function ReviewListView() {
   const [feedbacksByCourse, setFeedbacksByCourse] = useState<Record<number, FeedbackItem[]>>({});
   const [showApproved, setShowApproved] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
+
+  // Po schválení kurzu (?schvaleno=<id>) rovnou rozbalit Schváleno, ať jde kurz publikovat
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('schvaleno')) setShowApproved(true);
+  }, []);
   const [approvedMaterials, setApprovedMaterials] = useState<Material[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(true);
 
@@ -211,7 +237,16 @@ export function ReviewListView() {
   const reviewable = courses
     .filter(c => c.status === Status.InReview && c.ownerId !== currentUser?.userId)
     .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
-  const approved = courses.filter(c => c.status === Status.Approved);
+  // Nepublikované nahoře (čekají na publikování), pak od naposledy změněného
+  const approved = courses
+    .filter(c => c.status === Status.Approved)
+    .sort((a, b) =>
+      Number(!!a.isPublished) - Number(!!b.isPublished)
+      || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const unpublishedCount = approved.filter(c => !c.isPublished).length;
+  const canPublish = (course: Course) => isGuarantor || course.ownerId === currentUser?.userId;
+  const markPublished = (courseId: number) =>
+    setCourses((prev) => prev.map((c) => (c.courseId === courseId ? { ...c, isPublished: true } : c)));
 
   return (
     <div className="flex-1 lg:overflow-y-auto p-6 lg:p-8">
@@ -269,7 +304,7 @@ export function ReviewListView() {
                   aria-expanded={showApproved}
                   className={`${SECTION_HEADING} self-start px-2 -mx-2`}
                 >
-                  Schváleno ({approved.length})
+                  Schváleno ({approved.length}{unpublishedCount > 0 ? `, nepublikováno ${unpublishedCount}` : ''})
                   <ChevronDown data-icon="inline-end" className={showApproved ? 'rotate-180 transition-transform' : 'transition-transform'} />
                 </Button>
                 {showApproved && (
@@ -279,6 +314,7 @@ export function ReviewListView() {
                         key={course.courseId}
                         course={course}
                         onOpen={() => handleOpenApproved(course.courseId)}
+                        onPublished={canPublish(course) ? () => markPublished(course.courseId) : undefined}
                       />
                     ))}
                   </div>

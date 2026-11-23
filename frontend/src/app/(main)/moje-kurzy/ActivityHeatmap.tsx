@@ -342,7 +342,7 @@ export function ActivityHeatmap() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <Calendar size={16} className="text-gradient-r" />
-          <h3 className="text-sm font-semibold text-foreground">Tvoje aktivita</h3>
+          <h3 className="text-sm font-semibold text-foreground">Vaše aktivita</h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

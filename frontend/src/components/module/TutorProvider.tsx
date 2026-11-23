@@ -18,8 +18,8 @@ const MEMORY_KEY_PREFIX = '__';
 const initialMessage = (scope: MentorScope): TutorMessage => ({
   role: 'ai',
   text: scope === 'course'
-    ? 'Ahoj! 👋 Jsem tvůj AI asistent. Ptej se na cokoliv z celého kurzu nebo na pomoc s přípravou do výuky.'
-    : 'Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo potřebuješ pomoc s přípravou do výuky?',
+    ? 'Dobrý den! 👋 Jsem váš AI asistent. Ptejte se na cokoliv z celého kurzu nebo na pomoc s přípravou do výuky.'
+    : 'Dobrý den! 👋 Jsem váš AI asistent. Máte nějaké otázky k tomuto modulu nebo potřebujete pomoc s přípravou do výuky?',
 });
 
 function readStoredMessages(key: string, scope: MentorScope): TutorMessage[] {

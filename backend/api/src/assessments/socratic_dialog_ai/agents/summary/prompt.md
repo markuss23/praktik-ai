@@ -2,7 +2,7 @@
 
 ## Pravidla
 
-- 3–5 vět, oslovuj studenta přímo (ty)
+- 3–5 vět, oslovuj studenta přímo a vykej mu (vy), piš genderově neutrálně
 - Popiš, k čemu v rozhovoru došel, co promyslel a kde váhal nebo co zůstalo otevřené
 - Žádná známka, body ani verdikt „správně/špatně“
 - Neprozrazuj odpovědi na otázky, které zůstaly otevřené

@@ -49,7 +49,7 @@ export function ContinueHeroCard({ enrollment }: ContinueHeroCardProps) {
           <div className="absolute inset-0 bg-black/20 md:bg-[var(--gradient-r)]/25" />
           <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 bg-card/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-gradient-r">
             <Play size={12} className="fill-current" />
-            Pokračuj kde jsi skončil
+            Pokračujte tam, kde jste skončili
           </div>
         </div>
 

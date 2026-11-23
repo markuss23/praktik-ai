@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { ChevronLeft, ChevronRight, Headphones, Loader2, Network, Plus, Trash2, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, Hint } from '@/components/ui';
 import { useAdminNavigation } from '@/hooks/useAdminNavigation';
 import { BTN_KEEP_BOX, cn, czechPlural } from '@/lib/utils';
 import { useAdminChrome } from './AdminChromeProvider';
@@ -314,25 +314,23 @@ export function StepModuleList({ items, onAdd }: StepModuleListProps) {
                   {item.isNew && <span className="ml-1.5 text-xs text-warning">(nový)</span>}
                 </span>
                 {(item.materials?.podcast || item.materials?.mindmap) && (
-                  <span
-                    className="flex shrink-0 items-center gap-1 text-muted-foreground"
-                    title={[item.materials.podcast && 'Má podcast', item.materials.mindmap && 'Má myšlenkovou mapu'].filter(Boolean).join(', ')}
-                  >
-                    {item.materials.podcast && <Headphones className="size-3" aria-hidden="true" />}
-                    {item.materials.mindmap && <Network className="size-3" aria-hidden="true" />}
-                    <span className="sr-only">
-                      {[item.materials.podcast && 'má podcast', item.materials.mindmap && 'má myšlenkovou mapu'].filter(Boolean).join(', ')}
+                  <Hint label={[item.materials.podcast && 'Má podcast', item.materials.mindmap && 'Má myšlenkovou mapu'].filter(Boolean).join(', ')}>
+                    <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
+                      {item.materials.podcast && <Headphones className="size-3" aria-hidden="true" />}
+                      {item.materials.mindmap && <Network className="size-3" aria-hidden="true" />}
+                      <span className="sr-only">
+                        {[item.materials.podcast && 'má podcast', item.materials.mindmap && 'má myšlenkovou mapu'].filter(Boolean).join(', ')}
+                      </span>
                     </span>
-                  </span>
+                  </Hint>
                 )}
               </Button>
               {(item.badge ?? 0) > 0 && (
-                <span
-                  className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-accent px-1 text-[10px] font-bold text-primary-foreground"
-                  title="Komentáře z kontroly"
-                >
-                  {item.badge}
-                </span>
+                <Hint label="Komentáře z kontroly">
+                  <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-brand-accent px-1 text-[10px] font-bold text-primary-foreground">
+                    {item.badge}
+                  </span>
+                </Hint>
               )}
               {item.isNew && item.onDelete && (
                 <Button
