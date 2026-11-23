@@ -21,6 +21,7 @@ from api.src.tickets.routers import (
     public_router as tickets_public_router,
 )
 from api.src.assessments.routers import router as assessments_router
+from api.src.competences.routers import router as competences_router
 from api.src.editor_images.routers import (
     router as editor_images_router,
     public_router as editor_images_public_router,
@@ -66,6 +67,9 @@ router.include_router(ai_usage_router, dependencies=[Depends(auth.get_current_us
 router.include_router(
     assessments_router,
     dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],
+)
+router.include_router(
+    competences_router, dependencies=[Depends(auth.get_current_user)]
 )
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
