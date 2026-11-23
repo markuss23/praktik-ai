@@ -1,0 +1,66 @@
+name: E2E testy
+
+# Spustí celý stack (compose.yml + compose.e2e.yml) s čistou DB a pustí proti němu Playwright testy z qa/.
+# Účty jsou z dev realmu (infra/keycloak/praktikai-dev-realm.json) – nejsou to tajné údaje.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE: docker compose -p praktikai-e2e -f compose.yml -f compose.e2e.yml
+    steps:
+      - uses: actions/checkout@v6
+
+      # Vzorové hodnoty stačí – testy nevolají LLM.
+      - name: Připravit .env
+        run: cp .env_example .env
+
+      - name: Spustit stack
+        run: $COMPOSE up -d --build --wait
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: qa/package-lock.json
+
+      - name: Nainstalovat Playwright
+        working-directory: qa
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Spustit testy
+        working-directory: qa
+        env:
+          E2E_BASE_URL: http://localhost:3000
+          E2E_USER_NAME: student
+          E2E_USER_PASSWORD: student
+          E2E_LECTOR_NAME: lektor
+          E2E_LECTOR_PASSWORD: lektor
+          E2E_GARANTOR_NAME: garant
+          E2E_GARANTOR_PASSWORD: garant
+          E2E_SUPERADMIN_NAME: admin
+          E2E_SUPERADMIN_PASSWORD: admin
+        run: npx playwright test --project=chromium
+
+      - name: Logy služeb
+        if: failure()
+        run: $COMPOSE logs --no-color --tail 200
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: qa/playwright-report/
+          retention-days: 14

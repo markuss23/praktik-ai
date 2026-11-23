@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from api import models
 from api.authorization import validate_owner_or_superadmin, validate_ownership
-from api.enums import AssessmentContext, AssessmentSessionStatus
+from api.enums import AssessmentContext, AssessmentSessionStatus, AssessmentTurnRole
 from api.src.agents.typing_guard import typed_too_fast
 from api.src.common.utils import (
     assert_course_open_for_students,
@@ -340,6 +340,10 @@ async def submit_answer(
         session.course_assessment.assessment_type_code,
         session.course_assessment.settings,
     )
+    state = fmt.State.model_validate(session.state)
+    # Otázku a čas od předchozího kroku bereme před změnou stavu (pro turn)
+    question_view = fmt.view(cfg, state).model_dump()
+    elapsed_s = round((datetime.now(UTC) - session.updated_at).total_seconds(), 1)
     # evaluate_answer posune stav: špatně a zbývají pokusy -> stejné `current`,
     # jen attempts_used + 1; správně nebo došly pokusy -> current + 1.
     try:
@@ -347,13 +351,28 @@ async def submit_answer(
             db,
             session.course_assessment,
             cfg,
-            fmt.State.model_validate(session.state),
+            state,
             answer,
         )
     except ValueError as e:
         raise _ai_failed(e) from e
     # Nový stav zpět do DB — příští request si `current` načte odsud
     session.state = outcome.state.model_dump()
+    # Každá odpověď jako turn — podklad pro diagnostiku kompetencí (src/competences)
+    db.add(
+        models.AssessmentTurn(
+            session_id=session.session_id,
+            role=AssessmentTurnRole.student,
+            content=answer,
+            payload={
+                "question": question_view,
+                "is_correct": outcome.is_correct,
+                "feedback": outcome.feedback,
+                "attempts_used": session.state.get("attempts_used"),
+                "elapsed_s": elapsed_s,
+            },
+        )
+    )
 
     if not outcome.finished:
         db.commit()

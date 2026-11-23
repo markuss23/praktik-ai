@@ -77,7 +77,8 @@ Dva souběžné starty: druhý narazí na unikátní index, udělá rollback a v
 - Typing guard (`typed_too_fast`) měří čas od `session.updated_at`, tedy od startu nebo od posledního pokusu.
 - `seed.py` vkládá jen chybějící kódy formátů. Změna defaultů v `Settings` se do existující DB nepropíše, je potřeba migrace.
 - U `socratic_dialog_ai` je `is_correct` v průběhu vždy `True`. Hodnotí se až na konci.
-- `awaiting_review` a `completed` zatím nic nenastavuje. Tabulka `assessment_turn` se nepoužívá. Obojí je rezervované pro formáty s hodnocením člověkem.
+- `awaiting_review` a `completed` zatím nic nenastavuje. Je to rezervované pro formáty s hodnocením člověkem.
+- `submit_answer` ukládá každou odpověď jako řádek `assessment_turn` (role `student`, `content` = odpověď). `payload` obsahuje `question` (view otázky), `is_correct`, `feedback`, `attempts_used` a `elapsed_s` (sekundy od předchozího kroku). Čte to [competences](../competences/README.md). U `socratic_dialog_ai` je `is_correct` vždy `True`, viz výše.
 - Před každým zápisem `settings` projde `parse_settings` (`utils.py`) proti `Settings` formátu podle `assessment_type_code`. Chyba = 422. API samo `settings` nevaliduje, jen ověří, že je to objekt.
 
 ## Formáty

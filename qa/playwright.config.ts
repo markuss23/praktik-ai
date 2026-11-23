@@ -13,6 +13,8 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
   retries: 0,
+  // shortcut: lokální stack v Dockeru při paralelních workerech nestíhá (frontend padá), v CI proto 1 worker; zrušit, až se zjistí příčina.
+  workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,

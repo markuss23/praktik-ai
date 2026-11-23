@@ -31,6 +31,19 @@ class WikiSettings(BaseModel):
     local_path: str = "../wiki_data"
 
 
+class SMTPSettings(BaseModel):
+    host: str = "localhost"
+    port: int = 587
+    username: str | None = None
+    password: str | None = None
+    use_tls: bool = True  # STARTTLS (typicky port 587)
+    use_ssl: bool = False  # přímé SSL spojení (typicky port 465)
+    sender: str = "noreply@praktik-ai.cz"
+    # Bez nastaveného SMTP serveru se e-maily neodesílají, jen se zalogují jako skipped
+    enabled: bool = False
+    frontend_url: str = "http://localhost:3000"
+
+
 class Settings(BaseSettings):
     postgres: PostgresSettings
     keycloak: KeycloakSettings
@@ -39,6 +52,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     # Denní limit AI tokenů (input + output) pro roli user; 0 = vypnuto (jen se sbírá)
     ai_daily_token_limit: int = 0
+    smtp: SMTPSettings = SMTPSettings()
 
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",
