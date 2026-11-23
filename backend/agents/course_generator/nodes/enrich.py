@@ -59,11 +59,7 @@ def build_catalogs(db: Session) -> str:
 
 def build_module_block(module: ModuleGenerated) -> str:
     """Hotový obsah modulu, ke kterému se určují číselníky a otázky pretestu."""
-    return (
-        f"NÁZEV: {module.title}\n"
-        f"PEREX: {module.perex}\n\n"
-        f"VÝKLAD:\n{module.content}"
-    )
+    return f"NÁZEV: {module.title}\nPEREX: {module.perex}\n\nVÝKLAD:\n{module.content}"
 
 
 def enrich_modules_node(state: AgentState) -> AgentState:
@@ -73,7 +69,9 @@ def enrich_modules_node(state: AgentState) -> AgentState:
     course_id = state.get("course_id")
     if course_id is not None:
         # ponytail: sdílí krok 4 s plánováním, frontend má pevný seznam 5 kroků
-        set_progress(course_key(course_id), step=4, label="Číselníky a otázky modulů (AI)")
+        set_progress(
+            course_key(course_id), step=4, label="Číselníky a otázky modulů (AI)"
+        )
 
     course: CourseGenerated | None = state.get("course")
     course_input: CourseInput | None = state.get("course_input")
@@ -92,7 +90,9 @@ def enrich_modules_node(state: AgentState) -> AgentState:
 
     pretest_llm = create_pretest_llm(db)
 
-    shared = f"{cfg.prompt}\n\n{build_input_block(course_input)}\n\n{build_catalogs(db)}"
+    shared = (
+        f"{cfg.prompt}\n\n{build_input_block(course_input)}\n\n{build_catalogs(db)}"
+    )
 
     # Moduly i volání jsou nezávislé, zpracují se paralelně.
     # Vlákna ThreadPoolExecutoru nedědí ContextVars, takže každé úloze předáme

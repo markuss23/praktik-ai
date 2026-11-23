@@ -34,5 +34,7 @@ def load_context(state: TopicState) -> dict:
         return {"error": "Modul/kurz nenalezen nebo nemá žádný aktivní learn block"}
 
     learn_content = "\n\n".join(contents)
-    logger.info(f"Kontext načten: {len(contents)} learn blocků ({len(learn_content)} zn.)")
+    logger.info(
+        f"Kontext načten: {len(contents)} learn blocků ({len(learn_content)} zn.)"
+    )
     return {"learn_content": learn_content}

@@ -14,7 +14,14 @@ class EvaluationResult:
 class OpenQuestionAIEvaluator:
     """Service pro vyhodnocení otevřené procvičovací odpovědi pomocí LangGraph."""
 
-    def __init__(self, db: Session, module_id: int, answer: str, question: str, ai_style: str = ""):
+    def __init__(
+        self,
+        db: Session,
+        module_id: int,
+        answer: str,
+        question: str,
+        ai_style: str = "",
+    ):
         self.db = db
         self.module_id = module_id
         self.answer = answer

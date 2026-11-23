@@ -85,13 +85,17 @@ def validate_generated(generated: PretestGenerated) -> list[str]:
     return errors
 
 
-def generate_pretest(llm: BaseChatModel, module_block: str, title: str) -> PretestSettings:
+def generate_pretest(
+    llm: BaseChatModel, module_block: str, title: str
+) -> PretestSettings:
     """Jedno volání LLM; při chybách otázek jeden opravný pokus s jejich výpisem."""
     prompt = f"{PROMPT}\n\nMODUL:\n{module_block}"
     generated: PretestGenerated = llm.invoke(prompt)
     errors = validate_generated(generated)
     if errors:
-        logger.warning(f"   -> WARN: Pretest modulu '{title}' má chyby, opakuji: {errors}")
+        logger.warning(
+            f"   -> WARN: Pretest modulu '{title}' má chyby, opakuji: {errors}"
+        )
         error_lines = "\n".join(f"- {e}" for e in errors)
         generated = llm.invoke(
             f"{prompt}\n\n"

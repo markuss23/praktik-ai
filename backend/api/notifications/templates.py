@@ -62,7 +62,10 @@ TEMPLATES: dict[tuple[NotificationEvent, Audience], tuple[str, str]] = {
 
 
 def render_email(
-    event: NotificationEvent, audience: Audience, context: dict[str, str], mandatory: bool
+    event: NotificationEvent,
+    audience: Audience,
+    context: dict[str, str],
+    mandatory: bool,
 ) -> tuple[str, str]:
     """
     Sestaví předmět a textové tělo e-mailu pro danou událost a příjemce.

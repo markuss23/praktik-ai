@@ -89,7 +89,9 @@ def reply_to_feedback(
     reply_text: str,
     actor: models.User,
 ) -> FeedbackItem:
-    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+    feedback = get_or_404(
+        db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen"
+    )
     course = db.get(models.Course, feedback.module.course_id)
 
     if course.owner_id != actor.user_id:
@@ -99,7 +101,9 @@ def reply_to_feedback(
         )
 
     if feedback.reply is not None:
-        raise HTTPException(status_code=409, detail="Na tento feedback již byla přidána odpověď")
+        raise HTTPException(
+            status_code=409, detail="Na tento feedback již byla přidána odpověď"
+        )
 
     if not reply_text.strip():
         raise HTTPException(status_code=422, detail="Text odpovědi nesmí být prázdný")
@@ -117,7 +121,9 @@ def resolve_feedback(
     is_resolved: bool,
     actor: models.User,
 ) -> FeedbackItem:
-    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+    feedback = get_or_404(
+        db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen"
+    )
     course = db.get(models.Course, feedback.module.course_id)
 
     if course.owner_id != actor.user_id:
@@ -134,7 +140,9 @@ def resolve_feedback(
 
 
 def delete_feedback(db: Session, feedback_id: int, actor: models.User) -> None:
-    feedback = get_or_404(db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen")
+    feedback = get_or_404(
+        db, models.CourseFeedback, feedback_id, detail="Feedback nenalezen"
+    )
 
     if actor.role == UserRole.superadmin:
         pass

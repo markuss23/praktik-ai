@@ -32,7 +32,9 @@ class SendResult:
         return self.status != EmailStatus.failed
 
 
-def send_email(to: str, subject: str, body_text: str, body_html: str | None = None) -> SendResult:
+def send_email(
+    to: str, subject: str, body_text: str, body_html: str | None = None
+) -> SendResult:
     """
     Odešle jeden e-mail jednomu příjemci přes SMTP server nastavený v settings.smtp.
 

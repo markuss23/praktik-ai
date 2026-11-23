@@ -59,9 +59,13 @@ async def integrity_error_handler(
 @app.exception_handler(httpx.HTTPError)
 async def storage_error_handler(request: Request, exc: httpx.HTTPError) -> JSONResponse:
     if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 404:
-        return JSONResponse(status_code=404, content={"detail": "Soubor není v úložišti"})
+        return JSONResponse(
+            status_code=404, content={"detail": "Soubor není v úložišti"}
+        )
     logger.error("Externí služba selhala: %s", exc, exc_info=True)
-    return JSONResponse(status_code=502, content={"detail": "Úložiště souborů je nedostupné"})
+    return JSONResponse(
+        status_code=502, content={"detail": "Úložiště souborů je nedostupné"}
+    )
 
 
 @app.exception_handler(Exception)

@@ -12,7 +12,9 @@ SETTING_KEY = "module_mindmap"
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 
 
-async def generate_module_mindmap(db: Session, module: models.Module, content: str) -> MindMap:
+async def generate_module_mindmap(
+    db: Session, module: models.Module, content: str
+) -> MindMap:
     """Jedno LLM volání: z obsahu modulu vrátí strom myšlenkové mapy.
 
     ValueError (i ValidationError) = AI vrátila nepoužitelný výstup.

@@ -28,12 +28,14 @@ def create_graph():
     workflow.add_node("generate_answer", generate_answer)
 
     # RAG Flow
-    workflow.set_entry_point("load_learn_block_data") 
+    workflow.set_entry_point("load_learn_block_data")
     workflow.add_edge("load_learn_block_data", "route_query")
     # Když stačí historie (např. „na co jsem se ptal?“), hledání se přeskočí
     workflow.add_conditional_edges(
         "route_query",
-        lambda state: "query_vector_store" if state.get("needs_retrieval", True) else "generate_answer",
+        lambda state: "query_vector_store"
+        if state.get("needs_retrieval", True)
+        else "generate_answer",
     )
     workflow.add_edge("query_vector_store", "rerank_documents")
     workflow.add_edge("rerank_documents", "generate_answer")

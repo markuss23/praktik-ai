@@ -67,9 +67,7 @@ async def evaluate_answer(db, course_assessment, cfg, state, answer) -> AnswerOu
     )
 
     # elo se touto odpovědí mohlo propadnout pod pass_elo -> pokračuje se
-    finished = must_end or (
-        step.question is None and can_end and elo >= cfg.pass_elo
-    )
+    finished = must_end or (step.question is None and can_end and elo >= cfg.pass_elo)
     if not finished:
         # shortcut: nepovolený KONEC -> obecná otázka; lepší by byl retry AI
         question = step.question or "Můžeš svou myšlenku rozvést víc?"

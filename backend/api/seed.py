@@ -113,15 +113,15 @@ AI_STYLE_AXES: list[dict] = [
             {
                 "code": "ton.neut",
                 "name": "Neutrální",
-                "description": "Vykání. Věcný, vstřícný tón bez familiárnosti. Občasné krátké povzbuzení („to je dobrá otázka\" jen výjimečně). Bez humoru, bez metafor navíc. Default pro většinu uživatelů.",
+                "description": 'Vykání. Věcný, vstřícný tón bez familiárnosti. Občasné krátké povzbuzení („to je dobrá otázka" jen výjimečně). Bez humoru, bez metafor navíc. Default pro většinu uživatelů.',
                 "example": "Halucinace znamená, že model vygeneruje odpověď, která zní věrohodně, ale není pravdivá. Vzniká proto, že model neodhaduje pravdu, ale nejpravděpodobnější pokračování textu podle svého tréninku.",
                 "is_default": True,
             },
             {
                 "code": "ton.frnd",
                 "name": "Přátelský",
-                "description": "Vykání s vřelostí. Uznává pokrok uživatele, empatické reakce na nejistotu („to je pochopitelné, že to takhle působí\"). Přípustný lehký humor. Nikdy sarkasmus, nikdy tykání.",
-                "example": "Halucinace zní strašidelně, ale ve skutečnosti jde o docela pochopitelnou věc: model si občas „domýšlí\". Není to zlá vůle — model prostě odhaduje, co by mělo následovat, a někdy trefí vedle.",
+                "description": 'Vykání s vřelostí. Uznává pokrok uživatele, empatické reakce na nejistotu („to je pochopitelné, že to takhle působí"). Přípustný lehký humor. Nikdy sarkasmus, nikdy tykání.',
+                "example": 'Halucinace zní strašidelně, ale ve skutečnosti jde o docela pochopitelnou věc: model si občas „domýšlí". Není to zlá vůle — model prostě odhaduje, co by mělo následovat, a někdy trefí vedle.',
             },
         ],
     },
@@ -164,14 +164,14 @@ AI_STYLE_AXES: list[dict] = [
             {
                 "code": "form.instr",
                 "name": "Instruktážní",
-                "description": "Struktura: kroky nebo checklist v imperativu. „Udělejte X. Pak Y. Ověřte Z.\" Vhodné pro procesní obsah, návody, práci s nástrojem.",
-                "example": "Chcete-li snížit riziko halucinace, postupujte takto:\n 1. Zadejte modelu kontext (dokument, data) místo obecného dotazu.\n 2. Požádejte model, aby označil, co si není jistý.\n 3. Ověřte konkrétní čísla, jména a citace z nezávislého zdroje.\n 4. U důležitých výstupů použijte druhý průchod („zkontroluj předchozí odpověď na faktické chyby\").",
+                "description": 'Struktura: kroky nebo checklist v imperativu. „Udělejte X. Pak Y. Ověřte Z." Vhodné pro procesní obsah, návody, práci s nástrojem.',
+                "example": 'Chcete-li snížit riziko halucinace, postupujte takto:\n 1. Zadejte modelu kontext (dokument, data) místo obecného dotazu.\n 2. Požádejte model, aby označil, co si není jistý.\n 3. Ověřte konkrétní čísla, jména a citace z nezávislého zdroje.\n 4. U důležitých výstupů použijte druhý průchod („zkontroluj předchozí odpověď na faktické chyby").',
             },
             {
                 "code": "form.narr",
                 "name": "Narativní",
                 "description": "Struktura: krátká situace z praxe / dialog / mini-příběh, který nese poučení. Postava, konflikt, poučení. Vhodné pro měkké kompetence, etiku, komunikaci.",
-                "example": "Petra připravovala podklad pro vedení a nechala si od modelu vygenerovat přehled tří studií. Vše znělo přesvědčivě — autoři, roky, závěry. Když si jednu ze studií chtěla otevřít, zjistila, že neexistuje. Model si ji nevymyslel schválně: prostě doplnil to, co „pasovalo do věty\". Petra od té doby každý odkaz otevírá dřív, než ho pošle dál.",
+                "example": 'Petra připravovala podklad pro vedení a nechala si od modelu vygenerovat přehled tří studií. Vše znělo přesvědčivě — autoři, roky, závěry. Když si jednu ze studií chtěla otevřít, zjistila, že neexistuje. Model si ji nevymyslel schválně: prostě doplnil to, co „pasovalo do věty". Petra od té doby každý odkaz otevírá dřív, než ho pošle dál.',
             },
         ],
     },
@@ -196,7 +196,7 @@ AI_STYLE_AXES: list[dict] = [
                 "code": "rhet.meta",
                 "name": "S analogiemi",
                 "description": "Vysvětlení metaforou / přirovnání ke známé věci mimo doménu. Analogie nese hlavní vysvětlovací práci, doplněna krátkou věcnou definicí.",
-                "example": "Představte si spolužáka, který nikdy nepřiznal, že něco neví — vždycky pohotově odpověděl něco, co znělo dobře. Někdy trefil, jindy ne, ale nikdy neváhal. Přesně tak funguje jazykový model, když halucinuje: neumí říct „nevím\", tak doplní to, co statisticky nejspíš přijde na řadu.",
+                "example": 'Představte si spolužáka, který nikdy nepřiznal, že něco neví — vždycky pohotově odpověděl něco, co znělo dobře. Někdy trefil, jindy ne, ale nikdy neváhal. Přesně tak funguje jazykový model, když halucinuje: neumí říct „nevím", tak doplní to, co statisticky nejspíš přijde na řadu.',
             },
         ],
     },
@@ -936,8 +936,12 @@ COURSE_SUBJECTS: list[dict[str, str]] = [
 # Ceník AI modelů v USD za 1M tokenů (input, output, cache_read).
 # Stejné výchozí hodnoty vkládá migrace 0030_ai_model_price.sql.
 AI_MODEL_PRICES: list[dict] = [
-    {"model": m, "input_price": Decimal(i), "output_price": Decimal(o),
-     "cache_read_price": Decimal(c) if c is not None else None}
+    {
+        "model": m,
+        "input_price": Decimal(i),
+        "output_price": Decimal(o),
+        "cache_read_price": Decimal(c) if c is not None else None,
+    }
     for m, i, o, c in [
         ("claude-fable-5-1", "10", "50", "0.25"),
         ("claude-fable-5", "10", "50", None),

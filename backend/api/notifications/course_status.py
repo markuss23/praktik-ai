@@ -2,9 +2,9 @@
 E-mailové notifikace o událostech kurzu (E1–E7).
 
 Katalog událostí a příjemců:
-    
+
     Kdy zasílat notifikace          Příjemci
-    
+
     E1 kurz vygenerován           -> vlastník
     E2 generování selhalo         -> vlastník + aktivní superadmini (diagnostika)
     E3 kurz odeslán ke schválení  -> aktivní garanti a superadmini, kromě vlastníka
@@ -72,7 +72,9 @@ def classify_transition(old: Status, new: Status) -> NotificationEvent | None:
     return None
 
 
-def _active_users_with_roles(db: Session, roles: tuple[UserRole, ...]) -> list[models.User]:
+def _active_users_with_roles(
+    db: Session, roles: tuple[UserRole, ...]
+) -> list[models.User]:
     """
     Načte aktivní uživatele z daných rolí.
 
@@ -153,12 +155,19 @@ def _candidates(
         case NotificationEvent.course_approval_revoked:
             recipients = [Recipient(owner, "owner", mandatory=True)]
             # Původní schvalovatel, pokud je stále aktivní garant/superadmin
-            approver = db.get(models.User, previous_approver_id) if previous_approver_id else None
+            approver = (
+                db.get(models.User, previous_approver_id)
+                if previous_approver_id
+                else None
+            )
             if approver is not None and approver.role in _REVIEWER_ROLES:
                 recipients.append(Recipient(approver, "approver"))
             return recipients
         case NotificationEvent.course_archived:
-            return [Recipient(u, "student") for u in _unfinished_students(db, course.course_id)]
+            return [
+                Recipient(u, "student")
+                for u in _unfinished_students(db, course.course_id)
+            ]
     return []
 
 
@@ -172,7 +181,7 @@ def resolve_recipients(
     """
     Vybere příjemce e-mailu o události kurzu.
 
-    Postup vybírání příjemců: 
+    Postup vybírání příjemců:
         vybrat uživatele kteří by měli dostat e-mail -> odebrat naktivní uživatele -> bez autora změny
     -> odebrat duplicity -> odebrání uživatelů, kteří mají událost vypnutou
     (kromě povinných notifikací).
@@ -272,7 +281,9 @@ def notify_course_event(
         if course is None:
             return
 
-        recipients = resolve_recipients(db, event, course, actor_id, previous_approver_id)
+        recipients = resolve_recipients(
+            db, event, course, actor_id, previous_approver_id
+        )
         if not recipients:
             return
 
@@ -293,9 +304,13 @@ def notify_course_event(
             if not result.ok:
                 logger.warning(
                     "Notifikace %s pro uživatele %s (kurz %s) nebyla odeslána",
-                    event, r.user.user_id, course_id,
+                    event,
+                    r.user.user_id,
+                    course_id,
                 )
     except Exception:
-        logger.exception("Chyba při odesílání notifikace %s o kurzu %s", event, course_id)
+        logger.exception(
+            "Chyba při odesílání notifikace %s o kurzu %s", event, course_id
+        )
     finally:
         db.close()

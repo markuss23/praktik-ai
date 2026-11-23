@@ -22,5 +22,5 @@ class AgentState(TypedDict):
 
     course_id: int
     db: Session
-    
+
     learn_blocks: list[LearnBlockData]

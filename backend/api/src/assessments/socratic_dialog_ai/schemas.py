@@ -60,8 +60,13 @@ class SocraticDialogAISettings(BaseModel):
         if self.min_turns > self.max_turns:
             raise ValueError("min_turns musí být <= max_turns")
         # min < max i kvůli dělení ve výpočtu score
-        if not self.min_elo <= self.start_elo <= self.max_elo or self.min_elo == self.max_elo:
-            raise ValueError("musí platit min_elo <= start_elo <= max_elo a min_elo < max_elo")
+        if (
+            not self.min_elo <= self.start_elo <= self.max_elo
+            or self.min_elo == self.max_elo
+        ):
+            raise ValueError(
+                "musí platit min_elo <= start_elo <= max_elo a min_elo < max_elo"
+            )
         if not self.min_elo <= self.pass_elo <= self.max_elo:
             raise ValueError("pass_elo musí být mezi min_elo a max_elo")
         # Jinak by nešlo projít ani se samými nejlepšími odpověďmi

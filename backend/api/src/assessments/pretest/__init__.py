@@ -15,4 +15,11 @@ from api.src.assessments.pretest.service import (
     view,
 )
 
-__all__ = ["Settings", "State", "TYPED_ANSWER", "evaluate_answer", "initial_state", "view"]
+__all__ = [
+    "Settings",
+    "State",
+    "TYPED_ANSWER",
+    "evaluate_answer",
+    "initial_state",
+    "view",
+]

@@ -215,7 +215,9 @@ def get_module_image(db: Session, module_id: int, user: models.User) -> Response
         raise HTTPException(status_code=404, detail="Modul nenalezen")
     if not module.image_path:
         raise HTTPException(status_code=404, detail="Modul nemá obrázek")
-    media_type = mimetypes.guess_type(module.image_path)[0] or "application/octet-stream"
+    media_type = (
+        mimetypes.guess_type(module.image_path)[0] or "application/octet-stream"
+    )
     return Response(
         seaweedfs.download_file(module.image_path),
         media_type=media_type,

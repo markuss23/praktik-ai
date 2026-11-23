@@ -63,7 +63,9 @@ def endp_my_activity(
     days: Annotated[int, Query(ge=1, le=400)] = 180,
     from_date: Annotated[
         date | None,
-        Query(description="Začátek rozsahu (ISO yyyy-mm-dd). Zadává se spolu s to_date, pak se `days` ignoruje."),
+        Query(
+            description="Začátek rozsahu (ISO yyyy-mm-dd). Zadává se spolu s to_date, pak se `days` ignoruje."
+        ),
     ] = None,
     to_date: Annotated[
         date | None,
@@ -73,7 +75,9 @@ def endp_my_activity(
     """Vrátí denní aktivitu pro heat mapu (passed moduly, zápisy, dokončené
     kurzy). Volitelně přijímá explicitní rozsah (from_date, to_date) — pak
     se `days` ignoruje. Bez rozsahu vrací posledních `days` dnů."""
-    return get_my_activity(db, user=actor, days=days, from_date=from_date, to_date=to_date)
+    return get_my_activity(
+        db, user=actor, days=days, from_date=from_date, to_date=to_date
+    )
 
 
 @router.get("", operation_id="list_enrollments", dependencies=[require_role("lector")])
@@ -85,7 +89,13 @@ def endp_list_enrollments(
     include_inactive: bool = False,
 ) -> list[Enrollment]:
     """Vrátí seznam zápisů. Filtrovat lze podle kurzu (course_id) nebo uživatele (user_id)."""
-    return list_enrollments(db, actor=actor, course_id=course_id, user_id=user_id, include_inactive=include_inactive)
+    return list_enrollments(
+        db,
+        actor=actor,
+        course_id=course_id,
+        user_id=user_id,
+        include_inactive=include_inactive,
+    )
 
 
 @router.post("", operation_id="create_enrollment", dependencies=[require_role("user")])
@@ -97,10 +107,17 @@ def endp_create_enrollment(
     """Zapíše uživatele do kurzu, nebo obnoví odepsaný zápis. Běžný uživatel může zapsat
     pouze sebe, garant a superadmin kohokoliv. Po vyřazení lektorem obnoví zápis jen
     garant nebo superadmin."""
-    return create_enrollment(db, user_id=data.user_id, course_id=data.course_id, actor=actor)
+    return create_enrollment(
+        db, user_id=data.user_id, course_id=data.course_id, actor=actor
+    )
 
 
-@router.delete("/{enrollment_id}/leave", operation_id="leave_enrollment", status_code=204, dependencies=[require_role("user")])
+@router.delete(
+    "/{enrollment_id}/leave",
+    operation_id="leave_enrollment",
+    status_code=204,
+    dependencies=[require_role("user")],
+)
 def endp_leave_enrollment(
     enrollment_id: int,
     db: SessionSqlSessionDependency,
@@ -110,7 +127,12 @@ def endp_leave_enrollment(
     leave_enrollment(db, enrollment_id=enrollment_id, user=actor)
 
 
-@router.delete("/{enrollment_id}", operation_id="remove_from_course", status_code=204, dependencies=[require_role("lector")])
+@router.delete(
+    "/{enrollment_id}",
+    operation_id="remove_from_course",
+    status_code=204,
+    dependencies=[require_role("lector")],
+)
 def endp_remove_from_course(
     enrollment_id: int,
     db: SessionSqlSessionDependency,
@@ -120,7 +142,12 @@ def endp_remove_from_course(
     delete_enrollment(db, enrollment_id=enrollment_id, actor=actor)
 
 
-@router.delete("/{enrollment_id}/delete", operation_id="delete_enrollment", status_code=204, dependencies=[require_role("superadmin")])
+@router.delete(
+    "/{enrollment_id}/delete",
+    operation_id="delete_enrollment",
+    status_code=204,
+    dependencies=[require_role("superadmin")],
+)
 def endp_delete_enrollment(
     enrollment_id: int,
     db: SessionSqlSessionDependency,

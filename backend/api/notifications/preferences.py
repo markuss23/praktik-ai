@@ -99,7 +99,9 @@ def get_disabled_events(db: Session, user_id: int) -> set[str]:
     )
 
 
-def set_event_enabled(db: Session, user_id: int, event: NotificationEvent, enabled: bool) -> None:
+def set_event_enabled(
+    db: Session, user_id: int, event: NotificationEvent, enabled: bool
+) -> None:
     """
     Zapne nebo vypne notifikaci uživatele. Necommituje, commit je na volajícím.
 
@@ -157,7 +159,9 @@ def list_preferences(db: Session, user: models.User) -> list[dict]:
     return items
 
 
-def update_preferences(db: Session, user: models.User, changes: dict[NotificationEvent, bool]) -> None:
+def update_preferences(
+    db: Session, user: models.User, changes: dict[NotificationEvent, bool]
+) -> None:
     """
     Uloží změny nastavení notifikací uživatele a commitne je.
 

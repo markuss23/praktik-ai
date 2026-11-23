@@ -3,7 +3,7 @@ Výpočet ceny jednoho LLM volání podle ceníku v tabulce ai_model_price
 (USD za 1M tokenů).
 
 Cena se počítá v UsageCallback při zápisu a ukládá do ai_usage.cost, takže
-pozdější změna ceníku nepřepíše historii. 
+pozdější změna ceníku nepřepíše historii.
 Model, který v ceníku chybí, dostane cost = NULL (cena neznámá), ne 0.
 """
 

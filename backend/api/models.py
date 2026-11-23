@@ -1981,13 +1981,9 @@ class EmailLog(Base):
     """
 
     __tablename__ = "email_log"
-    __table_args__ = (
-        Index("ix_email_log_user_created", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_email_log_user_created", "user_id", "created_at"),)
 
-    log_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(start=1), primary_key=True
-    )
+    log_id: Mapped[int] = mapped_column(BigInteger, Identity(start=1), primary_key=True)
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("user.user_id", ondelete="CASCADE")
     )

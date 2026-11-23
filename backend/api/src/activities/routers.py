@@ -14,7 +14,9 @@ from api.src.activities.schemas import (
 from api.database import SessionSqlSessionDependency
 from api.dependencies import require_role
 
-router = APIRouter(prefix="/activities", tags=["Activities"], dependencies=[require_role("lector")])
+router = APIRouter(
+    prefix="/activities", tags=["Activities"], dependencies=[require_role("lector")]
+)
 
 
 # ---------- LearnBlock ----------
@@ -29,12 +31,17 @@ async def endp_create_learn_block(
 
 @router.put("/learn-blocks/{learn_id}", operation_id="update_learn_block")
 async def endp_update_learn_block(
-    learn_id: int, learn_block: LearnBlockUpdate, db: SessionSqlSessionDependency, user: CurrentUser
+    learn_id: int,
+    learn_block: LearnBlockUpdate,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
 ) -> LearnBlock:
     return update_learn_block(db, learn_id, learn_block, user)
 
 
-@router.delete("/learn-blocks/{learn_id}", operation_id="delete_learn_block", status_code=204)
+@router.delete(
+    "/learn-blocks/{learn_id}", operation_id="delete_learn_block", status_code=204
+)
 async def endp_delete_learn_block(
     learn_id: int, db: SessionSqlSessionDependency, user: CurrentUser
 ) -> None:

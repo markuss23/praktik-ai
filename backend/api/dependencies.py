@@ -294,7 +294,10 @@ OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 
 def is_staff(user: User | None) -> bool:
     """Lektor a výš (lektor, garant, superadmin)."""
-    return user is not None and ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]
+    return (
+        user is not None
+        and ROLE_HIERARCHY.get(user.role, 0) >= ROLE_HIERARCHY["lector"]
+    )
 
 
 async def ai_budget(

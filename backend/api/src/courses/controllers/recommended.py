@@ -25,9 +25,13 @@ def get_recommended_courses(
 
     # Předměty, do kterých user už je zapsán → boost pro doporučení
     enrolled_subject_ids: set[int] = set(
-        sid for sid in db.execute(
+        sid
+        for sid in db.execute(
             select(models.Course.course_subject_id)
-            .join(models.Enrollment, models.Enrollment.course_id == models.Course.course_id)
+            .join(
+                models.Enrollment,
+                models.Enrollment.course_id == models.Course.course_id,
+            )
             .where(
                 models.Enrollment.user_id == user.user_id,
                 models.Enrollment.is_active.is_(True),

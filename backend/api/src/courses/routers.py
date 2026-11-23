@@ -154,9 +154,14 @@ async def endp_create_course(
     return create_course(db, course, user)
 
 
-@router.put("/{course_id}", operation_id="update_course", dependencies=[require_role("lector")])
+@router.put(
+    "/{course_id}", operation_id="update_course", dependencies=[require_role("lector")]
+)
 async def endp_update_course(
-    course_id: int, course: CourseUpdate, db: SessionSqlSessionDependency, user: CurrentUser
+    course_id: int,
+    course: CourseUpdate,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
 ) -> Course:
     return update_course(db, course_id, course, user)
 
@@ -165,7 +170,9 @@ async def _generate_embeddings(course_id: int) -> None:
     """Background task: vygeneruje embeddingy pro kurz."""
     db: SessionSqlSessionDependency = SessionLocal()
     try:
-        app: CompiledStateGraph[AgentState, None, AgentState, AgentState] = create_embedding_graph()
+        app: CompiledStateGraph[AgentState, None, AgentState, AgentState] = (
+            create_embedding_graph()
+        )
         await app.ainvoke({"course_id": course_id, "db": db})
     except Exception:
         logger.exception("Chyba při generování embeddingů pro kurz %s", course_id)
@@ -173,7 +180,11 @@ async def _generate_embeddings(course_id: int) -> None:
         db.close()
 
 
-@router.put("/{course_id}/status", operation_id="update_course_status", dependencies=[require_role("lector")])
+@router.put(
+    "/{course_id}/status",
+    operation_id="update_course_status",
+    dependencies=[require_role("lector")],
+)
 async def endp_update_course_status(
     course_id: int,
     status: Literal["edited", "in_review", "approved", "archived"],
@@ -189,7 +200,11 @@ async def endp_update_course_status(
     return result
 
 
-@router.put("/{course_id}/published", operation_id="update_course_published", dependencies=[require_role("lector")])
+@router.put(
+    "/{course_id}/published",
+    operation_id="update_course_published",
+    dependencies=[require_role("lector")],
+)
 async def endp_update_course_published(
     course_id: int,
     is_published: bool,
@@ -199,15 +214,26 @@ async def endp_update_course_published(
     return update_course_published(db, course_id, is_published, user)
 
 
-@router.delete("/{course_id}", operation_id="delete_course", status_code=204, dependencies=[require_role("lector")])
-async def endp_delete_course(course_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
+@router.delete(
+    "/{course_id}",
+    operation_id="delete_course",
+    status_code=204,
+    dependencies=[require_role("lector")],
+)
+async def endp_delete_course(
+    course_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> None:
     delete_course(db, course_id, user)
 
 
 # ---------- File endpoints ----------
 
 
-@router.post("/{course_id}/files", operation_id="upload_course_file", dependencies=[require_role("lector")])
+@router.post(
+    "/{course_id}/files",
+    operation_id="upload_course_file",
+    dependencies=[require_role("lector")],
+)
 async def endp_upload_course_file(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -218,7 +244,11 @@ async def endp_upload_course_file(
     return await upload_course_file(db, course_id, file, user)
 
 
-@router.get("/{course_id}/files", operation_id="list_course_files", dependencies=[require_role("lector")])
+@router.get(
+    "/{course_id}/files",
+    operation_id="list_course_files",
+    dependencies=[require_role("lector")],
+)
 async def endp_list_course_files(
     course_id: int, db: SessionSqlSessionDependency
 ) -> list[CourseFile]:
@@ -251,7 +281,9 @@ async def endp_download_course_file(
 
 
 @router.delete(
-    "/{course_id}/files/{file_id}", operation_id="delete_course_file", status_code=204,
+    "/{course_id}/files/{file_id}",
+    operation_id="delete_course_file",
+    status_code=204,
     dependencies=[require_role("lector")],
 )
 async def endp_delete_course_file(
@@ -264,7 +296,11 @@ async def endp_delete_course_file(
 # ---------- Image endpoints ----------
 
 
-@router.put("/{course_id}/image", operation_id="upload_course_image", dependencies=[require_role("lector")])
+@router.put(
+    "/{course_id}/image",
+    operation_id="upload_course_image",
+    dependencies=[require_role("lector")],
+)
 async def endp_upload_course_image(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -276,7 +312,9 @@ async def endp_upload_course_image(
 
 
 @router.delete(
-    "/{course_id}/image", operation_id="delete_course_image", status_code=204,
+    "/{course_id}/image",
+    operation_id="delete_course_image",
+    status_code=204,
     dependencies=[require_role("lector")],
 )
 async def endp_delete_course_image(
@@ -289,7 +327,11 @@ async def endp_delete_course_image(
 # ---------- Link endpoints ----------
 
 
-@router.post("/{course_id}/links", operation_id="create_course_link", dependencies=[require_role("lector")])
+@router.post(
+    "/{course_id}/links",
+    operation_id="create_course_link",
+    dependencies=[require_role("lector")],
+)
 async def endp_create_course_link(
     course_id: int,
     db: SessionSqlSessionDependency,

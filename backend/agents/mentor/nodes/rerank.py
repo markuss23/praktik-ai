@@ -9,7 +9,9 @@ from agents.mentor.state import AgentState, ChunkData
 
 logger = logging.getLogger(__name__)
 
-PROMPT = (Path(__file__).parent.parent / "reranker_prompt.md").read_text(encoding="utf-8")
+PROMPT = (Path(__file__).parent.parent / "reranker_prompt.md").read_text(
+    encoding="utf-8"
+)
 TOP_K = 5
 
 

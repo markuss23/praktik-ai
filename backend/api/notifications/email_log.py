@@ -52,7 +52,9 @@ def log_email(
     except Exception:
         db.rollback()
         logger.exception(
-            "Nepodařilo se zapsat e-mail log (uživatel %s, událost %s)", user.user_id, event
+            "Nepodařilo se zapsat e-mail log (uživatel %s, událost %s)",
+            user.user_id,
+            event,
         )
 
 
@@ -71,9 +73,14 @@ def list_user_email_log(
     Returns:
         Dvojice (záznamy na stránce, celkový počet záznamů uživatele).
     """
-    total = db.scalar(
-        select(func.count()).select_from(models.EmailLog).where(models.EmailLog.user_id == user_id)
-    ) or 0
+    total = (
+        db.scalar(
+            select(func.count())
+            .select_from(models.EmailLog)
+            .where(models.EmailLog.user_id == user_id)
+        )
+        or 0
+    )
     items = list(
         db.scalars(
             select(models.EmailLog)

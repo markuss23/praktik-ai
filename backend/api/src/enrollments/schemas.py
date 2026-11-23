@@ -30,7 +30,8 @@ class Enrollment(ORMModel):
     completed_at: datetime | None
     left_at: datetime | None
     removed_by_id: int | None = Field(
-        default=None, description="Kdo studenta vyřadil (remove). NULL u leave nebo aktivního zápisu."
+        default=None,
+        description="Kdo studenta vyřadil (remove). NULL u leave nebo aktivního zápisu.",
     )
     created_at: datetime
     updated_at: datetime

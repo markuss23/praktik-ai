@@ -32,6 +32,10 @@ class ModulePodcastGeneratorService:
 
     async def generate(self) -> tuple[PodcastScript, bytes]:
         result = await create_graph().ainvoke(
-            {"db": self.db, "module_id": self.module_id, "progress_key": self.progress_key}
+            {
+                "db": self.db,
+                "module_id": self.module_id,
+                "progress_key": self.progress_key,
+            }
         )
         return result["script"], result["audio"]

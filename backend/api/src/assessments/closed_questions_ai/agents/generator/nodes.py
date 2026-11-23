@@ -109,5 +109,7 @@ if __name__ == "__main__":
     item = ClosedQuestionItem(question="Q?", options=["a", "b", "c"], correct_index=1)
     for _ in range(20):
         s = _shuffled(item)
-        assert sorted(s.options) == ["a", "b", "c"] and s.options[s.correct_index] == "b"
+        assert (
+            sorted(s.options) == ["a", "b", "c"] and s.options[s.correct_index] == "b"
+        )
     print("ok")

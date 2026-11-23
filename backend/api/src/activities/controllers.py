@@ -20,7 +20,12 @@ def create_learn_block(
     db: Session, learn_data: LearnBlockCreate, user: models.User
 ) -> LearnBlock:
     """Vytvoří LearnBlock — modul smí mít nejvýše jeden aktivní."""
-    module = get_or_404(db, models.Module, learn_data.module_id, detail="Modul nenalezen nebo není aktivní")
+    module = get_or_404(
+        db,
+        models.Module,
+        learn_data.module_id,
+        detail="Modul nenalezen nebo není aktivní",
+    )
 
     validate_owner_or_superadmin(module, user, "modul")
     assert_course_editable(module.course)
@@ -45,7 +50,9 @@ def create_learn_block(
     except IntegrityError:
         # souběžný create prošel kontrolou výše, chytí ho až uq_learnblock_module_active
         db.rollback()
-        raise HTTPException(status_code=400, detail="Modul již má aktivní LearnBlock.") from None
+        raise HTTPException(
+            status_code=400, detail="Modul již má aktivní LearnBlock."
+        ) from None
     db.refresh(new_lb)
 
     return LearnBlock.model_validate(new_lb)
@@ -55,7 +62,9 @@ def update_learn_block(
     db: Session, learn_id: int, learn_data: LearnBlockUpdate, user: models.User
 ) -> LearnBlock:
     """Upraví title a content existujícího LearnBlock."""
-    learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
+    learn_block = get_or_404(
+        db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní"
+    )
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
     assert_course_editable(learn_block.module.course)
@@ -70,7 +79,9 @@ def update_learn_block(
 
 def delete_learn_block(db: Session, learn_id: int, user: models.User) -> None:
     """Soft-delete LearnBlock."""
-    learn_block = get_or_404(db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní")
+    learn_block = get_or_404(
+        db, models.LearnBlock, learn_id, detail="LearnBlock nenalezen nebo není aktivní"
+    )
 
     validate_owner_or_superadmin(learn_block, user, "learn block")
     assert_course_editable(learn_block.module.course)

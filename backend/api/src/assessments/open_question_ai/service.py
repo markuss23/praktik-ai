@@ -26,7 +26,6 @@ async def initial_state(
 
 
 def view(cfg, state) -> OpenQuestionAIView:
-
     return OpenQuestionAIView(
         question=state.question,
     )

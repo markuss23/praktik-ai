@@ -27,13 +27,19 @@ async def generate_answer(state: AgentState) -> AgentState:
     ai_style: str = state.get("ai_style", "")
     history: list[tuple[str, str]] = state.get("history", [])
     max_length = next(
-        (ANSWER_LENGTH[c] for c in state.get("ai_style_codes", []) if c in ANSWER_LENGTH),
+        (
+            ANSWER_LENGTH[c]
+            for c in state.get("ai_style_codes", [])
+            if c in ANSWER_LENGTH
+        ),
         DEFAULT_ANSWER_LENGTH,
     )
     db = state["db"]
 
     logger.debug(f"Uživatelská otázka: {user_message}")
-    logger.info(f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi")
+    logger.info(
+        f"Používám {len(context_chunks)} kontextových chunků pro generování odpovědi"
+    )
 
     if context_chunks:
         context_text = "\n\n---\n\n".join(
@@ -44,7 +50,9 @@ async def generate_answer(state: AgentState) -> AgentState:
         )
     elif state.get("learn_block_content"):
         # Vyhledávání nic nenašlo nebo ho router přeskočil — kontextem je přímo text učebního bloku
-        context_text = html_to_text(state["learn_block_content"])[:FALLBACK_CONTENT_LIMIT]
+        context_text = html_to_text(state["learn_block_content"])[
+            :FALLBACK_CONTENT_LIMIT
+        ]
     elif history and not state.get("needs_retrieval", True):
         # Router usoudil, že stačí předchozí konverzace
         context_text = "Nové materiály nejsou potřeba — odpověz z předchozí konverzace."

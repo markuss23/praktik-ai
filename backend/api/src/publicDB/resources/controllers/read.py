@@ -196,8 +196,7 @@ def get_resources(
 def get_resource(
     db: Session, resource_id: int, user: models.User | None = None
 ) -> PubResource:
-    """Vrátí detail materiálu podle ID s počty.
-    """
+    """Vrátí detail materiálu podle ID s počty."""
     ensure_resource_visible(db, resource_id, user)
 
     ratings_count_subq = (
@@ -295,15 +294,14 @@ def get_resource(
 def get_resource_files(
     db: Session, resource_id: int, user: models.User | None = None
 ) -> list[PubResourceFile]:
-    """Vrátí seznam souborů materiálu.
-    """
+    """Vrátí seznam souborů materiálu."""
     ensure_resource_visible(db, resource_id, user)
 
     files = (
         db.execute(
             select(models.PubResourceFile).where(
                 models.PubResourceFile.resource_id == resource_id,
-                models.PubResourceFile.is_active.is_(True)
+                models.PubResourceFile.is_active.is_(True),
             )
         )
         .scalars()

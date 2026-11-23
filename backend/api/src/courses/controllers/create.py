@@ -39,9 +39,7 @@ def create_course(
             models.Course.is_active.is_(True),
         )
     ).first():
-        raise HTTPException(
-            status_code=400, detail="Kurz s tímto názvem již existuje"
-        )
+        raise HTTPException(status_code=400, detail="Kurz s tímto názvem již existuje")
 
     validate_krauu_competence_ids(db, course_data.krauu_competence_ids)
     validate_bloom_level_ids(db, course_data.bloom_level_ids)

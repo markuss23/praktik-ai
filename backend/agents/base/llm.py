@@ -65,9 +65,7 @@ def create_chat_llm(
     temperature: float | None = None,
     max_tokens: int | None = None,
 ) -> BaseChatModel:
-    """Vytvoří ChatOpenAI nebo ChatAnthropic podle prefixu názvu modelu.
-
-    """
+    """Vytvoří ChatOpenAI nebo ChatAnthropic podle prefixu názvu modelu."""
     kwargs: dict = {"callbacks": [UsageCallback(model, agent)]}
 
     if model.startswith("claude"):

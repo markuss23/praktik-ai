@@ -149,7 +149,9 @@ def _user_scores(sources: dict) -> dict[int, dict[str, float | None]]:
     for users in sources.values():
         for uid, bucket in users.items():
             for kind in ("pre", "out"):
-                per_user[uid][kind].extend([fmean(bucket[kind])] if bucket[kind] else [])
+                per_user[uid][kind].extend(
+                    [fmean(bucket[kind])] if bucket[kind] else []
+                )
     return {
         uid: {kind: _mean(vals) for kind, vals in d.items()}
         for uid, d in per_user.items()
@@ -224,9 +226,7 @@ def _history(h: _Hit, turns: dict) -> MyCompetenceHistoryItem:
     )
 
 
-def get_my_competence_profile(
-    db: Session, user: models.User
-) -> list[MyCompetenceItem]:
+def get_my_competence_profile(db: Session, user: models.User) -> list[MyCompetenceItem]:
     comps, hits = _collect(db, user.user_id, None)
     tree, meta = _group(hits)
     turns = _turn_stats(db, {h.s.session_id for h in hits})
@@ -240,7 +240,9 @@ def get_my_competence_profile(
                 **_base(comps, krauu_id),
                 pretest_score=_round(pre),
                 outcome_score=_round(out),
-                delta=_round(out - pre) if pre is not None and out is not None else None,
+                delta=_round(out - pre)
+                if pre is not None and out is not None
+                else None,
                 sources=[
                     MyCompetenceSource(
                         **_source(meta[krauu_id, src]),
@@ -274,7 +276,11 @@ def get_competence_stats(
             if u["pre"] is not None and u["out"] is not None
         ]
         session_ids = {h.s.session_id for h in hits if h.krauu_id == krauu_id}
-        graded = [turns[sid] for sid in session_ids if turns.get(sid, (0, None))[1] is not None]
+        graded = [
+            turns[sid]
+            for sid in session_ids
+            if turns.get(sid, (0, None))[1] is not None
+        ]
         answers = sum(n for n, _, _ in graded)
         correct = sum(ok or 0 for _, ok, _ in graded)
 

@@ -68,9 +68,7 @@ router.include_router(
     assessments_router,
     dependencies=[Depends(auth.get_current_user), Depends(ai_budget)],
 )
-router.include_router(
-    competences_router, dependencies=[Depends(auth.get_current_user)]
-)
+router.include_router(competences_router, dependencies=[Depends(auth.get_current_user)])
 router.include_router(
     editor_images_router, dependencies=[Depends(auth.get_current_user)]
 )

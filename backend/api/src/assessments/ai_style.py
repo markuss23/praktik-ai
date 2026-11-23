@@ -25,7 +25,9 @@ def profile_ai_style(
         "ne hodnocení ani formát výstupu):\n" + format_ai_style(options)
     )
     # Osa Informační hustota -> délka jako u mentora
-    length = next((ANSWER_LENGTH[o.code] for o in options if o.code in ANSWER_LENGTH), None)
+    length = next(
+        (ANSWER_LENGTH[o.code] for o in options if o.code in ANSWER_LENGTH), None
+    )
     if length:
         text += f"\n- Text pro studenta maximálně {length} znaků"
     return text

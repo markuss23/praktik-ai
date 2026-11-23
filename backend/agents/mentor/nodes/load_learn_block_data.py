@@ -37,12 +37,22 @@ def load_learn_block_data(state: AgentState) -> AgentState:
     if state.get("use_history", True):
         # Historie se nemíchá: module chat = jen tento blok, course chat = celý kurz
         if state.get("scope", MentorScope.module) == MentorScope.course:
-            where = [log_model.course_id == course.course_id, log_model.scope == MentorScope.course]
+            where = [
+                log_model.course_id == course.course_id,
+                log_model.scope == MentorScope.course,
+            ]
         else:
-            where = [log_model.learn_id == learn_block_id, log_model.scope == MentorScope.module]
+            where = [
+                log_model.learn_id == learn_block_id,
+                log_model.scope == MentorScope.module,
+            ]
         logs = (
             db.query(log_model)
-            .filter(log_model.user_id == state["user_id"], log_model.is_active.is_(True), *where)
+            .filter(
+                log_model.user_id == state["user_id"],
+                log_model.is_active.is_(True),
+                *where,
+            )
             .order_by(log_model.created_at.desc(), log_model.log_id.desc())
             .limit(HISTORY_LIMIT)
             .all()
@@ -66,6 +76,4 @@ def load_learn_block_data(state: AgentState) -> AgentState:
 
 def format_ai_style(options: list[models.AiStyleOption]) -> str:
     """Styl komunikace pro prompt — jeden řádek na osu s popisem chování agenta."""
-    return "\n".join(
-        f"- {o.axis.name}: {o.name} — {o.description}" for o in options
-    )
+    return "\n".join(f"- {o.axis.name}: {o.name} — {o.description}" for o in options)

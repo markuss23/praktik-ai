@@ -110,9 +110,7 @@ def get_course_files(db: Session, course_id: int) -> list[CourseFile]:
 
     files = (
         db.execute(
-            select(models.CourseFile).where(
-                models.CourseFile.course_id == course_id
-            )
+            select(models.CourseFile).where(models.CourseFile.course_id == course_id)
         )
         .scalars()
         .all()
@@ -127,9 +125,7 @@ def get_course_links(db: Session, course_id: int) -> list[CourseLink]:
 
     links = (
         db.execute(
-            select(models.CourseLink).where(
-                models.CourseLink.course_id == course_id
-            )
+            select(models.CourseLink).where(models.CourseLink.course_id == course_id)
         )
         .scalars()
         .all()

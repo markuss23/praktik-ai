@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 from agents.mindmap_generator.schemas import MindMap

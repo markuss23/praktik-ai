@@ -3,7 +3,13 @@ from fastapi import APIRouter
 
 from api.database import SessionSqlSessionDependency
 from api.dependencies import CurrentUser, require_role
-from api.src.feedbacks.schemas import FeedbackSection, FeedbackItem, FeedbackCreate, FeedbackReply, FeedbackResolve
+from api.src.feedbacks.schemas import (
+    FeedbackSection,
+    FeedbackItem,
+    FeedbackCreate,
+    FeedbackReply,
+    FeedbackResolve,
+)
 from api.src.feedbacks.controllers import (
     get_feedback_section,
     create_feedback,
@@ -15,7 +21,9 @@ from api.src.feedbacks.controllers import (
 router = APIRouter(prefix="/feedbacks", tags=["Feedbacks"])
 
 
-@router.get("", operation_id="get_feedback_section", dependencies=[require_role("lector")])
+@router.get(
+    "", operation_id="get_feedback_section", dependencies=[require_role("lector")]
+)
 def endp_get_feedback_section(
     course_id: int,
     db: SessionSqlSessionDependency,
@@ -23,10 +31,17 @@ def endp_get_feedback_section(
     reply_filter: Literal["all", "with_reply", "without_reply"] = "all",
 ) -> FeedbackSection:
     """Vrátí feedback sekci kurzu. reply_filter: all | with_reply | without_reply."""
-    return get_feedback_section(db, course_id=course_id, actor=actor, reply_filter=reply_filter)
+    return get_feedback_section(
+        db, course_id=course_id, actor=actor, reply_filter=reply_filter
+    )
 
 
-@router.post("", operation_id="create_feedback", status_code=201, dependencies=[require_role("guarantor")])
+@router.post(
+    "",
+    operation_id="create_feedback",
+    status_code=201,
+    dependencies=[require_role("guarantor")],
+)
 def endp_create_feedback(
     data: FeedbackCreate,
     db: SessionSqlSessionDependency,
@@ -43,7 +58,11 @@ def endp_create_feedback(
     )
 
 
-@router.patch("/{feedback_id}/reply", operation_id="reply_to_feedback", dependencies=[require_role("lector")])
+@router.patch(
+    "/{feedback_id}/reply",
+    operation_id="reply_to_feedback",
+    dependencies=[require_role("lector")],
+)
 def endp_reply_to_feedback(
     feedback_id: int,
     data: FeedbackReply,
@@ -51,10 +70,16 @@ def endp_reply_to_feedback(
     actor: CurrentUser,
 ) -> FeedbackItem:
     """Autor kurzu přidá odpověď na feedback garanta."""
-    return reply_to_feedback(db, feedback_id=feedback_id, reply_text=data.reply, actor=actor)
+    return reply_to_feedback(
+        db, feedback_id=feedback_id, reply_text=data.reply, actor=actor
+    )
 
 
-@router.patch("/{feedback_id}/resolve", operation_id="resolve_feedback", dependencies=[require_role("lector")])
+@router.patch(
+    "/{feedback_id}/resolve",
+    operation_id="resolve_feedback",
+    dependencies=[require_role("lector")],
+)
 def endp_resolve_feedback(
     feedback_id: int,
     data: FeedbackResolve,
@@ -62,10 +87,17 @@ def endp_resolve_feedback(
     actor: CurrentUser,
 ) -> FeedbackItem:
     """Autor kurzu označí feedback jako vyřešený / nevyřešený."""
-    return resolve_feedback(db, feedback_id=feedback_id, is_resolved=data.is_resolved, actor=actor)
+    return resolve_feedback(
+        db, feedback_id=feedback_id, is_resolved=data.is_resolved, actor=actor
+    )
 
 
-@router.delete("/{feedback_id}", operation_id="delete_feedback", status_code=204, dependencies=[require_role("guarantor")])
+@router.delete(
+    "/{feedback_id}",
+    operation_id="delete_feedback",
+    status_code=204,
+    dependencies=[require_role("guarantor")],
+)
 def endp_delete_feedback(
     feedback_id: int,
     db: SessionSqlSessionDependency,

@@ -59,6 +59,7 @@ class Module(ModuleBase):
     @property
     def mindmap_mermaid(self) -> str | None:
         return to_mermaid(self.mindmap) if self.mindmap else None
+
     neuro_principle_ids: list[int] = Field(validation_alias="neuro_principle_id_list")
     neuro_principles: list[NeuroPrinciple] = Field(
         default=[], validation_alias="neuro_principle_list"

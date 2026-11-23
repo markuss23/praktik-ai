@@ -105,7 +105,9 @@ def create_enrollment(
         enrollment.left_at = None
         enrollment.removed_by_id = None
     else:
-        raise HTTPException(status_code=409, detail="Uživatel je již zapsán do tohoto kurzu")
+        raise HTTPException(
+            status_code=409, detail="Uživatel je již zapsán do tohoto kurzu"
+        )
 
     db.commit()
     db.refresh(enrollment)
@@ -121,10 +123,22 @@ def delete_enrollment(
     Vyřadí uživatele z kurzu (nastaví left_at).
     Endpoint je zamčený přes require_role("lector").
     """
-    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
+    enrollment = get_or_404(
+        db,
+        models.Enrollment,
+        enrollment_id,
+        detail="Zápis nenalezen",
+        check_active=False,
+    )
 
     # Vyřadit studenta smí jen vlastník kurzu nebo superadmin, ne libovolný lektor
-    course = get_or_404(db, models.Course, enrollment.course_id, detail="Kurz nenalezen", check_active=False)
+    course = get_or_404(
+        db,
+        models.Course,
+        enrollment.course_id,
+        detail="Kurz nenalezen",
+        check_active=False,
+    )
     validate_owner_or_superadmin(course, actor, "kurz")
 
     if enrollment.left_at is not None:
@@ -146,7 +160,13 @@ def soft_delete_enrollment(
     Soft-delete zápisu (is_active = False).
     Endpoint zamčený přes require_role("superadmin").
     """
-    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen", check_active=False)
+    enrollment = get_or_404(
+        db,
+        models.Enrollment,
+        enrollment_id,
+        detail="Zápis nenalezen",
+        check_active=False,
+    )
 
     if not enrollment.is_active:
         raise HTTPException(
@@ -212,7 +232,9 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
         # Kurz bez povinných testů je hotový hned, mark_course_completed se ale volá
         # jen při passed session — completed_at doplníme tady. Jednou nastavené se nemaže.
         if progress.course_completed and enrollment.completed_at is None:
-            enrollment.completed_at = progress.course_completed_at or datetime.now(tz=UTC)
+            enrollment.completed_at = progress.course_completed_at or datetime.now(
+                tz=UTC
+            )
             completed_changed = True
         active_modules = sorted(course.modules, key=lambda m: m.module_id)
         total_modules = len(active_modules)
@@ -233,26 +255,30 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
         # Pokud uživatel má explicitní last_visited, použij ho; jinak
         # spadni na poslední assessment session v kurzu.
-        last_activity = enrollment.last_activity_at or session_activity.get(course.course_id)
+        last_activity = enrollment.last_activity_at or session_activity.get(
+            course.course_id
+        )
 
-        result.append(MyEnrollment(
-            enrollment_id=enrollment.enrollment_id,
-            course_id=course.course_id,
-            course=MyEnrollmentCourse(
+        result.append(
+            MyEnrollment(
+                enrollment_id=enrollment.enrollment_id,
                 course_id=course.course_id,
-                title=course.title,
-                description=course.description,
-                modules_count=total_modules,
-                image_url=course_image_url(course.course_id, course.image_path),
-            ),
-            completed_modules=passed_count,
-            total_modules=total_modules,
-            enrolled_at=enrollment.created_at,
-            completed_at=enrollment.completed_at,
-            next_module=next_module,
-            last_visited_module_id=enrollment.last_visited_module_id,
-            last_activity_at=last_activity,
-        ))
+                course=MyEnrollmentCourse(
+                    course_id=course.course_id,
+                    title=course.title,
+                    description=course.description,
+                    modules_count=total_modules,
+                    image_url=course_image_url(course.course_id, course.image_path),
+                ),
+                completed_modules=passed_count,
+                total_modules=total_modules,
+                enrolled_at=enrollment.created_at,
+                completed_at=enrollment.completed_at,
+                next_module=next_module,
+                last_visited_module_id=enrollment.last_visited_module_id,
+                last_activity_at=last_activity,
+            )
+        )
 
     if completed_changed:
         db.commit()
@@ -268,10 +294,14 @@ def my_enrollments(db: Session, user: models.User) -> list[MyEnrollment]:
 
 def leave_enrollment(db: Session, enrollment_id: int, user: models.User) -> None:
     """Uživatel se sám odepíše z kurzu."""
-    enrollment = get_or_404(db, models.Enrollment, enrollment_id, detail="Zápis nenalezen")
+    enrollment = get_or_404(
+        db, models.Enrollment, enrollment_id, detail="Zápis nenalezen"
+    )
 
     if enrollment.user_id != user.user_id:
-        raise HTTPException(status_code=403, detail="Můžete opustit pouze vlastní zápis")
+        raise HTTPException(
+            status_code=403, detail="Můžete opustit pouze vlastní zápis"
+        )
 
     if enrollment.left_at is not None:
         raise HTTPException(status_code=400, detail="Kurz jste již opustili")
@@ -335,7 +365,9 @@ def get_my_activity(
     Vše agregováno per den v UTC.
     """
     if (from_date is None) != (to_date is None):
-        raise HTTPException(status_code=422, detail="from_date a to_date se zadávají spolu")
+        raise HTTPException(
+            status_code=422, detail="from_date a to_date se zadávají spolu"
+        )
 
     if from_date is not None and to_date is not None:
         if from_date > to_date:

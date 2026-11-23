@@ -1,7 +1,10 @@
 from langgraph.graph import END, StateGraph
 
 from api.src.assessments.socratic_dialog_ai.agents.topic.state import TopicState
-from api.src.assessments.socratic_dialog_ai.agents.topic.nodes import load_context, generate_topic
+from api.src.assessments.socratic_dialog_ai.agents.topic.nodes import (
+    load_context,
+    generate_topic,
+)
 
 
 def create_graph():

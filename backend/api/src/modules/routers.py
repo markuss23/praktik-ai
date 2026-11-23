@@ -81,15 +81,25 @@ async def endp_get_module_image(
     return get_module_image(db, module_id, user)
 
 
-@router.put("/{module_id}", operation_id="update_module", dependencies=[require_role("lector")])
+@router.put(
+    "/{module_id}", operation_id="update_module", dependencies=[require_role("lector")]
+)
 async def endp_update_module(
-    module_id: int, module: ModuleUpdate, db: SessionSqlSessionDependency, user: CurrentUser
+    module_id: int,
+    module: ModuleUpdate,
+    db: SessionSqlSessionDependency,
+    user: CurrentUser,
 ) -> Module:
     return update_module(db, module_id, module, user)
 
 
 @router.delete(
-    "/{module_id}", operation_id="delete_module", status_code=204, dependencies=[require_role("lector")]
+    "/{module_id}",
+    operation_id="delete_module",
+    status_code=204,
+    dependencies=[require_role("lector")],
 )
-async def endp_delete_module(module_id: int, db: SessionSqlSessionDependency, user: CurrentUser) -> None:
+async def endp_delete_module(
+    module_id: int, db: SessionSqlSessionDependency, user: CurrentUser
+) -> None:
     delete_module(db, module_id, user)

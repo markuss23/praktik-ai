@@ -182,4 +182,3 @@ def save_to_db_node(state: AgentState) -> AgentState:
     logger.info(f"   -> Vytvořeno {len(generated_course.modules)} modulů")
 
     return state
-

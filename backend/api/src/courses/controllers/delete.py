@@ -62,11 +62,17 @@ def delete_course(db: Session, course_id: int, user: models.User) -> None:
             try:
                 seaweedfs.delete_file(f.file_path)
             except Exception as e:
-                logger.warning("delete_course: chyba při mazání souboru %s: %s", f.file_path, e)
+                logger.warning(
+                    "delete_course: chyba při mazání souboru %s: %s", f.file_path, e
+                )
 
         # Explicitní cascade: smaž závislé záznamy před smazáním kurzu
-        db.execute(delete(models.CourseFile).where(models.CourseFile.course_id == course_id))
-        db.execute(delete(models.CourseLink).where(models.CourseLink.course_id == course_id))
+        db.execute(
+            delete(models.CourseFile).where(models.CourseFile.course_id == course_id)
+        )
+        db.execute(
+            delete(models.CourseLink).where(models.CourseLink.course_id == course_id)
+        )
         db.delete(course)
     else:
         course.soft_delete()
@@ -74,7 +80,9 @@ def delete_course(db: Session, course_id: int, user: models.User) -> None:
     db.commit()
 
 
-def delete_course_file(db: Session, course_id: int, file_id: int, user: models.User) -> None:
+def delete_course_file(
+    db: Session, course_id: int, file_id: int, user: models.User
+) -> None:
     """Smaže soubor kurzu (pouze v draft stavu)"""
     course_file: models.CourseFile | None = (
         db.execute(
@@ -95,7 +103,8 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: models.U
 
     if course_file.course.status != Status.draft or not course_file.course.is_active:
         raise HTTPException(
-            status_code=400, detail="Soubory lze mazat jen u aktivního kurzu ve stavu koncept"
+            status_code=400,
+            detail="Soubory lze mazat jen u aktivního kurzu ve stavu koncept",
         )
 
     seaweedfs.delete_file(course_file.file_path)
@@ -103,7 +112,9 @@ def delete_course_file(db: Session, course_id: int, file_id: int, user: models.U
     db.commit()
 
 
-def delete_course_link(db: Session, course_id: int, link_id: int, user: models.User) -> None:
+def delete_course_link(
+    db: Session, course_id: int, link_id: int, user: models.User
+) -> None:
     """Smaže odkaz kurzu (pouze v draft stavu)"""
     course_link: models.CourseLink | None = (
         db.execute(
@@ -124,7 +135,8 @@ def delete_course_link(db: Session, course_id: int, link_id: int, user: models.U
 
     if course_link.course.status != Status.draft or not course_link.course.is_active:
         raise HTTPException(
-            status_code=400, detail="Odkazy lze mazat jen u aktivního kurzu ve stavu koncept"
+            status_code=400,
+            detail="Odkazy lze mazat jen u aktivního kurzu ve stavu koncept",
         )
 
     db.delete(course_link)

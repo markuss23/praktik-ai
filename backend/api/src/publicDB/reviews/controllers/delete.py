@@ -32,7 +32,7 @@ def delete_review(db: Session, review_id: int, user: models.User) -> None:
             detail="Nelze smazat recenzi, kterou jste nevytvořil.",
         )
 
-    # Smazat jde jen poslední aktivní recenzi 
+    # Smazat jde jen poslední aktivní recenzi
     latest_review_id = db.execute(
         select(models.PubResourceReview.review_id)
         .where(

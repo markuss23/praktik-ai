@@ -48,14 +48,25 @@ def main(args: list[str]) -> None:
         assert pg is not None
         pg.autocommit = True  # transakce řídí níže pg.transaction()
         pg.execute(CREATE_TABLE)
-        applied = {row[0] for row in pg.execute("SELECT filename FROM schema_migration")}
+        applied = {
+            row[0] for row in pg.execute("SELECT filename FROM schema_migration")
+        }
         pending = [f for f in files if f.name not in applied]
-        logger.info("složka %s: %d souborů, v DB zapsáno %d", MIGRATIONS_DIR, len(files), len(applied))
+        logger.info(
+            "složka %s: %d souborů, v DB zapsáno %d",
+            MIGRATIONS_DIR,
+            len(files),
+            len(applied),
+        )
 
         auto_baseline = not applied and "--status" not in args
         if "--baseline" in args or auto_baseline:
             reason = "schema_migration je prázdná" if auto_baseline else "--baseline"
-            logger.info("baseline (%s): označuji %d souborů jako spuštěné, nic nespouštím", reason, len(pending))
+            logger.info(
+                "baseline (%s): označuji %d souborů jako spuštěné, nic nespouštím",
+                reason,
+                len(pending),
+            )
             with pg.transaction():
                 for f in pending:
                     pg.execute(INSERT, (f.name,))
@@ -70,18 +81,27 @@ def main(args: list[str]) -> None:
                     t = time.perf_counter()
                     try:
                         with pg.transaction():
-                            pg.execute(f.read_text(encoding="utf-8"))  # bez parametrů = víc příkazů v jednom souboru OK
+                            pg.execute(
+                                f.read_text(encoding="utf-8")
+                            )  # bez parametrů = víc příkazů v jednom souboru OK
                             pg.execute(INSERT, (f.name,))
                     except Exception:
-                        logger.exception("migrace %s selhala, rollback, nic z ní se neuložilo", f.name)
+                        logger.exception(
+                            "migrace %s selhala, rollback, nic z ní se neuložilo",
+                            f.name,
+                        )
                         sys.exit(1)
-                    logger.info("hotovo %s za %d ms", f.name, (time.perf_counter() - t) * 1000)
+                    logger.info(
+                        "hotovo %s za %d ms", f.name, (time.perf_counter() - t) * 1000
+                    )
 
         last = pg.execute(LAST).fetchone()
         if last:
             logger.info(
                 "poslední spuštěná: %s (%s), celkem %.1f s",
-                last[0], f"{last[1]:%Y-%m-%d %H:%M}", time.perf_counter() - started,
+                last[0],
+                f"{last[1]:%Y-%m-%d %H:%M}",
+                time.perf_counter() - started,
             )
         else:
             logger.info("žádná migrace zatím nezapsaná")

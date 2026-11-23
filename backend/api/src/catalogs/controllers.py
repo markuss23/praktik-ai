@@ -77,7 +77,11 @@ _COURSE_CATALOG_FKS = (
     ("course_block_id", CourseBlock, "Tematický blok s tímto ID neexistuje"),
     ("course_target_id", CourseTarget, "Cílová skupina s tímto ID neexistuje"),
     ("course_subject_id", CourseSubject, "Obor s tímto ID neexistuje"),
-    ("course_requirement_id", CourseRequirement, "Povinnost kurzu s tímto ID neexistuje"),
+    (
+        "course_requirement_id",
+        CourseRequirement,
+        "Povinnost kurzu s tímto ID neexistuje",
+    ),
     ("course_eqf_level_id", CourseEqfLevel, "EQF úroveň s tímto ID neexistuje"),
     ("course_level_id", CourseLevel, "Level s tímto ID neexistuje"),
     ("course_type_id", CourseType, "Typ kurzu s tímto ID neexistuje"),
