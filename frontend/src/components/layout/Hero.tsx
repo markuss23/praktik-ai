@@ -165,9 +165,12 @@ export function Hero({ changelog }: { changelog: string | null }) {
                 z „O projektu". Sedí na zelené ploše. */}
             <p
               aria-hidden
-              className="hero-pop absolute top-[2%] left-full ml-2 hidden origin-bottom-left rotate-3 rounded-[26px] rounded-bl-md bg-[#EDEAFA] px-5 py-3.5 text-base leading-[1.35] font-bold tracking-[-0.015em] whitespace-nowrap text-[#23203A] shadow-[0_24px_60px_rgba(20,19,28,0.16)] lg:block"
+              // Elipsa, ocasek (before:) miri vlevo dolu k rysovi
+              className="hero-pop absolute top-[2%] left-full ml-2 hidden origin-bottom-left rotate-3 rounded-[50%] bg-[#EDEAFA] px-9 py-6 text-center text-base leading-[1.35] font-bold tracking-[-0.015em] whitespace-nowrap text-[#23203A] shadow-[0_24px_60px_rgba(20,19,28,0.16)] before:absolute before:bottom-[-6%] before:left-[6%] before:size-7 before:bg-[#EDEAFA] before:[clip-path:polygon(0_100%,100%_25%,60%_0)] before:content-[''] lg:block"
             >
-              Ahoj! Učit s AI
+              Dobrý den!
+              <br />
+              Učit s AI
               <br />
               se dá naučit.
             </p>

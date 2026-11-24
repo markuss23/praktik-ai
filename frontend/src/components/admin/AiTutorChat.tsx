@@ -96,7 +96,7 @@ export function AiTutorChat() {
                 <Bot className="size-4 text-foreground" />
               </div>
               <p className="text-sm text-muted-foreground leading-snug break-words">
-                Ahoj! 👋 Jsem tvůj AI asistent. Máš nějaké otázky k tomuto modulu nebo celému kurzu?
+                Dobrý den! 👋 Jsem váš AI asistent. Máte nějaké otázky k tomuto modulu nebo celému kurzu?
               </p>
             </div>
           </Button>

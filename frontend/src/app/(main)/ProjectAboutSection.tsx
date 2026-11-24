@@ -354,8 +354,11 @@ export function ProjectAboutSection() {
             </p>
 
             {/* Citace přesahuje přes obrázek — jen na širokých displejích. */}
-            <blockquote className="relative z-3 mt-11 rounded-[34px] rounded-bl-lg bg-[#EDEAFA] px-8 py-9 shadow-[0_24px_60px_rgba(20,19,28,0.16)] lg:mr-[-120px] lg:rotate-[-1.4deg] lg:px-11 lg:py-10">
-              <p className="text-xl leading-[1.42] font-bold tracking-[-0.015em] text-[#23203A] lg:text-[23px]">
+            <blockquote
+              // Elipsa: vodorovny padding 15 % sirky drzi rohy textu uvnitr oblouku
+              className="relative z-3 mt-11 rounded-[50%] bg-[#EDEAFA] px-[15%] py-16 text-center shadow-[0_24px_60px_rgba(20,19,28,0.16)] lg:mr-[-120px] lg:rotate-[-1.4deg]"
+            >
+              <p className="text-xl leading-[1.42] font-bold tracking-[-0.015em] text-balance text-[#23203A] lg:text-[23px]">
                 Naším cílem není nahradit učitele, ale poskytnout mu nástroj,
                 který mu uvolní ruce od rutinních činností a umožní mu věnovat
                 se individuálnímu rozvoji každého žáka.

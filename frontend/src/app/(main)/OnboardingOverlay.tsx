@@ -99,8 +99,9 @@ export function OnboardingOverlay() {
         {/* Popup se kliknutí nedotýká (průhledné okolí karty propustí klik
             na backdrop, který okno zavře) — klikatelná je jen karta. */}
         <DialogPrimitive.Popup
+          // light: portal je mimo .light obal landing page, karta je navrzena jen svetla
           className={cn(
-            'pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex justify-center px-4 pb-4 outline-none lg:pb-0',
+            'light pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex justify-center px-4 pb-4 outline-none lg:pb-0',
             '[--lynx-m:min(280px,32svh)] [--lynx-d:clamp(300px,calc((100svh_-_580px)_/_0.39),760px)]',
             'duration-300 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-bottom-8 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-bottom-8',
           )}
@@ -108,7 +109,7 @@ export function OnboardingOverlay() {
           <div className="relative w-full max-w-[520px] lg:flex lg:w-auto lg:max-w-none lg:items-end">
             <div className="pointer-events-auto relative z-10 max-h-[calc(100svh_-_var(--lynx-m)_*_0.64_-_2rem)] w-full overflow-y-auto rounded-[28px] bg-white px-6 pt-7 pb-7 text-[#111111] shadow-[0_24px_60px_rgba(20,19,28,0.3)] sm:px-8 lg:mb-[calc(var(--lynx-d)_*_0.39)] lg:rounded-br-lg lg:max-h-[calc(100svh_-_var(--lynx-d)_*_0.39_-_1.5rem)] lg:w-[520px]">
               <DialogTitle className="max-w-[16ch] pr-8 text-[26px] leading-tight font-bold tracking-[-0.02em] text-pretty sm:text-[30px]">
-                Ahoj! Provedu vás po Praktik-AI.
+                Dobrý den! Provedu vás po Praktik-AI.
               </DialogTitle>
               <DialogDescription className="mt-3 text-base leading-[1.6] text-pretty text-[#555555]">
                 Tady se budoucí učitelé učí pracovat s umělou inteligencí. Než

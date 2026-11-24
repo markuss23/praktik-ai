@@ -28,6 +28,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Hint,
   ModuleCategories,
   PageSpinner,
   Tabs,
@@ -367,7 +368,8 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
       clearVisited(courseId);
       window.dispatchEvent(new CustomEvent(REVIEW_COUNT_EVENT));
       setApprovedTransition(true);
-      setTimeout(() => router.push('/admin/review'), 1400);
+      // Seznam pak rozbali Schvaleno, kde jde kurz rovnou publikovat
+      setTimeout(() => router.push(`/admin/review?schvaleno=${courseId}`), 1400);
       return true;
     } catch (err) {
       toast.error(err, 'Kurz se nepodařilo schválit.');
@@ -610,9 +612,11 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
         >
           <div className="p-3 border-b border-border flex items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">Kontrola kurzu</h2>
-            <span className="text-xs text-muted-foreground" title="Otevřené části kurzu">
-              {parts.filter((p) => p.visited).length}/{parts.length}
-            </span>
+            <Hint label="Otevřené části kurzu">
+              <span className="text-xs text-muted-foreground">
+                {parts.filter((p) => p.visited).length}/{parts.length}
+              </span>
+            </Hint>
           </div>
           <div className="flex-1 overflow-y-auto">
             {parts.map((part) => (
@@ -704,7 +708,7 @@ export function ReviewCourseView({ courseId }: ReviewCourseViewProps) {
               </motion.div>
               <div className="text-center">
                 <p className="text-lg font-semibold text-foreground">Kurz schválen</p>
-                <p className="text-sm text-muted-foreground mt-1">Vracím vás na přehled…</p>
+                <p className="text-sm text-muted-foreground mt-1">Vracím vás na přehled, kde ho můžete publikovat…</p>
               </div>
             </motion.div>
           </motion.div>

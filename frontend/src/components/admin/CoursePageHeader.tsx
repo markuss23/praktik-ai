@@ -1,6 +1,6 @@
 'use client';
 
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Check, Eye, Loader2, Maximize, Menu, MessageSquare, Minimize, Save } from 'lucide-react';
 import type { SaveStatus } from '@/hooks/useAutosave';
 import { Button } from '@/components/ui';
@@ -28,6 +28,8 @@ interface CoursePageHeaderProps {
   commentsOpen?: boolean;
   /** Ref na kořen hlavičky — panel komentářů se pod ni ukotví. */
   headerRef?: Ref<HTMLDivElement>;
+  // Vlastni akce vpravo (napr. Publikovat v nahledu), nezavisle na showButtons
+  actions?: ReactNode;
 }
 
 // indikátor stavu autosave
@@ -71,6 +73,7 @@ export function CoursePageHeader({
   commentsCount,
   commentsOpen = false,
   headerRef,
+  actions,
 }: CoursePageHeaderProps) {
   const { focusMode, toggleFocusMode } = useAdminChrome();
 
@@ -163,6 +166,7 @@ export function CoursePageHeader({
               ) : null}
             </div>
           )}
+          {actions && <div className="flex flex-wrap items-center gap-2 sm:gap-3">{actions}</div>}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@
 ## První otázka
 
 - Otevřená otázka, která studenta přiměje vyslovit vlastní názor nebo předpoklad k tématu
+- Studentovi vykej
 - Neprozrazuje odpověď a nenapovídá
 - Nedá se odpovědět jen ano/ne nebo opsáním věty z textu
 - Délka 1–2 věty

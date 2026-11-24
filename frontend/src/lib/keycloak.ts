@@ -216,8 +216,11 @@ export function parseJwt(token: string): UserInfo | null {
 
 // Storage helpers
 
+// Cte ho i THEME_INIT_SCRIPT v lib/theme.ts (rezim prihlaseneho uzivatele pred hydrataci)
+export const ACCESS_TOKEN_STORAGE_KEY = "kc_access_token";
+
 const STORAGE_KEYS = {
-  accessToken: "kc_access_token",
+  accessToken: ACCESS_TOKEN_STORAGE_KEY,
   refreshToken: "kc_refresh_token",
   idToken: "kc_id_token",
   expiresAt: "kc_expires_at",

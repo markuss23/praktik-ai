@@ -9,6 +9,7 @@ import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
+import { ThemeSettingsCard } from '@/components/profile/ThemeSettingsCard';
 import { ProfileTicketsCard, useSupportChat } from '@/components/tickets';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -232,7 +233,7 @@ export default function ProfilPage() {
           <ProfileCard
             name={displayName ?? currentUser?.displayName ?? user?.name ?? user?.preferred_username ?? 'Uživatel'}
             role={roleLabel}
-            avatarSrc={avatarSrc ?? '/logo.svg'}
+            avatarSrc={avatarSrc}
             level={level}
             onEditClick={() => setEditModalOpen(true)}
           />
@@ -247,6 +248,8 @@ export default function ProfilPage() {
               <p className="text-xs text-muted-foreground">Styl komunikace AI tutora</p>
             </div>
           </Button>
+
+          <ThemeSettingsCard />
 
           <ProfileProgressCard items={progressItems} />
 

@@ -23,6 +23,7 @@ from api.enums import Status
 from api.authorization import (
     validate_owner_or_superadmin,
     validate_guarantor_or_superadmin,
+    validate_ownership,
     validate_superadmin,
 )
 from api.notifications.course_status import classify_transition, notify_course_event
@@ -185,8 +186,8 @@ def update_course_published(
     """Aktualizuje publikování kurzu"""
     course = get_or_404(db, models.Course, course_id, detail="Kurz nenalezen")
 
-    # Only owner or superadmin can publish (guarantor cannot)
-    validate_owner_or_superadmin(course, user, "kurz")
+    # Owner, guarantor or superadmin can publish/unpublish
+    validate_ownership(course, user, "kurz")
 
     # approved/archived: lze publikovat i odpublikovat
     if course.status not in (Status.approved, Status.archived):

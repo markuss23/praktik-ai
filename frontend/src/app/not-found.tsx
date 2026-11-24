@@ -21,7 +21,8 @@ const heroTitle =
  */
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111]">
+    // light: styl landing page, navrzeny jen svetly (vcetne Header a Footer uvnitr)
+    <div className="light flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111]">
       <Header />
 
       <main className="flex-1 overflow-x-clip">

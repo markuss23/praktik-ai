@@ -98,7 +98,7 @@ export function FolderPickerModal({
           )}
 
           {folders.length === 0 ? (
-            <p className="px-1 py-2 text-xs text-muted-foreground">Zatím nemáš žádné složky.</p>
+            <p className="px-1 py-2 text-xs text-muted-foreground">Zatím nemáte žádné složky.</p>
           ) : (
             folders.map((folder) => {
               const isActive = folder.id === selectedId;

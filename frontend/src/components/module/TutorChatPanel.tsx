@@ -176,7 +176,7 @@ export function TutorChatPanel({ variant, focusOnPrefill = false, autoFocus = fa
           <span className="block text-xs font-medium text-foreground">Navazovat na předchozí otázky</span>
           <span id={historyHelpId} className="block text-[11px] leading-snug text-muted-foreground">
             {useHistory
-              ? `Tutor navazuje na tvé předchozí otázky ${scope === 'module' ? 'v tomto modulu' : 'v celém kurzu'}.`
+              ? `Tutor navazuje na vaše předchozí otázky ${scope === 'module' ? 'v tomto modulu' : 'v celém kurzu'}.`
               : 'Každou otázku bere samostatně. Konverzace se dál ukládá.'}
           </span>
         </span>

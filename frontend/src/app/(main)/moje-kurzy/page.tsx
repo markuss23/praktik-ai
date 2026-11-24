@@ -153,7 +153,7 @@ export default function MojeKurzyPage() {
         <div className="mb-6 sm:mb-8">
           <p className="text-sm text-muted-foreground">Home / Moje kurzy</p>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mt-2">Moje kurzy</h1>
-          <p className="text-sm text-muted-foreground mt-1">Tvůj učební prostor — pokračuj, kde jsi skončil.</p>
+          <p className="text-sm text-muted-foreground mt-1">Váš učební prostor — pokračujte tam, kde jste skončili.</p>
         </div>
 
         {isInitialLoading ? (

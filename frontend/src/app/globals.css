@@ -2,10 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Tmavy rezim = trida .dark na <html> (ThemeProvider). Uvnitr .light (landing page,
+   chybove stranky) zustava svetly i v tmavem rezimu, dark: varianty tam neplati. */
+@custom-variant dark (&:is(.dark *):not(:is(.light, .light *)));
 
 :root {
-
   /* Škála vrstev. Shadcn kit (Base UI) drží všechny své portály — overlay,
      drawer, dialog, select, tooltip, menu — napevno na `z-50` a pořadí mezi
      nimi řeší pořadím v DOM. Appka se proto musí vejít kolem té padesátky:
@@ -18,6 +19,26 @@
   --z-overlay: 55;
   --z-modal: 60;
   --z-toast: 70;
+  --radius: 0.625rem;
+
+  /* SupportChatWidget*/
+  --support-fab-size: 3rem;
+  --support-fab-offset: 1rem;
+  --support-fab-clearance: calc(var(--support-fab-offset) + var(--support-fab-size) + 0.75rem);
+}
+
+@media (width >= 40rem) {
+  :root {
+    --support-fab-size: 3.5rem;
+    --support-fab-offset: 1.5rem;
+  }
+}
+
+/* Barevne tokeny svetleho rezimu. .light je vraci uvnitr tmaveho rezimu. */
+:root,
+.light {
+  /* Nativni prvky (scrollbar, date picker, autofill) podle rezimu, .dark prepisuje na dark */
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -58,7 +79,6 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -67,18 +87,6 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-
-  /* SupportChatWidget*/
-  --support-fab-size: 3rem;
-  --support-fab-offset: 1rem;
-  --support-fab-clearance: calc(var(--support-fab-offset) + var(--support-fab-size) + 0.75rem);
-}
-
-@media (width >= 40rem) {
-  :root {
-    --support-fab-size: 3.5rem;
-    --support-fab-offset: 1.5rem;
-  }
 }
 
 @theme inline {
@@ -461,6 +469,7 @@ body.module-fullscreen footer {
 }
 
 .dark {
+  color-scheme: dark;
 
   --background: oklch(0.145 0 0);
 
@@ -491,8 +500,10 @@ body.module-fullscreen footer {
 
   --accent-foreground: oklch(0.985 0 0);
 
-  /* Figma alert palette, lifted in lightness so it reads on a dark surface */
-  --destructive: oklch(0.704 0.191 23.35); /* Error   #D5002A */
+  /* Figma alert palette, lifted in lightness so it reads on a dark surface.
+     Destructive, tip a gradienty slouzi jako text na karte i jako vypln s bilym
+     textem, svetlost je kompromis: oba kontrasty nad 3.5:1 (vic soucasne nejde). */
+  --destructive: oklch(0.62 0.2 23.35); /* Error   #D5002A */
 
   --warning: oklch(0.8377 0.1618 81.06); /* Warning #FFBD2E */
 
@@ -500,13 +511,13 @@ body.module-fullscreen footer {
 
   --success: oklch(0.72 0.1137 154.05); /* Succes  #59AC77 */
 
-  --tip: oklch(0.7 0.18 270.9); /* Tip     #383BF5 */
+  --tip: oklch(0.6 0.2 270.9); /* Tip     #383BF5 */
 
   --brand-accent: oklch(0.7153 0.1794 50.61); /* accent    #F87B1B */
 
-  --gradient-l: oklch(0.65 0.1389 10.8); /* gradientL #B1475C */
+  --gradient-l: oklch(0.6 0.1389 10.8); /* gradientL #B1475C */
 
-  --gradient-r: oklch(0.72 0.1301 287.77); /* gradientR #857AD2 */
+  --gradient-r: oklch(0.64 0.1301 287.77); /* gradientR #857AD2 */
 
   --block-context: oklch(0.6451 0.0987 185.48); /* Kontext #33A196 */
   --block-transform: var(--gradient-r);
@@ -545,12 +556,99 @@ body.module-fullscreen footer {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Tmavy rezim pro rucne stylovany obsah (obsah modulu, list, poznamky, editor).
+   Svetle hodnoty vyse zustavaji beze zmeny, tady se jen prebarvuji na tokeny. */
+.dark .module-content,
+.dark .module-content h1,
+.dark .module-content h2,
+.dark .module-content h3,
+.dark .module-content strong {
+  color: var(--foreground);
+}
+.dark .module-content p,
+.dark .module-content ul,
+.dark .module-content ol {
+  color: color-mix(in oklch, var(--foreground) 82%, var(--card));
+}
+.dark .module-content a {
+  color: var(--gradient-r);
+}
+.dark .module-content blockquote {
+  border-left-color: var(--warning);
+  background-color: color-mix(in oklch, var(--warning) 12%, transparent);
+}
+.dark .module-content th {
+  background-color: var(--muted);
+}
+.dark .module-content th,
+.dark .module-content td {
+  border-color: var(--border);
+}
+.dark .module-content hr {
+  border-top-color: var(--border);
+}
+.dark .module-content .alert-warning {
+  background-color: color-mix(in oklch, var(--warning) 12%, transparent);
+  border-color: color-mix(in oklch, var(--warning) 35%, transparent);
+  border-left-color: var(--warning);
+}
+.dark .module-content .alert-info {
+  background-color: color-mix(in oklch, var(--tip) 15%, transparent);
+  border-color: color-mix(in oklch, var(--tip) 40%, transparent);
+  border-left-color: var(--tip);
+}
+.dark .module-content .example-bad {
+  background-color: color-mix(in oklch, var(--destructive) 12%, transparent);
+  border-color: color-mix(in oklch, var(--destructive) 35%, transparent);
+}
+.dark .module-content .example-good {
+  background-color: color-mix(in oklch, var(--success) 12%, transparent);
+  border-color: color-mix(in oklch, var(--success) 35%, transparent);
+}
+.dark .paper-sheet {
+  background-color: var(--card);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.dark hr.page-break {
+  border-top-color: var(--gradient-r);
+}
+.dark hr.page-break::after {
+  background-color: var(--card);
+  color: var(--gradient-r);
+}
+.dark .notes-paper {
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--border) 27px,
+    var(--border) 28px
+  );
+}
+.dark .notes-paper-content .ProseMirror,
+.dark .notes-paper-content .ProseMirror h2,
+.dark .notes-paper-content .ProseMirror strong {
+  color: var(--foreground);
+}
+.dark .notes-paper-content .ProseMirror {
+  caret-color: var(--gradient-r);
+}
+.dark .notes-paper-content .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Zdedena barva textu z body je uz spocitana z tmavych tokenu, .light ji prepocita */
+  .light {
+    @apply text-foreground;
   }
   html {
     @apply font-sans;
@@ -568,7 +666,7 @@ body.module-fullscreen footer {
   [data-course-block] {
     --block-ink: color-mix(in srgb, var(--block) 72%, black);
   }
-  .dark [data-course-block] {
+  .dark [data-course-block]:not(.light *) {
     --block-ink: color-mix(in srgb, var(--block) 60%, white);
   }
   [data-course-block="context"] {

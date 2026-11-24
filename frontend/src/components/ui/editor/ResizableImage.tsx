@@ -8,7 +8,7 @@ import {
 } from '@tiptap/react';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { AlignLeft, AlignCenter, AlignRight, Trash2, WrapText } from 'lucide-react';
-import { Button } from '../../ui-kit/button';
+import { Button } from '../Button';
 import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type Align = 'none' | 'left' | 'center' | 'right';
@@ -158,8 +158,8 @@ const ResizableImageView = ({ node, updateAttributes, selected, deleteNode, edit
               alignItems: 'center',
               gap: 2,
               padding: '4px',
-              background: 'white',
-              border: '1px solid rgb(229 231 235)',
+              background: 'var(--popover)',
+              border: '1px solid var(--border)',
               borderRadius: '0.5rem',
               boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
               zIndex: 3,
@@ -180,7 +180,7 @@ const ResizableImageView = ({ node, updateAttributes, selected, deleteNode, edit
             <AlignButton active={align === 'none'} title="V řádku textu" onClick={() => updateAttributes({ align: 'none' })}>
               <WrapText size={14} />
             </AlignButton>
-            <span style={{ width: 1, height: 16, background: 'rgb(229 231 235)', margin: '0 2px' }} />
+            <span style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
             <AlignButton title="Smazat obrázek" onClick={() => deleteNode()} danger>
               <Trash2 size={14} />
             </AlignButton>
@@ -204,8 +204,9 @@ function AlignButton({
   active?: boolean;
   danger?: boolean;
 }) {
-  const color = danger ? 'rgb(220 38 38)' : active ? 'rgb(126 34 206)' : 'rgb(55 65 81)';
-  const bg = active ? 'rgb(243 232 255)' : 'transparent';
+  // Tokeny kvuli tmavemu rezimu, lista lezi na --popover
+  const color = danger ? 'var(--destructive)' : active ? 'var(--gradient-r)' : 'var(--popover-foreground)';
+  const bg = active ? 'color-mix(in oklch, var(--gradient-r) 15%, transparent)' : 'transparent';
   return (
     <Button variant="plain" className={BTN_KEEP_BOX}
       type="button"

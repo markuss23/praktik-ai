@@ -18,7 +18,8 @@ export function Footer() {
                 alt="PRAKTIK-AI Logo"
                 width={81}
                 height={83}
-                className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px]"
+                // Tmave SVG logo, v tmavem rezimu bile (tokeny obrazek neprebarvi)
+                className="w-[50px] h-[52px] sm:w-[65px] sm:h-[67px] lg:w-[81px] lg:h-[83px] dark:brightness-0 dark:invert"
               />
               <span className="text-lg sm:text-xl font-bold text-foreground">PRAKTIK-AI</span>
             </div>
@@ -60,7 +61,10 @@ export function Footer() {
 
           {/* University Logos */}
           <div className="flex flex-col gap-4 sm:gap-[18px]">
-            <div className="flex flex-col gap-4 sm:gap-[18px]">
+            <div
+              // Tmava loga partneru jsou v tmavem rezimu monochromne bila
+              className="flex flex-col gap-4 sm:gap-[18px] dark:brightness-0 dark:invert"
+            >
               <Image 
                 src="/ujeplogo.svg" 
                 alt="UJEP Logo" 

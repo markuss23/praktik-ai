@@ -555,7 +555,7 @@ function ModuleScreen({
     {
       key: 'procvicovani',
       label: 'Procvičování',
-      sublabel: 'Zkus si svoje znalosti v praxi',
+      sublabel: 'Vyzkoušejte si své znalosti v praxi',
       completed: session.practiceDone,
       locked: !session.handbookDone,
       icon: <Dumbbell className="size-5" />,

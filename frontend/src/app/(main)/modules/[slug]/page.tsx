@@ -24,6 +24,35 @@ import { BTN_KEEP_BOX, cn } from '@/lib/utils';
 
 type TabType = 'prirucka' | 'procvicovani' | 'test';
 
+type ModuleLock =
+  | { reason: 'not-enrolled' }
+  | { reason: 'previous-module'; previousNumber: number; previousTitle: string; resume: Module | null }
+  | { reason: 'unavailable' };
+
+// Stejne pravidlo jako karty modulu na detailu kurzu: zapsany student otevre prvni modul,
+// splneny modul a modul, pred kterym je splneny. Jinak by sel zamceny modul otevrit pres URL.
+function getModuleLock(
+  moduleId: number,
+  modules: Module[],
+  enrolled: boolean,
+  progress: CourseProgressResponse | null,
+): ModuleLock | null {
+  const index = modules.findIndex(m => m.moduleId === moduleId);
+  if (index === -1) return { reason: 'unavailable' };
+  if (!enrolled) return { reason: 'not-enrolled' };
+  if (index === 0) return null;
+  // Bez progress nejde zamek urcit, radsi chyba nez odemceny modul
+  if (!progress) throw new Error('Course progress unavailable');
+  const isCompleted = (id: number) => !!progress.modules.find(p => p.moduleId === id)?.completed;
+  if (isCompleted(moduleId) || isCompleted(modules[index - 1].moduleId)) return null;
+  return {
+    reason: 'previous-module',
+    previousNumber: index,
+    previousTitle: modules[index - 1].title,
+    resume: modules.find(m => !isCompleted(m.moduleId)) ?? null,
+  };
+}
+
 export default function ModulePage() {
   const params = useParams();
   const router = useRouter();
@@ -44,6 +73,7 @@ export default function ModulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
+  const [accessLock, setAccessLock] = useState<ModuleLock | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
 
   // Transition animation
@@ -114,23 +144,27 @@ export default function ModulePage() {
       if (isNaN(modId)) { setError('Modul nebyl nalezen.'); return; }
 
       const moduleData = await getModule(modId);
-      setModule(moduleData);
-
-      // Tichý tracking — server si uloží, že user otevřel tenhle modul.
-      // Fire-and-forget; nikdy nesmí rozbít načítání stránky.
-      void markModuleVisited(modId);
 
       // Kurz i progress závisí jen na moduleData.courseId — jedna vlna, ne dvě.
       // getModules je vynechané záměrně: getCourse moduly už vrací.
+      // Zapisy bez catch: pri chybe by zapsany student videl zamek "Zapiste se"
       const [courseData, progressData, enrollments] = await Promise.all([
         getCourse(moduleData.courseId),
         getAssessmentProgress(moduleData.courseId).catch(() => null),
-        getMyEnrollments().catch(() => []),
+        getMyEnrollments(),
       ]);
+      const activeModules = (courseData.modules ?? []).filter(m => m.isActive);
+      const enrolled = enrollments.some(e => e.courseId === moduleData.courseId);
+      const lock = getModuleLock(modId, activeModules, enrolled, progressData);
+      setModule(moduleData);
       setCourse(courseData);
-      setAllModules((courseData.modules ?? []).filter(m => m.isActive));
+      setAllModules(activeModules);
       setProgress(progressData);
       setProgressStale(false);
+      setAccessLock(lock);
+      if (lock) return;
+
+      void markModuleVisited(modId);
 
       // Splněné části odemknou záložky i v jiném prohlížeči (sessionStorage je nezná)
       const moduleProgress = progressData?.modules.find((p) => p.moduleId === modId);
@@ -239,6 +273,47 @@ export default function ModulePage() {
     );
   }
 
+  // Zamceny modul: zadny obsah, tutor ani materialy, jen cesta zpet na kurz
+  if (accessLock) {
+    const courseHref = `/courses/${module.courseId}`;
+    const resume = accessLock.reason === 'previous-module' ? accessLock.resume : null;
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--muted)' }}>
+        <div className="w-full max-w-lg px-4">
+          <Alert variant="warning">
+            <Lock />
+            <AlertTitle>{accessLock.reason === 'unavailable' ? 'Modul není dostupný' : 'Modul je zamčený'}</AlertTitle>
+            <AlertDescription>
+              {accessLock.reason === 'not-enrolled' && (
+                <>Moduly kurzu „{course?.title}“ se otevřou po zápisu do kurzu.</>
+              )}
+              {accessLock.reason === 'previous-module' && (
+                <>Moduly se odemykají postupně. Nejdřív splňte modul {accessLock.previousNumber} „{accessLock.previousTitle}“.</>
+              )}
+              {accessLock.reason === 'unavailable' && 'Tento modul teď v kurzu není zveřejněný.'}
+            </AlertDescription>
+          </Alert>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            {accessLock.reason === 'not-enrolled' ? (
+              <Button render={<Link href={courseHref} />} nativeButton={false}>Přejít k zápisu do kurzu</Button>
+            ) : (
+              <>
+                {resume && (
+                  <Button render={<Link href={`/modules/${resume.moduleId}`} />} nativeButton={false}>
+                    Pokračovat v modulu {allModules.indexOf(resume) + 1}
+                  </Button>
+                )}
+                <Button variant={resume ? 'outline' : 'default'} render={<Link href={courseHref} />} nativeButton={false}>
+                  Zpět na kurz
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Computed data
   const learnBlocks = module.learnBlocks ?? [];
   const totalBlocks = learnBlocks.length;
@@ -310,7 +385,7 @@ export default function ModulePage() {
     {
       key: 'procvicovani',
       label: 'Procvičování',
-      sublabel: 'Zkus si svoje znalosti v praxi',
+      sublabel: 'Vyzkoušejte si své znalosti v praxi',
       completed: practiceCompleted,
       locked: !handbookCompleted,
       icon: <Dumbbell className="size-5" />,

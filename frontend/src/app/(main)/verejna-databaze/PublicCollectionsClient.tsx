@@ -60,8 +60,8 @@ export function PublicCollectionsClient() {
           <div>
             <h2 className="text-xl font-bold text-foreground">Veřejné sbírky</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Veřejně sdílené sbírky materiálů – včetně těch tvých. Otevři si je a
-              prohlédni jejich obsah.
+              Veřejně sdílené sbírky materiálů – včetně těch vašich. Otevřete si je a
+              prohlédněte si jejich obsah.
             </p>
           </div>
           <div className="relative w-full sm:w-72">

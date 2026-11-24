@@ -54,7 +54,7 @@ export function QuickStats({ enrollments }: QuickStatsProps) {
         icon: <TrendingUp size={20} />,
         label: 'Nejvíc rozpracovaný',
         value: mostActive ? `${mostActive.pct}%` : '—',
-        hint: mostActive?.title ?? 'Začni nějaký kurz',
+        hint: mostActive?.title ?? 'Začněte nějaký kurz',
         accentColor: 'var(--tip)',
       },
       {

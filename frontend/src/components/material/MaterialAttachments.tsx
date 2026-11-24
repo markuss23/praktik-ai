@@ -118,7 +118,7 @@ export function MaterialAttachments({ attachments, title }: MaterialAttachmentsP
       const base = title ? sanitizeFileName(title) : "prilohy";
       await downloadAllAsZip(downloadable, `${base}.zip`);
     } catch {
-      setDownloadError("Soubory se nepodařilo stáhnout. Zkus to prosím znovu.");
+      setDownloadError("Soubory se nepodařilo stáhnout. Zkuste to prosím znovu.");
     } finally {
       setDownloadingAll(false);
     }

@@ -298,7 +298,7 @@ export default function CourseSection() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Najdi kurz!"
+              placeholder="Najděte kurz!"
               className={cn(FIELD, "h-auto w-full pl-10 pr-4 py-2.5 focus:border-transparent")}
             />
           </div>

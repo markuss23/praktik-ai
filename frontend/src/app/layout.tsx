@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
-import { ToastProvider } from "@/components/ui";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { ThemeProvider, ToastProvider, TooltipProvider } from "@/components/ui";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,12 +42,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // TooltipProvider: spolecne zpozdeni tooltipu, prvni po 300 ms, dalsi v rade hned
+  // suppressHydrationWarning: tridu .dark na <html> pridava THEME_INIT_SCRIPT pred hydrataci
   return (
-    <html lang="cs">
+    <html lang="cs" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} antialiased`}
       >
-        <ToastProvider>{children}</ToastProvider>
+        <ThemeProvider>
+          <TooltipProvider delay={300}>
+            <ToastProvider>{children}</ToastProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

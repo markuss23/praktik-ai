@@ -124,7 +124,7 @@ function getCourseEditLockReason(course: Course): string | null {
 // Hlavní dashboard admin sekce - seznam kurzů s rozbalitelnými moduly
 export function CoursesListView() {
   const { goToCourseContent, goToCourseUpload, goToAICreate, goToCoursePreview } = useAdminNavigation();
-  const { isSuperAdmin } = useRole();
+  const { isSuperAdmin, isGuarantor } = useRole();
   const { blocks, targets, subjects, neuroPrinciples, krauuCompetences, bloomLevels } = useCatalogData();
   const { isOwner, currentUser } = useCurrentUser();
   const toast = useToast();
@@ -258,8 +258,8 @@ export function CoursesListView() {
   /** Can the current user edit this course? (owner or superadmin) */
   const canEditCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
 
-  /** Can the current user publish this course? (owner or superadmin) */
-  const canPublishCourse = (course: Course) => isSuperAdmin || isOwner(course.ownerId);
+  // Publikovat smi vlastnik, garant i superadmin (stejne pravidlo jako backend)
+  const canPublishCourse = (course: Course) => isGuarantor || isOwner(course.ownerId);
 
   /** Can the current user delete this course?
    *  Superadmin: always. Owner: when kurz je ve stavu draft, generated, edited (rozpracováno) nebo failed. */

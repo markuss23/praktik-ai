@@ -11,3 +11,4 @@ Pravidla:
 - Host podcast otevře (o čem bude řeč a proč to stojí za to) a uzavře (2–3 hlavní myšlenky).
 - Pojmy vysvětli na příkladu. Jednou se vrať k typické chybě nebo omylu.
 - Tón a úroveň přizpůsob cílové skupině.
+- Když se host nebo expert obrací na posluchače, vyká jim.

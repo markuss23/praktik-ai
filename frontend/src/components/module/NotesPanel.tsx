@@ -182,7 +182,7 @@ export default function NotesPanel() {
           heading: { levels: [2] },
         }),
         Placeholder.configure({
-          placeholder: 'Zapiš si své nápady a postřehy z této lekce…',
+          placeholder: 'Zapište si své nápady a postřehy z této lekce…',
         }),
       ],
       content: initialContent ?? '',

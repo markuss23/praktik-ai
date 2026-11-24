@@ -208,7 +208,7 @@ def assert_prerequisites_passed(
     if required_ids - passed_ids:
         raise HTTPException(
             status_code=403,
-            detail="Nejdřív musíš splnit všechny povinné testy nižší úrovně.",
+            detail="Nejdřív musíte splnit všechny povinné testy nižší úrovně.",
         )
 
 

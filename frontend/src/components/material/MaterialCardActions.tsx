@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Folder } from "lucide-react";
 import { FolderPickerModal } from "./FolderPickerModal";
 import { addMaterialToFolder } from "./api";
-import { Button, useToast } from "@/components/ui";
+import { Button, Hint, useToast } from "@/components/ui";
 import type { MaterialFolder } from "./types";
 
 interface MaterialCardActionsProps {
@@ -53,22 +53,25 @@ export function MaterialCardActions({
   return (
     <>
       {/* Tooltip drží obalový `span` — neaktivní tlačítko myší události nepropouští. */}
-      <span title={hint} className="inline-flex">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-lg"
-          aria-label={hint}
-          disabled={disabled}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setPickerOpen(true);
-          }}
-        >
-          <Folder strokeWidth={1.75} />
-        </Button>
-      </span>
+      <Hint label={hint}>
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-lg"
+            aria-label={hint}
+            tooltip={false}
+            disabled={disabled}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPickerOpen(true);
+            }}
+          >
+            <Folder strokeWidth={1.75} />
+          </Button>
+        </span>
+      </Hint>
       <FolderPickerModal
         isOpen={pickerOpen}
         onClose={() => setPickerOpen(false)}
