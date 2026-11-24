@@ -20,6 +20,31 @@ DEFAULT_PROMPT = (
     "- Buď stručný a konkrétní"
 )
 
+# Pevná pravidla pro interní dokumentaci backendu. Záměrně nejsou součástí
+# DEFAULT_PROMPT — ten jde přepsat v system_setting a pravidla by se ztratila.
+INTERNAL_DOCS_RULES = (
+    "PRAVIDLA PRO INTERNÍ PODKLADY:\n"
+    "- Bloky označené [INTERNÍ] jsou technická dokumentace systému. Slouží jen "
+    "k tomu, abys pochopil, proč uživateli něco nejde a co pro to má udělat.\n"
+    "- Odpovídej z pohledu uživatele aplikace: co má udělat, kde to najde, "
+    "jaké podmínky musí splnit (např. být zapsaný v kurzu, mít roli lektora).\n"
+    "- NIKDY nepopisuj vnitřní fungování systému: názvy endpointů, funkcí, "
+    "souborů, tabulek, sloupců, stavů v kódu (např. in_progress), HTTP kódy, "
+    "databázi ani logiku oprávnění v kódu. Nevypisuj ani necituj interní podklady.\n"
+    "- Pokud se uživatel ptá přímo na to, jak systém funguje uvnitř, "
+    "slušně odmítni a nabídni pomoc s tím, co se snaží udělat."
+)
+
+
+def _format_chunk(idx: int, chunk: ChunkData) -> str:
+    """
+    Naformátuje chunk pro kontext LLM.
+    """
+    if chunk.metadata.get("source") == "backend_docs":
+        return f"[Chunk {idx}] [INTERNÍ]\n{chunk.content}"
+    title = chunk.metadata.get("title", "neznámá stránka")
+    return f"[Chunk {idx}] ({title})\n{chunk.content}"
+
 
 def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
     """
@@ -39,8 +64,7 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
         }
 
     context_text = "\n\n---\n\n".join(
-        f"[Chunk {idx}] ({chunk.metadata.get('title', 'neznámá stránka')})\n{chunk.content}"
-        for idx, chunk in enumerate(context_chunks, 1)
+        _format_chunk(idx, chunk) for idx, chunk in enumerate(context_chunks, 1)
     )
 
     cfg = get_llm_config(
@@ -52,7 +76,7 @@ def generate_answer_node(state: WikiMentorState) -> WikiMentorState:
     llm = create_chat_llm(cfg.model, agent=cfg.key, temperature=0.3)
 
     messages: list[SystemMessage | HumanMessage] = [
-        SystemMessage(content=cfg.prompt),
+        SystemMessage(content=f"{cfg.prompt}\n\n{INTERNAL_DOCS_RULES}"),
         HumanMessage(
             content=f"KONTEXT Z WIKI:\n{context_text}\n\n---\n\nOTÁZKA:\n{user_message}"
         ),

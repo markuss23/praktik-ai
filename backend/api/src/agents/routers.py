@@ -2,11 +2,11 @@ import asyncio
 import base64
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from api.dependencies import CurrentUser, require_role
+from api.dependencies import CurrentUser, optional_ai_budget, require_role
 from api.authorization import (
     validate_owner_or_superadmin,
     validate_guarantor_or_superadmin,
@@ -712,7 +712,11 @@ async def learn_blocks_chat(
     return LearnBlocksChatResponse(answer=result.answer)
 
 
-@public_router.post("/wiki-chat", operation_id="wiki_chat")
+@public_router.post(
+    "/wiki-chat",
+    operation_id="wiki_chat",
+    dependencies=[Depends(optional_ai_budget)],
+)
 async def wiki_chat(
     user_input: WikiChatRequest, db: SessionSqlSessionDependency
 ) -> WikiChatResponse:

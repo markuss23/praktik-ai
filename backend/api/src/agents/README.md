@@ -7,7 +7,7 @@ HTTP vrstva, která spouští LangGraph agenty z `backend/agents`. Řeší oprá
 | Pojem | Význam |
 | --- | --- |
 | `router` | Endpointy s přihlášením. V `src/routers.py` má navíc dependency `ai_budget`. |
-| `public_router` | Jen wiki chat. Bez přihlášení a bez `ai_budget`. |
+| `public_router` | Jen wiki chat. Bez přihlášení, s `optional_ai_budget`. |
 | Background task | `asyncio.create_task` ve stejném procesu. Request se vrátí hned, task si otevře vlastní `SessionLocal()`. |
 | Progress | Tabulka `generation_progress` (`progress.py`), sdílená mezi workery gunicornu. Klíč `course:<id>` (kurz), `course-image:<id>`, `module-image:<id>` (obrázky), `module-podcast:<id>` (podcast). |
 | Heartbeat | `run_tracked` obnovuje `updated_at` běžícího tasku každou minutu (`HEARTBEAT`). |
@@ -88,6 +88,6 @@ Obrázky jdou stejně, jen s vlastním klíčem a výsledek (cesta v SeaweedFS�
 ## Pozor na
 
 - Background task žije v procesu. Když worker spadne, řádek zůstane `running` až 3 minuty a kurz zůstane v `draft`. Pak jde spustit znovu.
-- Wiki chat je veřejný a bez `ai_budget`. Tokeny se zapíšou s `user_id = NULL` a žádný limit neplatí.
+- Wiki chat je veřejný a má `optional_ai_budget`. Přihlášenému se tokeny připíšou a platí mu denní limit jako u `ai_budget`. Anonymní volání se zapíše s `user_id = NULL` (endpoint je vyplněný) a žádný limit pro něj neplatí.
 - Podcast se po úpravě obsahu modulu sám nepřegeneruje. Hlas se do `ai_usage` zapíše jedním řádkem za celý podcast, jen když se povedou všechny repliky. Spálené tokeny nepovedeného běhu se nezapíšou. `/agents/active-*-generations` podcast nevrací.
 - Embeddingy a wiki sync běží v requestu. U velkého kurzu může request trvat dlouho.

@@ -17,6 +17,7 @@ Logika ověření tokenu a role je v `api/dependencies.py`. Router tady je tenk�
 | `OptionalUser` | Jako `CurrentUser`, ale bez tokenu nebo s neplatným tokenem vrátí `None`. Pro veřejné endpointy. |
 | `require_role(min)` | Pustí roli `min` a vyšší. Pořadí `user` < `lector` < `guarantor` < `superadmin`. |
 | `ai_budget` | Dependency na routerech `agents` a `assessments`. Počítá AI tokeny a hlídá denní limit. |
+| `optional_ai_budget` | Totéž pro veřejný wiki chat. Přihlášenému počítá tokeny i limit, anonymní volání zapíše s `user_id = NULL` bez limitu. |
 
 ## Tok
 
@@ -77,7 +78,7 @@ sequenceDiagram
 | --- | --- |
 | `routers.py` | Token, sync, `me`, profil (jméno, AI styl). |
 | `schemas.py` | `UserResponse`, `ProfileNameUpdate`. |
-| `../../dependencies.py` | `Auth` (Keycloak klient, `get_current_user`, `sync_user_from_token`), mapa rolí, `require_role`, `OptionalUser`, `is_staff`, `ai_budget`. |
+| `../../dependencies.py` | `Auth` (Keycloak klient, `get_current_user`, `sync_user_from_token`), mapa rolí, `require_role`, `OptionalUser`, `is_staff`, `ai_budget`, `optional_ai_budget`. |
 | `../../authorization.py` | Kontroly vlastnictví zdroje (`validate_owner_or_superadmin` apod.). |
 | `../../config.py` | `KeycloakSettings`, `ai_daily_token_limit`. |
 

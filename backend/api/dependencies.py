@@ -311,7 +311,37 @@ async def ai_budget(
     by se do endpointu nepropsal.
     """
     usage_context.set(UsageContext(user_id=user.user_id, endpoint=request.url.path))
+    _check_daily_ai_limit(request, user, db)
 
+
+async def optional_ai_budget(
+    request: Request,
+    user: OptionalUser,
+    db: Annotated[Session, Depends(get_sql)],
+) -> None:
+    """Varianta ai_budget pro veřejné endpointy (wiki chat).
+
+    Přihlášenému připíše tokeny a hlídá denní limit stejně jako ai_budget.
+    Anonymní volání se zapíše s user_id = NULL, ale s vyplněným endpointem;
+    limit pro něj neplatí (není komu ho počítat).
+    """
+    usage_context.set(
+        UsageContext(user_id=user.user_id if user else None, endpoint=request.url.path)
+    )
+    if user is not None:
+        _check_daily_ai_limit(request, user, db)
+
+
+def _check_daily_ai_limit(request: Request, user: User, db: Session) -> None:
+    """Vyhodí 429, pokud uživatel s rolí user vyčerpal denní limit AI tokenů.
+
+    Args:
+        request: Aktuální request — GET se nepočítá.
+        user: Uživatel, jehož spotřeba za posledních 24 h se sčítá.
+        db: DB session.
+
+    Limit je settings.ai_daily_token_limit, 0 = vypnuto. Ostatní role limit nemají.
+    """
     limit = settings.ai_daily_token_limit
     if not limit or user.role != UserRole.user or request.method == "GET":
         return

@@ -1,4 +1,4 @@
-"""Node pro generování embeddingů z wiki stránek."""
+"""Node pro generování embeddingů z wiki stránek a backend dokumentace."""
 
 import logging
 from langchain_core.documents.base import Document
@@ -11,19 +11,26 @@ logger = logging.getLogger(__name__)
 
 
 def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
-    """
-    Rozseká obsah wiki stránek na chunky a uloží jejich embeddingy.
+    """Rozseká stránky na chunky a znovu jimi naplní wiki kolekci.
 
+    Kolekce se před indexací celá vymaže, aby v ní nezůstaly chunky ze
+    smazaných nebo zkrácených stránek. Během reindexace 
+    proto wiki chat může krátce odpovídat z neúplného indexu.
+    ID chunku = zdroj + title + index, takže se stránky ze dvou zdrojů
+    ani různá README.md navzájem nepřepisují.
     """
     pages: list[WikiPageData] = state.get("pages", [])
 
     if not pages:
-        logger.warning("Žádné wiki stránky ke zpracování")
+        # bez stránek index nemažeme — spíš selhal clone/načtení než že je vše smazané
+        logger.warning("Žádné stránky ke zpracování, index ponechávám beze změny")
         return state
 
-    logger.info(f"Generuji embeddingy pro {len(pages)} wiki stránek...")
+    logger.info(f"Generuji embeddingy pro {len(pages)} stránek...")
 
     vector_store = get_wiki_vector_store()
+    vector_store.delete_collection()
+    vector_store.create_collection()
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -32,9 +39,9 @@ def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
     )
 
     for page in pages:
-        # print(f"  - Stranka '{page.title}': generuji embedding")
-
         texts: list[str] = text_splitter.split_text(page.content)
+        if not texts:
+            continue
 
         documents: list[Document] = [
             Document(
@@ -42,17 +49,16 @@ def generate_embeddings_node(state: WikiAgentState) -> WikiAgentState:
                 metadata={
                     "title": page.title,
                     "file_path": page.file_path,
+                    "source": page.source,
                     "chunk_index": idx,
                 },
             )
             for idx, text in enumerate(texts)
         ]
 
-        # print(f"    -> {len(documents)} chunku")
-
         vector_store.add_documents(
             documents,
-            ids=[f"{page.title}_{idx}" for idx in range(len(documents))],
+            ids=[f"{page.source}:{page.title}:{idx}" for idx in range(len(documents))],
         )
 
     return state
