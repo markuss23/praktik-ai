@@ -62,6 +62,7 @@ export function SuperadminStatsView() {
       showOwner
       emptyMessage="Na platformě nejsou žádné kurzy."
       onRequestModules={loadModules}
+      showCompetenceResults
     />
   );
 }

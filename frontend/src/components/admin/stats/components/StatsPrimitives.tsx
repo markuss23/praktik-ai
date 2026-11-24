@@ -49,7 +49,7 @@ export function StatCard({
 }
 
 export function ChartTile({
-  title, subtitle, icon: Icon, children, className = '', delay = 0,
+  title, subtitle, icon: Icon, children, className = '', delay = 0, action,
 }: {
   title: string;
   subtitle?: string;
@@ -57,6 +57,8 @@ export function ChartTile({
   children: ReactNode;
   className?: string;
   delay?: number;
+  // Ovládací prvek vpravo v header (např. přepínač řazení)
+  action?: ReactNode;
 }) {
   return (
     <motion.div
@@ -65,7 +67,7 @@ export function ChartTile({
       transition={{ delay, duration: 0.4 }}
       className={`bg-card rounded-2xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}
     >
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             {Icon && <Icon size={15} className="text-gradient-r" />}
@@ -73,6 +75,7 @@ export function ChartTile({
           </h3>
           {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
         </div>
+        {action}
       </div>
       {children}
     </motion.div>

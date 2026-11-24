@@ -7,6 +7,7 @@ import { ProfileProgressCard, ProgressItem } from '@/components/profile/ProfileP
 import { ProfileStatsGrid } from '@/components/profile/ProfileStatsGrid';
 import { ProfileBadgesCard, Badge } from '@/components/profile/ProfileBadgesCard';
 import { ProfileModulesSection } from '@/components/profile/ProfileModulesSection';
+import { CompetenceProfileSection } from '@/components/profile/competences/CompetenceProfileSection';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { AiPreferencesModal } from '@/components/profile/AiPreferencesModal';
 import { ThemeSettingsCard } from '@/components/profile/ThemeSettingsCard';
@@ -270,6 +271,8 @@ export default function ProfilPage() {
           ) : (
             <ProfileStatsGrid stats={stats.items} />
           )}
+
+          <CompetenceProfileSection enrollments={enrollments} enrollmentsLoading={enrollmentsLoading} />
 
           {/* Modules sections */}
           {enrollmentsLoading ? (

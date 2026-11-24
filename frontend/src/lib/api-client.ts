@@ -20,6 +20,7 @@ import {
   ModuleUpdate,
   AssessmentsApi,
   TicketsApi,
+  CompetencesApi,
   ResponseError,
   ClosedQuestionsSettingsFromJSON,
   ClosedQuestionsSettingsToJSON,
@@ -90,6 +91,7 @@ export const ratingsApi = new RatingsApi(configuration);
 export const collectionsApi = new CollectionsApi(configuration);
 export const assessmentsApi = new AssessmentsApi(configuration);
 export const ticketsApi = new TicketsApi(configuration);
+export const competencesApi = new CompetencesApi(configuration);
 
 // ============ Auth / Current User ============
 
@@ -710,6 +712,16 @@ export async function getRecommendedCourses(limit: number = 3) {
   const { CourseFromJSON } = await import('@/api');
   const data = (await res.json()) as Record<string, unknown>[];
   return data.map((c) => CourseFromJSON(c));
+}
+
+// Kompetenční profil přihlášeného uživatele podle KRAUU (vstup, výstup, růst, historie)
+export async function getMyCompetenceProfile() {
+  return competencesApi.getMyCompetenceProfile();
+}
+
+// Agregace KRAUU přes všechny uživatele, jen superadmin; bez courseId za celou platformu
+export async function getCompetenceStats(courseId?: number) {
+  return competencesApi.getCompetenceStats({ courseId });
 }
 
 export async function listEnrollments(params?: {

@@ -22,6 +22,7 @@ import {
   COURSE_PALETTE, RANGE_DAYS, RANGE_LABELS, STATUS_COLORS, STATUS_LABELS, TILES_PER_PAGE,
   type CourseStats, type TimeRange, type PublishState,
 } from './components';
+import { KrauuStatsSection } from './krauu/KrauuStatsSection';
 
 interface StatsDashboardProps {
   /** Page heading shown next to the sparkles icon. */
@@ -42,6 +43,8 @@ interface StatsDashboardProps {
    * course detail mounts and `stats.modules` is empty.
    */
   onRequestModules?: (courseId: number) => Promise<Module[]>;
+  // Výsledky podle kompetencí KRAUU (/competences/stats je jen pro superadmina)
+  showCompetenceResults?: boolean;
 }
 
 export function StatsDashboard({
@@ -52,6 +55,7 @@ export function StatsDashboard({
   showOwner = false,
   emptyMessage = 'Zatím nemáte žádné kurzy.',
   onRequestModules,
+  showCompetenceResults = false,
 }: StatsDashboardProps) {
   // Filters
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
@@ -205,6 +209,10 @@ export function StatsDashboard({
 
   const focused = focusedCourseId != null ? filtered.find(cs => cs.course.courseId === focusedCourseId) ?? null : null;
   const hasActiveFilters = selectedCourseIds.size > 0 || selectedStatuses.size > 0 || selectedPublishStates.size > 0;
+  // /competences/stats umí filtrovat jen jeden kurz; ostatní filtry se na výsledky nevztahují
+  const competenceCourse = selectedCourseIds.size === 1
+    ? courseStats.find((cs) => selectedCourseIds.has(cs.course.courseId))?.course ?? null
+    : null;
 
   // Stable handlers — without these, memoized children (CompactCourseTile, dropdowns)
   // re-render every keystroke because parent passes a fresh inline arrow each render.
@@ -485,6 +493,14 @@ export function StatsDashboard({
               </div>
             </ChartTile>
           </div>
+
+          <KrauuStatsSection
+            courseStats={filtered}
+            modulesPreloaded={!onRequestModules}
+            showResults={showCompetenceResults}
+            resultsCourse={competenceCourse}
+            filtersActive={selectedStatuses.size > 0 || selectedPublishStates.size > 0 || selectedCourseIds.size > 1}
+          />
 
           {/* Course tiles header */}
           <motion.div
