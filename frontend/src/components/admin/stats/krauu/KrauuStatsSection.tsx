@@ -107,10 +107,11 @@ export function KrauuStatsSection({
           <GraduationCap size={16} className="text-gradient-r" />
           Kompetence KRAUU
         </h2>
-        <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-          Kompetenční rámec absolventa učitelství (MŠMT 2023)
-          {competenceCount > 0 && `, ${areas.length} oblastí a ${competenceCount} kompetencí`}
-        </p>
+        {competenceCount > 0 && (
+          <p className="text-xs text-muted-foreground mt-0.5 ml-6">
+            {areas.length} oblastí a {competenceCount} kompetencí
+          </p>
+        )}
       </motion.div>
 
       {baseError ? (

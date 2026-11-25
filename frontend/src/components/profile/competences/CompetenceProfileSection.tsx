@@ -233,10 +233,6 @@ export function CompetenceProfileSection({
             </span>
           </AccordionTrigger>
           <AccordionContent className="px-5 pb-5">
-            <p className="text-xs text-muted-foreground mb-4">
-              Podle Kompetenčního rámce absolventa učitelství (KRAUU, MŠMT 2023). Vstup je první pretest,
-              výstup poslední test modulu nebo kurzu.
-            </p>
             {content}
           </AccordionContent>
         </AccordionItem>
